@@ -14,6 +14,8 @@
     "store:sync": "node storefront/scripts/sync-and-test.js",
     "stripe:listen": "node storefront/scripts/stripe-listen.js",
     "test": "node --test test/*.test.js",
+    "test:offers": "node --test test/all-offers.test.js",
+    "test:offers:live": "node scripts/test-all-offers.js --live",
     "test:load": "node test/load-queue.test.js",
     "vercel-build": "echo Vercel build OK"
   },
