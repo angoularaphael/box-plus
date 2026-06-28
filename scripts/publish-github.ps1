@@ -42,8 +42,7 @@ Copy-Item (Join-Path $BoxPlus "bot\.env.example") (Join-Path $BotOut ".env.examp
   "main": "start.js",
   "scripts": {
     "start": "node start.js",
-    "bot:run": "node bot/index.js",
-    "postinstall": "npx playwright install chromium"
+    "bot:run": "node bot/index.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

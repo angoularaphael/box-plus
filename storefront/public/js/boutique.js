@@ -36,6 +36,14 @@ async function loadConfig() {
       pill.textContent = 'Mode démo (sans Stripe)';
       pill.classList.remove('live');
     }
+    if (cfg.badge_fee_notice) {
+      const banner = document.getElementById('badgeInfoBanner');
+      const text = document.getElementById('badgeInfoText');
+      if (banner && text) {
+        text.textContent = cfg.badge_fee_notice;
+        banner.hidden = false;
+      }
+    }
   } catch {
     /* ignore */
   }

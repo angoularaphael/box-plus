@@ -20,6 +20,7 @@ const {
   removePendingOrder,
 } = require('./lib/orders');
 const { getStoreProducts, ingestCatalogPayload } = require('./lib/deciplus-sync');
+const { BADGE_FEE_NOTICE } = require('./lib/storefront-copy');
 
 const PORT = Number(process.env.STORE_PORT || 3040);
 const HOST = process.env.STORE_HOST || '0.0.0.0';
@@ -167,6 +168,7 @@ function createApp() {
         deciplus_synced_at: catalog.synced_at,
         product_count: catalog.products?.length || 0,
         sync_auto: String(process.env.STORE_SYNC_ENABLED || 'true') !== 'false',
+        badge_fee_notice: BADGE_FEE_NOTICE,
       });
     } catch (err) {
       logError('Erreur /api/config', { error: err.message });
