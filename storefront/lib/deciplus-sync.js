@@ -12,6 +12,14 @@ const SYNC_FILE = path.join(ROOT, 'data', 'storefront', 'catalog-live.json');
 const OVERRIDES_FILE = path.join(ROOT, 'storefront', 'products-overrides.json');
 const STATIC_FILE = path.join(ROOT, 'storefront', 'products.json');
 
+function loadStaticProducts() {
+  try {
+    return require('../products.json');
+  } catch {
+    return loadJson('storefront/products.json', { optional: true }) || [];
+  }
+}
+
 /** Produits Deciplus visibles sur capture coach — contrôle sync */
 const REQUIRED_DECIPLUS_TITLES = [
   'OFFRE A 29€',
@@ -228,9 +236,13 @@ function getStoreProducts({ preferLive = true } = {}) {
     const live = loadSyncedCatalog();
     if (live?.products?.length) return live;
   }
+  const staticProducts = loadStaticProducts();
+  if (!staticProducts.length && process.env.VERCEL) {
+    logWarn('Catalogue statique indisponible sur Vercel — ingest bot requis');
+  }
   return {
     synced_at: null,
-    products: loadJson('storefront/products.json'),
+    products: staticProducts,
     source: 'static',
   };
 }

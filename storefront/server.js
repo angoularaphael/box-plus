@@ -135,7 +135,6 @@ function createApp() {
   );
 
   app.use(express.json());
-  app.use(express.static(PUBLIC_DIR));
 
   app.get('/api/products', (_req, res) => {
     const catalog = getStoreProducts();
@@ -308,7 +307,16 @@ function createApp() {
   });
 
   app.get('/', (_req, res) => {
-    res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+    res.sendFile(path.join(PUBLIC_DIR, 'index.html'), (err) => {
+      if (err) res.status(500).json({ ok: false, error: 'index_missing' });
+    });
+  });
+
+  app.use(express.static(PUBLIC_DIR));
+
+  app.use((err, _req, res, _next) => {
+    logError('Erreur Express', { error: err.message });
+    res.status(500).json({ ok: false, error: err.message });
   });
 
   return app;
