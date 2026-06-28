@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-06-28T02:58:40.038Z",
+  "synced_at": "2026-06-28T03:04:05.727Z",
   "count": 18,
   "products": [
     {
@@ -49,7 +49,7 @@
       "deciplus_id": 80,
       "category": "Abonnements",
       "name": "ASSOCIATION SPORTIVE BOXING CENTER",
-      "tagline": "ASSOCIATION SPORTIVE BOXING CENTER",
+      "tagline": "Cotisation association sportive",
       "description": "Abonnements — synchronisé Deciplus (#80)",
       "price_cents": 5000,
       "price_label": "50,00 €",
@@ -60,7 +60,7 @@
       "requires_payment": true,
       "installments_note": null,
       "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
-      "deciplus_product_search": "ASSOCIATION SPORTIVE BOXING CENTER",
+      "deciplus_product_search": "ASSOCIATION",
       "synced": true,
       "reference": "000080",
       "type": "abo",
@@ -280,7 +280,7 @@
       "requires_payment": true,
       "installments_note": null,
       "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
-      "deciplus_product_search": "OFFRE PROMO 12 MOIS",
+      "deciplus_product_search": "OFFRE PROMO 12",
       "synced": true,
       "reference": null,
       "type": "abo",
