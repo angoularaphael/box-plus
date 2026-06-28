@@ -10,8 +10,14 @@ git add -A
 git status
 
 Write-Host "=== Build boxi-deci-bot folder ==="
-if (Test-Path $BotOut) { Remove-Item $BotOut -Recurse -Force }
-New-Item -ItemType Directory -Path $BotOut | Out-Null
+if (Test-Path $BotOut) {
+  $gitDir = Join-Path $BotOut ".git"
+  $hasGit = Test-Path $gitDir
+  Get-ChildItem $BotOut -Exclude ".git" | Remove-Item -Recurse -Force
+} else {
+  New-Item -ItemType Directory -Path $BotOut | Out-Null
+  $hasGit = $false
+}
 
 $copyDirs = @("bot", "lib", "config")
 foreach ($d in $copyDirs) {
