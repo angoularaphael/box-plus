@@ -1,6 +1,6 @@
 # BotHosting — index.js + .env (comme KataBump)
 
-**URL :** `http://prem-eu2.bot-hosting.net:21587`
+**URL :** `http://prem-eu1.bot-hosting.net:20311`
 
 ## Étape 1 — Upload (AVANT de lancer)
 
@@ -37,7 +37,7 @@ Au 1er lancement, `index.js` va :
 ## Étape 4 — Vercel
 
 ```
-BOXPLUS_BOT_URL=http://prem-eu2.bot-hosting.net:21587
+BOXPLUS_BOT_URL=http://prem-eu1.bot-hosting.net:20311
 SYNC_SECRET=boxplus-bc-2026-test
 ```
 
@@ -46,7 +46,7 @@ Redeploy Vercel.
 ## Étape 5 — Test
 
 ```
-http://prem-eu2.bot-hosting.net:21587/health
+http://prem-eu1.bot-hosting.net:20311/health
 ```
 
 ## Logs OK
@@ -55,7 +55,7 @@ http://prem-eu2.bot-hosting.net:21587/health
 [BOXPLUS bootstrap] .env OK
 [BOXPLUS bootstrap] Clone https://github.com/...
 [BOXPLUS bootstrap] Installation Playwright: chromium-headless-shell
-[BOXPLUS] Bot HTTP ingest → :21587
+[BOXPLUS] Bot HTTP ingest → :20311
 [BOXPLUS] Bot Deciplus démarré
 ```
 
