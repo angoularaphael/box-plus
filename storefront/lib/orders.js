@@ -5,7 +5,11 @@ const { normalizeOrder, validateOrder } = require('../../lib/normalize');
 const { enqueue } = require('../../lib/queue');
 const { isValidFrenchIban, normalizeIban } = require('../../lib/iban');
 
-const PENDING_DIR = path.join(ROOT, 'data', 'storefront', 'pending');
+const PENDING_DIR =
+  process.env.BOXPLUS_PENDING_DIR ||
+  (process.env.VERCEL ? '/tmp/boxplus-pending' : path.join(ROOT, 'data', 'storefront', 'pending'));
+
+const METADATA_CHUNK = 450;
 
 function initPending() {
   ensureDir(PENDING_DIR);
@@ -86,6 +90,46 @@ function validateCheckoutForm(input, product) {
   return errors;
 }
 
+function packOrderMetadata(payload) {
+  const json = JSON.stringify(payload);
+  const meta = { bp_len: String(json.length), bp_chunks: String(Math.ceil(json.length / METADATA_CHUNK) || 0) };
+  for (let i = 0; i < json.length; i += METADATA_CHUNK) {
+    meta[`bp${Math.floor(i / METADATA_CHUNK)}`] = json.slice(i, i + METADATA_CHUNK);
+  }
+  return meta;
+}
+
+function unpackOrderMetadata(metadata = {}) {
+  const chunks = Number(metadata.bp_chunks || 0);
+  if (!chunks) return null;
+  let json = '';
+  for (let i = 0; i < chunks; i += 1) {
+    json += metadata[`bp${i}`] || '';
+  }
+  if (Number(metadata.bp_len) !== json.length) return null;
+  try {
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+async function dispatchOrder(rawPayload) {
+  const order = normalizeOrder(rawPayload);
+  const errors = validateOrder(order);
+  if (errors.length) {
+    throw new Error(`Validation BOXPLUS: ${errors.join(', ')}`);
+  }
+
+  if (process.env.BOXPLUS_BOT_URL) {
+    const { forwardJobToBot } = require('../../lib/bot-forward');
+    const result = await forwardJobToBot(order);
+    return { queued: result.queued !== false, forwarded: true, ...result };
+  }
+
+  return enqueue(order);
+}
+
 function submitToBoxplus(rawPayload) {
   const order = normalizeOrder(rawPayload);
   const errors = validateOrder(order);
@@ -99,6 +143,9 @@ module.exports = {
   buildOrderPayload,
   validateCheckoutForm,
   submitToBoxplus,
+  dispatchOrder,
+  packOrderMetadata,
+  unpackOrderMetadata,
   savePendingOrder,
   loadPendingOrder,
   removePendingOrder,

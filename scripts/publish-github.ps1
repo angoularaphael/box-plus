@@ -41,6 +41,7 @@ Copy-Item (Join-Path $BoxPlus "bot\.env.example") (Join-Path $BotOut ".env.examp
   },
   "dependencies": {
     "dotenv": "^16.4.7",
+    "express": "^4.21.2",
     "playwright": "^1.51.1"
   }
 }

@@ -32,4 +32,7 @@ Le bot synchronise Deciplus et pousse le catalogue vers la boutique Vercel autom
 
 ## File d'attente
 
-Les commandes Stripe arrivent via la boutique (`data/queue/`). Sur BotHosting, monter un volume persistant sur `data/`.
+Le bot expose `POST /api/jobs` (port `BOT_HTTP_PORT`, défaut 3050).  
+La boutique Vercel envoie les commandes Stripe ici via `BOXPLUS_BOT_URL`.
+
+Sur BotHosting, monter un volume persistant sur `data/` (session + queue).

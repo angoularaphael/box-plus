@@ -11,7 +11,9 @@ const { logInfo, logError } = require('../lib/logger');
 const {
   buildOrderPayload,
   validateCheckoutForm,
-  submitToBoxplus,
+  dispatchOrder,
+  packOrderMetadata,
+  unpackOrderMetadata,
   savePendingOrder,
   loadPendingOrder,
   removePendingOrder,
@@ -44,8 +46,11 @@ function findProduct(productId) {
   return catalog.products.find((p) => p.id === productId) || null;
 }
 
-function fulfillStripeSession(sessionId) {
-  const pending = loadPendingOrder(sessionId);
+async function fulfillStripeSession(sessionId, stripeSession = null) {
+  let pending = loadPendingOrder(sessionId);
+  if (!pending && stripeSession?.metadata) {
+    pending = unpackOrderMetadata(stripeSession.metadata);
+  }
   if (!pending) {
     return { ok: false, error: 'pending_not_found' };
   }
@@ -55,9 +60,9 @@ function fulfillStripeSession(sessionId) {
     payment_method: 'stripe',
     stripe_session_id: sessionId,
   };
-  const result = submitToBoxplus(payload);
+  const result = await dispatchOrder(payload);
   removePendingOrder(sessionId);
-  logInfo('Paiement Stripe → BOXPLUS', { order_id: payload.order_id, queued: result.queued });
+  logInfo('Paiement Stripe → BOXPLUS', { order_id: payload.order_id, queued: result.queued, forwarded: result.forwarded });
   return { ok: true, order_id: payload.order_id, queued: result.queued, result };
 }
 
@@ -92,7 +97,7 @@ function createApp() {
           if (!pending) {
             logError('Session Stripe sans commande pending', { session_id: session.id });
           } else {
-            fulfillStripeSession(session.id);
+            await fulfillStripeSession(session.id, session);
           }
         }
         res.json({ received: true });
@@ -161,7 +166,7 @@ function createApp() {
       const payload = buildOrderPayload({ ...form, order_id: orderId }, product);
 
       if (!product.requires_payment) {
-        const result = submitToBoxplus(payload);
+        const result = await dispatchOrder(payload);
         return res.json({
           ok: true,
           mode: 'free',
@@ -201,6 +206,7 @@ function createApp() {
           order_id: orderId,
           gym: form.gym,
           deciplus_id: String(product.deciplus_id || ''),
+          ...packOrderMetadata(payload),
         },
         success_url: `${STORE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}&order=${encodeURIComponent(orderId)}&product=${encodeURIComponent(product.id)}`,
         cancel_url: `${STORE_URL}/checkout.html?product=${product.id}&cancelled=1`,
@@ -226,7 +232,7 @@ function createApp() {
         return res.status(402).json({ ok: false, error: 'payment_not_completed', status: session.payment_status });
       }
 
-      const out = fulfillStripeSession(sessionId);
+      const out = await fulfillStripeSession(sessionId, session);
       if (!out.ok && out.error === 'pending_not_found') {
         return res.json({ ok: true, already_processed: true, order_id: req.body.order_id || null });
       }
@@ -239,7 +245,7 @@ function createApp() {
     }
   });
 
-  app.post('/api/checkout/demo', (req, res) => {
+  app.post('/api/checkout/demo', async (req, res) => {
     try {
       const { product_id: productId, ...form } = req.body;
       const product = findProduct(productId);
@@ -253,7 +259,7 @@ function createApp() {
         { ...form, order_id: orderId, payment_method: 'demo' },
         product
       );
-      const result = submitToBoxplus(payload);
+      const result = await dispatchOrder(payload);
 
       logInfo('Commande démo → BOXPLUS', { order_id: orderId, queued: result.queued });
       res.json({

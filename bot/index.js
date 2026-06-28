@@ -246,6 +246,9 @@ async function processOneJob(job) {
 }
 
 async function runLoop(once = false) {
+  const { startBotServer } = require('./server');
+  startBotServer();
+
   logInfo('Bot Deciplus démarré', getQueueStats());
 
   maybePushCatalog().catch(() => {});
