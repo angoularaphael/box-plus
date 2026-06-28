@@ -239,6 +239,11 @@ async function processOneJob(job) {
     }
 
     logError('Erreur traitement job', { job_id: jobId, order_id: job.order_id, error: err.message });
+
+    if (/browser has been closed|Target page, context or browser/i.test(err.message)) {
+      logWarn('Navigateur fermé — job laissé en file pour retry propre');
+    }
+
     return { ok: false, error: err.message };
   } finally {
     if (browser) await browser.close();

@@ -1,12 +1,6 @@
 {
-  "synced_at": "2026-06-27T23:51:33.011Z",
+  "synced_at": "2026-06-28T02:58:40.038Z",
   "count": 18,
-  "deciplus_count": 24,
-  "validation": {
-    "ok": true,
-    "missing": [],
-    "count": 18
-  },
   "products": [
     {
       "id": "dp-88",
@@ -23,6 +17,8 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": "CB : 1ère échéance · suite par prélèvement IBAN",
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "44.99",
       "synced": true,
       "reference": null,
       "type": "abo"
@@ -32,7 +28,7 @@
       "deciplus_id": 94,
       "category": "Abonnements",
       "name": "58€/ 4 semaines TRAINING CAMP",
-      "tagline": "58€/ 4 semaines TRAINING CAMP",
+      "tagline": "Training camp — 58 € / 4 sem.",
       "description": "Abonnements — synchronisé Deciplus (#94)",
       "price_cents": 5800,
       "price_label": "58,00 €",
@@ -42,6 +38,8 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": "CB : 1ère échéance · suite par prélèvement IBAN",
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "58",
       "synced": true,
       "reference": null,
       "type": "abo"
@@ -61,9 +59,12 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": null,
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "ASSOCIATION SPORTIVE BOXING CENTER",
       "synced": true,
       "reference": "000080",
-      "type": "abo"
+      "type": "abo",
+      "legacy_id": "association"
     },
     {
       "id": "dp-93",
@@ -80,9 +81,12 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": null,
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "BABY BOXE",
       "synced": true,
       "reference": null,
-      "type": "abo"
+      "type": "abo",
+      "legacy_id": "baby-boxe"
     },
     {
       "id": "dp-45",
@@ -99,9 +103,12 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": null,
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "BOXE EDUCATIVE",
       "synced": true,
       "reference": "000045",
-      "type": "abo"
+      "type": "abo",
+      "legacy_id": "boxe-educative"
     },
     {
       "id": "dp-22",
@@ -118,9 +125,12 @@
       "requires_iban": false,
       "requires_payment": true,
       "installments_note": "Paiement comptant Deciplus",
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "COMPTANT 12 MOIS",
       "synced": true,
       "reference": "000022",
-      "type": "abo"
+      "type": "abo",
+      "legacy_id": "comptant-12-mois"
     },
     {
       "id": "dp-92",
@@ -137,9 +147,12 @@
       "requires_iban": false,
       "requires_payment": true,
       "installments_note": "Paiement comptant Deciplus",
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "COMPTANT 3 MOIS",
       "synced": true,
       "reference": null,
-      "type": "abo"
+      "type": "abo",
+      "legacy_id": "comptant-3-mois"
     },
     {
       "id": "dp-91",
@@ -156,17 +169,20 @@
       "requires_iban": false,
       "requires_payment": true,
       "installments_note": "Paiement comptant Deciplus",
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "COMPTANT 6 MOIS",
       "synced": true,
       "reference": null,
-      "type": "abo"
+      "type": "abo",
+      "legacy_id": "comptant-6-mois"
     },
     {
       "id": "dp-99",
       "deciplus_id": 99,
       "category": "Abonnements",
       "name": "Cours illimités - Training camp - 49.99€/4sem",
-      "tagline": "Cours illimités - Training camp - 49.99€/4sem",
-      "description": "Abonnements — synchronisé Deciplus (#99)",
+      "tagline": "Training camp illimité — 49,99 € / 4 sem.",
+      "description": "Cours illimités Training camp — 1ère échéance CB, suite par IBAN.",
       "price_cents": 4999,
       "price_label": "49,99 €",
       "deciplus_price": 649.87,
@@ -175,9 +191,12 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": "CB : 1ère échéance · suite par prélèvement IBAN",
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "49.99",
       "synced": true,
       "reference": null,
-      "type": "abo"
+      "type": "abo",
+      "legacy_id": "training-camp-49-99"
     },
     {
       "id": "dp-89",
@@ -194,6 +213,8 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": "CB : 1ère échéance · suite par prélèvement IBAN",
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "36.99",
       "synced": true,
       "reference": null,
       "type": "abo"
@@ -213,10 +234,13 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": "CB : 1ère échéance · suite par prélèvement IBAN",
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "OFFRE A 29",
       "synced": true,
       "reference": null,
       "type": "abo",
-      "badge": "Rentrée 2026"
+      "badge": "Rentrée 2026",
+      "legacy_id": "offre-duo"
     },
     {
       "id": "dp-105",
@@ -233,9 +257,12 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": null,
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "3 MOIS ILLIMITÉS",
       "synced": true,
       "reference": null,
-      "type": "abo"
+      "type": "abo",
+      "legacy_id": "offre-ete"
     },
     {
       "id": "dp-100",
@@ -252,10 +279,13 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": null,
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "OFFRE PROMO 12 MOIS",
       "synced": true,
       "reference": null,
       "type": "abo",
-      "badge": "4× sans frais"
+      "badge": "4× sans frais",
+      "legacy_id": "offre-saison"
     },
     {
       "id": "dp-103",
@@ -272,9 +302,12 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": "CB : 1ère échéance · suite par prélèvement IBAN",
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "34.99",
       "synced": true,
       "reference": null,
-      "type": "abo"
+      "type": "abo",
+      "legacy_id": "offre-promo-etudiant"
     },
     {
       "id": "dp-102",
@@ -291,9 +324,12 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": "CB : 1ère échéance · suite par prélèvement IBAN",
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "38.99",
       "synced": true,
       "reference": null,
-      "type": "abo"
+      "type": "abo",
+      "legacy_id": "offre-promo-adulte"
     },
     {
       "id": "dp-101",
@@ -310,9 +346,12 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": null,
+      "badge_fee_notice": "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.",
+      "deciplus_product_search": "OFFRE PROMO 9",
       "synced": true,
       "reference": null,
-      "type": "abo"
+      "type": "abo",
+      "legacy_id": "offre-promo-9"
     },
     {
       "id": "dp-84",
@@ -329,9 +368,12 @@
       "requires_iban": true,
       "requires_payment": true,
       "installments_note": null,
+      "badge_fee_notice": null,
+      "deciplus_product_search": "Badge",
       "synced": true,
       "reference": "000084",
-      "type": "seances"
+      "type": "seances",
+      "legacy_id": "badge"
     },
     {
       "id": "seance-essai",
@@ -346,5 +388,12 @@
       "synced": false,
       "manual": true
     }
-  ]
+  ],
+  "deciplus_count": 24,
+  "validation": {
+    "ok": true,
+    "missing": [],
+    "count": 18
+  },
+  "synced_by": "bot-playwright"
 }

@@ -113,6 +113,7 @@ test('offres clés — recherche Deciplus adaptée', () => {
   const cases = [
     ['Cours illimités - Training camp - 49.99€/4sem', 99, '49.99'],
     ['58€/ 4 semaines TRAINING CAMP', 94, '58'],
+    ['ASSOCIATION SPORTIVE BOXING CENTER', 80, 'ASSOCIATION'],
     ['OFFRE A 29€', 104, 'OFFRE A 29'],
     ['COMPTANT 12 MOIS', 22, 'COMPTANT 12 MOIS'],
     ['OFFRE PROMO 34.99€ ETUDIANTS', 103, '34.99'],
