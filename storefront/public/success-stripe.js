@@ -1,16 +1,15 @@
 const BADGE_FEE_NOTICE =
-  "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.";
+  "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 5 à 7 jours ouvrés après votre achat. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.";
 
-function isAbonnementProduct(product) {
-  if (!product) return false;
+function shouldShowBadgeFeeNotice(product) {
+  if (!product?.requires_iban) return false;
+  if (product.badge_fee_notice) return true;
   if (product.sale_type === 'abonnement') return true;
-  if (String(product.category || '').toLowerCase().includes('abonnement')) return true;
-  if (/badge|decipass|essai|séance|seance/i.test(String(product.name || ''))) return false;
-  return false;
+  return String(product.category || '').toLowerCase().includes('abonnement');
 }
 
 function showSuccessBadgeNotice(product) {
-  if (!isAbonnementProduct(product)) return;
+  if (!shouldShowBadgeFeeNotice(product)) return;
   const notice = document.getElementById('successBadgeNotice');
   const textEl = document.getElementById('successBadgeText');
   if (!notice || !textEl) return;

@@ -258,6 +258,11 @@ async function runLoop(once = false) {
 
   logInfo('Bot Deciplus démarré', getQueueStats());
 
+  const catalogDelay = Number(process.env.BOT_CATALOG_PUSH_DELAY_MS || 120000);
+  setTimeout(() => {
+    maybePushCatalog().catch(() => {});
+  }, catalogDelay);
+
   const catalogTimer = setInterval(() => {
     maybePushCatalog().catch(() => {});
   }, CATALOG_PUSH_MS);

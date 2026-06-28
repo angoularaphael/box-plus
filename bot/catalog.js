@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { ROOT, loadJson } = require('../lib/utils');
 const { logInfo, logWarn } = require('../lib/logger');
+const { gotoDeciplus, getAccessToken } = require('./auth');
 
 const API_BASE = 'https://api.deciplus.pro/staff/v1';
 const CATALOG_CACHE_MS = Number(process.env.BOT_CATALOG_CACHE_MS || 300000);
@@ -12,21 +13,12 @@ const CATALOG_FALLBACK_FILE = path.join(ROOT, 'data', 'storefront', 'catalog-liv
 
 let catalogCache = { at: 0, products: [] };
 
-async function getAccessToken(page) {
-  return page.evaluate(() => {
-    try {
-      const raw = localStorage.getItem('auth');
-      if (!raw) return null;
-      return JSON.parse(raw).token || null;
-    } catch {
-      return null;
-    }
-  });
-}
-
 async function ensureDeciplusAuth(page) {
-  const base = process.env.DECIPLUS_URL || 'https://boxingcenter.deciplus.pro/';
   let token = await getAccessToken(page);
+
+  if (token && page.url().includes('deciplus.pro')) {
+    return token;
+  }
 
   const warmPaths = token
     ? ['nextgen/home']
@@ -36,11 +28,9 @@ async function ensureDeciplusAuth(page) {
     if (token && page.url().includes('deciplus.pro') && page.url().includes(pathPart.split('?')[0])) {
       break;
     }
-    await page.goto(new URL(pathPart, base).href, {
-      waitUntil: 'domcontentloaded',
-      timeout: 30000,
-    }).catch(() => {});
-    await page.waitForTimeout(1200);
+    await gotoDeciplus(page, pathPart).catch((err) => {
+      logWarn('Warm Deciplus ignoré', { path: pathPart, error: err.message });
+    });
     token = token || (await getAccessToken(page));
     if (token) break;
   }

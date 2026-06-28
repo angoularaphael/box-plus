@@ -4,6 +4,7 @@ node_modules/
 # Secrets & runtime
 .env
 .env.local
+env.vercel
 
 # Data — ignore sauf catalogue snapshot
 data/*
