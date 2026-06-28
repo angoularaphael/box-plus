@@ -11,13 +11,13 @@ Boutique Stripe + bridge PrestaShop + sync catalogue Deciplus.
 |----------|-------------|
 | `STRIPE_SECRET_KEY` | Clé secrète Stripe |
 | `STRIPE_WEBHOOK_SECRET` | Secret webhook Stripe |
-| `STORE_URL` | URL publique Vercel (`https://xxx.vercel.app`) |
+| `STORE_URL` | `https://box-plus.vercel.app` |
 | `SYNC_SECRET` | Secret partagé avec le bot (ingest catalogue) |
 | `BOXPLUS_BOT_URL` | URL publique du bot (`https://bot.example.com`) — **requis en prod Vercel** |
 | `BRIDGE_SECRET` | Secret webhook BOXPLUS |
 | `BOXPLUS_QUEUE_DIR` | `/tmp/boxplus-queue` sur Vercel |
 
-3. Webhook Stripe : `https://VOTRE-DOMAINE/api/stripe/webhook`
+3. Webhook Stripe : `https://box-plus.vercel.app/api/stripe/webhook`
 
 ## Sync catalogue (automatique)
 
@@ -28,7 +28,7 @@ Boutique Stripe + bridge PrestaShop + sync catalogue Deciplus.
 Le bot ([boxi-deci-bot](https://github.com/angoularaphael/boxi-deci-bot)) pousse le catalogue avec :
 
 ```
-STORE_INGEST_URL=https://votre-boutique.vercel.app/api/admin/ingest-catalog
+STORE_INGEST_URL=https://box-plus.vercel.app/api/admin/ingest-catalog
 SYNC_SECRET=...
 ```
 
