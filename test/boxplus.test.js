@@ -44,6 +44,18 @@ test('normalizeOrder mappe les champs PrestaShop', () => {
   assert.equal(order.utm.source, 'facebook');
 });
 
+test('normalizeOrder accepte salle (alias PrestaShop) → slug gym', () => {
+  const order = normalizeOrder({
+    order_id: 'PS-101',
+    product_name: 'OFFRE A 29€',
+    salle: 'Ramonville',
+    customer: { first_name: 'A', last_name: 'B', email: 'a@b.fr', phone: '0600000000' },
+    payment: { amount: 29, status: 'paid', iban: 'FR7630001007941234567890185' },
+  });
+  assert.equal(order.gym, 'ramonville');
+  assert.equal(getGymConfig(order.gym).deciplus_label, 'Ramonville');
+});
+
 test('validateOrder détecte les champs manquants', () => {
   const bad = normalizeOrder({ product_name: 'OFFRE A 29€' });
   const errors = validateOrder(bad);

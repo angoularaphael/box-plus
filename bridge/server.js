@@ -1,16 +1,21 @@
 #!/usr/bin/env node
 /**
- * Phase 3 — Serveur bridge PrestaShop → file d'attente → bot Deciplus
+ * Phase 3 — Bridge PrestaShop (Node.js) → file d'attente → bot Deciplus
+ *
+ * Plus besoin de module PHP : sync via API Webservice + JS checkout thème.
  */
 require('dotenv').config();
 
 const express = require('express');
 const crypto = require('crypto');
-const { enqueue, getQueueStats, STATUS } = require('../lib/queue');
+const { enqueue, getQueueStats } = require('../lib/queue');
 const { normalizeOrder, validateOrder } = require('../lib/normalize');
 const { logInfo, logError } = require('../lib/logger');
 const { runLoop, processOneJob } = require('../bot/index');
 const { listPending } = require('../lib/queue');
+const { saveCheckoutForCart } = require('../lib/prestashop-checkout-store');
+const { syncPrestaShopOnce, startPrestaShopSyncLoop } = require('./prestashop-sync');
+const { isValidGymSlug, GYM_SLUGS } = require('../lib/gym-slugs');
 
 const PORT = Number(process.env.BRIDGE_PORT || 3030);
 const HOST = process.env.BRIDGE_HOST || '0.0.0.0';
@@ -35,10 +40,53 @@ function createApp() {
   });
 
   app.get('/queue', (_req, res) => {
-    const stats = getQueueStats();
-    res.json(stats);
+    res.json(getQueueStats());
   });
 
+  /** Salles disponibles (pour le JS du thème PrestaShop). */
+  app.get('/bridge/prestashop/gyms', (_req, res) => {
+    res.json({ ok: true, gyms: GYM_SLUGS });
+  });
+
+  /**
+   * Checkout JS du thème PrestaShop — enregistre salle / IBAN / DOB avant paiement.
+   * Body: { cart_id, gym, iban?, birthdate?, gender? }
+   */
+  app.post('/bridge/prestashop/checkout', (req, res) => {
+    try {
+      if (!verifySignature(req)) {
+        return res.status(401).json({ ok: false, error: 'invalid_signature' });
+      }
+      const { cart_id: cartId, gym, iban, birthdate, gender } = req.body || {};
+      if (!cartId) {
+        return res.status(400).json({ ok: false, error: 'cart_id requis' });
+      }
+      if (gym && !isValidGymSlug(gym)) {
+        return res.status(400).json({ ok: false, error: 'gym invalide', gyms: GYM_SLUGS });
+      }
+      const saved = saveCheckoutForCart(cartId, { gym, iban, birthdate, gender });
+      logInfo('Checkout PrestaShop enregistré', { cart_id: cartId, gym: saved.gym });
+      res.json({ ok: true, cart_id: String(cartId), saved });
+    } catch (err) {
+      res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
+  /** Sync manuelle PrestaShop → file (API Webservice). */
+  app.post('/bridge/prestashop/sync', async (req, res) => {
+    try {
+      if (!verifySignature(req)) {
+        return res.status(401).json({ ok: false, error: 'invalid_signature' });
+      }
+      const result = await syncPrestaShopOnce();
+      res.json(result);
+    } catch (err) {
+      logError('Sync PrestaShop manuelle en échec', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  /** Webhook générique (legacy / tests) — payload déjà au format BOXPLUS. */
   app.post('/bridge/webhook', (req, res) => {
     try {
       if (!verifySignature(req)) {
@@ -53,8 +101,9 @@ function createApp() {
       }
 
       const result = enqueue(order);
-      logInfo('Webhook PrestaShop reçu', {
+      logInfo('Webhook reçu', {
         order_id: order.order_id,
+        source: order.source,
         action: order.action,
         queued: result.queued,
       });
@@ -89,8 +138,10 @@ async function main() {
 
   app.listen(PORT, HOST, () => {
     logInfo(`Bridge BOXPLUS écoute sur http://${HOST}:${PORT}`);
-    logInfo('Endpoints: POST /bridge/webhook, GET /health, GET /queue');
+    logInfo('PrestaShop JS: GET /bridge/prestashop/gyms, POST /bridge/prestashop/checkout, POST /bridge/prestashop/sync');
   });
+
+  startPrestaShopSyncLoop();
 
   if (String(process.env.BRIDGE_AUTO_BOT || 'true').toLowerCase() === 'true') {
     runLoop(false).catch((err) => logError('Bot loop crashed', { error: err.message }));

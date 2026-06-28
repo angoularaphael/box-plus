@@ -10,6 +10,7 @@
     "bot:run": "node bot/index.js",
     "start:bot": "node start.js",
     "bridge:start": "node bridge/server.js",
+    "prestashop:sync": "node bridge/prestashop-sync.js",
     "store:start": "node storefront/server.js",
     "store:sync": "node storefront/scripts/sync-and-test.js",
     "stripe:listen": "node storefront/scripts/stripe-listen.js",
