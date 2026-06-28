@@ -80,11 +80,12 @@ async function init() {
 
     document.getElementById('modePill').textContent = stripeMode ? 'Stripe actif' : 'Mode démo';
     document.getElementById('productId').value = currentProduct.id;
-    document.getElementById('productTitle').textContent = currentProduct.tagline || currentProduct.name;
-    document.getElementById('productSub').textContent = currentProduct.description;
+    document.getElementById('productTitle').textContent = currentProduct.name;
+    document.getElementById('productSub').textContent = currentProduct.category || '';
     document.getElementById('sumName').textContent = currentProduct.name;
-    document.getElementById('sumDesc').textContent = currentProduct.description;
-    document.getElementById('sumPrice').textContent = currentProduct.price_label;
+    document.getElementById('sumDesc').textContent = currentProduct.category || '';
+    const payToday = currentProduct.stripe_price_label || currentProduct.price_label;
+    document.getElementById('sumPrice').textContent = payToday;
 
     const ibanBlock = document.getElementById('ibanBlock');
     const ibanInput = document.getElementById('iban');
@@ -95,14 +96,6 @@ async function init() {
     } else {
       ibanBlock.hidden = false;
       ibanInput.setAttribute('required', 'required');
-    }
-
-    if (currentProduct.deciplus_total_note) {
-      const note = document.createElement('div');
-      note.className = 'info-box';
-      note.textContent =
-        currentProduct.deciplus_total_note + ' — Stripe encaisse : ' + currentProduct.price_label;
-      document.querySelector('.summary-panel').appendChild(note);
     }
 
     renderBadgeFeeNotice(currentProduct);

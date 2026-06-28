@@ -18,6 +18,7 @@
     "test:offers": "node --test test/all-offers.test.js",
     "test:offers:live": "node scripts/test-all-offers.js --live",
     "test:load": "node test/load-queue.test.js",
+    "session:export": "node scripts/export-deciplus-session.js",
     "vercel-build": "echo Vercel build OK"
   },
   "dependencies": {
