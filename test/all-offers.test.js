@@ -19,25 +19,14 @@ const {
   isTrialOrder,
 } = require('../bot/catalog');
 
-const VALID_IBAN = 'FR7630001007941234567890185';
+const { uniqueTestCustomer, VALID_TEST_IBAN } = require('../lib/test-fixtures');
 
-const SAMPLE = {
-  first_name: 'Test',
-  last_name: 'Offre',
-  email: 'test-offres@example.com',
-  phone: '0612345678',
-  birthdate: '1990-01-01',
-  gender: 'M',
-  gym: 'minimes',
-  address: '1 rue Test',
-  postal_code: '31000',
-  city: 'Toulouse',
-};
+const SAMPLE = uniqueTestCustomer('offres-unit');
 
 function sampleFormFor(product) {
   const form = { ...SAMPLE };
   if (product.requires_iban) {
-    form.iban = VALID_IBAN;
+    form.iban = VALID_TEST_IBAN;
   }
   return form;
 }
@@ -122,7 +111,8 @@ test('chaque offre — checkout, validation BOXPLUS et résolution Deciplus', ()
 
 test('offres clés — recherche Deciplus adaptée', () => {
   const cases = [
-    ['Cours illimités - Training camp - 49.99€/4sem', 99, 'Training camp'],
+    ['Cours illimités - Training camp - 49.99€/4sem', 99, '49.99'],
+    ['58€/ 4 semaines TRAINING CAMP', 94, '58'],
     ['OFFRE A 29€', 104, 'OFFRE A 29'],
     ['COMPTANT 12 MOIS', 22, 'COMPTANT 12 MOIS'],
     ['OFFRE PROMO 34.99€ ETUDIANTS', 103, '34.99'],
@@ -160,8 +150,9 @@ test('intégration API demo — toutes les offres (si boutique :3040)', async ()
   for (const product of products) {
     const body = {
       product_id: product.id,
-      ...sampleFormFor(product),
+      ...uniqueTestCustomer(`demo-${product.id}`),
     };
+    if (product.requires_iban) body.iban = VALID_TEST_IBAN;
 
     try {
       const res = await fetch(`${base}/api/checkout/demo`, {

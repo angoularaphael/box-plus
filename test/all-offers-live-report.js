@@ -1,18 +1,8 @@
 const { getStoreProducts } = require('../storefront/lib/deciplus-sync');
 const { buildDeciplusProductSearch } = require('../bot/catalog');
+const { uniqueTestCustomer, VALID_TEST_IBAN } = require('../lib/test-fixtures');
 
-const VALID_IBAN = 'FR7630001007941234567890185';
 const base = process.env.STORE_TEST_URL || 'http://localhost:3040';
-
-const SAMPLE = {
-  first_name: 'Test',
-  last_name: 'Offre',
-  email: 'test-offres@example.com',
-  phone: '0612345678',
-  birthdate: '1990-01-01',
-  gender: 'M',
-  gym: 'minimes',
-};
 
 async function main() {
   const products = getStoreProducts().products || [];
@@ -24,8 +14,8 @@ async function main() {
   let fail = 0;
 
   for (const p of products) {
-    const body = { product_id: p.id, ...SAMPLE };
-    if (p.requires_iban) body.iban = VALID_IBAN;
+    const body = { product_id: p.id, ...uniqueTestCustomer(`live-${p.id}`) };
+    if (p.requires_iban) body.iban = VALID_TEST_IBAN;
 
     let api = '—';
     try {
@@ -40,7 +30,7 @@ async function main() {
       if (data.ok) ok += 1;
       else fail += 1;
     } catch (err) {
-      api = 'DOWN';
+      api = err.message.includes('fetch') ? 'DOWN' : 'ERR';
       fail += 1;
     }
 
