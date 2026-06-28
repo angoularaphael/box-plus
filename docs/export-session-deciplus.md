@@ -74,7 +74,7 @@ Session exportée → data\session\storage-state.json
    [BOXPLUS] Déjà connecté via session persistée
    [BOXPLUS] Catalogue Deciplus synchronisé
    ```
-3. Test : `http://prem-eu2.bot-hosting.net:21587/health`
+3. Test : `http://prem-eu1.bot-hosting.net:20311/health`
 
 ---
 
