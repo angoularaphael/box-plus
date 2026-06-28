@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Commande confirmée — Boxing Center</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/boutique.css" />
+</head>
+<body>
+  <div class="success-page">
+    <img src="/assets/logo-boxing-center.svg" alt="Boxing Center" width="200" />
+    <h1>Merci !</h1>
+    <p id="successText">Votre commande a été transmise à Deciplus.</p>
+    <p class="notice-important" id="successBadgeNotice" hidden style="text-align:left;margin:24px auto;max-width:480px">
+      <strong>Badge d'accès</strong>
+      <span id="successBadgeText"></span>
+    </p>
+    <p style="font-family:monospace;color:var(--bc-gold)" id="orderRef"></p>
+    <a class="btn" href="/" style="max-width:280px;margin:0 auto">Retour à la boutique</a>
+  </div>
+  <script src="/success-stripe.js"></script>
+</body>
+</html>

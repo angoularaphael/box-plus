@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Boutique Boxing Center — Rentrée 2026</title>
+  <meta name="description" content="Nouvelle boutique en ligne Boxing Center — paiement Stripe, synchronisation Deciplus automatique." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/boutique.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="logo" href="/">
+        <img src="/assets/logo-boxing-center.svg" alt="Boxing Center" width="160" height="44" />
+      </a>
+      <span class="pill live" id="statusPill">BOXPLUS connecté</span>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div>
+      <span class="hero-badge">Nouvelle boutique — Rentrée 2026</span>
+      <h1>Votre futur PrestaShop,<br />prêt pour Stripe &amp; Deciplus</h1>
+      <p class="lead">
+        Interface de présentation pour le coach : mêmes offres que Deciplus, paiement CB via Stripe,
+        IBAN collecté ici, puis le bot BOXPLUS crée le membre et enregistre la vente automatiquement.
+      </p>
+    </div>
+    <div class="flow-card">
+      <h3>Parcours client automatisé</h3>
+      <ol class="flow-steps">
+        <li><span class="step-num">1</span><div><strong>Choisir une offre</strong> Nom identique à Deciplus</div></li>
+        <li><span class="step-num">2</span><div><strong>Payer par Stripe</strong> CB sécurisée (ou mode démo)</div></li>
+        <li><span class="step-num">3</span><div><strong>Saisir l'IBAN</strong> Prélèvements suivants</div></li>
+        <li><span class="step-num">4</span><div><strong>BOXPLUS → Deciplus</strong> Membre + RIB + vente</div></li>
+      </ol>
+    </div>
+  </section>
+
+  <div class="arch-banner">
+    <pre>Boutique (Stripe)  →  BOXPLUS file d'attente  →  Bot Deciplus  →  Membre + RIB + vente</pre>
+  </div>
+
+  <div class="notice-important" style="max-width:var(--max);margin:0 auto 24px;padding:0 20px">
+    <strong>Badge d'accès (abonnements)</strong>
+    <p>
+      En souscrivant un abonnement, votre badge (34,99&nbsp;€) sera prélevé sur l'IBAN indiqué
+      sous 3 à 7 jours ouvrés, <em>avant</em> le début des prélèvements de votre abonnement.
+      Le paiement carte du jour correspond à la 1ère échéance.
+    </p>
+  </div>
+
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <h2>Nos offres</h2>
+        <p>Même catalogue que Deciplus (Abonnements). Le bot clique le produit au nom exact.</p>
+      </div>
+    </div>
+    <div class="products" id="productsGrid">
+      <p style="color:var(--bc-muted)">Chargement…</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>Boxing Center — Prototype boutique liée à BOXPLUS</p>
+    <p style="margin-top:8px"><a href="https://boxingcenter.fr">boxingcenter.fr</a> · Deciplus · Stripe</p>
+  </footer>
+
+  <script src="/js/boutique.js"></script>
+</body>
+</html>
