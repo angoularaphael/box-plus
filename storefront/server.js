@@ -136,28 +136,42 @@ function createApp() {
 
   app.use(express.json());
 
+  app.get('/api/health', (_req, res) => {
+    res.json({ ok: true, vercel: Boolean(process.env.VERCEL) });
+  });
+
   app.get('/api/products', (_req, res) => {
-    const catalog = getStoreProducts();
-    res.json({
-      synced_at: catalog.synced_at,
-      source: catalog.source || (catalog.synced_at ? 'deciplus' : 'static'),
-      products: catalog.products,
-    });
+    try {
+      const catalog = getStoreProducts();
+      res.json({
+        synced_at: catalog.synced_at,
+        source: catalog.source || (catalog.synced_at ? 'deciplus' : 'static'),
+        products: catalog.products,
+      });
+    } catch (err) {
+      logError('Erreur /api/products', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
   });
 
   app.get('/api/config', (_req, res) => {
-    const catalog = getStoreProducts();
-    res.json({
-      stripe_enabled: Boolean(stripe),
-      demo_mode: !stripe,
-      demo_checkout_enabled: String(process.env.STORE_DEMO_ENABLED || 'false') === 'true',
-      store_url: STORE_URL,
-      production_url: PRODUCTION_STORE_URL,
-      boxplus_bridge: getBridgeUrl(),
-      deciplus_synced_at: catalog.synced_at,
-      product_count: catalog.products?.length || 0,
-      sync_auto: String(process.env.STORE_SYNC_ENABLED || 'true') !== 'false',
-    });
+    try {
+      const catalog = getStoreProducts();
+      res.json({
+        stripe_enabled: Boolean(stripe),
+        demo_mode: !stripe,
+        demo_checkout_enabled: String(process.env.STORE_DEMO_ENABLED || 'false') === 'true',
+        store_url: STORE_URL,
+        production_url: PRODUCTION_STORE_URL,
+        boxplus_bridge: getBridgeUrl(),
+        deciplus_synced_at: catalog.synced_at,
+        product_count: catalog.products?.length || 0,
+        sync_auto: String(process.env.STORE_SYNC_ENABLED || 'true') !== 'false',
+      });
+    } catch (err) {
+      logError('Erreur /api/config', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
   });
 
   app.get('/api/cron/sync-catalog', async (req, res) => {

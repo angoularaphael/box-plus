@@ -1,12 +1,15 @@
 {
   "version": 2,
-  "builds": [{ "src": "api/index.js", "use": "@vercel/node" }],
-  "routes": [{ "src": "/(.*)", "dest": "api/index.js" }],
-  "functions": {
-    "api/index.js": {
-      "includeFiles": "storefront/**"
+  "builds": [
+    {
+      "src": "api/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["storefront/**", "data/storefront/**"]
+      }
     }
-  },
+  ],
+  "routes": [{ "src": "/(.*)", "dest": "api/index.js" }],
   "crons": [
     {
       "path": "/api/cron/sync-catalog",

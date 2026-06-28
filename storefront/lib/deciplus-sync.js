@@ -195,7 +195,12 @@ function saveSyncedCatalog(products, meta = {}) {
 
 function loadSyncedCatalog() {
   if (!fs.existsSync(SYNC_FILE)) return null;
-  return JSON.parse(fs.readFileSync(SYNC_FILE, 'utf8'));
+  try {
+    return JSON.parse(fs.readFileSync(SYNC_FILE, 'utf8'));
+  } catch (err) {
+    logWarn('Catalogue live illisible', { error: err.message, file: SYNC_FILE });
+    return null;
+  }
 }
 
 let runtimeCatalog = null;
