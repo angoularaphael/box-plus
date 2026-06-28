@@ -17,6 +17,7 @@ async function loadProducts() {
       ${p.category ? `<span class="product-tag">${p.category}</span>` : ''}
       <h3>${p.name}</h3>
       <div class="product-price">${p.price_label}</div>
+      ${p.price_subtitle ? `<p class="product-price-sub">${p.price_subtitle}</p>` : ''}
       <a class="btn" href="/checkout.html?product=${encodeURIComponent(p.id)}">
         ${p.price_cents === 0 ? 'Réserver' : 'Commander'}
       </a>

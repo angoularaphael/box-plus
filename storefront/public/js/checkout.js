@@ -83,8 +83,23 @@ async function init() {
     document.getElementById('productSub').textContent = currentProduct.category || '';
     document.getElementById('sumName').textContent = currentProduct.name;
     document.getElementById('sumDesc').textContent = currentProduct.category || '';
-    const payToday = currentProduct.stripe_price_label || currentProduct.price_label;
+    const payToday = currentProduct.stripe_price_label || currentProduct.pay_today_label || currentProduct.price_label;
     document.getElementById('sumPrice').textContent = payToday;
+
+    const contractEl = document.getElementById('sumContract');
+    const installmentsEl = document.getElementById('sumInstallments');
+    if (currentProduct.deciplus_total_note && contractEl) {
+      contractEl.hidden = false;
+      contractEl.innerHTML = `<span>${currentProduct.deciplus_total_note}</span>`;
+    } else if (contractEl) {
+      contractEl.hidden = true;
+    }
+    if (currentProduct.installments_note && installmentsEl) {
+      installmentsEl.hidden = false;
+      installmentsEl.innerHTML = `<span>${currentProduct.installments_note}</span>`;
+    } else if (installmentsEl) {
+      installmentsEl.hidden = true;
+    }
 
     const ibanBlock = document.getElementById('ibanBlock');
     const ibanInput = document.getElementById('iban');
