@@ -8,6 +8,7 @@ const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
 const { logInfo, logError } = require('../lib/logger');
+const { getStoreUrl, getBridgeUrl, PRODUCTION_STORE_URL } = require('../lib/app-urls');
 const {
   buildOrderPayload,
   validateCheckoutForm,
@@ -19,14 +20,13 @@ const {
   removePendingOrder,
 } = require('./lib/orders');
 const { getStoreProducts, ingestCatalogPayload } = require('./lib/deciplus-sync');
-const { startAutoSync, runCatalogSyncIfNeeded } = require('./lib/auto-sync');
 
 const PORT = Number(process.env.STORE_PORT || 3040);
 const HOST = process.env.STORE_HOST || '0.0.0.0';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
-const STORE_URL = process.env.STORE_URL || `http://localhost:${PORT}`;
+const STORE_URL = getStoreUrl();
 const SYNC_SECRET = process.env.SYNC_SECRET || process.env.BRIDGE_SECRET || '';
 
 function isAuthorizedSync(req) {
@@ -153,7 +153,8 @@ function createApp() {
       demo_mode: !stripe,
       demo_checkout_enabled: String(process.env.STORE_DEMO_ENABLED || 'false') === 'true',
       store_url: STORE_URL,
-      boxplus_bridge: process.env.BOXPLUS_BRIDGE_URL || `http://localhost:${process.env.BRIDGE_PORT || 3030}`,
+      production_url: PRODUCTION_STORE_URL,
+      boxplus_bridge: getBridgeUrl(),
       deciplus_synced_at: catalog.synced_at,
       product_count: catalog.products?.length || 0,
       sync_auto: String(process.env.STORE_SYNC_ENABLED || 'true') !== 'false',
@@ -164,6 +165,7 @@ function createApp() {
     if (!isAuthorizedSync(req)) {
       return res.status(401).json({ ok: false, error: 'unauthorized' });
     }
+    const { runCatalogSyncIfNeeded } = require('./lib/auto-sync');
     const result = await runCatalogSyncIfNeeded({ force: true });
     res.json({ ok: result.ok !== false, ...result });
   });
@@ -314,10 +316,13 @@ function createApp() {
 
 function main() {
   const app = createApp();
-  startAutoSync();
+  if (process.env.VERCEL !== '1') {
+    const { startAutoSync } = require('./lib/auto-sync');
+    startAutoSync();
+  }
   app.listen(PORT, HOST, () => {
     const catalog = getStoreProducts();
-    logInfo(`Boutique Boxing Center → http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}`);
+    logInfo(`Boutique Boxing Center → http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT} (public: ${STORE_URL})`);
     logInfo(stripe ? 'Stripe: activé' : 'Stripe: mode démo');
     logInfo('Catalogue', {
       source: catalog.synced_at ? 'deciplus-live' : 'static-fallback',
