@@ -106,6 +106,23 @@ function loadOverrides() {
   return [];
 }
 
+function attachLegacyIds(products) {
+  let staticProducts = [];
+  try {
+    staticProducts = loadJson('storefront/products.json');
+  } catch {
+    return products;
+  }
+  const byName = new Map(staticProducts.map((p) => [normalizeText(p.name), p.id]));
+  for (const product of products) {
+    const legacy = byName.get(normalizeText(product.name));
+    if (legacy && legacy !== product.id) {
+      product.legacy_id = legacy;
+    }
+  }
+  return products;
+}
+
 function applyOverrides(products, overrides) {
   const byName = new Map(products.map((p) => [normalizeText(p.name), p]));
   for (const ov of overrides) {
@@ -131,6 +148,7 @@ function deciplusToStorefront(deciplusProducts, { includeCategories = ['abo', 'd
 
   let products = filtered.map(mapDeciplusItem);
   products = applyOverrides(products, loadOverrides());
+  products = attachLegacyIds(products);
 
   // Essai gratuit (pas dans abonnements Deciplus)
   if (!products.some((p) => normalizeText(p.name).includes('essai'))) {

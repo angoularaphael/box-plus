@@ -43,7 +43,33 @@ if (STRIPE_SECRET) {
 
 function findProduct(productId) {
   const catalog = getStoreProducts();
-  return catalog.products.find((p) => p.id === productId) || null;
+  const products = catalog.products || [];
+  const id = String(productId || '').trim();
+  if (!id) return null;
+
+  let match = products.find((p) => p.id === id);
+  if (match) return match;
+
+  match = products.find((p) => p.legacy_id === id);
+  if (match) return match;
+
+  try {
+    const { loadJson } = require('../lib/utils');
+    const { normalizeText } = require('../bot/catalog');
+    const staticProducts = loadJson('storefront/products.json');
+    const staticRef = staticProducts.find((p) => p.id === id);
+    if (staticRef) {
+      const key = normalizeText(staticRef.name);
+      match = products.find((p) => normalizeText(p.name) === key);
+      if (match) return match;
+      match = products.find((p) => normalizeText(p.name).includes(key.slice(0, 12)));
+      if (match) return match;
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return null;
 }
 
 async function fulfillStripeSession(sessionId, stripeSession = null) {
@@ -125,6 +151,7 @@ function createApp() {
     res.json({
       stripe_enabled: Boolean(stripe),
       demo_mode: !stripe,
+      demo_checkout_enabled: String(process.env.STORE_DEMO_ENABLED || 'false') === 'true',
       store_url: STORE_URL,
       boxplus_bridge: process.env.BOXPLUS_BRIDGE_URL || `http://localhost:${process.env.BRIDGE_PORT || 3030}`,
       deciplus_synced_at: catalog.synced_at,

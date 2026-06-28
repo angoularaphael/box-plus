@@ -162,6 +162,8 @@ a { color: inherit; }
   transition: transform .15s, opacity .15s;
 }
 
+[hidden] { display: none !important; }
+
 .btn:hover { transform: translateY(-1px); }
 .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 

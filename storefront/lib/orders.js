@@ -37,12 +37,17 @@ function removePendingOrder(sessionId) {
 function buildOrderPayload(input, product) {
   const iban = input.iban ? normalizeIban(input.iban) : null;
   const amount = product.price_cents / 100;
+  const requiresIban = product.requires_iban !== false && !/comptant/i.test(product.name || '');
 
   return {
     order_id: input.order_id || `STORE-${Date.now()}`,
     action: 'sale',
+    product_id: product.id,
     product_name: product.name,
     product_reference: product.id,
+    deciplus_id: product.deciplus_id || null,
+    sale_type: product.sale_type || null,
+    requires_iban: requiresIban,
     gym: input.gym,
     customer: {
       first_name: input.first_name,
@@ -61,7 +66,7 @@ function buildOrderPayload(input, product) {
       method: input.payment_method || 'stripe',
       status: product.requires_payment ? 'paid' : 'free',
       date: new Date().toISOString(),
-      iban: product.requires_iban ? iban : null,
+      iban: requiresIban ? iban : null,
       stripe_session_id: input.stripe_session_id || null,
       stripe_payment_intent: input.stripe_payment_intent || null,
     },

@@ -1,5 +1,6 @@
 let currentProduct = null;
 let stripeMode = false;
+let catalogLoading = true;
 
 const BADGE_FEE_NOTICE =
   "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 3 à 7 jours ouvrés, avant le début des prélèvements de votre abonnement. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.";
@@ -41,6 +42,12 @@ function showMsg(text, ok) {
   el.className = 'form-msg ' + (ok ? 'ok' : 'err');
 }
 
+function setPayButtons({ stripe = false, demo = false, free = false } = {}) {
+  document.getElementById('payStripeBtn').hidden = !stripe;
+  document.getElementById('payDemoBtn').hidden = !demo;
+  document.getElementById('payFreeBtn').hidden = !free;
+}
+
 async function init() {
   const productId = qs('product');
   if (!productId) {
@@ -50,63 +57,81 @@ async function init() {
 
   if (qs('cancelled')) showMsg('Paiement non finalisé — vous pouvez réessayer.', false);
 
-  const catalogRes = await fetch('/api/products');
-  const catalogData = await catalogRes.json();
-  const products = catalogData.products || catalogData;
-  const config = await fetch('/api/config').then((r) => r.json());
+  setPayButtons();
 
-  currentProduct = products.find((p) => p.id === productId);
-  if (!currentProduct) {
-    showMsg('Produit introuvable', false);
-    return;
-  }
+  try {
+    const [catalogRes, config] = await Promise.all([
+      fetch('/api/products'),
+      fetch('/api/config').then((r) => r.json()),
+    ]);
+    const catalogData = await catalogRes.json();
+    const products = catalogData.products || catalogData;
 
-  stripeMode = config.stripe_enabled;
-  document.getElementById('modePill').textContent = stripeMode ? 'Stripe actif' : 'Mode démo';
-  document.getElementById('productId').value = productId;
-  document.getElementById('productTitle').textContent = currentProduct.tagline || currentProduct.name;
-  document.getElementById('productSub').textContent = currentProduct.description;
-  document.getElementById('sumName').textContent = currentProduct.name;
-  document.getElementById('sumDesc').textContent = currentProduct.description;
-  document.getElementById('sumPrice').textContent = currentProduct.price_label;
+    currentProduct = products.find((p) => p.id === productId);
+    if (!currentProduct) {
+      showMsg(`Offre « ${productId} » introuvable — retournez à l'accueil et choisissez une offre à jour.`, false);
+      document.getElementById('productTitle').textContent = 'Offre introuvable';
+      return;
+    }
 
-  const ibanBlock = document.getElementById('ibanBlock');
-  const ibanInput = document.getElementById('iban');
-  if (!currentProduct.requires_iban) {
-    ibanBlock.hidden = true;
-    ibanInput.removeAttribute('required');
-  } else {
-    ibanBlock.hidden = false;
-    ibanInput.setAttribute('required', 'required');
-  }
+    stripeMode = Boolean(config.stripe_enabled);
+    const demoAllowed =
+      !stripeMode || String(config.demo_checkout_enabled) === 'true';
 
-  if (currentProduct.deciplus_total_note) {
-    const note = document.createElement('div');
-    note.className = 'info-box';
-    note.textContent = currentProduct.deciplus_total_note + ' — Stripe encaisse : ' + currentProduct.price_label;
-    document.querySelector('.summary-panel').appendChild(note);
-  }
+    document.getElementById('modePill').textContent = stripeMode ? 'Stripe actif' : 'Mode démo';
+    document.getElementById('productId').value = currentProduct.id;
+    document.getElementById('productTitle').textContent = currentProduct.tagline || currentProduct.name;
+    document.getElementById('productSub').textContent = currentProduct.description;
+    document.getElementById('sumName').textContent = currentProduct.name;
+    document.getElementById('sumDesc').textContent = currentProduct.description;
+    document.getElementById('sumPrice').textContent = currentProduct.price_label;
 
-  renderBadgeFeeNotice(currentProduct);
+    const ibanBlock = document.getElementById('ibanBlock');
+    const ibanInput = document.getElementById('iban');
+    if (!currentProduct.requires_iban) {
+      ibanBlock.hidden = true;
+      ibanInput.removeAttribute('required');
+      ibanInput.value = '';
+    } else {
+      ibanBlock.hidden = false;
+      ibanInput.setAttribute('required', 'required');
+    }
 
-  const payStripe = document.getElementById('payStripeBtn');
-  const payDemo = document.getElementById('payDemoBtn');
-  const payFree = document.getElementById('payFreeBtn');
+    if (currentProduct.deciplus_total_note) {
+      const note = document.createElement('div');
+      note.className = 'info-box';
+      note.textContent =
+        currentProduct.deciplus_total_note + ' — Stripe encaisse : ' + currentProduct.price_label;
+      document.querySelector('.summary-panel').appendChild(note);
+    }
 
-  if (!currentProduct.requires_payment) {
-    payFree.hidden = false;
-  } else if (stripeMode) {
-    payStripe.hidden = false;
-  } else {
-    payDemo.hidden = false;
+    renderBadgeFeeNotice(currentProduct);
+
+    if (!currentProduct.requires_payment) {
+      setPayButtons({ free: true });
+    } else if (stripeMode) {
+      setPayButtons({ stripe: true, demo: demoAllowed });
+    } else {
+      setPayButtons({ demo: true });
+    }
+  } catch (err) {
+    showMsg('Impossible de charger l\'offre — rechargez la page.', false);
+  } finally {
+    catalogLoading = false;
   }
 }
 
 async function submitCheckout(endpoint) {
+  if (catalogLoading || !currentProduct) {
+    showMsg('Chargement en cours… patientez une seconde.', false);
+    return;
+  }
+
   const form = document.getElementById('checkoutForm');
   if (!form.reportValidity()) return;
 
   const body = formData(form);
+  body.product_id = currentProduct.id;
   showMsg('Traitement…', true);
 
   const buttons = form.querySelectorAll('button');
@@ -141,14 +166,26 @@ async function submitCheckout(endpoint) {
 
 document.getElementById('checkoutForm').addEventListener('submit', (e) => {
   e.preventDefault();
-  if (!currentProduct) return;
-  if (!currentProduct.requires_payment) {
+  if (!currentProduct) {
+    showMsg('Offre non chargée — rechargez la page.', false);
+    return;
+  }
+
+  const submitterId = e.submitter?.id || '';
+
+  if (!currentProduct.requires_payment || submitterId === 'payFreeBtn') {
     submitCheckout('/api/checkout/create-session');
+    return;
+  }
+  if (submitterId === 'payDemoBtn') {
+    submitCheckout('/api/checkout/demo');
     return;
   }
   if (stripeMode) {
     submitCheckout('/api/checkout/create-session');
+    return;
   }
+  submitCheckout('/api/checkout/demo');
 });
 
 document.getElementById('payDemoBtn').addEventListener('click', () => {
