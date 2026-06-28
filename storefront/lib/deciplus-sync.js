@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { ROOT, ensureDir, loadJson } = require('../../lib/utils');
 const { logInfo, logWarn } = require('../../lib/logger');
-const { normalizeText, inferSaleType } = require('../../bot/catalog');
+const { normalizeText, inferSaleType, buildDeciplusProductSearch } = require('../../bot/catalog');
 const { getBadgeFeeNotice } = require('./storefront-copy');
 
 const SYNC_FILE = path.join(ROOT, 'data', 'storefront', 'catalog-live.json');
@@ -84,6 +84,7 @@ function mapDeciplusItem(item) {
         ? 'CB : 1ère échéance · suite par prélèvement IBAN'
         : null,
     badge_fee_notice: getBadgeFeeNotice({ sale_type: saleType, category: item.categoryTitle, name: item.title }),
+    deciplus_product_search: buildDeciplusProductSearch(item.title, item.id),
     synced: true,
     reference: item.reference,
     type: item.type,
