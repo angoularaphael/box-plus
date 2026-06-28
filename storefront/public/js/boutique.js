@@ -15,14 +15,8 @@ async function loadProducts() {
     card.className = 'product-card';
     card.innerHTML = `
       ${p.category ? `<span class="product-tag">${p.category}</span>` : ''}
-      ${p.badge ? `<span class="product-tag" style="color:var(--bc-red)">${p.badge}</span>` : ''}
-      <h3>${p.tagline || p.name}</h3>
-      <div class="product-deciplus">Deciplus : ${p.name}</div>
-      <p>${p.description}</p>
+      <h3>${p.name}</h3>
       <div class="product-price">${p.price_label}</div>
-      ${p.deciplus_total_note ? `<div class="product-note">${p.deciplus_total_note}</div>` : ''}
-      ${p.installments_note ? `<div class="product-note">${p.installments_note}</div>` : ''}
-      ${p.badge_fee_notice ? `<div class="notice-inline">${p.badge_fee_notice}</div>` : ''}
       <a class="btn" href="/checkout.html?product=${encodeURIComponent(p.id)}">
         ${p.price_cents === 0 ? 'Réserver' : 'Commander'}
       </a>
