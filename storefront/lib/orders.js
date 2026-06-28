@@ -46,6 +46,7 @@ function buildOrderPayload(input, product) {
     product_name: product.name,
     product_reference: product.id,
     deciplus_id: product.deciplus_id || null,
+    deciplus_product_search: product.deciplus_product_search || null,
     sale_type: product.sale_type || null,
     requires_iban: requiresIban,
     gym: input.gym,
