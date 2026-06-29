@@ -21,6 +21,8 @@
     "session:export": "node scripts/export-deciplus-session.js",
     "cleanup:test": "node scripts/cleanup-test-subscriptions.js",
     "cleanup:test:execute": "node scripts/cleanup-test-subscriptions.js --execute",
+    "import:materiel": "node scripts/import-prestashop-materiel.js",
+    "sync:materiel": "node storefront/scripts/sync-prestashop-materiel.js",
     "vercel-build": "echo Vercel build OK"
   },
   "dependencies": {

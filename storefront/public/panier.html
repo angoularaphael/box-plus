@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panier — Boxing Center</title>
+  <script src="js/boot.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/boutique.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <div class="breadcrumb"><a href="/">Accueil</a> / <a href="/materiel">Matériel</a> / Panier</div>
+      <h1>Votre panier</h1>
+    </div>
+  </div>
+
+  <main class="section cart-page">
+    <div id="cartEmpty" class="cart-empty" hidden>
+      <p>Votre panier est vide.</p>
+      <a href="/materiel" class="btn">Voir le matériel</a>
+    </div>
+
+    <div id="cartContent" class="cart-layout" hidden>
+      <div class="cart-lines" id="cartLines"></div>
+      <aside class="cart-checkout card-panel">
+        <h3>Coordonnées & retrait</h3>
+        <form id="checkoutForm">
+          <div class="form-row">
+            <label>Prénom<input name="first_name" required autocomplete="given-name" /></label>
+            <label>Nom<input name="last_name" required autocomplete="family-name" /></label>
+          </div>
+          <label>Email<input name="email" type="email" required autocomplete="email" /></label>
+          <label>Téléphone<input name="phone" type="tel" required autocomplete="tel" /></label>
+          <label>Lieu de retrait
+            <select name="pickup_gym" required id="pickupGym">
+              <option value="">Choisir une salle</option>
+            </select>
+          </label>
+          <div class="cart-total">
+            <span>Total TTC</span>
+            <strong id="cartTotal">0,00 €</strong>
+          </div>
+          <p id="checkoutError" class="form-error" hidden></p>
+          <button type="submit" class="btn block" id="checkoutBtn">Payer par carte</button>
+        </form>
+      </aside>
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+  <script src="js/cart.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/panier.js"></script>
+</body>
+</html>

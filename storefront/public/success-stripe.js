@@ -1,49 +1,44 @@
-const BADGE_FEE_NOTICE =
-  "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 5 à 7 jours ouvrés après votre achat. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.";
-
-function shouldShowBadgeFeeNotice(product) {
-  if (!product?.requires_iban) return false;
-  if (product.badge_fee_notice) return true;
-  if (product.sale_type === 'abonnement') return true;
-  return String(product.category || '').toLowerCase().includes('abonnement');
-}
-
-function showSuccessBadgeNotice(product) {
-  if (!shouldShowBadgeFeeNotice(product)) return;
-  const notice = document.getElementById('successBadgeNotice');
-  const textEl = document.getElementById('successBadgeText');
-  if (!notice || !textEl) return;
-  notice.hidden = false;
-  textEl.textContent = product.badge_fee_notice || BADGE_FEE_NOTICE;
-}
-
-async function maybeShowBadgeNoticeFromCatalog(productId) {
-  if (!productId) return;
-  try {
-    const res = await fetch('/api/products');
-    const data = await res.json();
-    const products = data.products || data;
-    const product = products.find((p) => p.id === productId);
-    showSuccessBadgeNotice(product);
-  } catch {
-    /* ignore */
-  }
-}
-
 const params = new URLSearchParams(location.search);
 const order = params.get('order') || '';
 const sessionId = params.get('session_id') || '';
 const demo = params.get('demo');
 const productId = params.get('product') || '';
+const orderType = params.get('type') || '';
 
-document.getElementById('orderRef').textContent = order ? 'Réf. ' + order : '';
-
-if (demo) {
-  document.getElementById('successText').textContent =
-    'Commande enregistrée — traitement Deciplus automatique.';
-  maybeShowBadgeNoticeFromCatalog(productId);
+const successText = document.getElementById('successText');
+if (!successText) {
+  /* legacy page */
+} else if (orderType === 'materiel') {
+  if (demo) {
+    successText.textContent =
+      'Commande matériel enregistrée — présentez-vous en salle pour le retrait.';
+  } else if (sessionId) {
+    successText.textContent = 'Validation du paiement…';
+    fetch('/api/checkout/confirm-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, order_id: order }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        successText.textContent = data.ok
+          ? `Paiement confirmé — réf. ${order || data.order_id || ''}. Retirez votre matériel en salle.`
+          : 'Paiement reçu — contactez la salle si la confirmation tarde.';
+      })
+      .catch(() => {
+        successText.textContent =
+          'Paiement reçu — présentez votre email de confirmation en salle.';
+      });
+  } else {
+    successText.textContent =
+      order
+        ? `Commande ${order} confirmée — retrait en salle.`
+        : 'Commande matériel confirmée — retrait en salle.';
+  }
+} else if (demo) {
+  successText.textContent = 'Commande enregistrée — traitement Deciplus automatique.';
 } else if (sessionId) {
-  document.getElementById('successText').textContent = 'Validation du paiement…';
+  successText.textContent = 'Validation du paiement…';
   fetch('/api/checkout/confirm-session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -51,20 +46,13 @@ if (demo) {
   })
     .then((r) => r.json())
     .then((data) => {
-      if (data.ok) {
-        document.getElementById('successText').textContent =
-          'Paiement confirmé — votre abonnement est en cours d\'enregistrement dans Deciplus.';
-      } else {
-        document.getElementById('successText').textContent =
-          'Paiement reçu — contactez la salle si la confirmation tarde.';
-      }
-      maybeShowBadgeNoticeFromCatalog(productId);
+      successText.textContent = data.ok
+        ? "Paiement confirmé — votre abonnement est en cours d'enregistrement dans Deciplus."
+        : 'Paiement reçu — contactez la salle si la confirmation tarde.';
     })
     .catch(() => {
-      document.getElementById('successText').textContent =
-        'Paiement reçu — votre commande sera traitée sous peu.';
-      maybeShowBadgeNoticeFromCatalog(productId);
+      successText.textContent = 'Paiement reçu — votre commande sera traitée sous peu.';
     });
-} else {
-  maybeShowBadgeNoticeFromCatalog(productId);
+} else if (order) {
+  successText.textContent = `Commande ${order} enregistrée.`;
 }

@@ -27,6 +27,8 @@
         'seance-essai.html': '/seance-essai',
         'coachings.html': '/coachings',
         'materiel.html': '/materiel',
+        'materiel-produit.html': '/materiel/produit',
+        'panier.html': '/panier',
         'inscription.html': '/inscription',
         'faq.html': '/faq',
         'confidentialite.html': '/politique-confidentialite',
@@ -56,6 +58,9 @@
           </button>
           <nav class="main-nav" id="mainNav">
             ${navLinks}
+            <a href="${L('/panier')}" class="nav-cart" id="navCart" aria-label="Panier">
+              Panier <span class="cart-badge" id="cartBadge" hidden>0</span>
+            </a>
             <a href="${L('/abonnements')}" class="nav-cta">Je m'inscris</a>
           </nav>
         </div>
@@ -98,12 +103,22 @@
     }
   }
 
+  function updateCartBadge() {
+    const badge = document.getElementById('cartBadge');
+    if (!badge || !window.BCCart) return;
+    const n = window.BCCart.count();
+    badge.textContent = String(n);
+    badge.hidden = n <= 0;
+  }
+
   function mountLayout() {
     const headerSlot = document.getElementById('site-header');
     const footerSlot = document.getElementById('site-footer');
     if (headerSlot) headerSlot.innerHTML = renderHeader();
     if (footerSlot) footerSlot.innerHTML = renderFooter();
     initNav();
+    updateCartBadge();
+    window.addEventListener('bccart:change', updateCartBadge);
   }
 
   if (document.readyState === 'loading') {

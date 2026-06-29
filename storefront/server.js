@@ -30,12 +30,29 @@ const {
   getEnrichedProducts,
   getFeaturedProducts,
   getMaterielProducts,
+  getMaterielCategories,
   findEnrichedProduct,
+  findMaterielProduct,
   loadMerch,
   saveMerch,
+  loadMaterielCatalog,
+  saveMaterielCatalog,
   updateMerchProduct,
   setFeaturedHome,
 } = require('./lib/merch');
+const {
+  validateCartLines,
+  validateCustomerForm,
+  buildStripeLineItems,
+  createMaterielOrder,
+  markMaterielPaid,
+  savePendingCheckout,
+  loadPendingCheckout,
+  removePendingCheckout,
+  loadOrder: loadMaterielOrder,
+  saveOrder: saveMaterielOrderRecord,
+} = require('./lib/materiel-cart');
+const { sendMaterielConfirmationEmail } = require('./lib/mailer');
 const {
   createDraft,
   loadOrder,
@@ -108,7 +125,59 @@ async function dispatchLifecycleOrder(order) {
   return result;
 }
 
+async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
+  const pending = loadPendingCheckout(sessionId);
+  if (!pending) {
+    if (stripeSession?.metadata?.order_type === 'materiel') {
+      const order = loadMaterielOrder(stripeSession.metadata.order_id);
+      if (order?.payment?.status === 'paid') {
+        return { ok: true, order_id: order.order_id, materiel: true, already_processed: true };
+      }
+    }
+    return { ok: false, error: 'pending_not_found' };
+  }
+
+  let order = loadMaterielOrder(pending.order_id);
+  if (!order) {
+    order = createMaterielOrder({
+      order_id: pending.order_id,
+      customer: pending.customer,
+      items: pending.items,
+      total_cents: pending.total_cents,
+      pickup_gym: pending.pickup_gym,
+    });
+  }
+
+  order = markMaterielPaid(order.order_id, {
+    method: 'stripe',
+    stripe_session_id: sessionId,
+  });
+
+  removePendingCheckout(sessionId);
+
+  try {
+    const emailResult = await sendMaterielConfirmationEmail(order);
+    order.email_sent = emailResult.sent;
+    saveMaterielOrderRecord(order);
+  } catch (err) {
+    logError('Email matériel échoué', { error: err.message, order_id: order.order_id });
+  }
+
+  logInfo('Paiement matériel confirmé', { order_id: order.order_id });
+  return {
+    ok: true,
+    order_id: order.order_id,
+    materiel: true,
+    redirect: `/success.html?order=${order.order_id}&type=materiel`,
+  };
+}
+
 async function fulfillStripeSession(sessionId, stripeSession = null, lifecycleMode = false) {
+  const materielPending = loadPendingCheckout(sessionId);
+  if (materielPending?.order_type === 'materiel') {
+    return fulfillMaterielCheckout(sessionId, stripeSession);
+  }
+
   let pending = loadPendingOrder(sessionId);
   if (!pending && stripeSession?.metadata) {
     pending = unpackOrderMetadata(stripeSession.metadata);
@@ -172,11 +241,16 @@ function createApp() {
       try {
         if (event.type === 'checkout.session.completed') {
           const session = event.data.object;
-          const pending = loadPendingOrder(session.id);
-          if (!pending) {
-            logError('Session Stripe sans commande pending', { session_id: session.id });
+          const materielPending = loadPendingCheckout(session.id);
+          if (materielPending?.order_type === 'materiel') {
+            await fulfillMaterielCheckout(session.id, session);
           } else {
-            await fulfillStripeSession(session.id, session, Boolean(pending.lifecycle_order_id));
+            const pending = loadPendingOrder(session.id);
+            if (!pending) {
+              logError('Session Stripe sans commande pending', { session_id: session.id });
+            } else {
+              await fulfillStripeSession(session.id, session, Boolean(pending.lifecycle_order_id));
+            }
           }
         }
         res.json({ received: true });
@@ -219,9 +293,123 @@ function createApp() {
     }
   });
 
-  app.get('/api/materiel', (_req, res) => {
+  app.get('/api/materiel', (req, res) => {
     try {
-      res.json({ products: getMaterielProducts() });
+      const catalog = loadMaterielCatalog();
+      const products = getMaterielProducts({
+        category: req.query.category || null,
+        activeOnly: req.query.all !== '1',
+        q: req.query.q || null,
+      });
+      res.json({
+        synced_at: catalog.synced_at,
+        source: catalog.source,
+        categories: getMaterielCategories(),
+        products,
+      });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/materiel/:id', (req, res) => {
+    try {
+      const product = findMaterielProduct(req.params.id);
+      if (!product) return res.status(404).json({ ok: false, error: 'not_found' });
+      res.json({ product });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/cart/checkout', async (req, res) => {
+    try {
+      const { lines, customer } = req.body;
+      const { errors: cartErrors, items, total_cents } = validateCartLines(lines);
+      if (cartErrors.length) return res.status(400).json({ ok: false, errors: cartErrors });
+
+      const formErrors = validateCustomerForm(customer || {});
+      if (formErrors.length) return res.status(400).json({ ok: false, errors: formErrors });
+
+      const orderId = `MAT-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+
+      if (!stripe) {
+        if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true') {
+          const order = createMaterielOrder({
+            customer,
+            items,
+            total_cents,
+            pickup_gym: customer.pickup_gym,
+          });
+          markMaterielPaid(order.order_id, { method: 'demo' });
+          await sendMaterielConfirmationEmail(order).catch(() => {});
+          return res.json({
+            ok: true,
+            mode: 'demo',
+            order_id: order.order_id,
+            redirect: `/success.html?order=${order.order_id}&type=materiel&demo=1`,
+          });
+        }
+        return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
+      }
+
+      const baseUrl = getCheckoutBaseUrl(req);
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: buildStripeLineItems(items),
+        customer_email: customer.email,
+        metadata: {
+          order_type: 'materiel',
+          order_id: orderId,
+        },
+        success_url: `${baseUrl}/success.html?session_id={CHECKOUT_SESSION_ID}&order=${orderId}&type=materiel`,
+        cancel_url: `${baseUrl}/panier?cancelled=1`,
+      });
+
+      savePendingCheckout(session.id, {
+        order_type: 'materiel',
+        order_id: orderId,
+        customer,
+        pickup_gym: customer.pickup_gym,
+        items,
+        total_cents,
+      });
+
+      res.json({ ok: true, mode: 'stripe', url: session.url, session_id: session.id, order_id: orderId });
+    } catch (err) {
+      logError('Erreur checkout matériel', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/ingest-materiel-catalog', (req, res) => {
+    if (!isAuthorizedSync(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const payload = req.body;
+      if (!payload?.products?.length) {
+        return res.status(400).json({ ok: false, error: 'products requis' });
+      }
+      const catalog = {
+        ...loadMaterielCatalog(),
+        ...payload,
+        synced_at: new Date().toISOString(),
+      };
+      saveMaterielCatalog(catalog);
+      res.json({ ok: true, count: catalog.products.length, synced_at: catalog.synced_at });
+    } catch (err) {
+      res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/sync-materiel', async (req, res) => {
+    if (!isAuthorizedAdmin(req) && !isAuthorizedSync(req)) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    try {
+      const { syncMaterielFromPrestaShop } = require('./scripts/sync-prestashop-materiel');
+      const result = await syncMaterielFromPrestaShop();
+      res.json({ ok: true, ...result });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
@@ -574,6 +762,16 @@ function createApp() {
         return res.status(402).json({ ok: false, error: 'payment_not_completed' });
       }
 
+      const materielPending = loadPendingCheckout(sessionId);
+      if (materielPending?.order_type === 'materiel') {
+        const out = await fulfillMaterielCheckout(sessionId, session);
+        if (!out.ok && out.error === 'pending_not_found') {
+          return res.json({ ok: true, already_processed: true, materiel: true });
+        }
+        if (!out.ok) return res.status(500).json(out);
+        return res.json({ ok: true, ...out });
+      }
+
       const pending = loadPendingOrder(sessionId);
       const out = await fulfillStripeSession(sessionId, session, Boolean(pending?.lifecycle_order_id));
       if (!out.ok && out.error === 'pending_not_found') {
@@ -615,6 +813,8 @@ function createApp() {
     '/seance-essai': 'seance-essai.html',
     '/coachings': 'coachings.html',
     '/materiel': 'materiel.html',
+    '/materiel/produit': 'materiel-produit.html',
+    '/panier': 'panier.html',
     '/inscription': 'inscription.html',
     '/faq': 'faq.html',
     '/politique-confidentialite': 'legal/confidentialite.html',
