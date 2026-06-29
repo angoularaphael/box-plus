@@ -61,6 +61,8 @@ function buildOrderPayload(input, product) {
       postal_code: input.postal_code,
       city: input.city,
       country: input.country || 'FR',
+      emergency_contact: input.emergency_contact || null,
+      medical_info: input.medical_info || null,
     },
     payment: {
       amount,
@@ -81,19 +83,63 @@ function buildOrderPayload(input, product) {
 }
 
 function validateCheckoutForm(input, product) {
+  return [...validateShortForm(input), ...validateFullForm(input, product)];
+}
+
+function validateShortForm(input) {
   const errors = [];
   if (!input.first_name) errors.push('Prénom requis');
   if (!input.last_name) errors.push('Nom requis');
   if (!input.email) errors.push('Email requis');
   if (!input.phone) errors.push('Téléphone requis');
-  if (!input.gym) errors.push('Salle requise');
   if (!input.birthdate) errors.push('Date de naissance requise');
+  return errors;
+}
+
+function validateFullForm(input, product = {}) {
+  const errors = [];
   if (!input.gender) errors.push('Sexe requis');
+  if (!input.gym) errors.push('Salle principale requise');
   if (product.requires_iban) {
     if (!input.iban) errors.push('IBAN requis');
     else if (!isValidFrenchIban(input.iban)) errors.push('IBAN français invalide');
   }
   return errors;
+}
+
+function validatePaymentForm(input, product) {
+  const errors = [];
+  if (product.requires_iban) {
+    if (!input.iban) errors.push('IBAN requis pour le prélèvement');
+    else if (!isValidFrenchIban(input.iban)) errors.push('IBAN français invalide');
+  }
+  return errors;
+}
+
+function buildOrderFromLifecycle(order, product) {
+  const short = order.customer_short || {};
+  const full = order.customer_full || {};
+  return buildOrderPayload(
+    {
+      order_id: order.order_id,
+      first_name: short.first_name,
+      last_name: short.last_name,
+      email: short.email,
+      phone: short.phone,
+      birthdate: short.birthdate,
+      gender: full.gender,
+      gym: full.gym,
+      address: full.address,
+      postal_code: full.postal_code,
+      city: full.city,
+      iban: full.iban || order.payment?.iban,
+      payment_method: order.payment?.method || 'stripe',
+      stripe_session_id: order.payment?.stripe_session_id,
+      emergency_contact: full.emergency_contact,
+      medical_info: full.medical_info,
+    },
+    product
+  );
 }
 
 function packOrderMetadata(payload) {
@@ -147,7 +193,11 @@ function submitToBoxplus(rawPayload) {
 
 module.exports = {
   buildOrderPayload,
+  buildOrderFromLifecycle,
   validateCheckoutForm,
+  validateShortForm,
+  validateFullForm,
+  validatePaymentForm,
   submitToBoxplus,
   dispatchOrder,
   packOrderMetadata,

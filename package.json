@@ -19,12 +19,18 @@
     "test:offers:live": "node scripts/test-all-offers.js --live",
     "test:load": "node test/load-queue.test.js",
     "session:export": "node scripts/export-deciplus-session.js",
+    "cleanup:test": "node scripts/cleanup-test-subscriptions.js",
+    "cleanup:test:execute": "node scripts/cleanup-test-subscriptions.js --execute",
     "vercel-build": "echo Vercel build OK"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "multer": "^2.2.0",
+    "nodemailer": "^9.0.1",
+    "pdfkit": "^0.19.1",
     "playwright": "^1.51.1",
-    "stripe": "^17.7.0"
+    "stripe": "^17.7.0",
+    "uuid": "^14.0.1"
   }
 }

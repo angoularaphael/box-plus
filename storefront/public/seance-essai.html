@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Séance d'essai — Boxing Center</title>
+  <meta name="description" content="Réservez votre séance d'essai à 10 € — découvrez Boxing Center sans engagement. Débutants bienvenus." />
+  <script src="js/boot.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/boutique.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <div class="breadcrumb"><a href="/">Accueil</a> / Séance d'essai</div>
+      <h1>Votre séance d'essai à 10 €</h1>
+      <p>Découvrez Boxing Center en toute sérénité — pas besoin d'expérience, ambiance accueillante et encadrée.</p>
+    </div>
+  </div>
+
+  <main>
+    <section class="section">
+      <div class="landing-steps">
+        <div class="landing-step">
+          <div class="landing-step-num">1</div>
+          <h4>Réservez en ligne</h4>
+          <p>Formulaire court — 2 minutes pour réserver votre créneau.</p>
+        </div>
+        <div class="landing-step">
+          <div class="landing-step-num">2</div>
+          <h4>Accueil personnalisé</h4>
+          <p>Un coach vous accueille, vous explique le déroulé et répond à vos questions.</p>
+        </div>
+        <div class="landing-step">
+          <div class="landing-step-num">3</div>
+          <h4>Vous vous entraînez</h4>
+          <p>Participez à un cours adapté aux débutants, à votre rythme.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-alt">
+      <div class="section-head">
+        <h2>À qui s'adresse la séance d'essai ?</h2>
+      </div>
+      <div class="reassurance-strip">
+        <div class="reassurance-item">
+          <div class="reassurance-icon"><span>01</span></div>
+          <h4>Débutants</h4>
+          <p>Jamais fait de boxe ? C'est fait pour vous.</p>
+        </div>
+        <div class="reassurance-item">
+          <div class="reassurance-icon"><span>02</span></div>
+          <h4>Femmes & hommes</h4>
+          <p>Tous les cours sont mixtes et encadrés.</p>
+        </div>
+        <div class="reassurance-item">
+          <div class="reassurance-icon"><span>03</span></div>
+          <h4>Tous niveaux</h4>
+          <p>Pas besoin d'être en forme pour commencer.</p>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:32px">
+        <a href="/inscription?product=seance-essai" class="btn" style="max-width:320px;margin:0 auto">Réserver ma séance d'essai — 10 €</a>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h2>Questions fréquentes</h2></div>
+      <div class="faq-list" id="essaiFaq"></div>
+    </section>
+  </main>
+
+  <div id="site-footer"></div>
+  <script src="js/layout.js"></script>
+  <script src="js/faq.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      BCFaq.renderSubset('essaiFaq', ['essai', 'debutant', 'violent', 'materiel']);
+    });
+  </script>
+</body>
+</html>
