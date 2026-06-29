@@ -105,4 +105,81 @@ async function sendGdprEraseRequest(data) {
   return { sent: true };
 }
 
-module.exports = { sendConfirmationEmail, sendGdprEraseRequest, buildConfirmationHtml };
+function formatEuros(cents) {
+  return `${(cents / 100).toFixed(2).replace('.', ',')} €`;
+}
+
+function buildMaterielConfirmationHtml(order) {
+  const customer = order.customer || {};
+  const rows = (order.items || [])
+    .map(
+      (item) => `
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #eee">${item.name}${item.variant_label ? ` (${item.variant_label})` : ''}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;text-align:center">${item.qty}</td>
+      <td style="padding:8px;border-bottom:1px solid #eee;text-align:right">${formatEuros(item.line_total_cents)}</td>
+    </tr>`
+    )
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Commande matériel Boxing Center</title></head>
+<body style="font-family:Arial,sans-serif;color:#1A1A2E;max-width:600px;margin:0 auto;padding:24px">
+  <h1 style="color:#0B1F3A">Commande matériel confirmée</h1>
+  <p>Bonjour ${customer.first_name || ''},</p>
+  <p>Merci pour votre achat. Votre commande est payée et prête à être retirée en salle.</p>
+  <table style="width:100%;border-collapse:collapse;margin:20px 0">
+    <tr style="background:#f5f6f8">
+      <th style="padding:8px;text-align:left">Article</th>
+      <th style="padding:8px;text-align:center">Qté</th>
+      <th style="padding:8px;text-align:right">Total</th>
+    </tr>
+    ${rows}
+    <tr>
+      <td colspan="2" style="padding:8px;font-weight:bold">Total TTC</td>
+      <td style="padding:8px;text-align:right;font-weight:bold">${formatEuros(order.total_cents)}</td>
+    </tr>
+  </table>
+  <p><strong>Lieu de retrait :</strong> ${order.pickup_gym || customer.pickup_gym || '—'}</p>
+  <p><strong>Référence commande :</strong> ${order.order_id}</p>
+  <p>Présentez cet email à l'accueil de la salle pour récupérer votre matériel.</p>
+  <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="https://boxingcenter.fr">boxingcenter.fr</a></p>
+</body>
+</html>`;
+}
+
+async function sendMaterielConfirmationEmail(order) {
+  const transport = createTransport();
+  const to = order.customer?.email;
+  if (!to) {
+    logWarn('Email matériel ignoré — pas d\'email client', { order_id: order.order_id });
+    return { sent: false, reason: 'no_email' };
+  }
+
+  const from = process.env.MAIL_FROM || 'boutique@boxingcenter.fr';
+  const html = buildMaterielConfirmationHtml(order);
+
+  if (!transport) {
+    logInfo('Email matériel (mode log)', { to, order_id: order.order_id });
+    return { sent: false, reason: 'smtp_not_configured', preview: html };
+  }
+
+  await transport.sendMail({
+    from,
+    to,
+    subject: `Commande matériel Boxing Center — ${order.order_id}`,
+    html,
+  });
+
+  logInfo('Email matériel envoyé', { to, order_id: order.order_id });
+  return { sent: true };
+}
+
+module.exports = {
+  sendConfirmationEmail,
+  sendMaterielConfirmationEmail,
+  sendGdprEraseRequest,
+  buildConfirmationHtml,
+  buildMaterielConfirmationHtml,
+};

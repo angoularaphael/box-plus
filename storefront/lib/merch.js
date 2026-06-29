@@ -1,12 +1,12 @@
 /**
- * Fusion catalogue Deciplus + merchandising boutique
+ * Catalogue matériel — import PrestaShop + merchandising
  */
 const fs = require('fs');
 const path = require('path');
 const { ROOT } = require('../../lib/utils');
-const { getStoreProducts } = require('./deciplus-sync');
 
 const MERCH_FILE = path.join(ROOT, 'storefront', 'storefront-merch.json');
+const CATALOG_FILE = path.join(ROOT, 'data', 'storefront', 'materiel-catalog.json');
 
 function loadMerch() {
   try {
@@ -19,6 +19,101 @@ function loadMerch() {
 function saveMerch(data) {
   fs.writeFileSync(MERCH_FILE, JSON.stringify(data, null, 2), 'utf8');
   return data;
+}
+
+function loadMaterielCatalog() {
+  try {
+    return JSON.parse(fs.readFileSync(CATALOG_FILE, 'utf8'));
+  } catch {
+    return { synced_at: null, source: 'empty', count: 0, categories: [], products: [] };
+  }
+}
+
+function saveMaterielCatalog(data) {
+  fs.writeFileSync(CATALOG_FILE, JSON.stringify(data, null, 2), 'utf8');
+  return data;
+}
+
+function applyMaterielOverrides(product, overrides = {}) {
+  if (overrides.active === false) return null;
+  const priceCents = overrides.price_cents ?? product.price_cents;
+  return {
+    ...product,
+    ...overrides,
+    display_name: overrides.display_name || product.name,
+    price_cents: priceCents,
+    price_label: overrides.price_label || product.price_label,
+    tab: 'materiel',
+    requires_iban: false,
+    requires_payment: true,
+    sale_type: 'materiel',
+    pickup_only: true,
+    manual: true,
+  };
+}
+
+function getMaterielCategories() {
+  const catalog = loadMaterielCatalog();
+  return catalog.categories || [];
+}
+
+function getMaterielProducts(options = {}) {
+  const { category, activeOnly = true, q } = options;
+  const catalog = loadMaterielCatalog();
+  const merch = loadMerch();
+  const overrides = merch.materiel_overrides || {};
+
+  let products = (catalog.products || [])
+    .map((p) => {
+      const patch = overrides[p.id] || {};
+      return applyMaterielOverrides(p, patch);
+    })
+    .filter(Boolean);
+
+  if (activeOnly) {
+    products = products.filter((p) => p.active !== false);
+  }
+
+  if (category && category !== 'all') {
+    products = products.filter((p) => p.category === category);
+  }
+
+  if (q) {
+    const needle = String(q).toLowerCase();
+    products = products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(needle) ||
+        (p.reference || '').toLowerCase().includes(needle)
+    );
+  }
+
+  return products;
+}
+
+function findMaterielProduct(productId) {
+  const catalog = loadMaterielCatalog();
+  const merch = loadMerch();
+  const raw = (catalog.products || []).find(
+    (p) => p.id === productId || String(p.prestashop_id) === String(productId)
+  );
+  if (!raw) return null;
+  const patch = merch.materiel_overrides?.[raw.id] || {};
+  return applyMaterielOverrides(raw, patch);
+}
+
+function findMaterielVariant(productId, variantId) {
+  const product = findMaterielProduct(productId);
+  if (!product) return null;
+  if (!variantId) {
+    const def =
+      product.combinations?.find((c) => c.id === product.default_variant_id) ||
+      product.combinations?.[0];
+    return { product, variant: def || null };
+  }
+  const variant = (product.combinations || []).find(
+    (c) => String(c.id) === String(variantId)
+  );
+  return { product, variant: variant || null };
 }
 
 function inferSubsection(product) {
@@ -78,6 +173,7 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
 
 function getEnrichedProducts(options = {}) {
   const { tab, subsection, featured, activeOnly = true } = options;
+  const { getStoreProducts } = require('./deciplus-sync');
   const catalog = getStoreProducts();
   const merch = loadMerch();
   const results = [];
@@ -125,29 +221,11 @@ function getFeaturedProducts(limit = 3) {
   return featured.slice(0, limit);
 }
 
-function getMaterielProducts() {
-  const merch = loadMerch();
-  return (merch.materiel || []).filter((m) => m.active !== false);
-}
-
 function findEnrichedProduct(productId) {
   const all = getEnrichedProducts({ activeOnly: false });
   const match = all.find((p) => p.id === productId || p.legacy_id === productId);
   if (match) return match;
-  const merch = loadMerch();
-  const mat = (merch.materiel || []).find((m) => m.id === productId);
-  if (mat) {
-    return {
-      ...mat,
-      tab: 'materiel',
-      display_name: mat.name,
-      requires_iban: false,
-      requires_payment: true,
-      sale_type: 'carte',
-      manual: true,
-    };
-  }
-  return null;
+  return findMaterielProduct(productId);
 }
 
 function updateMerchProduct(productId, patch) {
@@ -163,14 +241,39 @@ function setFeaturedHome(ids) {
   return saveMerch(merch);
 }
 
+function updateMaterielProduct(productId, patch) {
+  const catalog = loadMaterielCatalog();
+  const idx = (catalog.products || []).findIndex((p) => p.id === productId);
+  if (idx >= 0) {
+    catalog.products[idx] = { ...catalog.products[idx], ...patch };
+    saveMaterielCatalog(catalog);
+    return catalog.products[idx];
+  }
+  const merch = loadMerch();
+  if (!merch.materiel_overrides) merch.materiel_overrides = {};
+  merch.materiel_overrides[productId] = {
+    ...(merch.materiel_overrides[productId] || {}),
+    ...patch,
+  };
+  saveMerch(merch);
+  return merch.materiel_overrides[productId];
+}
+
 module.exports = {
   loadMerch,
   saveMerch,
+  loadMaterielCatalog,
+  saveMaterielCatalog,
+  getMaterielCategories,
+  getMaterielProducts,
+  findMaterielProduct,
+  findMaterielVariant,
   getEnrichedProducts,
   getFeaturedProducts,
-  getMaterielProducts,
   findEnrichedProduct,
   updateMerchProduct,
+  updateMaterielProduct,
   setFeaturedHome,
   MERCH_FILE,
+  CATALOG_FILE,
 };

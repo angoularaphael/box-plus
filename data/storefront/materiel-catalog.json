@@ -1,0 +1,2082 @@
+{
+  "synced_at": "2026-06-29T15:57:45.701Z",
+  "source": "prestashop-mirror",
+  "count": 43,
+  "categories": [
+    {
+      "id": 16,
+      "slug": "materiel",
+      "label": "Matériel de boxe"
+    },
+    {
+      "id": 17,
+      "slug": "gants",
+      "label": "Gants de boxe ou MMA"
+    },
+    {
+      "id": 18,
+      "slug": "protege-tibias",
+      "label": "Protège tibias-pieds"
+    },
+    {
+      "id": 19,
+      "slug": "sous-gants",
+      "label": "Sous-gants"
+    },
+    {
+      "id": 20,
+      "slug": "bandes",
+      "label": "Bandes de boxe"
+    },
+    {
+      "id": 21,
+      "slug": "casque",
+      "label": "Casque"
+    },
+    {
+      "id": 22,
+      "slug": "short",
+      "label": "Short de Boxe ou MMA"
+    },
+    {
+      "id": 23,
+      "slug": "accessoires",
+      "label": "Accessoires"
+    },
+    {
+      "id": 24,
+      "slug": "protege-dents",
+      "label": "Protège dents"
+    },
+    {
+      "id": 25,
+      "slug": "entrainement",
+      "label": "Matériel d'entraînement"
+    },
+    {
+      "id": 26,
+      "slug": "destockage",
+      "label": "Déstockage"
+    }
+  ],
+  "products": [
+    {
+      "id": "mat-37",
+      "prestashop_id": 37,
+      "name": "Bandes de Boxe 2,50m - Metal Boxe",
+      "slug": "bandes-de-boxe-2m50-metal-boxe",
+      "reference": "BC-MB120N",
+      "price_cents": 670,
+      "price_label": "6,70 €",
+      "stock": 15,
+      "category": "bandes",
+      "category_label": "Bandes de boxe",
+      "category_id": 20,
+      "description_short": "Bandes de Boxe spécialement sélectionnés pour nos pratiquants chez notre partenaire Metal Boxe Protection du pouce et maintien du poignet. Longueur de 2,5m, taille réglementaire pour les combats amateurs. Idéal pour toutes les pratiques en loisirs ou régulières. Lavables en machine. 50 % coton / 50% nylon.",
+      "description": "Protection du pouce et maintien du poignet. Longueur de 2,5m, taille réglementaire pour les combats amateurs. Idéal pour toutes les pratiques en loisirs ou régulières. Lavables en machine. 50 % coton / 50% nylon.",
+      "image": "/img/materiel/37/bandes-de-boxe-2m50-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/37/bandes-de-boxe-2m50-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1334,
+          "prestashop_attribute_id": 1334,
+          "label": "Camouflage",
+          "attributes": {
+            "Couleur": "Camouflage",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MB120N",
+          "price_cents": 670,
+          "price_label": "6,70 €",
+          "stock": 15,
+          "image": "/img/materiel/37/bandes-de-boxe-2m50-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1334
+    },
+    {
+      "id": "mat-50",
+      "prestashop_id": 50,
+      "name": "Bandes de Boxe 4m - Metal Boxe",
+      "slug": "bandes-de-boxe-4m-metal-boxe",
+      "reference": "BC-MB120BW",
+      "price_cents": 759,
+      "price_label": "7,59 €",
+      "stock": 9,
+      "category": "bandes",
+      "category_label": "Bandes de boxe",
+      "category_id": 20,
+      "description_short": "Bandes de Boxe spécialement sélectionnés pour nos pratiquants chez notre partenaire Metal Boxe Protection du pouce et maintien du poignet. Longueur : 4mètres Idéal pour toutes les pratiques en loisirs ou régulières. Lavables en machine. 50 % coton / 50% nylon.",
+      "description": "Protection du pouce et maintien du poignet. Longueur 4 mètres Idéal pour toutes les pratiques en loisirs ou régulières. Lavables en machine. 50 % coton / 50% nylon.",
+      "image": "/img/materiel/50/bandes-de-boxe-4m-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/50/bandes-de-boxe-4m-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 450,
+          "prestashop_attribute_id": 450,
+          "label": "Blanc",
+          "attributes": {
+            "Couleur": "Blanc",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MB120BW",
+          "price_cents": 759,
+          "price_label": "7,59 €",
+          "stock": 9,
+          "image": "/img/materiel/50/bandes-de-boxe-4m-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 450
+    },
+    {
+      "id": "mat-65",
+      "prestashop_id": 65,
+      "name": "Bouclier de frappe kick boxing Muaythai - Metal Boxe",
+      "slug": "bouclier-de-frappe-kick-boxing-muaythai-metal-boxe",
+      "reference": "BC-MB900S",
+      "price_cents": 4690,
+      "price_label": "46,90 €",
+      "stock": 5,
+      "category": "entrainement",
+      "category_label": "Matériel d'entraînement",
+      "category_id": 25,
+      "description_short": "Bouclier de frappe droit petit modèle, de la marque Metal Boxe. Absorption et restitution des chocs idéales pour tous type de travail pieds et poings. Oeillets de décompression permettant d'évacuer l'air lors de l'impact afin de soulager les coutures. Deux œillets permettent l'accroche murale pour le travail individuel. Housse extérieure POLY PLAX, rembourrage mousse POLY OIL - PPG de mousse en 18. Enveloppe PU. Taille S. Vendu à l'unité, 1 Pao.",
+      "description": "Bouclier de frappe droit petit modèle, de la marque Metal Boxe. Absorption et restitution des chocs idéales pour tous type de travail pieds et poings. Oeillets de décompression permettant d'évacuer l'air lors de l'impact afin de soulager les coutures. Deux œillets permettent l'accroche murale pour le travail individuel. Housse extérieure POLY PLAX, rembourrage mousse POLY OIL - PPG de mousse en 18. Enveloppe PU. Taille S. Vendu à l'unité, 1 Pao.",
+      "image": "/img/materiel/65/bouclier-de-frappe-kick-boxing-muaythai-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/65/bouclier-de-frappe-kick-boxing-muaythai-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1076,
+          "prestashop_attribute_id": 1076,
+          "label": "Standard",
+          "attributes": {
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MB900S",
+          "price_cents": 4690,
+          "price_label": "46,90 €",
+          "stock": 5,
+          "image": "/img/materiel/65/bouclier-de-frappe-kick-boxing-muaythai-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1076
+    },
+    {
+      "id": "mat-49",
+      "prestashop_id": 49,
+      "name": "Casque Boxe Black Light - Metal Boxe",
+      "slug": "casque-boxe-black-light-metal-boxe",
+      "reference": "BC-MB229",
+      "price_cents": 4460,
+      "price_label": "44,60 €",
+      "stock": 8,
+      "category": "casque",
+      "category_label": "Casque",
+      "category_id": 21,
+      "description_short": "Casque d'entraînement spécialement sélectionné pour nos pratiquants chez notre partenaire Metal Boxe Casque intégral Curtex Collection Black Light Couleur Noir, Taille Senior",
+      "description": "Casque d'entraînement Casque intégral Curtex Collection Black Light Couleur Noir, Taille Senior",
+      "image": "/img/materiel/49/casque-boxe-black-light-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/49/casque-boxe-black-light-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 485,
+          "prestashop_attribute_id": 485,
+          "label": "Standard",
+          "attributes": {
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MB229",
+          "price_cents": 4460,
+          "price_label": "44,60 €",
+          "stock": 8,
+          "image": "/img/materiel/49/casque-boxe-black-light-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 485
+    },
+    {
+      "id": "mat-40",
+      "prestashop_id": 40,
+      "name": "Casque d'entraînement Boxe Adulte - Metal Boxe",
+      "slug": "casque-d-entrainement-boxe-adulte-metal-boxe",
+      "reference": "BC-MB117AN",
+      "price_cents": 2960,
+      "price_label": "29,60 €",
+      "stock": 3,
+      "category": "casque",
+      "category_label": "Casque",
+      "category_id": 21,
+      "description_short": "Casque d'entraînement spécialement sélectionné pour nos pratiquants chez notre partenaire Metal Boxe Modèle avec protège pommettes et champ de vision à 180°. Protections des tympans. Serrage dessus de tête par laçages, serrage arrière et menton par velcros. Mise en place très rapide, excellent maintien, léger et confortable. Qualité : PU - PVC. Couleur Noir, Taille Senior",
+      "description": "Modèle avec protège pommettes et champ de vision à 180°. Enveloppe PU, intérieur PVC. Rembourrage mousse POLYOIL + PPG + EVA. Protections des tympans. Serrage dessus de tête par laçages, serrage arrière et menton par velcros. Mise en place très rapide, excellent maintien, léger et confortable. Entretien facile (vaselinez régulièrement les coutures, passez à l'intérieur un chiffon légerement humide après chaque entraînement). Qualité : PU - PVC.",
+      "image": "/img/materiel/40/casque-d-entrainement-boxe-adulte-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/40/casque-d-entrainement-boxe-adulte-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 505,
+          "prestashop_attribute_id": 505,
+          "label": "Standard",
+          "attributes": {
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MB117AN",
+          "price_cents": 2960,
+          "price_label": "29,60 €",
+          "stock": 3,
+          "image": "/img/materiel/40/casque-d-entrainement-boxe-adulte-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 505
+    },
+    {
+      "id": "mat-85",
+      "prestashop_id": 85,
+      "name": "Casque Enfant d'entraînement - Metal Boxe",
+      "slug": "casque-enfant-d-entrainement-metal-boxe",
+      "reference": "BC-MB117EB-Bleu",
+      "price_cents": 2899,
+      "price_label": "28,99 €",
+      "stock": 5,
+      "category": "casque",
+      "category_label": "Casque",
+      "category_id": 21,
+      "description_short": "Casque d'entraînement pour enfants spécialement sélectionné pour nos pratiquants chez notre partenaire Metal Boxe Modèle avec protège pommettes et champ de vision à 180°. Enveloppe PU, intérieur PVC. Rembourrage mousse POLYOIL + PPG + EVA. Protections des tympans. Serrage dessus de tête par laçages, serrage arrière et menton par velcros. Mise en place très rapide, excellent maintien, léger et confortable. Entretien facile. Qualité : PU - PVC.",
+      "description": "Casque d'entraînement pour enfants spécialement sélectionné pour nos pratiquants chez notre partenaire Metal Boxe Modèle avec protège pommettes et champ de vision à 180°. Enveloppe PU, intérieur PVC. Rembourrage mousse POLYOIL + PPG + EVA. Protections des tympans. Serrage dessus de tête par laçages, serrage arrière et menton par velcros. Mise en place très rapide, excellent maintien, léger et confortable. Entretien facile (vaselinez régulièrement les coutures, passez à l'intérieur un chiffon légerement humide après chaque entraînement). Qualité : PU - PVC.",
+      "image": "/img/materiel/85/casque-enfant-d-entrainement-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/85/casque-enfant-d-entrainement-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1473,
+          "prestashop_attribute_id": 1473,
+          "label": "Junior",
+          "attributes": {
+            "Lieu retrait produits": "Toulouse St Cyprien",
+            "Taille SR, JR": "Junior"
+          },
+          "reference": "BC-MB117EB-Bleu",
+          "price_cents": 2899,
+          "price_label": "28,99 €",
+          "stock": 5,
+          "image": "/img/materiel/85/casque-enfant-d-entrainement-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1473
+    },
+    {
+      "id": "mat-55",
+      "prestashop_id": 55,
+      "name": "Corde à sauter Prima Boxe - Metal Boxe",
+      "slug": "corde-a-sauter-prima-boxe-metal-boxe",
+      "reference": "BC-AC2032N",
+      "price_cents": 390,
+      "price_label": "3,90 €",
+      "stock": 10,
+      "category": "accessoires",
+      "category_label": "Accessoires",
+      "category_id": 23,
+      "description_short": "Corde en vinyl réglable. Poignées en plastique.",
+      "description": "Corde en vinyl réglable. Poignées en plastique.",
+      "image": "/img/materiel/55/corde-a-sauter-prima-boxe-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/55/corde-a-sauter-prima-boxe-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 821,
+          "prestashop_attribute_id": 821,
+          "label": "Noir",
+          "attributes": {
+            "Couleur": "Noir",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "BC-AC2032N",
+          "price_cents": 390,
+          "price_label": "3,90 €",
+          "stock": 10,
+          "image": "/img/materiel/55/corde-a-sauter-prima-boxe-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 821
+    },
+    {
+      "id": "mat-73",
+      "prestashop_id": 73,
+      "name": "Coudières coton Bleu - Metal Boxe",
+      "slug": "coudieres-coton-bleu-metal-boxe",
+      "reference": "BC-MB230RSR-Bleu",
+      "price_cents": 1690,
+      "price_label": "16,90 €",
+      "stock": 0,
+      "category": "accessoires",
+      "category_label": "Accessoires",
+      "category_id": 23,
+      "description_short": "Coudières anatomiques pour la compétition et les entrainements. Elastique caoutchouc aux deux extrémités permettant un bon maintien. Serrage du haut par velcro élastique.",
+      "description": "Coudières anatomiques pour la compétition et les entrainements. Elastique caoutchouc aux deux extrémités permettant un bon maintien. Serrage du haut par velcro élastique.",
+      "image": "/img/materiel/73/coudieres-coton-bleu-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/73/coudieres-coton-bleu-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1307,
+          "prestashop_attribute_id": 1307,
+          "label": "Bleu — Senior",
+          "attributes": {
+            "Couleur": "Bleu",
+            "Lieu retrait produits": "Toulouse St Cyprien",
+            "Taille SR, JR": "Senior"
+          },
+          "reference": "BC-MB230RSR-Bleu",
+          "price_cents": 1690,
+          "price_label": "16,90 €",
+          "stock": 0,
+          "image": "/img/materiel/73/coudieres-coton-bleu-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1307
+    },
+    {
+      "id": "mat-74",
+      "prestashop_id": 74,
+      "name": "Coudières coton Rouge - Metal Boxe",
+      "slug": "coudieres-coton-rouge-metal-boxe",
+      "reference": "BC-MB230RSR-Rouge",
+      "price_cents": 1690,
+      "price_label": "16,90 €",
+      "stock": 0,
+      "category": "accessoires",
+      "category_label": "Accessoires",
+      "category_id": 23,
+      "description_short": "Coudières anatomiques pour la compétition et les entrainements. Elastique caoutchouc aux deux extrémités permettant un bon maintien. Serrage du haut par velcro élastique.",
+      "description": "Coudières anatomiques pour la compétition et les entrainements. Elastique caoutchouc aux deux extrémités permettant un bon maintien. Serrage du haut par velcro élastique.",
+      "image": "/img/materiel/74/coudieres-coton-rouge-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/74/coudieres-coton-rouge-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1317,
+          "prestashop_attribute_id": 1317,
+          "label": "Rouge — Senior",
+          "attributes": {
+            "Couleur": "Rouge",
+            "Lieu retrait produits": "Toulouse St Cyprien",
+            "Taille SR, JR": "Senior"
+          },
+          "reference": "BC-MB230RSR-Rouge",
+          "price_cents": 1690,
+          "price_label": "16,90 €",
+          "stock": 0,
+          "image": "/img/materiel/74/coudieres-coton-rouge-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1317
+    },
+    {
+      "id": "mat-34",
+      "prestashop_id": 34,
+      "name": "Gant compétition velcro Pro noir - Metal Boxe",
+      "slug": "gant-competition-velcro-pro-noir-metal-boxe",
+      "reference": "BC-MB222N",
+      "price_cents": 4599,
+      "price_label": "45,99 €",
+      "stock": 10,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Gants d'entraînement et de compétition spécialement sélectionnés pour nos pratiquants chez notre partenaire Metal Boxe",
+      "description": "Gants d'entraînement et compétition Spécialement sélectionné chez notre partenaire Metal Boxe Coloris très design Tuto d'aide au choix de la taille des gants de boxe :",
+      "image": "/img/materiel/34/gant-competition-velcro-pro-noir-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/34/gant-competition-velcro-pro-noir-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1721,
+          "prestashop_attribute_id": 1721,
+          "label": "12 oz",
+          "attributes": {
+            "Taille Gants": "12 oz",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "BC-MB222N",
+          "price_cents": 4599,
+          "price_label": "45,99 €",
+          "stock": 10,
+          "image": "/img/materiel/34/gant-competition-velcro-pro-noir-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1721
+    },
+    {
+      "id": "mat-109",
+      "prestashop_id": 109,
+      "name": "Gants à lacets compétition et entraînement FFB SPEED BG500 - Adidas",
+      "slug": "gants-a-lacets-competition-et-entrainement-ffb-speed-bg500-adidas",
+      "reference": "ADIS-BG500SMU-lacets",
+      "price_cents": 15999,
+      "price_label": "159,99 €",
+      "stock": 50,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Gamme FFB Adidas. Gants d'entraînements et compétitition . Serrage à lacets. Enveloppe extérieure en véritable cuir de vache et doublure en satin. Moule en mousse multicouche à mémoire de forme de la main. Couleur : Bleu",
+      "description": "Gant Speed 501 adispeed : Les gants de boxe SPEED 501 sont dotés d'une enveloppe extérieure en véritable cuir de vache, avec une doublure en satin. Le système d'attache par lacets permet un ajustement rapide et ferme sur le poignet. La finition multi-couches fusionne parfaitement avec la nouvelle mousse qui garde en mémoire la main et hautement rembourrée. Tuto d'aide au choix de la taille des gants de boxe :",
+      "image": "/img/materiel/109/gants-a-lacets-competition-et-entrainement-ffb-speed-bg500-adidas.jpg",
+      "images": [
+        "/img/materiel/109/gants-a-lacets-competition-et-entrainement-ffb-speed-bg500-adidas.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 2124,
+          "prestashop_attribute_id": 2124,
+          "label": "14 oz",
+          "attributes": {
+            "Taille Gants": "14 oz",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "ADIS-BG500SMU-lacets",
+          "price_cents": 15999,
+          "price_label": "159,99 €",
+          "stock": 50,
+          "image": "/img/materiel/109/gants-a-lacets-competition-et-entrainement-ffb-speed-bg500-adidas.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 2124
+    },
+    {
+      "id": "mat-107",
+      "prestashop_id": 107,
+      "name": "Gants à lacets compétition et entraînement FFB TILT SPD350 - Adidas",
+      "slug": "gants-a-lacets-competition-et-entrainement-ffb-tilt-spd350-adidas",
+      "reference": "ADIS-SPD350VTGSMU-lacets",
+      "price_cents": 9999,
+      "price_label": "99,99 €",
+      "stock": 50,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Gamme FFB Adidas. Gants d'entraînements et compétitition. Serrage à lacets. Matériau végétalien DESSERTO® CACTUS Moule en mousse multicouche à mémoire de forme et latex. Système d'inclinaison innovant (Brevet déposé dans 33 pays) Permet un alignement correct des articulations avec le radius et le poignet. Couleur : Bleu",
+      "description": "Serrage à lacets. Système d'inclinaison innovant (brevet déposé dans 33 pays) Permet un alignement correct des articulations avec le radius et le poignet. Optimise le soutien Empêche les flexions indésirables MATÉRIAU VÉGÉTALIEN DESSERTO® CACTUS Moule en MOUSSE MULTICOUCHE : MOUSSE À MÉMOIRE de forme et LATEX. Tuto d'aide au choix de la taille des gants de boxe :",
+      "image": "/img/materiel/107/gants-a-lacets-competition-et-entrainement-ffb-tilt-spd350-adidas.jpg",
+      "images": [
+        "/img/materiel/107/gants-a-lacets-competition-et-entrainement-ffb-tilt-spd350-adidas.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 2084,
+          "prestashop_attribute_id": 2084,
+          "label": "14 oz",
+          "attributes": {
+            "Taille Gants": "14 oz",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "ADIS-SPD350VTGSMU-lacets",
+          "price_cents": 9999,
+          "price_label": "99,99 €",
+          "stock": 50,
+          "image": "/img/materiel/107/gants-a-lacets-competition-et-entrainement-ffb-tilt-spd350-adidas.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 2084
+    },
+    {
+      "id": "mat-58",
+      "prestashop_id": 58,
+      "name": "Gants Club Line compétition - Metal Boxe",
+      "slug": "gants-club-line-competition-metal-boxe",
+      "reference": "BC-MBGAN241N",
+      "price_cents": 3990,
+      "price_label": "39,90 €",
+      "stock": 3,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Spécialement sélectionné chez notre partenaire Metal Boxe pour nos pratiquants. Un gant conçu pour la compétition et les entraînements de haut niveau. Très bon rapport qualité/prix.",
+      "description": "Spécialement sélectionné chez notre partenaire Metal Boxe pour nos pratiquants. Un gant conçu pour la compétition et les entraînements de haut niveau. Très bon rapport qualité/prix. Tuto d'aide au choix de la taille des gants de boxe :",
+      "image": "/img/materiel/58/gants-club-line-competition-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/58/gants-club-line-competition-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 871,
+          "prestashop_attribute_id": 871,
+          "label": "12 oz",
+          "attributes": {
+            "Taille Gants": "12 oz",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MBGAN241N",
+          "price_cents": 3990,
+          "price_label": "39,90 €",
+          "stock": 3,
+          "image": "/img/materiel/58/gants-club-line-competition-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 871
+    },
+    {
+      "id": "mat-43",
+      "prestashop_id": 43,
+      "name": "Gants Cuir Sparring - Metal Boxe",
+      "slug": "gants-cuir-sparring-metal-boxe",
+      "reference": "BC-MB011S",
+      "price_cents": 7960,
+      "price_label": "79,60 €",
+      "stock": 5,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Gants de sparring tout cuir. Spécialement sélectionné chez notre partenaire Metal Boxe Mousse \"ERGO 90\" : La main fermée fait un angle de 90°, la mousse injectée épouse à la perfection cet angle. Un des meilleurs gants au monde. Mousse injectée EXCLUSIVE !",
+      "description": "Gants d'entraînement Gants de sparring tout cuir. Spécialement sélectionné chez notre partenaire Metal Boxe Mousse \"ERGO 90\" : La main fermée fait un angle de 90°, la mousse injectée épouse à la perfection cet angle. Un des meilleurs gants au monde. Mousse injectée EXCLUSIVE ! Tuto d'aide au choix de la taille des gants de boxe :",
+      "image": "/img/materiel/43/gants-cuir-sparring-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/43/gants-cuir-sparring-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 308,
+          "prestashop_attribute_id": 308,
+          "label": "12 oz",
+          "attributes": {
+            "Taille Gants": "12 oz",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MB011S",
+          "price_cents": 7960,
+          "price_label": "79,60 €",
+          "stock": 5,
+          "image": "/img/materiel/43/gants-cuir-sparring-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 308
+    },
+    {
+      "id": "mat-83",
+      "prestashop_id": 83,
+      "name": "Gants d'entraînement Starter Noir et Rouge - Metal Boxe",
+      "slug": "gants-d-entrainement-starter-noir-et-rouge-metal-boxe",
+      "reference": "BC-MBGAN110NR",
+      "price_cents": 2499,
+      "price_label": "24,99 €",
+      "stock": 7,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Gants d'entraînement Assure bonne protection et ergonomie d'un gant haut de gamme au service de la boxe éducative. Serrage aux poignets par velcro. Disponible à partir de la taille 6 oz (enfants) Attention : Ne pas utiliser en combat.",
+      "description": "Gants d'entraînement Assure bonne protection et ergonomie d'un gant haut de gamme au service de la boxe éducative. Serrage aux poignets par velcro. Attention : Ne pas utiliser en combat.",
+      "image": "/img/materiel/83/gants-d-entrainement-starter-noir-et-rouge-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/83/gants-d-entrainement-starter-noir-et-rouge-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1833,
+          "prestashop_attribute_id": 1833,
+          "label": "12 oz",
+          "attributes": {
+            "Taille Gants": "12 oz",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "BC-MBGAN110NR",
+          "price_cents": 2499,
+          "price_label": "24,99 €",
+          "stock": 7,
+          "image": "/img/materiel/83/gants-d-entrainement-starter-noir-et-rouge-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1833
+    },
+    {
+      "id": "mat-105",
+      "prestashop_id": 105,
+      "name": "Gants de boxe FFB entraînement Fit Boxing TILT SPD150 - Adidas",
+      "slug": "gants-de-boxe-ffb-entrainement-fit-boxing-tilt-spd150-adidas",
+      "reference": "ADIS-SPD150TGSMU",
+      "price_cents": 3999,
+      "price_label": "39,99 €",
+      "stock": 50,
+      "category": "destockage",
+      "category_label": "Déstockage",
+      "category_id": 26,
+      "description_short": "Gamme FFB Adidas. Gants d'entraînement. TECHNOLOGIE AEROREADY pour une ventilation de la main. Moule en mousse injectée, Serrage velcro. Système d'inclinaison innovant (Brevet déposé dans 33 pays) Permet un alignement correct des articulations avec le radius et le poignet. Logo FFBOXE (Fédération Française de Boxe) sur le poignet. Couleur : Noir",
+      "description": "Système d'inclinaison innovant (Brevet déposé dans 33 pays) Permet un alignement correct des articulations avec le radius et le poignet. Optimise le soutien Empêche les flexions indésirables CARACTÉRISTIQUES : TECHNOLOGIE AEROREADY pour une ventilation de la main Moule en mousse injectée Serrage velcro Tuto d'aide au choix de la taille des gants de boxe :",
+      "image": "/img/materiel/105/gants-de-boxe-ffb-entrainement-fit-boxing-tilt-spd150-adidas.jpg",
+      "images": [
+        "/img/materiel/105/gants-de-boxe-ffb-entrainement-fit-boxing-tilt-spd150-adidas.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 2044,
+          "prestashop_attribute_id": 2044,
+          "label": "12 oz",
+          "attributes": {
+            "Taille Gants": "12 oz",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "ADIS-SPD150TGSMU",
+          "price_cents": 3999,
+          "price_label": "39,99 €",
+          "stock": 50,
+          "image": "/img/materiel/105/gants-de-boxe-ffb-entrainement-fit-boxing-tilt-spd150-adidas.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 2044
+    },
+    {
+      "id": "mat-110",
+      "prestashop_id": 110,
+      "name": "Gants de boxe FFB entraînement intensif SPEED BG501 - Adidas",
+      "slug": "gants-de-boxe-ffb-entrainement-intensif-speed-bg501-adidas",
+      "reference": "ADIS-BG501SMU-velcro",
+      "price_cents": 15999,
+      "price_label": "159,99 €",
+      "stock": 50,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Gamme FFB Adidas. Gants d'entraînements intensifs. Serrage velcro. Enveloppe extérieure en véritable cuir de vache et doublure en satin. Moule en mousse multicouche à mémoire de forme de la main. Logo FFBOXE (Fédération Française de Boxe) sur le pouce. Couleur : Bleu",
+      "description": "Gant Speed 501 adispeed : Les gants de boxe SPEED 501 sont dotés d'une enveloppe extérieure en véritable cuir de vache, avec une doublure en satin. Le système d'attache par scratch (velcro) rigide et bande élastique permet un ajustement rapide et ferme sur le poignet. La finition multi-couches fusionne parfaitement avec la nouvelle mousse qui garde en mémoire la main et hautement rembourrée. Tuto d'aide au choix de la taille des gants de boxe :",
+      "image": "/img/materiel/110/gants-de-boxe-ffb-entrainement-intensif-speed-bg501-adidas.jpg",
+      "images": [
+        "/img/materiel/110/gants-de-boxe-ffb-entrainement-intensif-speed-bg501-adidas.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 2144,
+          "prestashop_attribute_id": 2144,
+          "label": "14 oz",
+          "attributes": {
+            "Taille Gants": "14 oz",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "ADIS-BG501SMU-velcro",
+          "price_cents": 15999,
+          "price_label": "159,99 €",
+          "stock": 50,
+          "image": "/img/materiel/110/gants-de-boxe-ffb-entrainement-intensif-speed-bg501-adidas.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 2144
+    },
+    {
+      "id": "mat-106",
+      "prestashop_id": 106,
+      "name": "Gants de boxe FFB entraînement intensif TILT SPD350 - Adidas",
+      "slug": "gants-de-boxe-ffb-entrainement-intensif-tilt-spd350-adidas",
+      "reference": "ADIS-SPD350VTGSMU-velcro",
+      "price_cents": 9999,
+      "price_label": "99,99 €",
+      "stock": 50,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Gamme FFB Adidas. Gants d'entraînements intensifs. Matériau végétalien DESSERTO® CACTUS Moule en mousse multicouche à mémoire de forme et latex. Serrage velcro. Système d'inclinaison innovant (Brevet déposé dans 33 pays) Permet un alignement correct des articulations avec le radius et le poignet. Logo FFBOXE (Fédération Française de Boxe) sur le poignet. Couleur : Bleu",
+      "description": "Système d'inclinaison innovant (brevet déposé dans 33 pays) Permet un alignement correct des articulations avec le radius et le poignet. Optimise le soutien Empêche les flexions indésirables MATÉRIAU VÉGÉTALIEN DESSERTO® CACTUS Moule en MOUSSE MULTICOUCHE : MOUSSE À MÉMOIRE de forme et LATEX. Serrage velcro Tuto d'aide au choix de la taille des gants de boxe :",
+      "image": "/img/materiel/106/gants-de-boxe-ffb-entrainement-intensif-tilt-spd350-adidas.jpg",
+      "images": [
+        "/img/materiel/106/gants-de-boxe-ffb-entrainement-intensif-tilt-spd350-adidas.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 2049,
+          "prestashop_attribute_id": 2049,
+          "label": "14 oz",
+          "attributes": {
+            "Taille Gants": "14 oz",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "ADIS-SPD350VTGSMU-velcro",
+          "price_cents": 9999,
+          "price_label": "99,99 €",
+          "stock": 50,
+          "image": "/img/materiel/106/gants-de-boxe-ffb-entrainement-intensif-tilt-spd350-adidas.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 2049
+    },
+    {
+      "id": "mat-104",
+      "prestashop_id": 104,
+      "name": "Gants de boxe FFB entraînement SPEED50 Bleu - Adidas",
+      "slug": "gants-de-boxe-ffb-entrainement-speed50-bleu-adidas",
+      "reference": "ADISBG50-SMU-bleu",
+      "price_cents": 2999,
+      "price_label": "29,99 €",
+      "stock": 50,
+      "category": "destockage",
+      "category_label": "Déstockage",
+      "category_id": 26,
+      "description_short": "Gamme FFB Adidas. Gants d'entraînement. Enveloppe extérieure en PU durable et résistant. Nouvelle mousse IMF préformée haute compression. Système d’attache par scratch rigide et bande élastique. Conçu pour optimiser la rapidité et l’efficacité des mouvements du boxeur. Logo FFBOXE (Fédération Française de Boxe) sur le poignet. Couleur : Bleu",
+      "description": "Les gants de boxe ADIDAS FFB SPEED50 sont dotés d’une enveloppe extérieure en PU durable et résistant. La nouvelle mousse IMF préformée haute compression garantit un niveau homogène d’absorption des chocs. Sa conception est parfaitement adaptée à l’entraînement. Le système d’attache par scratch rigide et bande élastique permet un ajustement rapide et ferme sur le poignet. Le logo adidas imprimé et les trois bandes confèrent un design unique à ces gants. Leur forme a été conçue pour optimiser la rapidité et l’efficacité des mouvements du boxeur. Tuto d'aide au choix de la taille des gants de boxe :",
+      "image": "/img/materiel/104/gants-de-boxe-ffb-entrainement-speed50-bleu-adidas.jpg",
+      "images": [
+        "/img/materiel/104/gants-de-boxe-ffb-entrainement-speed50-bleu-adidas.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 2019,
+          "prestashop_attribute_id": 2019,
+          "label": "12 oz",
+          "attributes": {
+            "Taille Gants": "12 oz",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "ADISBG50-SMU-bleu",
+          "price_cents": 2999,
+          "price_label": "29,99 €",
+          "stock": 50,
+          "image": "/img/materiel/104/gants-de-boxe-ffb-entrainement-speed50-bleu-adidas.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 2019
+    },
+    {
+      "id": "mat-103",
+      "prestashop_id": 103,
+      "name": "Gants de boxe FFB entraînement SPEED50 Rouge - Adidas",
+      "slug": "gants-de-boxe-ffb-entrainement-speed50-rouge-adidas",
+      "reference": "ADISBG50-SMU-rouge",
+      "price_cents": 2999,
+      "price_label": "29,99 €",
+      "stock": 49,
+      "category": "destockage",
+      "category_label": "Déstockage",
+      "category_id": 26,
+      "description_short": "Gamme FFB Adidas. Gants d'entraînement. Enveloppe extérieure en PU durable et résistant. Nouvelle mousse IMF préformée haute compression. Système d’attache par scratch rigide et bande élastique. Conçu pour optimiser la rapidité et l’efficacité des mouvements du boxeur. Logo FFBOXE (Fédération Française de Boxe) sur le poignet. Couleur : Rouge",
+      "description": "Les gants de boxe ADIDAS FFB SPEED50 sont dotés d’une enveloppe extérieure en PU durable et résistant. La nouvelle mousse IMF préformée haute compression garantit un niveau homogène d’absorption des chocs. Sa conception est parfaitement adaptée à l’entraînement. Le système d’attache par scratch rigide et bande élastique permet un ajustement rapide et ferme sur le poignet. Le logo adidas imprimé et les trois bandes confèrent un design unique à ces gants. Leur forme a été conçue pour optimiser la rapidité et l’efficacité des mouvements du boxeur. Tuto d'aide au choix de la taille des gants de boxe :",
+      "image": "/img/materiel/103/gants-de-boxe-ffb-entrainement-speed50-rouge-adidas.jpg",
+      "images": [
+        "/img/materiel/103/gants-de-boxe-ffb-entrainement-speed50-rouge-adidas.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1989,
+          "prestashop_attribute_id": 1989,
+          "label": "12 oz",
+          "attributes": {
+            "Taille Gants": "12 oz",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "ADISBG50-SMU-rouge",
+          "price_cents": 2999,
+          "price_label": "29,99 €",
+          "stock": 49,
+          "image": "/img/materiel/103/gants-de-boxe-ffb-entrainement-speed50-rouge-adidas.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1989
+    },
+    {
+      "id": "mat-35",
+      "prestashop_id": 35,
+      "name": "Gants en cuir Héraclès - Metal Boxe",
+      "slug": "gants-en-cuir-heracles-metal-boxe",
+      "reference": "BC-MB232",
+      "price_cents": 4299,
+      "price_label": "42,99 €",
+      "stock": 9,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Gants d'entraînement et de compétition spécialement sélectionnés pour nos pratiquants chez notre partenaire Metal Boxe Cuir Large Velcro Structure en TRI MOUSSE Système d'aération WINDTEC",
+      "description": "Une gamme qui porte le nom d’un HEROS se devait d’être belle, sobre, dégageant une force naturelle. Tout en cuir elle vous donnera l’envie de donner le meilleur de vous-même. Gant d’entrainement et compétition en CUIR NOIR épousant parfaitement une structure en TRI MOUSSE. D’un très grand confort, ce gant d’un rapport qualité / prix exceptionnel est le gant idéal de tous les passionnés. Un large velcro optimise le maintien de votre poignet et notre système Windtec lui assure une aération indispensable pour sa longévité et un séchage beaucoup plus rapide. Gants d'entraînement et compétition Spécialement sélectionné chez notre partenaire Metal Boxe Cuir Structure en Tri Mousse Système WINDTEC Tuto d'aide au choix de la taille des gants de boxe :",
+      "image": "/img/materiel/35/gants-en-cuir-heracles-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/35/gants-en-cuir-heracles-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1742,
+          "prestashop_attribute_id": 1742,
+          "label": "12 oz",
+          "attributes": {
+            "Taille Gants": "12 oz",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "BC-MB232",
+          "price_cents": 4299,
+          "price_label": "42,99 €",
+          "stock": 9,
+          "image": "/img/materiel/35/gants-en-cuir-heracles-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1742
+    },
+    {
+      "id": "mat-41",
+      "prestashop_id": 41,
+      "name": "Gants entraînement et compétition EV1 Noir Gold - Metal Boxe",
+      "slug": "gants-entrainement-et-competition-ev1-noir-gold-metal-boxe",
+      "reference": "BC-MBGAN700NG",
+      "price_cents": 4800,
+      "price_label": "48,00 €",
+      "stock": 5,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Look sobre et moderne. Pour entraînement et compétition Très bon rapport qualité / prix. Mousse injectée PU mat. Couleur Noir et Or",
+      "description": "Gants d'entraînement et de compétition Spécialement sélectionné chez notre partenaire Metal Boxe Très bon rapport qualité / prix. Mousse injectée PU mat. Tuto d'aide au choix de la taille des gants de boxe :",
+      "image": "/img/materiel/41/gants-entrainement-et-competition-ev1-noir-gold-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/41/gants-entrainement-et-competition-ev1-noir-gold-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1765,
+          "prestashop_attribute_id": 1765,
+          "label": "12 oz",
+          "attributes": {
+            "Taille Gants": "12 oz",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "BC-MBGAN700NG",
+          "price_cents": 4800,
+          "price_label": "48,00 €",
+          "stock": 5,
+          "image": "/img/materiel/41/gants-entrainement-et-competition-ev1-noir-gold-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1765
+    },
+    {
+      "id": "mat-59",
+      "prestashop_id": 59,
+      "name": "Gants initiation Rose - Metal Boxe",
+      "slug": "gants-initiation-rose-metal-boxe",
+      "reference": "BC-PB480P-ROSE",
+      "price_cents": 2290,
+      "price_label": "22,90 €",
+      "stock": 16,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Gants d'initiation en mousse préformée. Bonne protection et ergonomie équivalents à des gants haut de gamme, au service de la boxe éducative. Spécialement adapté pour des frappes légères. Serrage aux poignets par velcro. Attention : Ne pas utiliser en combat, ces gants sont conçus pour l’initiation. Couleur Rose.",
+      "description": "Gants d'initiation en mousse préformée. Bonne protection et ergonomie équivalents à des gants haut de gamme, au service de la boxe éducative. Spécialement adapté pour des frappes légères. Serrage aux poignets par velcro. Attention : Ne pas utiliser en combat, ces gants sont conçus pour l’initiation. Couleur Rose.",
+      "image": "/img/materiel/59/gants-initiation-rose-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/59/gants-initiation-rose-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 938,
+          "prestashop_attribute_id": 938,
+          "label": "10 oz — Rose",
+          "attributes": {
+            "Taille Gants": "10 oz",
+            "Couleur": "Rose",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-PB480P-ROSE",
+          "price_cents": 2290,
+          "price_label": "22,90 €",
+          "stock": 8,
+          "image": "/img/materiel/59/gants-initiation-rose-metal-boxe.jpg"
+        },
+        {
+          "id": 937,
+          "prestashop_attribute_id": 937,
+          "label": "8 oz — Rose",
+          "attributes": {
+            "Taille Gants": "8 oz",
+            "Couleur": "Rose",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-PB480P-ROSE",
+          "price_cents": 2290,
+          "price_label": "22,90 €",
+          "stock": 8,
+          "image": "/img/materiel/59/gants-initiation-rose-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1
+    },
+    {
+      "id": "mat-60",
+      "prestashop_id": 60,
+      "name": "Gants MMA d'entraînement avec pouce - Metal Boxe",
+      "slug": "gants-mma-d-entrainement-avec-pouce-metal-boxe",
+      "reference": "BC-MBGAN577N",
+      "price_cents": 4099,
+      "price_label": "40,99 €",
+      "stock": 6,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Pour entraînement et sparring en MMA Look Black Light Léger, ergonomique, avec protection du pouce Mousse injectée permettant tout type d'entraînement Disponible de la taille XS à XL",
+      "description": "Idéal pour s'entrainer en sparring sans se blesser grâce au super amorti de sa mousse injectée, lui donnant une sensation proche d'un gant de boxe. Léger, ergonomique avec protection du pouce, ce gant est indispensable pour tout entraînement de MMA. Le look BLACK LIGHT et sa fabrication soignée font de ce gant une valeur sûre.",
+      "image": "/img/materiel/60/gants-mma-d-entrainement-avec-pouce-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/60/gants-mma-d-entrainement-avec-pouce-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1887,
+          "prestashop_attribute_id": 1887,
+          "label": "M",
+          "attributes": {
+            "Taille M, L , etc...": "M",
+            "Lieu retrait produits": "Ramonville St-Agne"
+          },
+          "reference": "BC-MBGAN577N",
+          "price_cents": 4099,
+          "price_label": "40,99 €",
+          "stock": 6,
+          "image": "/img/materiel/60/gants-mma-d-entrainement-avec-pouce-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1887
+    },
+    {
+      "id": "mat-68",
+      "prestashop_id": 68,
+      "name": "Gants MMA Glorious - Metal Boxe",
+      "slug": "gants-mma-glorious-metal-boxe",
+      "reference": "BC-MB536N",
+      "price_cents": 3490,
+      "price_label": "34,90 €",
+      "stock": 4,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Gants MMA GLORIOUS de la marque Metal Boxe. Très proche de la main, une paume entièrement ouverte, sans pouce, laisse une grande mobilité pour le travail au sol. Parfait pour entraînements extrêmes. Excellent rapport qualité/prix. Offre un super confort.",
+      "description": "Gants MMA GLORIOUS de la marque Metal Boxe. Très proche de la main, une paume entièrement ouverte, sans pouce, laisse une grande mobilité pour le travail au sol. Parfait pour entraînements extrêmes. Excellent rapport qualité/prix. Offre un super confort.",
+      "image": "/img/materiel/68/gants-mma-glorious-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/68/gants-mma-glorious-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1148,
+          "prestashop_attribute_id": 1148,
+          "label": "L",
+          "attributes": {
+            "Taille M, L , etc...": "L",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MB536N",
+          "price_cents": 3490,
+          "price_label": "34,90 €",
+          "stock": 4,
+          "image": "/img/materiel/68/gants-mma-glorious-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1148
+    },
+    {
+      "id": "mat-66",
+      "prestashop_id": 66,
+      "name": "Gants MMA Noir - Metal Boxe",
+      "slug": "gants-mma-noir-metal-boxe",
+      "reference": "BC-MB534NM",
+      "price_cents": 3990,
+      "price_label": "39,90 €",
+      "stock": 0,
+      "category": "gants",
+      "category_label": "Gants de boxe ou MMA",
+      "category_id": 17,
+      "description_short": "Gant MMA \"INTERCEPTOR\" de la marque Metal Boxe. Reconnu comme ce qui se fait de mieux dans le monde exigeant du MMA et de la pratique des arts martiaux mixtes. Issu de la gamme \"MILITARY\" de Metal Boxe. Mousse injectée. Idéal pour le combat, parfait pour l’entraînement. Excellent rapport qualité/prix.",
+      "description": "Gant MMA \"INTERCEPTOR\" de la marque Metal Boxe. Reconnu comme ce qui se fait de mieux dans le monde exigeant du MMA et de la pratique des arts martiaux mixtes. Issu de la gamme \"MILITARY\" de Metal Boxe. Mousse injectée. Idéal pour le combat, parfait pour l’entraînement. Excellent rapport qualité/prix.",
+      "image": "/img/materiel/66/gants-mma-noir-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/66/gants-mma-noir-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1088,
+          "prestashop_attribute_id": 1088,
+          "label": "M",
+          "attributes": {
+            "Taille M, L , etc...": "M",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MB534NM",
+          "price_cents": 3990,
+          "price_label": "39,90 €",
+          "stock": 0,
+          "image": "/img/materiel/66/gants-mma-noir-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1088
+    },
+    {
+      "id": "mat-64",
+      "prestashop_id": 64,
+      "name": "PAO courbé kick boxing Muaythai - Metal Boxe",
+      "slug": "pao-courbe-kick-boxing-muaythai-metal-boxe",
+      "reference": "BC-MB446R",
+      "price_cents": 6390,
+      "price_label": "63,90 €",
+      "stock": 10,
+      "category": "entrainement",
+      "category_label": "Matériel d'entraînement",
+      "category_id": 25,
+      "description_short": "PAO courbé à prise ergonomique de la marque Metal Boxe. Parfait pour tous les entraineurs et pratiquants de boxes pieds-poings. Densité de la mousse à grande capacité d'absorption et excellente sensation à l'impact. Couleur Noir et Rouge. Taille M. Vendu à l'unité, 1 Pao.",
+      "description": "PAO courbé à prise ergonomique. Parfait pour tous les entraineurs et pratiquants de boxes pieds-poings. Densité de la mousse à grande capacité d'absorption et excellente sensation à l'impact. Couleur Noir et Rouge. Taille M. Vendu à l'unité, 1 Pao.",
+      "image": "/img/materiel/64/pao-courbe-kick-boxing-muaythai-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/64/pao-courbe-kick-boxing-muaythai-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1071,
+          "prestashop_attribute_id": 1071,
+          "label": "Standard",
+          "attributes": {
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MB446R",
+          "price_cents": 6390,
+          "price_label": "63,90 €",
+          "stock": 10,
+          "image": "/img/materiel/64/pao-courbe-kick-boxing-muaythai-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1071
+    },
+    {
+      "id": "mat-63",
+      "prestashop_id": 63,
+      "name": "PAO Kick Boxing Muaythai M - Metal Boxe",
+      "slug": "pao-kick-boxing-muaythai-m-metal-boxe",
+      "reference": "BC-MB172M",
+      "price_cents": 4490,
+      "price_label": "44,90 €",
+      "stock": 10,
+      "category": "entrainement",
+      "category_label": "Matériel d'entraînement",
+      "category_id": 25,
+      "description_short": "PAO pour le travail des frappes à haute intensité pieds, poings, coudes, genoux. Rembourrage de haute qualité pour résister dans le temps. Très bon rapport Poids/Absorption des chocs. Taille M",
+      "description": "PAO pour le travail des frappes à haute intensité pieds, poings, coudes, genoux. Rembourrage de haute qualité pour résister dans le temps. Très bon rapport Poids/Absorption des chocs. Taille M",
+      "image": "/img/materiel/63/pao-kick-boxing-muaythai-m-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/63/pao-kick-boxing-muaythai-m-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1066,
+          "prestashop_attribute_id": 1066,
+          "label": "Standard",
+          "attributes": {
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MB172M",
+          "price_cents": 4490,
+          "price_label": "44,90 €",
+          "stock": 10,
+          "image": "/img/materiel/63/pao-kick-boxing-muaythai-m-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1066
+    },
+    {
+      "id": "mat-61",
+      "prestashop_id": 61,
+      "name": "Pattes d'Ours courbées - Metal Boxe",
+      "slug": "pattes-d-ours-courbees-metal-boxe",
+      "reference": "BC-FR2854",
+      "price_cents": 3990,
+      "price_label": "39,90 €",
+      "stock": 0,
+      "category": "entrainement",
+      "category_label": "Matériel d'entraînement",
+      "category_id": 25,
+      "description_short": "Conçues pour le travail avec les poings. Incurvées et compactes. Permet un travail de rapidité et d'explosivité. Protection des doigts particulièrement soignée. La main est parfaitement calée grâce à un rembourrage type boule venant se caler sur la paume. Attache par velcro. Enveloppe PU. Excellent rapport qualité/prix.",
+      "description": "Conçues pour le travail avec les poings. Incurvées et compactes. Permet un travail de rapidité et d'explosivité. Protection des doigts particulièrement soignée. La main est parfaitement calée grâce à un rembourrage type boule venant se caler sur la paume. Attache par velcro. Enveloppe PU. Excellent rapport qualité/prix.",
+      "image": "/img/materiel/61/pattes-d-ours-courbees-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/61/pattes-d-ours-courbees-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1047,
+          "prestashop_attribute_id": 1047,
+          "label": "Standard",
+          "attributes": {
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-FR2854",
+          "price_cents": 3990,
+          "price_label": "39,90 €",
+          "stock": 0,
+          "image": "/img/materiel/61/pattes-d-ours-courbees-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1047
+    },
+    {
+      "id": "mat-62",
+      "prestashop_id": 62,
+      "name": "Pattes d'Ours courbées Kick Boxing - Metal Boxe",
+      "slug": "pattes-d-ours-courbees-kick-boxing-metal-boxe",
+      "reference": "BC-MB216M",
+      "price_cents": 5790,
+      "price_label": "57,90 €",
+      "stock": 10,
+      "category": "entrainement",
+      "category_label": "Matériel d'entraînement",
+      "category_id": 25,
+      "description_short": "Conçue pour le travail en boxes pieds-poings. Sa longueur permet de couvrir l'avant-bras et donc de le protéger des coups de pieds. Enveloppe PU Curtex et Cuir. Rembourrage haute absorption adapté à tous les chocs. Produit vendu par paire, soit 2 pattes d'ours : 1 pour chaque main :) Taille M",
+      "description": "Conçue pour le travail en boxes pieds-poings. Sa longueur permet de couvrir l'avant-bras et donc de le protéger des coups de pieds. Enveloppe PU Curtex et Cuir. Rembourrage haute absorption adapté à tous les chocs. Produit vendu par paire, soit 2 pattes d'ours : 1 pour chaque main :) Taille M",
+      "image": "/img/materiel/62/pattes-d-ours-courbees-kick-boxing-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/62/pattes-d-ours-courbees-kick-boxing-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1057,
+          "prestashop_attribute_id": 1057,
+          "label": "Standard",
+          "attributes": {
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MB216M",
+          "price_cents": 5790,
+          "price_label": "57,90 €",
+          "stock": 10,
+          "image": "/img/materiel/62/pattes-d-ours-courbees-kick-boxing-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1057
+    },
+    {
+      "id": "mat-56",
+      "prestashop_id": 56,
+      "name": "Protège Dents Gel - Metal Boxe",
+      "slug": "protege-dents-gel-metal-boxe",
+      "reference": "BC-MB459-MB459JRW-Bleu",
+      "price_cents": 990,
+      "price_label": "9,90 €",
+      "stock": 22,
+      "category": "protege-dents",
+      "category_label": "Protège dents",
+      "category_id": 24,
+      "description_short": "Protège-dents thermoformable. Très bon rapport qualité/prix. Bonne protection et confort buccal optimal. Taille Junior ou Senior",
+      "description": "Protège-dents thermoformable. Très bon rapport qualité/prix. Bonne protection et confort buccal optimal. Taille Junior ou Senior",
+      "image": "/img/materiel/56/protege-dents-gel-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/56/protege-dents-gel-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1498,
+          "prestashop_attribute_id": 1498,
+          "label": "Blanc — Junior",
+          "attributes": {
+            "Couleur": "Blanc",
+            "Lieu retrait produits": "Toulouse St Cyprien",
+            "Taille SR, JR": "Junior"
+          },
+          "reference": "BC-MB459-MB459JRW-Bleu",
+          "price_cents": 990,
+          "price_label": "9,90 €",
+          "stock": 8,
+          "image": "/img/materiel/56/protege-dents-gel-metal-boxe.jpg"
+        },
+        {
+          "id": 1499,
+          "prestashop_attribute_id": 1499,
+          "label": "Noir — Junior",
+          "attributes": {
+            "Couleur": "Noir",
+            "Lieu retrait produits": "Toulouse St Cyprien",
+            "Taille SR, JR": "Junior"
+          },
+          "reference": "BC-MB459-MB459JRW-Bleu",
+          "price_cents": 990,
+          "price_label": "9,90 €",
+          "stock": 10,
+          "image": "/img/materiel/56/protege-dents-gel-metal-boxe.jpg"
+        },
+        {
+          "id": 1501,
+          "prestashop_attribute_id": 1501,
+          "label": "Noir — Senior",
+          "attributes": {
+            "Couleur": "Noir",
+            "Lieu retrait produits": "Toulouse St Cyprien",
+            "Taille SR, JR": "Senior"
+          },
+          "reference": "BC-MB459-MB459JRW-Bleu",
+          "price_cents": 990,
+          "price_label": "9,90 €",
+          "stock": 4,
+          "image": "/img/materiel/56/protege-dents-gel-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1
+    },
+    {
+      "id": "mat-45",
+      "prestashop_id": 45,
+      "name": "Protège tibias-pieds Blade - Metal Boxe",
+      "slug": "protege-tibias-pieds-blade-metal-boxe",
+      "reference": "BC-MBPRO530N",
+      "price_cents": 4990,
+      "price_label": "49,90 €",
+      "stock": 0,
+      "category": "protege-tibias",
+      "category_label": "Protège tibias-pieds",
+      "category_id": 18,
+      "description_short": "Protège tibias-pieds d'entraînement spécialement sélectionnés pour nos pratiquants chez notre partenaire Metal Boxe Protection optimale et un look moderne Pour entrainements et séances de sparring Collection Blade Couleur Noir/Gris",
+      "description": "Protège tibias-pieds kick boxing Protection optimale et un look moderne Pour entrainements et séances de sparring Collection Blade Couleur Noir/Gris",
+      "image": "/img/materiel/45/protege-tibias-pieds-blade-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/45/protege-tibias-pieds-blade-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 533,
+          "prestashop_attribute_id": 533,
+          "label": "L",
+          "attributes": {
+            "Taille M, L , etc...": "L",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MBPRO530N",
+          "price_cents": 4990,
+          "price_label": "49,90 €",
+          "stock": 0,
+          "image": "/img/materiel/45/protege-tibias-pieds-blade-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 533
+    },
+    {
+      "id": "mat-39",
+      "prestashop_id": 39,
+      "name": "Protège tibias-pieds Coton élastique - Metal Boxe",
+      "slug": "protege-tibias-pieds-coton-elastique-metal-boxe",
+      "reference": "BC-MB153",
+      "price_cents": 1590,
+      "price_label": "15,90 €",
+      "stock": 3,
+      "category": "destockage",
+      "category_label": "Déstockage",
+      "category_id": 26,
+      "description_short": "Protège tibias-pieds d'entraînement spécialement sélectionnés pour nos pratiquants chez notre partenaire Metal Boxe Protection en mousse EVA insérée dans une chaussette en coton élastique. Les tibias, les cous-de-pied sont parfaitement protégés. Velcro de serrage sur le haut du protège tibia. Pour toutes les compétitions ou entraînements.",
+      "description": "Protection en mousse EVA insérée dans une chaussette en coton élastique. Les tibias, les cous-de-pied sont parfaitement protégés. Velcro de serrage sur le haut du protège tibia qui évite la rotation de celui-ci lors des mouvements. Pour toutes les compétitions ou entraînements.",
+      "image": "/img/materiel/39/protege-tibias-pieds-coton-elastique-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/39/protege-tibias-pieds-coton-elastique-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1028,
+          "prestashop_attribute_id": 1028,
+          "label": "M",
+          "attributes": {
+            "Taille M, L , etc...": "M",
+            "Lieu retrait produits": "Balma-Gramont"
+          },
+          "reference": "BC-MB153",
+          "price_cents": 1590,
+          "price_label": "15,90 €",
+          "stock": 3,
+          "image": "/img/materiel/39/protege-tibias-pieds-coton-elastique-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1028
+    },
+    {
+      "id": "mat-86",
+      "prestashop_id": 86,
+      "name": "Protège tibias-pieds Enfant - Metal Boxe",
+      "slug": "protege-tibias-pieds-enfant-metal-boxe",
+      "reference": "BC-MBPRO520NXXS",
+      "price_cents": 3990,
+      "price_label": "39,90 €",
+      "stock": 6,
+      "category": "protege-tibias",
+      "category_label": "Protège tibias-pieds",
+      "category_id": 18,
+      "description_short": "Protection tibia et pied haut-de-gamme. Vos enfants seront protégés de façon optimale. Excellent rapport qualité/prix. Collection Mini Black. Couleur Noir/Gris.",
+      "description": "Protection tibia et pied haut-de-gamme. Vos enfants seront protégés de façon optimale. Excellent rapport qualité/prix. Collection Mini Black. Couleur Noir/Gris.",
+      "image": "/img/materiel/86/protege-tibias-pieds-enfant-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/86/protege-tibias-pieds-enfant-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1493,
+          "prestashop_attribute_id": 1493,
+          "label": "Junior",
+          "attributes": {
+            "Lieu retrait produits": "Toulouse St Cyprien",
+            "Taille SR, JR": "Junior"
+          },
+          "reference": "BC-MBPRO520NXXS",
+          "price_cents": 3990,
+          "price_label": "39,90 €",
+          "stock": 6,
+          "image": "/img/materiel/86/protege-tibias-pieds-enfant-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1493
+    },
+    {
+      "id": "mat-75",
+      "prestashop_id": 75,
+      "name": "Round Punch 40cm - Metal Boxe",
+      "slug": "round-punch-40cm-metal-boxe",
+      "reference": "BC-MB178",
+      "price_cents": 7590,
+      "price_label": "75,90 €",
+      "stock": 5,
+      "category": "entrainement",
+      "category_label": "Matériel d'entraînement",
+      "category_id": 25,
+      "description_short": "Round Punch de la marque Metal Boxe. Cible de frappe ronde conçue pour un entraînement de boxe anglaise . Permet de travailler la puissance sur chaque coup. La prise à deux mains va permettre à l'entraîneur de contrer efficacement les assauts de son élève. Diamètre : 40cm Epaisseur : 20cm",
+      "description": "Round Punch de la marque Metal Boxe. Cible de frappe ronde conçue pour un entraînement de boxe anglaise . Permet de travailler la puissance sur chaque coup. La prise à deux mains va permettre à l'entraîneur de contrer efficacement les assauts de son élève. Diamètre : 40cm Epaisseur : 20cm",
+      "image": "/img/materiel/75/round-punch-40cm-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/75/round-punch-40cm-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1327,
+          "prestashop_attribute_id": 1327,
+          "label": "Standard",
+          "attributes": {
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "BC-MB178",
+          "price_cents": 7590,
+          "price_label": "75,90 €",
+          "stock": 5,
+          "image": "/img/materiel/75/round-punch-40cm-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1327
+    },
+    {
+      "id": "mat-79",
+      "prestashop_id": 79,
+      "name": "Sac de sport - Metal Boxe",
+      "slug": "sac-de-sport-metal-boxe",
+      "reference": "BC-MB030-noir",
+      "price_cents": 4190,
+      "price_label": "41,90 €",
+      "stock": 9,
+      "category": "accessoires",
+      "category_label": "Accessoires",
+      "category_id": 23,
+      "description_short": "Sac de sport de la marque Metal Boxe. Elégant et pratique avec ses nombreuses poches. Une identité boxe que les passionnés reconnaitrons. Poche latérale avec emplacements pour stylos, papiers, ou téléphone. Pastille prédécoupée au milieu pour pouvoir passer les fils de vos écouteurs. Dimensions idéales pour vos entrainements quotidiens ainsi que vos déplacements. Dimensions : 43*34*27 cm. Bandoulières. Qualité : Polyester 600D. Capacité : 39 litres.",
+      "description": "Sac de sport de la marque Metal Boxe. Elégant et pratique avec ses nombreuses poches. Une identité boxe que les passionnés reconnaitrons. Poche latérale avec emplacements pour stylos, papiers, ou téléphone. Pastille prédécoupée au milieu pour pouvoir passer les fils de vos écouteurs. Dimensions idéales pour vos entrainements quotidiens ainsi que vos déplacements. Dimensions : 43*34*27 cm. Bandoulières. Qualité : Polyester 600D. Capacité : 39 litres.",
+      "image": "/img/materiel/79/sac-de-sport-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/79/sac-de-sport-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1383,
+          "prestashop_attribute_id": 1383,
+          "label": "M — Noir",
+          "attributes": {
+            "Taille M, L , etc...": "M",
+            "Couleur": "Noir",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MB030-noir",
+          "price_cents": 4190,
+          "price_label": "41,90 €",
+          "stock": 9,
+          "image": "/img/materiel/79/sac-de-sport-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1383
+    },
+    {
+      "id": "mat-51",
+      "prestashop_id": 51,
+      "name": "Short Boxe Anglaise Military Pro-Line - Metal Boxe",
+      "slug": "short-boxe-anglaise-military-pro-line-metal-boxe",
+      "reference": "BC-TC75M",
+      "price_cents": 3890,
+      "price_label": "38,90 €",
+      "stock": 0,
+      "category": "short",
+      "category_label": "Short de Boxe ou MMA",
+      "category_id": 22,
+      "description_short": "Fabriqué en satin haut de gamme Large ceinture assurant un maintien exceptionne Coupe longue Couleur Noir et Or",
+      "description": "Fabriqué en satin haut de gamme Large ceinture assurant un maintien exceptionne Coupe longue Couleur Noir et Or",
+      "image": "/img/materiel/51/short-boxe-anglaise-military-pro-line-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/51/short-boxe-anglaise-military-pro-line-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 648,
+          "prestashop_attribute_id": 648,
+          "label": "L",
+          "attributes": {
+            "Taille M, L , etc...": "L",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-TC75M",
+          "price_cents": 3890,
+          "price_label": "38,90 €",
+          "stock": 0,
+          "image": "/img/materiel/51/short-boxe-anglaise-military-pro-line-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 648
+    },
+    {
+      "id": "mat-52",
+      "prestashop_id": 52,
+      "name": "Short Boxe Thaï et Kick Boxing blanc or - Metal Boxe",
+      "slug": "short-boxe-thai-et-kick-boxing-blanc-or-metal-boxe",
+      "reference": "BC-TC70F",
+      "price_cents": 2990,
+      "price_label": "29,90 €",
+      "stock": 4,
+      "category": "short",
+      "category_label": "Short de Boxe ou MMA",
+      "category_id": 22,
+      "description_short": "Short de boxe Thaï, K1, Kick Boxing, toutes boxes. Coupe serrée, courte, tissus doublés. Beauté et confort poussés à l'extrême. 100 % Polyester Couleur Blanc et Or",
+      "description": "Short de boxe Thaï, K1, Kick Boxing, toutes boxes. Coupe serrée, courte, tissus doublés. Beauté et confort poussés à l'extrême. 100 % Polyester Couleur Blanc et Or",
+      "image": "/img/materiel/52/short-boxe-thai-et-kick-boxing-blanc-or-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/52/short-boxe-thai-et-kick-boxing-blanc-or-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 688,
+          "prestashop_attribute_id": 688,
+          "label": "L",
+          "attributes": {
+            "Taille M, L , etc...": "L",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-TC70F",
+          "price_cents": 2990,
+          "price_label": "29,90 €",
+          "stock": 4,
+          "image": "/img/materiel/52/short-boxe-thai-et-kick-boxing-blanc-or-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 688
+    },
+    {
+      "id": "mat-53",
+      "prestashop_id": 53,
+      "name": "Short Boxe Thaï et Kick Boxing noir or - Metal Boxe",
+      "slug": "short-boxe-thai-et-kick-boxing-noir-or-metal-boxe",
+      "reference": "BC-TC70E",
+      "price_cents": 2990,
+      "price_label": "29,90 €",
+      "stock": 3,
+      "category": "short",
+      "category_label": "Short de Boxe ou MMA",
+      "category_id": 22,
+      "description_short": "Short de boxe Thaï, K1, Kick Boxing, toutes boxes. Coupe serrée, courte, tissus doublés. Beauté et confort poussés à l'extrême. 100 % Polyester Couleur Noir et Or",
+      "description": "Short de boxe Thaï, K1, Kick Boxing, toutes boxes. Coupe serrée, courte, tissus doublés. Beauté et confort poussés à l'extrême. 100 % Polyester Couleur Noir et Or",
+      "image": "/img/materiel/53/short-boxe-thai-et-kick-boxing-noir-or-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/53/short-boxe-thai-et-kick-boxing-noir-or-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 733,
+          "prestashop_attribute_id": 733,
+          "label": "L",
+          "attributes": {
+            "Taille M, L , etc...": "L",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-TC70E",
+          "price_cents": 2990,
+          "price_label": "29,90 €",
+          "stock": 3,
+          "image": "/img/materiel/53/short-boxe-thai-et-kick-boxing-noir-or-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 733
+    },
+    {
+      "id": "mat-54",
+      "prestashop_id": 54,
+      "name": "Short Boxe Thaï Siam noir et or - Metal Boxe",
+      "slug": "short-boxe-thai-siam-noir-et-or-metal-boxe",
+      "reference": "BC-MBTEX104N",
+      "price_cents": 2990,
+      "price_label": "29,90 €",
+      "stock": 5,
+      "category": "short",
+      "category_label": "Short de Boxe ou MMA",
+      "category_id": 22,
+      "description_short": "Short de boxe Thaï gamme \"Siam\" de Metal Boxe Coupe courte et évasée qui correspond à ce que la plupart des boxeurs thaï portent dans le monde entier. Cousus avec deux matières bien différentes, laissant place au confort et à l’esthétique. Sans inscription, vous aimerez le porter dans toutes les disciplines pieds poings : muaythai, kick boxing, k1, etc. Couleur Noir et Or",
+      "description": "Short de boxe Thaï gamme \"Siam\" de Metal Boxe Coupe courte et évasée qui correspond à ce que la plupart des boxeurs thaï portent dans le monde entier. Cousus avec deux matières bien différentes, laissant place au confort et à l’esthétique. Sans inscription, vous aimerez le porter dans toutes les disciplines pieds poings : muaythai, kick boxing, k1, etc. Couleur Noir et Or",
+      "image": "/img/materiel/54/short-boxe-thai-siam-noir-et-or-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/54/short-boxe-thai-siam-noir-et-or-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 778,
+          "prestashop_attribute_id": 778,
+          "label": "L",
+          "attributes": {
+            "Taille M, L , etc...": "L",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-MBTEX104N",
+          "price_cents": 2990,
+          "price_label": "29,90 €",
+          "stock": 5,
+          "image": "/img/materiel/54/short-boxe-thai-siam-noir-et-or-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 778
+    },
+    {
+      "id": "mat-72",
+      "prestashop_id": 72,
+      "name": "Slip coquille Oko - Metal Boxe",
+      "slug": "slip-coquille-oko-metal-boxe",
+      "reference": "BC-GRPRO400N",
+      "price_cents": 1490,
+      "price_label": "14,90 €",
+      "stock": 8,
+      "category": "accessoires",
+      "category_label": "Accessoires",
+      "category_id": 23,
+      "description_short": "Accessoire de sport de combat indispensable ! Slip coquille OKO de la marque Metal Boxe. Coquille multi matière et ergonomique pour une meilleure protection et un confort élevé. Tailles au choix du S au XL.",
+      "description": "Accessoire de sport de combat indispensable ! Slip coquille OKO de la marque Metal Boxe. Coquille multi matière et ergonomique pour une meilleure protection et un confort élevé. Tailles au choix du S au XL.",
+      "image": "/img/materiel/72/slip-coquille-oko-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/72/slip-coquille-oko-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1268,
+          "prestashop_attribute_id": 1268,
+          "label": "M",
+          "attributes": {
+            "Taille M, L , etc...": "M",
+            "Lieu retrait produits": "Toulouse St Cyprien"
+          },
+          "reference": "BC-GRPRO400N",
+          "price_cents": 1490,
+          "price_label": "14,90 €",
+          "stock": 8,
+          "image": "/img/materiel/72/slip-coquille-oko-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1268
+    },
+    {
+      "id": "mat-84",
+      "prestashop_id": 84,
+      "name": "Sous-Gants Enfants - Metal Boxe",
+      "slug": "sous-gants-enfants-metal-boxe",
+      "reference": "BC-MB147CH",
+      "price_cents": 690,
+      "price_label": "6,90 €",
+      "stock": 15,
+      "category": "sous-gants",
+      "category_label": "Sous-gants",
+      "category_id": 19,
+      "description_short": "Sous-Gants Enfants de la marque Metal Boxe. Idéal pour maintenir une bonne hygiène, pour la transpiration sous les gants. Bonne alternative aux bandes de boxe pour les enfants.",
+      "description": "Sous-Gants Enfants de la marque Metal Boxe. Idéal pour maintenir une bonne hygiène, pour la transpiration sous les gants. Bonne alternative aux bandes de boxe pour les enfants.",
+      "image": "/img/materiel/84/sous-gants-enfants-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/84/sous-gants-enfants-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1463,
+          "prestashop_attribute_id": 1463,
+          "label": "Junior",
+          "attributes": {
+            "Lieu retrait produits": "Toulouse St Cyprien",
+            "Taille SR, JR": "Junior"
+          },
+          "reference": "BC-MB147CH",
+          "price_cents": 690,
+          "price_label": "6,90 €",
+          "stock": 15,
+          "image": "/img/materiel/84/sous-gants-enfants-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1463
+    },
+    {
+      "id": "mat-38",
+      "prestashop_id": 38,
+      "name": "Sous-Gants Max gel éponge - Metal Boxe",
+      "slug": "sous-gants-max-gel-eponge-metal-boxe",
+      "reference": "BC-MB220",
+      "price_cents": 990,
+      "price_label": "9,90 €",
+      "stock": 3,
+      "category": "sous-gants",
+      "category_label": "Sous-gants",
+      "category_id": 19,
+      "description_short": "Sous-Gants spécialement sélectionnés pour nos pratiquants chez notre partenaire Metal Boxe Mitaines particulièrement adaptées à la pratique du Fitness Boxing. Avec éponge élastique. Couture entre les doigts pour éviter que le gant recule lors de l'impact. Taille Senior (adulte)",
+      "description": "Mitaines particulièrement adaptées à la pratique du Fitness Boxing. Avec éponge élastique. Couture entre les doigts pour éviter que le gant recule lors de l'impact.",
+      "image": "/img/materiel/38/sous-gants-max-gel-eponge-metal-boxe.jpg",
+      "images": [
+        "/img/materiel/38/sous-gants-max-gel-eponge-metal-boxe.jpg"
+      ],
+      "combinations": [
+        {
+          "id": 1018,
+          "prestashop_attribute_id": 1018,
+          "label": "Noir",
+          "attributes": {
+            "Couleur": "Noir",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "BC-MB220",
+          "price_cents": 990,
+          "price_label": "9,90 €",
+          "stock": 3,
+          "image": "/img/materiel/38/sous-gants-max-gel-eponge-metal-boxe.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Toulouse St-Cyprien",
+        "Barrière de Paris - Minimes",
+        "Balma-Gramont",
+        "Ramonville",
+        "Portet-sur-Garonne"
+      ],
+      "active": true,
+      "pickup_only": true,
+      "minimal_quantity": 1,
+      "default_variant_id": 1018
+    }
+  ]
+}
