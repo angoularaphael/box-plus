@@ -66,6 +66,7 @@ const {
 } = require('./lib/order-lifecycle');
 const { generateContractPdf, streamContractPdf } = require('./lib/contract-pdf');
 const { sendConfirmationEmail, sendGdprEraseRequest } = require('./lib/mailer');
+const { rebuildLifecycleOrderFromSession, loadOrderOrRecover } = require('./lib/order-recovery');
 
 const PORT = Number(process.env.STORE_PORT || 3040);
 const HOST = process.env.STORE_HOST || '0.0.0.0';
@@ -186,14 +187,26 @@ async function fulfillStripeSession(sessionId, stripeSession = null, lifecycleMo
     return { ok: false, error: 'pending_not_found' };
   }
 
-  if (lifecycleMode && pending.lifecycle_order_id) {
-    const order = loadOrder(pending.lifecycle_order_id);
-    if (order) {
-      markPaymentPaid(order.order_id, {
-        method: 'stripe',
-        stripe_session_id: sessionId,
-        iban: pending.payment?.iban || pending.customer_full?.iban,
+  const lifecycleOrderId =
+    pending.lifecycle_order_id || stripeSession?.metadata?.lifecycle_order_id;
+
+  if (lifecycleMode && lifecycleOrderId) {
+    let order = loadOrder(lifecycleOrderId);
+    if (!order && stripeSession?.metadata?.bc_token) {
+      order = rebuildLifecycleOrderFromSession(stripeSession, {
+        accessToken: stripeSession.metadata.bc_token,
+        findProduct,
       });
+    }
+    if (order) {
+      if (order.payment?.status !== 'paid') {
+        markPaymentPaid(order.order_id, {
+          method: 'stripe',
+          stripe_session_id: sessionId,
+          iban: pending.payment?.iban || pending.customer_full?.iban,
+        });
+        order = loadOrder(order.order_id);
+      }
       removePendingOrder(sessionId);
       return {
         ok: true,
@@ -245,11 +258,15 @@ function createApp() {
           if (materielPending?.order_type === 'materiel') {
             await fulfillMaterielCheckout(session.id, session);
           } else {
-            const pending = loadPendingOrder(session.id);
-            if (!pending) {
+            const pending =
+              loadPendingOrder(session.id) || unpackOrderMetadata(session.metadata);
+            const lifecycleMode = Boolean(
+              pending?.lifecycle_order_id || session.metadata?.lifecycle_order_id
+            );
+            if (!pending && !lifecycleMode) {
               logError('Session Stripe sans commande pending', { session_id: session.id });
             } else {
-              await fulfillStripeSession(session.id, session, Boolean(pending.lifecycle_order_id));
+              await fulfillStripeSession(session.id, session, lifecycleMode);
             }
           }
         }
@@ -500,8 +517,13 @@ function createApp() {
     }
   });
 
-  app.get('/api/orders/:id', (req, res) => {
-    const order = loadOrder(req.params.id);
+  app.get('/api/orders/:id', async (req, res) => {
+    const order = await loadOrderOrRecover(req.params.id, {
+      token: req.query.token,
+      sessionId: req.query.session_id,
+      stripe,
+      findProduct,
+    });
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
     if (!verifyAccess(order, req.query.token)) {
       return res.status(403).json({ ok: false, error: 'forbidden' });
@@ -510,8 +532,13 @@ function createApp() {
     res.json({ ok: true, order: safe });
   });
 
-  app.get('/api/orders/:id/status', (req, res) => {
-    const order = loadOrder(req.params.id);
+  app.get('/api/orders/:id/status', async (req, res) => {
+    const order = await loadOrderOrRecover(req.params.id, {
+      token: req.query.token,
+      sessionId: req.query.session_id,
+      stripe,
+      findProduct,
+    });
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
     if (!verifyAccess(order, req.query.token)) {
       return res.status(403).json({ ok: false, error: 'forbidden' });
@@ -527,9 +554,14 @@ function createApp() {
     });
   });
 
-  app.patch('/api/orders/:id/profile', upload.fields([{ name: 'photo', maxCount: 1 }, { name: 'rib_file', maxCount: 1 }]), (req, res) => {
+  app.patch('/api/orders/:id/profile', upload.fields([{ name: 'photo', maxCount: 1 }, { name: 'rib_file', maxCount: 1 }]), async (req, res) => {
     try {
-      const order = loadOrder(req.params.id);
+      const order = await loadOrderOrRecover(req.params.id, {
+        token: req.body.token || req.query.token,
+        sessionId: req.body.session_id || req.query.session_id,
+        stripe,
+        findProduct,
+      });
       if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
       if (!verifyAccess(order, req.body.token || req.query.token)) {
         return res.status(403).json({ ok: false, error: 'forbidden' });
@@ -553,7 +585,12 @@ function createApp() {
 
   app.post('/api/orders/:id/sign', async (req, res) => {
     try {
-      const order = loadOrder(req.params.id);
+      const order = await loadOrderOrRecover(req.params.id, {
+        token: req.body.token,
+        sessionId: req.body.session_id,
+        stripe,
+        findProduct,
+      });
       if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
       if (!verifyAccess(order, req.body.token)) {
         return res.status(403).json({ ok: false, error: 'forbidden' });
@@ -595,8 +632,13 @@ function createApp() {
     }
   });
 
-  app.get('/api/orders/:id/contract.pdf', (req, res) => {
-    const order = loadOrder(req.params.id);
+  app.get('/api/orders/:id/contract.pdf', async (req, res) => {
+    const order = await loadOrderOrRecover(req.params.id, {
+      token: req.query.token,
+      sessionId: req.query.session_id,
+      stripe,
+      findProduct,
+    });
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
     if (!verifyAccess(order, req.query.token)) {
       return res.status(403).json({ ok: false, error: 'forbidden' });
@@ -666,6 +708,7 @@ function createApp() {
           product_id: product.id,
           order_id: order.order_id,
           lifecycle_order_id: order.order_id,
+          bc_token: order.access_token,
           ...packOrderMetadata(payload),
         },
         success_url: `${baseUrl}/inscription?order=${order.order_id}&token=${order.access_token}&step=4&session_id={CHECKOUT_SESSION_ID}`,
@@ -772,8 +815,11 @@ function createApp() {
         return res.json({ ok: true, ...out });
       }
 
-      const pending = loadPendingOrder(sessionId);
-      const out = await fulfillStripeSession(sessionId, session, Boolean(pending?.lifecycle_order_id));
+      const pending = loadPendingOrder(sessionId) || unpackOrderMetadata(session.metadata);
+      const lifecycleMode = Boolean(
+        pending?.lifecycle_order_id || session.metadata?.lifecycle_order_id
+      );
+      const out = await fulfillStripeSession(sessionId, session, lifecycleMode);
       if (!out.ok && out.error === 'pending_not_found') {
         return res.json({ ok: true, already_processed: true });
       }

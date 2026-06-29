@@ -4,6 +4,7 @@
     productId: params.get('product'),
     orderId: params.get('order'),
     token: params.get('token'),
+    sessionId: params.get('session_id'),
     step: Number(params.get('step') || 1),
     product: null,
     order: null,
@@ -50,12 +51,21 @@
 
   async function loadOrder() {
     if (!state.orderId || !state.token) return;
-    const res = await fetch(`/api/orders/${state.orderId}?token=${state.token}`);
+    const qs = new URLSearchParams({ token: state.token });
+    if (state.sessionId) qs.set('session_id', state.sessionId);
+    const res = await fetch(`/api/orders/${state.orderId}?${qs}`);
     if (!res.ok) return;
     const data = await res.json();
     state.order = data.order;
     state.product = state.order.product_snapshot;
     state.step = state.order.step >= 6 ? 6 : Math.max(state.step, state.order.step);
+  }
+
+  function orderErrorMessage(data) {
+    if (data.error === 'not_found') {
+      return 'Dossier introuvable. Rechargez la page depuis le lien reçu après paiement, ou contactez le club.';
+    }
+    return (data.errors || [data.error]).join(', ');
   }
 
   function renderStep1() {
@@ -159,6 +169,7 @@
       <p class="sub">Ces informations complètent votre fiche membre Deciplus. Votre abonnement donne accès aux 5 centres.</p>
       <form id="fullForm" class="form-grid" enctype="multipart/form-data">
         <input type="hidden" name="token" value="${state.token}" />
+        ${state.sessionId ? `<input type="hidden" name="session_id" value="${state.sessionId}" />` : ''}
         <div><label for="gender">Sexe *</label>
           <select id="gender" name="gender" required>
             <option value="">—</option>
@@ -184,7 +195,7 @@
       const res = await fetch(`/api/orders/${state.orderId}/profile`, { method: 'PATCH', body: fd });
       const data = await res.json();
       if (!data.ok) {
-        setMsg((data.errors || [data.error]).join(', '), 'err');
+        setMsg(orderErrorMessage(data), 'err');
         return;
       }
       state.step = 5;
@@ -256,6 +267,7 @@
   async function confirmStripeReturn() {
     const sessionId = params.get('session_id');
     if (!sessionId) return;
+    state.sessionId = sessionId;
     await fetch('/api/checkout/confirm-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
