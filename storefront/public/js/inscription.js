@@ -181,7 +181,7 @@
         <div class="full"><label for="address">Adresse *</label><input id="address" name="address" required value="${full.address || ''}" /></div>
         <div><label for="postal_code">Code postal *</label><input id="postal_code" name="postal_code" required value="${full.postal_code || ''}" /></div>
         <div><label for="city">Ville *</label><input id="city" name="city" required value="${full.city || ''}" /></div>
-        <div class="full"><label for="emergency_contact">Contact d'urgence *</label><input id="emergency_contact" name="emergency_contact" required placeholder="Nom + téléphone" value="${full.emergency_contact || ''}" /></div>
+        <div class="full"><label for="emergency_contact">Contact d'urgence (optionnel)</label><input id="emergency_contact" name="emergency_contact" placeholder="Nom + téléphone" value="${full.emergency_contact || ''}" /></div>
         <div class="full"><label for="medical_info">Informations médicales (optionnel)</label><textarea id="medical_info" name="medical_info" rows="2">${full.medical_info || ''}</textarea></div>
         <div class="full"><label for="photo">Photo de profil (optionnel)</label><input id="photo" name="photo" type="file" accept="image/*" /></div>
         ${state.product?.requires_iban ? `<div class="full"><label for="iban_full">IBAN *</label><input id="iban_full" name="iban" required /></div>` : ''}
