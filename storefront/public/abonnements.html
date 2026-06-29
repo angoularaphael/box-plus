@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Abonnements — Boxing Center</title>
+  <meta name="description" content="Abonnements Boxing Center — comptant, prélèvement sans engagement, cours enfants. Accès 5 salles." />
+  <script src="js/boot.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/boutique.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <div class="breadcrumb"><a href="/">Accueil</a> / Abonnements</div>
+      <h1>Abonnements</h1>
+      <p>Formules comptant, sans engagement ou cours enfants — accès aux 5 salles selon votre offre.</p>
+    </div>
+  </div>
+
+  <main class="section">
+    <div class="subsection-tabs" id="subsectionTabs">
+      <button type="button" class="subsection-tab active" data-sub="prelevement">Sans engagement</button>
+      <button type="button" class="subsection-tab" data-sub="comptant">Comptant</button>
+      <button type="button" class="subsection-tab" data-sub="enfants">Enfants & ados</button>
+      <button type="button" class="subsection-tab" data-sub="promo">Promotions</button>
+    </div>
+
+    <div class="info-box" style="margin-bottom:32px">
+      Nos cours sont accessibles aux débutants. Vous n'avez pas besoin d'être en forme pour commencer — les entraînements sont encadrés et adaptés à différents niveaux.
+    </div>
+
+    <div id="offersGrid"><p style="color:var(--bc-muted)">Chargement…</p></div>
+  </main>
+
+  <div id="site-footer"></div>
+  <script src="js/layout.js"></script>
+  <script src="js/offers.js"></script>
+  <script src="js/abonnements.js"></script>
+</body>
+</html>

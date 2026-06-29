@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Coachings individuels — Boxing Center</title>
+  <meta name="description" content="Coaching individuel Boxing Center — accompagnement personnalisé, progression technique, remise en forme." />
+  <script src="js/boot.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/boutique.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <div class="breadcrumb"><a href="/">Accueil</a> / Coachings</div>
+      <h1>Coachings individuels</h1>
+      <p>Accompagnement personnalisé pour progresser à votre rythme — technique, remise en forme, préparation physique.</p>
+    </div>
+  </div>
+
+  <main class="section">
+    <div class="info-box" style="margin-bottom:32px">
+      Nos coachs adaptent chaque séance à votre niveau et vos objectifs — loisir, remise en forme ou perfectionnement technique.
+    </div>
+    <div id="offersGrid"><p style="color:var(--bc-muted)">Chargement…</p></div>
+  </main>
+
+  <div id="site-footer"></div>
+  <script src="js/layout.js"></script>
+  <script src="js/offers.js"></script>
+  <script>
+    (async function () {
+      const res = await fetch('/api/products?tab=coachings');
+      const data = await res.json();
+      BCOffers.renderOfferGrid(data.products || [], document.getElementById('offersGrid'), { cta: 'Réserver ce pack' });
+    })();
+  </script>
+</body>
+</html>

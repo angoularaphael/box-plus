@@ -1,0 +1,342 @@
+{
+  "featured_home": ["dp-88", "dp-22", "seance-essai"],
+  "products": {
+    "dp-88": {
+      "tab": "abonnements",
+      "subsection": "prelevement",
+      "display_name": "Sans engagement — Adulte",
+      "benefits": ["Accès aux 5 salles", "Toutes les disciplines", "Sans engagement longue durée", "Encadrement par des coachs pro"],
+      "audience": "Adultes débutants et confirmés",
+      "duration_label": "4 semaines renouvelables",
+      "sort_order": 1,
+      "active": true,
+      "featured": true
+    },
+    "dp-89": {
+      "tab": "abonnements",
+      "subsection": "prelevement",
+      "display_name": "Sans engagement — Étudiant",
+      "benefits": ["Accès aux 5 salles", "Toutes les disciplines", "Tarif étudiant sur justificatif", "Sans engagement"],
+      "audience": "Étudiants (carte étudiante requise)",
+      "duration_label": "4 semaines renouvelables",
+      "sort_order": 2,
+      "active": true
+    },
+    "dp-22": {
+      "tab": "abonnements",
+      "subsection": "comptant",
+      "display_name": "Comptant 12 mois",
+      "benefits": ["Accès aux 5 salles", "Toutes les disciplines", "Meilleur rapport qualité/prix", "Paiement unique"],
+      "audience": "Adultes et jeunes motivés sur la durée",
+      "duration_label": "12 mois",
+      "sort_order": 1,
+      "active": true,
+      "featured": true
+    },
+    "dp-91": {
+      "tab": "abonnements",
+      "subsection": "comptant",
+      "display_name": "Comptant 6 mois",
+      "benefits": ["Accès aux 5 salles", "Toutes les disciplines", "Paiement unique CB"],
+      "audience": "Adultes",
+      "duration_label": "6 mois",
+      "sort_order": 2,
+      "active": true
+    },
+    "dp-92": {
+      "tab": "abonnements",
+      "subsection": "comptant",
+      "display_name": "Comptant 3 mois",
+      "benefits": ["Accès aux 5 salles", "Toutes les disciplines", "Idéal pour démarrer"],
+      "audience": "Débutants et reprises",
+      "duration_label": "3 mois",
+      "sort_order": 3,
+      "active": true
+    },
+    "dp-93": {
+      "tab": "abonnements",
+      "subsection": "enfants",
+      "display_name": "Baby Boxe",
+      "benefits": ["3 à 6 ans", "Éveil corporel ludique", "Encadrement adapté"],
+      "audience": "Enfants 3-6 ans",
+      "duration_label": "Selon formule",
+      "sort_order": 1,
+      "active": true
+    },
+    "dp-45": {
+      "tab": "abonnements",
+      "subsection": "enfants",
+      "display_name": "Boxe éducative",
+      "benefits": ["7 à 16 ans", "Apprentissage technique", "Confiance et discipline"],
+      "audience": "Enfants et ados 7-16 ans",
+      "duration_label": "Selon formule",
+      "sort_order": 2,
+      "active": true
+    },
+    "dp-104": {
+      "tab": "abonnements",
+      "subsection": "promo",
+      "display_name": "Offre DUO 29 €",
+      "benefits": ["29 € par personne", "4 semaines", "Idéal à deux"],
+      "audience": "Adultes — inscription en duo",
+      "sort_order": 1,
+      "active": true,
+      "badge": "Promo"
+    },
+    "dp-101": {
+      "tab": "abonnements",
+      "subsection": "promo",
+      "display_name": "Offre promo 9 €",
+      "benefits": ["Tarif découverte", "Accès complet"],
+      "audience": "Nouveaux adhérents",
+      "sort_order": 2,
+      "active": true,
+      "badge": "Promo"
+    },
+    "dp-102": {
+      "tab": "abonnements",
+      "subsection": "promo",
+      "display_name": "Promo adulte 38,99 €",
+      "benefits": ["4 semaines", "Toutes disciplines"],
+      "audience": "Adultes",
+      "sort_order": 3,
+      "active": true,
+      "badge": "Promo"
+    },
+    "dp-103": {
+      "tab": "abonnements",
+      "subsection": "promo",
+      "display_name": "Promo étudiant 34,99 €",
+      "benefits": ["4 semaines", "Tarif étudiant"],
+      "audience": "Étudiants",
+      "sort_order": 4,
+      "active": true,
+      "badge": "Promo"
+    },
+    "dp-100": {
+      "tab": "abonnements",
+      "subsection": "promo",
+      "display_name": "Promo 12 mois",
+      "benefits": ["12 mois d'accès", "Campagne rentrée"],
+      "audience": "Adultes",
+      "sort_order": 5,
+      "active": true,
+      "badge": "Promo"
+    },
+    "dp-105": {
+      "tab": "abonnements",
+      "subsection": "promo",
+      "display_name": "Été 2026 — 3 mois illimités",
+      "benefits": ["3 mois illimités", "5 salles", "T-shirt offert"],
+      "audience": "Tous publics",
+      "sort_order": 6,
+      "active": true,
+      "badge": "Été 2026",
+      "promo_start": "2026-06-01",
+      "promo_end": "2026-09-30"
+    },
+    "seance-essai": {
+      "tab": "seance-essai",
+      "subsection": "essai",
+      "display_name": "Séance d'essai",
+      "benefits": ["Découverte sans engagement", "Accueil personnalisé", "Aucune expérience requise", "Ambiance bienveillante"],
+      "audience": "Tous — débutants bienvenus",
+      "duration_label": "1 séance",
+      "sort_order": 1,
+      "active": true,
+      "featured": true,
+      "manual": true
+    },
+    "coaching-1": {
+      "tab": "coachings",
+      "subsection": "coaching",
+      "display_name": "Coaching — 1 séance",
+      "benefits": ["Accompagnement personnalisé", "Progression technique", "Adapté à votre niveau"],
+      "audience": "Tous niveaux",
+      "duration_label": "1 séance",
+      "price_cents": 5000,
+      "marketing_price_label": "50,00 €",
+      "requires_iban": false,
+      "requires_payment": true,
+      "sale_type": "carte",
+      "manual": true,
+      "sort_order": 1,
+      "active": true
+    },
+    "coaching-5": {
+      "tab": "coachings",
+      "subsection": "coaching",
+      "display_name": "Coaching — 5 séances",
+      "benefits": ["Programme sur mesure", "Suivi de progression", "Remise en forme"],
+      "audience": "Tous niveaux",
+      "duration_label": "5 séances",
+      "price_cents": 22500,
+      "marketing_price_label": "225,00 €",
+      "requires_iban": false,
+      "requires_payment": true,
+      "sale_type": "carte",
+      "manual": true,
+      "sort_order": 2,
+      "active": true,
+      "badge": "Économique"
+    },
+    "coaching-10": {
+      "tab": "coachings",
+      "subsection": "coaching",
+      "display_name": "Coaching — 10 séances",
+      "benefits": ["Accompagnement complet", "Préparation physique", "Objectifs personnalisés"],
+      "audience": "Tous niveaux",
+      "duration_label": "10 séances",
+      "price_cents": 40000,
+      "marketing_price_label": "400,00 €",
+      "requires_iban": false,
+      "requires_payment": true,
+      "sale_type": "carte",
+      "manual": true,
+      "sort_order": 3,
+      "active": true
+    }
+  },
+  "materiel": [
+    {
+      "id": "mat-gant-starter",
+      "name": "Gants d'entraînement Starter",
+      "category": "gants",
+      "price_cents": 3490,
+      "price_label": "34,90 €",
+      "stock": 12,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-gant-pro",
+      "name": "Gants d'entraînement Pro",
+      "category": "gants",
+      "price_cents": 5990,
+      "price_label": "59,90 €",
+      "stock": 8,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-gant-competition",
+      "name": "Gants compétition",
+      "category": "gants",
+      "price_cents": 8990,
+      "price_label": "89,90 €",
+      "stock": 4,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-protege-dents",
+      "name": "Protège-dents",
+      "category": "protection",
+      "price_cents": 990,
+      "price_label": "9,90 €",
+      "stock": 25,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-bandages",
+      "name": "Bandages de boxe",
+      "category": "accessoires",
+      "price_cents": 1290,
+      "price_label": "12,90 €",
+      "stock": 30,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-coquille",
+      "name": "Coquille de protection",
+      "category": "protection",
+      "price_cents": 2490,
+      "price_label": "24,90 €",
+      "stock": 10,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-casque-entrainement",
+      "name": "Casque d'entraînement",
+      "category": "casques",
+      "price_cents": 4490,
+      "price_label": "44,90 €",
+      "stock": 6,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-casque-enfant",
+      "name": "Casque enfant",
+      "category": "casques",
+      "price_cents": 3990,
+      "price_label": "39,90 €",
+      "stock": 5,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-protege-tibias",
+      "name": "Protège-tibias",
+      "category": "protection",
+      "price_cents": 3490,
+      "price_label": "34,90 €",
+      "stock": 14,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-gants-mma",
+      "name": "Gants MMA",
+      "category": "gants",
+      "price_cents": 4990,
+      "price_label": "49,90 €",
+      "stock": 7,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-gants-enfant",
+      "name": "Gants enfant",
+      "category": "enfant",
+      "price_cents": 2990,
+      "price_label": "29,90 €",
+      "stock": 9,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-tshirt-club",
+      "name": "T-shirt Boxing Center",
+      "category": "textile",
+      "price_cents": 1990,
+      "price_label": "19,90 €",
+      "stock": 20,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-survetement",
+      "name": "Survêtement club",
+      "category": "textile",
+      "price_cents": 5990,
+      "price_label": "59,90 €",
+      "stock": 8,
+      "active": true,
+      "pickup_only": true
+    },
+    {
+      "id": "mat-casquette",
+      "name": "Casquette Boxing Center",
+      "category": "textile",
+      "price_cents": 1490,
+      "price_label": "14,90 €",
+      "stock": 15,
+      "active": true,
+      "pickup_only": true
+    }
+  ]
+}

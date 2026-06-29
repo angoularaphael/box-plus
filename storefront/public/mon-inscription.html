@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mon inscription — Boxing Center</title>
+  <script src="js/boot.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/boutique.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+  <main class="section" style="max-width:560px">
+    <h1 style="color:var(--bc-navy);margin-bottom:16px">Statut de votre inscription</h1>
+    <div id="statusBox"><p style="color:var(--bc-muted)">Chargement…</p></div>
+  </main>
+  <div id="site-footer"></div>
+  <script src="js/layout.js"></script>
+  <script>
+    (async function () {
+      const params = new URLSearchParams(location.search);
+      const id = params.get('order');
+      const token = params.get('token');
+      const box = document.getElementById('statusBox');
+      if (!id || !token) {
+        box.innerHTML = '<p>Lien invalide.</p>';
+        return;
+      }
+      const res = await fetch(`/api/orders/${id}/status?token=${token}`);
+      const data = await res.json();
+      if (!data.ok) {
+        box.innerHTML = '<p>Impossible de charger votre inscription.</p>';
+        return;
+      }
+      box.innerHTML = `
+        <div class="form-panel">
+          <p><strong>Offre :</strong> ${data.product}</p>
+          <p><strong>Étape :</strong> ${data.step} / 6</p>
+          <p><strong>Paiement :</strong> ${data.payment_status}</p>
+          <p><strong>Transmis Deciplus :</strong> ${data.dispatched ? 'Oui' : 'En cours'}</p>
+          <a href="/api/orders/${id}/contract.pdf?token=${token}" class="btn block" style="margin-top:16px">Télécharger le contrat</a>
+        </div>`;
+    })();
+  </script>
+</body>
+</html>

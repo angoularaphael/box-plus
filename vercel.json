@@ -5,7 +5,13 @@
       "src": "api/index.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["storefront/**", "data/storefront/**"]
+        "includeFiles": [
+          "storefront/**",
+          "data/storefront/**",
+          "lib/**",
+          "config/**",
+          "bot/catalog.js"
+        ]
       }
     }
   ],

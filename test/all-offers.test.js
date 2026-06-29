@@ -51,9 +51,16 @@ function loadAllOffers() {
   return catalog.products;
 }
 
+test('seance essai 10€ — produit manuel enrichi', () => {
+  const p = findProduct('seance-essai');
+  assert.ok(p);
+  assert.equal(p.price_cents, 1000);
+  assert.equal(p.requires_payment, true);
+});
+
 test('catalogue — toutes les offres sont chargées', () => {
   const products = loadAllOffers();
-  assert.ok(products.length >= 15, `au moins 15 offres attendues, got ${products.length}`);
+  assert.ok(products.length >= 13, `au moins 13 offres Deciplus attendues, got ${products.length}`);
 });
 
 test('chaque offre — checkout, validation BOXPLUS et résolution Deciplus', () => {

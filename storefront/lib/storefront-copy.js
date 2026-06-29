@@ -9,10 +9,11 @@ function isStorefrontProduct(product) {
   if (!product) return false;
   const name = String(product.name || product.title || '').trim();
   const type = product.type || product.categoryId || '';
-  if (product.id === 'badge' || product.id === 'seance-essai' || product.manual) return false;
+  if (product.id === 'badge') return false;
+  if (product.id === 'seance-essai' || product.manual) return true;
   if (type === 'decipass' || /decipass/i.test(String(product.category || ''))) return false;
   if (/^badge$/i.test(name)) return false;
-  if (/essai/i.test(name) && (product.price_cents === 0 || product.requires_payment === false)) return false;
+  if (/essai/i.test(name) && product.price_cents === 0 && product.requires_payment === false) return false;
   return true;
 }
 

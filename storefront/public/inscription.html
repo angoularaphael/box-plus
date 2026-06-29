@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inscription — Boxing Center</title>
+  <script src="js/boot.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/boutique.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <main class="checkout-layout">
+    <div class="form-panel" style="grid-column:1/-1;max-width:720px;margin:0 auto;width:100%">
+      <div class="stepper" id="stepper">
+        <div class="stepper-step" data-step="1"><span class="stepper-num">1</span><span class="stepper-label">Offre</span></div>
+        <div class="stepper-step" data-step="2"><span class="stepper-num">2</span><span class="stepper-label">Identité</span></div>
+        <div class="stepper-step" data-step="3"><span class="stepper-num">3</span><span class="stepper-label">Paiement</span></div>
+        <div class="stepper-step" data-step="4"><span class="stepper-num">4</span><span class="stepper-label">Dossier</span></div>
+        <div class="stepper-step" data-step="5"><span class="stepper-num">5</span><span class="stepper-label">Signature</span></div>
+        <div class="stepper-step" data-step="6"><span class="stepper-num">6</span><span class="stepper-label">Confirmé</span></div>
+      </div>
+
+      <div id="stepContent"></div>
+      <p class="form-msg" id="formMsg"></p>
+    </div>
+  </main>
+
+  <div id="site-footer"></div>
+  <script src="js/layout.js"></script>
+  <script src="js/inscription.js"></script>
+</body>
+</html>

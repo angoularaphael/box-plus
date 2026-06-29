@@ -28,3 +28,12 @@ test('app-urls — ingest catalogue', () => {
   assert.equal(getCatalogIngestUrl(), 'https://box-plus.vercel.app/api/admin/ingest-catalog');
   delete process.env.STORE_URL;
 });
+
+test('app-urls — checkout base URL suit localhost en dev', () => {
+  process.env.STORE_URL = 'https://box-plus.vercel.app';
+  delete require.cache[require.resolve('../lib/app-urls')];
+  const { getCheckoutBaseUrl } = require('../lib/app-urls');
+  const req = { get: (h) => (h === 'host' ? 'localhost:3040' : 'http'), protocol: 'http' };
+  assert.equal(getCheckoutBaseUrl(req), 'http://localhost:3040');
+  delete process.env.STORE_URL;
+});
