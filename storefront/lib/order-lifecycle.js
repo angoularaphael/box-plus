@@ -211,8 +211,37 @@ async function deleteOrderAsync(orderId) {
   return true;
 }
 
+function isValidOrder(order) {
+  if (!order || typeof order !== 'object') return false;
+  const id = String(order.order_id || '').trim();
+  return Boolean(id && id !== 'undefined' && id !== 'null');
+}
+
+function memberDisplayName(short = {}) {
+  const first = String(short.first_name || '').trim();
+  const last = String(short.last_name || '').trim();
+  const looksLikeEmail = (s) => s.includes('@');
+  if (first && last && first !== last && !looksLikeEmail(first)) return `${first} ${last}`;
+  if (first && !looksLikeEmail(first)) return first;
+  if (last && !looksLikeEmail(last)) return last;
+  return '—';
+}
+
 async function listAllOrdersAsync() {
-  return persistence.listAllOrders();
+  const all = await persistence.listAllOrders();
+  const valid = [];
+  for (const order of all) {
+    if (isValidOrder(order)) {
+      valid.push(order);
+    } else if (order?.order_id) {
+      try {
+        await persistence.deleteOrder(String(order.order_id));
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  return valid;
 }
 
 function toAdminSummary(order) {
@@ -223,7 +252,7 @@ function toAdminSummary(order) {
     step: order.step || 1,
     product: order.product_snapshot?.display_name || order.product_snapshot?.name || '—',
     email: short.email || '—',
-    name: `${short.first_name || ''} ${short.last_name || ''}`.trim() || '—',
+    name: memberDisplayName(short),
     gym: full.gym || null,
     payment_status: order.payment?.status || 'pending',
     signed: Boolean(order.signature?.signed_at),

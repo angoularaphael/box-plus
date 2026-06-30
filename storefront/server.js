@@ -45,6 +45,7 @@ const {
   loadMerchFresh,
   hydrateMerchOnce,
   saveMerchAsync,
+  normalizeFeaturedIds,
 } = require('./lib/merch');
 const {
   validateCartLines,
@@ -78,6 +79,21 @@ const {
 } = require('./lib/order-lifecycle');
 const { generateContractPdf, streamContractPdf } = require('./lib/contract-pdf');
 const { sendConfirmationEmail, sendGdprEraseRequest } = require('./lib/mailer');
+const { upsertClientFromInscription } = require('./lib/client-sync');
+
+async function syncInscriptionClient(order) {
+  if (order.gestion_client_id) {
+    return { synced: true, client_id: order.gestion_client_id, skipped: true };
+  }
+  const result = await upsertClientFromInscription(order);
+  if (result.synced && result.client_id) {
+    order.gestion_client_id = result.client_id;
+    const { saveOrderAsync } = require('./lib/order-lifecycle');
+    await saveOrderAsync(order);
+  }
+  return result;
+}
+
 const { rebuildLifecycleOrderFromSession, loadOrderOrRecover } = require('./lib/order-recovery');
 const { verifyAdminLogin } = require('./lib/admin-auth');
 const {
@@ -530,7 +546,7 @@ function createApp() {
     await loadMerchFresh();
     const products = getEnrichedProducts({ activeOnly: false });
     const merch = loadMerch();
-    res.json({ featured_home: merch.featured_home, products });
+    res.json({ featured_home: normalizeFeaturedIds(merch.featured_home || []), products });
   });
 
   app.post('/api/admin/merch/create', async (req, res) => {
@@ -587,7 +603,13 @@ function createApp() {
 
   app.get('/api/admin/orders', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
-    const orders = (await listAllOrdersAsync()).map(toAdminSummary);
+    const raw = await listAllOrdersAsync();
+    for (const order of raw) {
+      if (order.signature?.signed_at && !order.gestion_client_id) {
+        await syncInscriptionClient(order);
+      }
+    }
+    const orders = raw.map(toAdminSummary);
     res.json({ ok: true, orders, count: orders.length });
   });
 
@@ -616,25 +638,6 @@ function createApp() {
       res.json({ ok: true, deleted: req.params.id });
     } catch (err) {
       logError('Suppression inscription admin', { order_id: req.params.id, error: err.message });
-      res.status(500).json({ ok: false, error: err.message });
-    }
-  });
-
-  app.post('/api/admin/test-email', async (req, res) => {
-    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
-    try {
-      const { sendTestEmail } = require('./lib/mailer');
-      const to = String(req.body?.to || 'linuxcam05@gmail.com').trim();
-      if (!to || !to.includes('@')) {
-        return res.status(400).json({ ok: false, error: 'email_invalide' });
-      }
-      const result = await sendTestEmail(to);
-      if (!result?.sent) {
-        return res.status(502).json({ ok: false, ...result });
-      }
-      res.json({ ok: true, to, via: result.via, messageId: result.messageId, sender: result.sender });
-    } catch (err) {
-      logError('Test email admin', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });
@@ -739,12 +742,14 @@ function createApp() {
       }
 
       if (order.step >= 6 || order.signature?.signed_at) {
+        await syncInscriptionClient(order);
         return res.json({
           ok: true,
           step: 6,
           already_signed: true,
           order_id: order.order_id,
           email_sent: Boolean(order.email_sent_at),
+          client_synced: Boolean(order.gestion_client_id),
           status_url: `/mon-inscription?order=${order.order_id}&token=${order.access_token}`,
         });
       }
@@ -781,11 +786,15 @@ function createApp() {
       ]);
       if (emailResult.sent) await markEmailSent(signed.order_id);
 
+      const clientResult = await syncInscriptionClient(signed);
+
       res.json({
         ok: true,
         step: 6,
         order_id: signed.order_id,
         email_sent: emailResult.sent,
+        client_synced: Boolean(clientResult.synced),
+        client_id: clientResult.client_id || signed.gestion_client_id || undefined,
         email_warning: emailResult.sent
           ? undefined
           : emailResult.error ||
