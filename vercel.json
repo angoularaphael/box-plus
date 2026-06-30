@@ -9,8 +9,7 @@
           "storefront/**",
           "data/storefront/**",
           "lib/**",
-          "config/**",
-          "bot/catalog.js"
+          "config/**"
         ]
       }
     }

@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { ROOT, ensureDir, loadJson } = require('../../lib/utils');
 const { logInfo, logWarn } = require('../../lib/logger');
-const { normalizeText, inferSaleType, buildDeciplusProductSearch } = require('../../bot/catalog');
+const { normalizeText, inferSaleType, buildDeciplusProductSearch } = require('../../lib/catalog-text');
 const { getBadgeFeeNotice, isStorefrontProduct } = require('./storefront-copy');
 
 const SYNC_FILE = path.join(ROOT, 'data', 'storefront', 'catalog-live.json');
