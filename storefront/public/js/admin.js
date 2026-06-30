@@ -1,10 +1,9 @@
 (function () {
-  let secret = sessionStorage.getItem('bc_admin_secret') || '';
-  const loginPanel = document.getElementById('loginPanel');
   const adminPanel = document.getElementById('adminPanel');
   let products = [];
   let featuredHome = [];
   let orders = [];
+  let currentUser = null;
 
   const STEP_LABELS = {
     1: 'Offre',
@@ -16,7 +15,7 @@
   };
 
   function headers(json = true) {
-    const h = { 'x-admin-secret': secret };
+    const h = {};
     if (json) h['Content-Type'] = 'application/json';
     return h;
   }
@@ -41,8 +40,23 @@
     showTab('contracts');
   }
 
+  async function ensureAuth() {
+    const res = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!res.ok) {
+      location.replace('/admin/login');
+      throw new Error('unauthorized');
+    }
+    const data = await res.json();
+    currentUser = data.user;
+    const line = document.getElementById('adminUserLine');
+    if (line && currentUser) {
+      line.textContent = `${currentUser.name || currentUser.email} (${currentUser.email})`;
+    }
+    adminPanel.hidden = false;
+  }
+
   async function loadMerch() {
-    const res = await fetch('/api/admin/merch', { headers: headers(false) });
+    const res = await fetch('/api/admin/merch', { credentials: 'include', headers: headers(false) });
     if (!res.ok) throw new Error('unauthorized');
     const data = await res.json();
     products = data.products || [];
@@ -55,7 +69,7 @@
     msg.textContent = 'Chargement…';
     msg.className = 'form-msg';
     try {
-      const res = await fetch('/api/admin/orders', { headers: headers(false) });
+      const res = await fetch('/api/admin/orders', { credentials: 'include', headers: headers(false) });
       if (!res.ok) throw new Error('Accès refusé');
       const data = await res.json();
       orders = data.orders || [];
@@ -124,25 +138,12 @@
       .join('');
 
     tbody.querySelectorAll('.dl-contract').forEach((btn) => {
-      btn.onclick = () => downloadContract(btn.dataset.id);
+      btn.onclick = () => {
+        if (window.BCContract) {
+          window.BCContract.openAdminView(btn.dataset.id);
+        }
+      };
     });
-  }
-
-  async function downloadContract(orderId) {
-    const res = await fetch(`/api/admin/orders/${orderId}/contract.pdf`, {
-      headers: headers(false),
-    });
-    if (!res.ok) {
-      alert('Impossible de télécharger le contrat');
-      return;
-    }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `contrat-${orderId}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 
   function renderFeatured() {
@@ -204,6 +205,7 @@
   async function patch(product_id, patchBody) {
     await fetch('/api/admin/merch', {
       method: 'PUT',
+      credentials: 'include',
       headers: headers(),
       body: JSON.stringify({ product_id, patch: patchBody }),
     });
@@ -215,29 +217,10 @@
     renderTable();
   }
 
-  async function afterLogin() {
-    sessionStorage.setItem('bc_admin_secret', secret);
-    loginPanel.hidden = true;
-    adminPanel.hidden = false;
-    await loadMerch();
-    if (location.hash === '#contracts' || location.pathname.endsWith('/contrats')) {
-      showTab('contracts');
-    }
-  }
-
-  document.getElementById('loginBtn').onclick = async () => {
-    secret = document.getElementById('adminSecret').value;
-    try {
-      await afterLogin();
-    } catch {
-      document.getElementById('loginMsg').textContent = 'Accès refusé';
-      document.getElementById('loginMsg').className = 'form-msg err';
-    }
-  };
-
   document.getElementById('saveFeatured').onclick = async () => {
     await fetch('/api/admin/merch/featured', {
       method: 'POST',
+      credentials: 'include',
       headers: headers(),
       body: JSON.stringify({ ids: featuredHome.slice(0, 3) }),
     });
@@ -250,7 +233,11 @@
     msg.textContent = 'Synchronisation…';
     msg.className = 'form-msg';
     try {
-      const res = await fetch('/api/admin/sync-materiel', { method: 'POST', headers: headers() });
+      const res = await fetch('/api/admin/sync-materiel', {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Échec sync');
       msg.textContent = `OK — ${data.updated} produits mis à jour (${data.synced_at})`;
@@ -261,11 +248,24 @@
     }
   };
 
+  document.getElementById('logoutBtn').onclick = async () => {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    location.replace('/admin/login');
+  };
+
   document.getElementById('refreshOrdersBtn').onclick = loadOrders;
   document.getElementById('ordersSearch').oninput = renderOrders;
   document.getElementById('ordersFilter').onchange = renderOrders;
 
-  if (secret) {
-    afterLogin().catch(() => {});
-  }
+  (async function init() {
+    try {
+      await ensureAuth();
+      await loadMerch();
+      if (location.hash === '#contracts' || location.pathname.endsWith('/contrats')) {
+        showTab('contracts');
+      }
+    } catch {
+      /* redirect handled */
+    }
+  })();
 })();

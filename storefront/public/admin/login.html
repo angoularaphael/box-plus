@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Connexion admin — Boxing Center</title>
+  <script src="../js/boot.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/boutique.css" />
+  <link rel="stylesheet" href="../css/components.css" />
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <img src="../assets/logo-brand.svg" alt="Boxing Center" class="login-logo" width="200" height="48" />
+      <p class="login-subtitle">Administration boutique</p>
+      <form id="loginForm">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username" required />
+        <label for="password">Mot de passe</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required />
+        <p class="form-msg err" id="loginMsg" hidden></p>
+        <button type="submit" class="btn block" id="loginBtn" style="margin-top:16px">Se connecter</button>
+      </form>
+      <p style="margin-top:16px;font-size:13px;text-align:center;color:var(--bc-muted)">
+        <a href="/" style="color:var(--bc-cta)">Retour à la boutique</a>
+      </p>
+    </div>
+  </div>
+  <script>
+    (async function () {
+      const me = await fetch('/api/auth/me', { credentials: 'include' });
+      if (me.ok) {
+        location.replace('/admin');
+        return;
+      }
+
+      const form = document.getElementById('loginForm');
+      const msg = document.getElementById('loginMsg');
+      const btn = document.getElementById('loginBtn');
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        msg.hidden = true;
+        btn.disabled = true;
+        btn.textContent = 'Connexion…';
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              email: document.getElementById('email').value,
+              password: document.getElementById('password').value,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Identifiants incorrects');
+          location.replace('/admin');
+        } catch (err) {
+          msg.hidden = false;
+          msg.textContent = err.message;
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Se connecter';
+        }
+      };
+    })();
+  </script>
+</body>
+</html>

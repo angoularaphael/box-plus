@@ -11,7 +11,6 @@
     { id: 'resiliation', q: 'Puis-je résilier une formule sans engagement ?', a: 'Oui, les formules sans engagement peuvent être résiliées selon les conditions prévues au contrat. Contactez votre salle pour les démarches.' },
     { id: 'materiel', q: 'Quel matériel faut-il pour commencer ?', a: 'Pour votre premier cours : tenue de sport et bouteille d\'eau suffisent. Nous vous conseillerons ensuite pour les gants et bandages — disponibles à la boutique du club.' },
     { id: 'enfant', q: 'Mon enfant peut-il s\'inscrire ?', a: 'Oui ! Baby Boxe accueille les 3-6 ans et la Boxe éducative les 7-16 ans. L\'encadrement est adapté à chaque tranche d\'âge.' },
-    { id: 'photo', q: 'Faut-il fournir une photo pour l\'espace client ?', a: 'Une photo de profil facilite votre accueil en salle mais reste optionnelle à l\'inscription. Vous pouvez la télécharger lors du formulaire complet.' },
   ];
 
   function renderFaq(containerId, items) {

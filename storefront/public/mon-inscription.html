@@ -16,6 +16,7 @@
     <div id="statusBox"><p style="color:var(--bc-muted)">Chargement…</p></div>
   </main>
   <div id="site-footer"></div>
+  <script src="js/contract-open.js"></script>
   <script src="js/layout.js"></script>
   <script>
     (async function () {
@@ -39,8 +40,11 @@
           <p><strong>Étape :</strong> ${data.step} / 6</p>
           <p><strong>Paiement :</strong> ${data.payment_status}</p>
           <p><strong>Transmis Deciplus :</strong> ${data.dispatched ? 'Oui' : 'En cours'}</p>
-          <a href="/api/orders/${id}/contract.pdf?token=${token}" class="btn block" style="margin-top:16px">Télécharger le contrat</a>
+          <button type="button" class="btn block" id="contractBtn" style="margin-top:16px">Télécharger le contrat</button>
         </div>`;
+      document.getElementById('contractBtn').onclick = () => {
+        window.BCContract.openView(id, { token });
+      };
     })();
   </script>
 </body>
