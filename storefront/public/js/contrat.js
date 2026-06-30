@@ -24,6 +24,23 @@
 
   frame.src = pdfUrl;
 
+  fetch(pdfUrl, { credentials: 'include' })
+    .then((res) => {
+      if (!res.ok) {
+        errEl.hidden = false;
+        errEl.textContent =
+          res.status === 403
+            ? 'Accès refusé — vérifiez votre lien d\'inscription.'
+            : res.status === 404
+              ? 'Contrat introuvable — complétez d\'abord votre dossier.'
+              : 'Impossible d\'afficher le contrat pour le moment.';
+      }
+    })
+    .catch(() => {
+      errEl.hidden = false;
+      errEl.textContent = 'Impossible de charger le contrat.';
+    });
+
   document.getElementById('downloadBtn').onclick = async () => {
     try {
       const res = await fetch(pdfUrl, { credentials: 'include' });
