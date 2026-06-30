@@ -496,7 +496,7 @@
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || data.reason || 'Échec envoi');
-      msg.textContent = `Email test envoyé à ${data.to} (${data.via || 'brevo'}).`;
+      msg.textContent = `Email test envoyé à ${data.to} (expéditeur : ${data.sender || 'suzinabot@gmail.com'}).`;
       msg.className = 'form-msg ok';
     } catch (err) {
       msg.textContent = err.message;

@@ -632,7 +632,7 @@ function createApp() {
       if (!result?.sent) {
         return res.status(502).json({ ok: false, ...result });
       }
-      res.json({ ok: true, to, via: result.via });
+      res.json({ ok: true, to, via: result.via, messageId: result.messageId, sender: result.sender });
     } catch (err) {
       logError('Test email admin', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
