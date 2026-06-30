@@ -3,6 +3,29 @@
   const STORAGE_KEY = 'bc_inscription_progress';
   const STORAGE_TTL_MS = 48 * 60 * 60 * 1000;
 
+  function readStoredProgress() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY) || sessionStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeStoredProgress(data) {
+    const raw = JSON.stringify(data);
+    try {
+      localStorage.setItem(STORAGE_KEY, raw);
+    } catch {
+      /* quota */
+    }
+    try {
+      sessionStorage.setItem(STORAGE_KEY, raw);
+    } catch {
+      /* quota */
+    }
+  }
+
   const state = {
     productId: params.get('product'),
     orderId: params.get('order'),
@@ -24,30 +47,23 @@
   }
 
   function saveProgress() {
-    try {
-      sessionStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          productId: state.productId,
-          orderId: state.orderId,
-          token: state.token,
-          sessionId: state.sessionId,
-          step: state.step,
-          shortDraft: state.shortDraft,
-          savedAt: Date.now(),
-        })
-      );
-    } catch {
-      /* quota / mode privé */
-    }
+    writeStoredProgress({
+      productId: state.productId,
+      orderId: state.orderId,
+      token: state.token,
+      sessionId: state.sessionId,
+      step: state.step,
+      shortDraft: state.shortDraft,
+      savedAt: Date.now(),
+    });
   }
 
   function restoreProgress() {
     try {
-      const raw = sessionStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw);
+      const saved = readStoredProgress();
+      if (!saved) return;
       if (!saved.savedAt || Date.now() - saved.savedAt > STORAGE_TTL_MS) {
+        localStorage.removeItem(STORAGE_KEY);
         sessionStorage.removeItem(STORAGE_KEY);
         return;
       }
@@ -58,15 +74,20 @@
       if (saved.token) state.token = state.token || saved.token;
       if (saved.sessionId) state.sessionId = state.sessionId || saved.sessionId;
       if (saved.shortDraft) state.shortDraft = saved.shortDraft;
-      if (!params.get('step') && saved.step > 1) {
-        state.step = Math.max(state.step, saved.step);
+      const urlStep = Number(params.get('step') || 0);
+      if (saved.step > 1) {
+        if (!urlStep || (saved.orderId && state.orderId === saved.orderId && saved.step > urlStep)) {
+          state.step = Math.max(state.step, saved.step);
+        }
       }
     } catch {
+      localStorage.removeItem(STORAGE_KEY);
       sessionStorage.removeItem(STORAGE_KEY);
     }
   }
 
   function clearProgress() {
+    localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
   }
 
@@ -77,8 +98,9 @@
     if (state.token) qs.set('token', state.token);
     if (state.sessionId) qs.set('session_id', state.sessionId);
     qs.set('step', String(state.step));
-    const next = `?${qs}`;
-    if (window.location.search !== next) {
+    const path = '/inscription';
+    const next = `${path}?${qs}`;
+    if (location.pathname !== path || location.search !== `?${qs}`) {
       history.replaceState(null, '', next);
     }
   }
@@ -95,7 +117,7 @@
   function persistAndRender() {
     saveProgress();
     syncUrl();
-    render();
+    void render();
   }
 
   function updateStepper(step) {
@@ -227,16 +249,33 @@
       saveProgress();
       syncUrl();
       await loadOrder();
-      render();
+      await render();
     };
   }
 
-  function renderStep3() {
+  function priceLabel(product) {
+    return product?.stripe_price_label || product?.price_label || '—';
+  }
+
+  async function ensureProductForPayment() {
+    if (!state.productId) return;
+    const hasLabel = state.product?.stripe_price_label || state.product?.price_label;
+    if (hasLabel) return;
+    await loadProduct();
+    if (!state.product) return;
+    const snap = state.order?.product_snapshot;
+    if (snap) {
+      state.product = { ...snap, ...state.product };
+    }
+  }
+
+  async function renderStep3() {
+    await ensureProductForPayment();
     const p = state.product;
     const needsIban = p?.requires_iban;
     stepContent.innerHTML = `
       <h1>Paiement</h1>
-      <p class="sub">Montant à payer aujourd'hui : <strong>${p?.stripe_price_label || p?.price_label || '—'}</strong></p>
+      <p class="sub">Montant à payer aujourd'hui : <strong>${priceLabel(p)}</strong></p>
       <form id="payForm">
         ${needsIban ? `
         <div class="full"><label for="iban">IBAN (prélèvements suivants) *</label>
@@ -258,7 +297,7 @@
       });
       const data = await res.json();
       if (!data.ok) {
-        setMsg((data.errors || [data.error]).join(', '), 'err');
+        setMsg(orderErrorMessage(data), 'err');
         return;
       }
       if (data.url) window.location.href = data.url;
@@ -310,7 +349,7 @@
       saveProgress();
       syncUrl();
       await loadOrder();
-      render();
+      await render();
     };
   }
 
@@ -369,7 +408,7 @@
       setMsg('');
       saveProgress();
       syncUrl();
-      render();
+      await render();
     };
   }
 
@@ -405,11 +444,11 @@
     await loadOrder();
   }
 
-  function render() {
+  async function render() {
     updateStepper(state.step);
     if (state.step === 1) renderStep1();
     else if (state.step === 2) renderStep2();
-    else if (state.step === 3) renderStep3();
+    else if (state.step === 3) await renderStep3();
     else if (state.step === 4) renderStep4();
     else if (state.step === 5) renderStep5();
     else renderStep6();
@@ -423,11 +462,13 @@
     if (state.orderId && state.token) {
       await confirmStripeReturn();
       const loaded = await loadOrder();
-      if (!loaded && state.step > 3) {
+      if (!loaded && state.step >= 3) {
         setMsg(
-          'Session expirée sur le serveur — reprenez depuis le lien reçu après paiement ou contactez le club.',
+          'Dossier introuvable sur le serveur. Recommencez depuis l\'étape identité ou contactez le club.',
           'err'
         );
+      } else if (state.step === 3 && !state.product?.stripe_price_label && !state.product?.price_label) {
+        await loadProduct();
       }
     } else {
       await loadProduct();
@@ -445,7 +486,7 @@
     }
 
     syncUrl();
-    render();
+    await render();
   }
 
   window.addEventListener('beforeunload', saveProgress);

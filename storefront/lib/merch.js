@@ -1,37 +1,20 @@
 /**
  * Catalogue matériel — import PrestaShop + merchandising
  */
-const fs = require('fs');
-const path = require('path');
-const { ROOT } = require('../../lib/utils');
-
-const MERCH_FILE = path.join(ROOT, 'storefront', 'storefront-merch.json');
-const CATALOG_FILE = path.join(ROOT, 'data', 'storefront', 'materiel-catalog.json');
-
-function loadMerch() {
-  try {
-    return JSON.parse(fs.readFileSync(MERCH_FILE, 'utf8'));
-  } catch {
-    return { featured_home: [], products: {}, materiel: [] };
-  }
-}
-
-function saveMerch(data) {
-  fs.writeFileSync(MERCH_FILE, JSON.stringify(data, null, 2), 'utf8');
-  return data;
-}
+const {
+  MERCH_FILE,
+  CATALOG_FILE,
+  loadMerch,
+  saveMerch,
+  saveMerchAsync,
+  loadMerchFresh,
+  hydrateMerchOnce,
+  loadMaterielCatalogLocal,
+  saveMaterielCatalog,
+} = require('./merch-persistence');
 
 function loadMaterielCatalog() {
-  try {
-    return JSON.parse(fs.readFileSync(CATALOG_FILE, 'utf8'));
-  } catch {
-    return { synced_at: null, source: 'empty', count: 0, categories: [], products: [] };
-  }
-}
-
-function saveMaterielCatalog(data) {
-  fs.writeFileSync(CATALOG_FILE, JSON.stringify(data, null, 2), 'utf8');
-  return data;
+  return loadMaterielCatalogLocal();
 }
 
 function applyMaterielOverrides(product, overrides = {}) {
@@ -241,6 +224,61 @@ function setFeaturedHome(ids) {
   return saveMerch(merch);
 }
 
+function slugifyOfferId(text) {
+  return String(text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function createManualOffer(entry = {}) {
+  const merch = loadMerch();
+  if (!merch.products) merch.products = {};
+
+  const displayName = String(entry.display_name || '').trim();
+  if (!displayName) throw new Error('Nom affiché requis');
+
+  const id = String(entry.id || slugifyOfferId(displayName)).trim();
+  if (!id) throw new Error('Identifiant offre invalide');
+  if (merch.products[id] && !entry.overwrite) {
+    throw new Error(`L'offre « ${id} » existe déjà`);
+  }
+
+  const priceCents = Math.max(0, Number(entry.price_cents) || 0);
+  const priceLabel =
+    entry.marketing_price_label ||
+    (priceCents > 0 ? `${(priceCents / 100).toFixed(2).replace('.', ',')} €` : 'Gratuit');
+  const subsection = entry.subsection || 'promo';
+  const requiresIban =
+    entry.requires_iban !== undefined
+      ? Boolean(entry.requires_iban)
+      : subsection === 'prelevement' || subsection === 'promo';
+
+  merch.products[id] = {
+    manual: true,
+    active: entry.active !== false,
+    tab: entry.tab || 'abonnements',
+    subsection,
+    display_name: displayName,
+    price_cents: priceCents,
+    marketing_price_label: priceLabel,
+    requires_iban: requiresIban,
+    requires_payment: entry.requires_payment !== undefined ? Boolean(entry.requires_payment) : priceCents > 0,
+    sale_type: entry.sale_type || (requiresIban ? 'prelevement' : 'carte'),
+    sort_order: Number(entry.sort_order) || 50,
+    benefits: entry.benefits || [],
+    audience: entry.audience || null,
+    duration_label: entry.duration_label || null,
+    badge: entry.badge || null,
+    deciplus_product_search: entry.deciplus_product_search || null,
+  };
+
+  saveMerch(merch);
+  return { id, product: merch.products[id] };
+}
+
 function updateMaterielProduct(productId, patch) {
   const catalog = loadMaterielCatalog();
   const idx = (catalog.products || []).findIndex((p) => p.id === productId);
@@ -274,6 +312,10 @@ module.exports = {
   updateMerchProduct,
   updateMaterielProduct,
   setFeaturedHome,
+  createManualOffer,
+  loadMerchFresh,
+  hydrateMerchOnce,
+  saveMerchAsync,
   MERCH_FILE,
   CATALOG_FILE,
 };

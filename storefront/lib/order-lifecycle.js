@@ -5,10 +5,9 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { ROOT, ensureDir } = require('../../lib/utils');
+const persistence = require('./order-persistence');
 
-const ORDERS_DIR =
-  process.env.BOXPLUS_ORDERS_DIR ||
-  (process.env.VERCEL ? '/tmp/boxplus-orders' : path.join(ROOT, 'data', 'storefront', 'orders'));
+const ORDERS_DIR = persistence.ORDERS_DIR;
 
 const UPLOADS_DIR =
   process.env.BOXPLUS_UPLOADS_DIR ||
@@ -20,16 +19,28 @@ function initDirs() {
   ensureDir(path.join(UPLOADS_DIR, 'ribs'));
 }
 
-function orderPath(orderId) {
-  return path.join(ORDERS_DIR, `${orderId}.json`);
-}
-
 function generateOrderId() {
   return `BC-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
 }
 
 function generateAccessToken() {
   return crypto.randomBytes(24).toString('hex');
+}
+
+function productSnapshot(product) {
+  return {
+    id: product.id,
+    name: product.name,
+    display_name: product.display_name || product.name,
+    price_cents: product.price_cents,
+    price_label: product.price_label,
+    stripe_price_label: product.stripe_price_label,
+    installments_note: product.installments_note,
+    requires_iban: product.requires_iban,
+    requires_payment: product.requires_payment,
+    sale_type: product.sale_type,
+    deciplus_id: product.deciplus_id || null,
+  };
 }
 
 function createDraft({ product_id, product, customer_short }) {
@@ -41,16 +52,7 @@ function createDraft({ product_id, product, customer_short }) {
     access_token,
     step: 2,
     product_id,
-    product_snapshot: {
-      id: product.id,
-      name: product.name,
-      display_name: product.display_name || product.name,
-      price_cents: product.price_cents,
-      requires_iban: product.requires_iban,
-      requires_payment: product.requires_payment,
-      sale_type: product.sale_type,
-      deciplus_id: product.deciplus_id || null,
-    },
+    product_snapshot: productSnapshot(product),
     customer_short: customer_short || null,
     customer_full: null,
     payment: { status: 'pending' },
@@ -60,22 +62,25 @@ function createDraft({ product_id, product, customer_short }) {
     updated_at: new Date().toISOString(),
     ready_for_dispatch: false,
   };
-  fs.writeFileSync(orderPath(order_id), JSON.stringify(order, null, 2));
+  saveOrder(order);
   return order;
 }
 
+/** Lecture locale (fs) — même instance serverless ou dev. */
 function loadOrder(orderId) {
   initDirs();
-  const file = orderPath(orderId);
-  if (!fs.existsSync(file)) return null;
-  return JSON.parse(fs.readFileSync(file, 'utf8'));
+  return persistence.loadOrderFromFs(orderId);
+}
+
+/** Lecture fs puis Supabase si besoin (Vercel multi-instances). */
+async function loadOrderAsync(orderId) {
+  initDirs();
+  return persistence.loadOrder(orderId);
 }
 
 function saveOrder(order) {
   initDirs();
-  order.updated_at = new Date().toISOString();
-  fs.writeFileSync(orderPath(order.order_id), JSON.stringify(order, null, 2));
-  return order;
+  return persistence.saveOrder(order);
 }
 
 function verifyAccess(order, token) {
@@ -155,6 +160,10 @@ function listAllOrders() {
     );
 }
 
+async function listAllOrdersAsync() {
+  return persistence.listAllOrders();
+}
+
 function toAdminSummary(order) {
   const short = order.customer_short || {};
   const full = order.customer_full || {};
@@ -180,6 +189,7 @@ module.exports = {
   UPLOADS_DIR,
   createDraft,
   loadOrder,
+  loadOrderAsync,
   saveOrder,
   verifyAccess,
   updateShortProfile,
@@ -190,5 +200,7 @@ module.exports = {
   getUploadDir,
   generateOrderId,
   listAllOrders,
+  listAllOrdersAsync,
   toAdminSummary,
+  productSnapshot,
 };

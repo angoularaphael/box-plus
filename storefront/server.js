@@ -39,6 +39,10 @@ const {
   saveMaterielCatalog,
   updateMerchProduct,
   setFeaturedHome,
+  createManualOffer,
+  loadMerchFresh,
+  hydrateMerchOnce,
+  saveMerchAsync,
 } = require('./lib/merch');
 const {
   validateCartLines,
@@ -56,6 +60,7 @@ const { sendMaterielConfirmationEmail } = require('./lib/mailer');
 const {
   createDraft,
   loadOrder,
+  loadOrderAsync,
   verifyAccess,
   updateShortProfile,
   markPaymentPaid,
@@ -64,6 +69,7 @@ const {
   markEmailSent,
   getUploadDir,
   listAllOrders,
+  listAllOrdersAsync,
   toAdminSummary,
 } = require('./lib/order-lifecycle');
 const { generateContractPdf, streamContractPdf } = require('./lib/contract-pdf');
@@ -200,7 +206,7 @@ async function fulfillStripeSession(sessionId, stripeSession = null, lifecycleMo
     pending.lifecycle_order_id || stripeSession?.metadata?.lifecycle_order_id;
 
   if (lifecycleMode && lifecycleOrderId) {
-    let order = loadOrder(lifecycleOrderId);
+    let order = await loadOrderAsync(lifecycleOrderId);
     if (!order && stripeSession?.metadata?.bc_token) {
       order = rebuildLifecycleOrderFromSession(stripeSession, {
         accessToken: stripeSession.metadata.bc_token,
@@ -214,7 +220,7 @@ async function fulfillStripeSession(sessionId, stripeSession = null, lifecycleMo
           stripe_session_id: sessionId,
           iban: pending.payment?.iban || pending.customer_full?.iban,
         });
-        order = loadOrder(order.order_id);
+        order = await loadOrderAsync(order.order_id);
       }
       removePendingOrder(sessionId);
       return {
@@ -318,8 +324,9 @@ function createApp() {
     res.json({ ok: true, vercel: Boolean(process.env.VERCEL) });
   });
 
-  app.get('/api/products', (req, res) => {
+  app.get('/api/products', async (req, res) => {
     try {
+      await hydrateMerchOnce();
       const catalog = getStoreProducts();
       const tab = req.query.tab || null;
       const subsection = req.query.subsection || null;
@@ -458,7 +465,7 @@ function createApp() {
       return res.status(401).json({ ok: false, error: 'unauthorized' });
     }
     try {
-      const { syncMaterielFromPrestaShop } = require('./scripts/sync-prestashop-materiel');
+      const { syncMaterielFromPrestaShop } = require('./lib/sync-prestashop-materiel');
       const result = await syncMaterielFromPrestaShop();
       res.json({ ok: true, ...result });
     } catch (err) {
@@ -505,17 +512,32 @@ function createApp() {
 
   app.get('/api/admin/merch', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    await loadMerchFresh();
     const products = getEnrichedProducts({ activeOnly: false });
     const merch = loadMerch();
     res.json({ featured_home: merch.featured_home, products });
   });
 
+  app.post('/api/admin/merch/create', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      await loadMerchFresh();
+      const result = createManualOffer(req.body || {});
+      await saveMerchAsync(loadMerch());
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
   app.put('/api/admin/merch', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
+      await loadMerchFresh();
       const { product_id, patch } = req.body;
       if (!product_id) return res.status(400).json({ ok: false, error: 'product_id requis' });
       updateMerchProduct(product_id, patch);
+      await saveMerchAsync(loadMerch());
       res.json({ ok: true });
     } catch (err) {
       res.status(400).json({ ok: false, error: err.message });
@@ -527,18 +549,19 @@ function createApp() {
     const ids = req.body.ids || [];
     if (ids.length > 3) return res.status(400).json({ ok: false, error: 'max 3 offres featured' });
     setFeaturedHome(ids);
+    await saveMerchAsync(loadMerch());
     res.json({ ok: true, featured_home: ids });
   });
 
   app.get('/api/admin/orders', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
-    const orders = listAllOrders().map(toAdminSummary);
+    const orders = (await listAllOrdersAsync()).map(toAdminSummary);
     res.json({ ok: true, orders, count: orders.length });
   });
 
   app.get('/api/admin/orders/:id', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
-    const order = loadOrder(req.params.id);
+    const order = await loadOrderAsync(req.params.id);
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
     const { access_token, ...safe } = order;
     res.json({ ok: true, order: safe });
@@ -546,7 +569,7 @@ function createApp() {
 
   app.get('/api/admin/orders/:id/contract.pdf', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
-    const order = loadOrder(req.params.id);
+    const order = await loadOrderAsync(req.params.id);
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
     streamContractPdf(order, res);
   });
@@ -701,7 +724,7 @@ function createApp() {
 
   app.post('/api/orders/:id/pay', async (req, res) => {
     try {
-      const order = loadOrder(req.params.id);
+      const order = await loadOrderAsync(req.params.id);
       if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
       if (!verifyAccess(order, req.body.token)) {
         return res.status(403).json({ ok: false, error: 'forbidden' });
