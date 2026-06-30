@@ -51,7 +51,7 @@
       <header class="topbar">
         <div class="topbar-inner">
           <a class="logo" href="${L('/')}">
-            <img src="${A('/assets/logo-boxing-center.jpg')}" alt="Boxing Center" width="180" height="48" style="object-fit:contain;height:44px;width:auto" onerror="this.src='${A('/assets/logo-boxing-center.svg')}'" />
+            <img src="${A('/assets/logo-brand.svg')}" alt="Boxing Center" width="200" height="48" />
           </a>
           <button class="nav-toggle" id="navToggle" aria-label="Menu" type="button">
             <span></span><span></span><span></span>
@@ -72,7 +72,7 @@
       <footer class="site-footer">
         <div class="footer-inner">
           <div class="footer-brand">
-            <img src="${A('/assets/logo-boxing-center.svg')}" alt="Boxing Center" height="36" style="filter:brightness(0) invert(1)" />
+            <img src="${A('/assets/logo-brand-white.svg')}" alt="Boxing Center" height="40" style="height:40px;width:auto" />
             <p>Club de boxe accessible à tous — 5 salles en région toulousaine. Encadrement professionnel, ambiance bienveillante.</p>
           </div>
           <div class="footer-links">

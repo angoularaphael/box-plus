@@ -39,21 +39,34 @@ main { flex: 1; }
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--bc-navy);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  background: var(--bc-card);
+  border-bottom: 1px solid var(--bc-border);
+  box-shadow: var(--shadow);
 }
 
 .topbar-inner {
   max-width: var(--max);
   margin: 0 auto;
-  padding: 12px 20px;
+  padding: 10px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
 
-.logo img { height: 40px; width: auto; display: block; filter: brightness(0) invert(1); }
+.logo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.logo img {
+  height: 48px;
+  width: auto;
+  max-width: min(200px, 42vw);
+  display: block;
+  object-fit: contain;
+}
 
 .nav-toggle {
   display: flex;
@@ -69,7 +82,7 @@ main { flex: 1; }
   display: block;
   width: 24px;
   height: 2px;
-  background: #fff;
+  background: var(--bc-navy);
   border-radius: 2px;
   transition: transform 0.2s;
 }
@@ -80,17 +93,18 @@ main { flex: 1; }
   top: 100%;
   left: 0;
   right: 0;
-  background: var(--bc-navy);
+  background: var(--bc-card);
   padding: 16px 20px 24px;
   flex-direction: column;
   gap: 4px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--bc-border);
+  box-shadow: var(--shadow);
 }
 
 .main-nav.open { display: flex; }
 
 .main-nav a {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--bc-navy);
   padding: 12px 16px;
   border-radius: 8px;
   font-weight: 600;
@@ -100,8 +114,8 @@ main { flex: 1; }
 
 .main-nav a:hover,
 .main-nav a.active {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--bc-bg);
+  color: var(--bc-navy);
 }
 
 .nav-cta {
