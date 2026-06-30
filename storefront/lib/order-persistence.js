@@ -140,6 +140,25 @@ async function listAllOrders() {
   return listOrdersFromFs();
 }
 
+function deleteOrderFromFs(orderId) {
+  ensureOrdersDir();
+  const file = orderPath(orderId);
+  if (fs.existsSync(file)) fs.unlinkSync(file);
+}
+
+async function deleteOrderFromRemote(orderId) {
+  const sb = getSupabase();
+  const { error } = await sb.from('boxplus_orders').delete().eq('order_id', orderId);
+  if (error) throw error;
+}
+
+async function deleteOrder(orderId) {
+  deleteOrderFromFs(orderId);
+  if (useRemoteStore()) {
+    await deleteOrderFromRemote(orderId);
+  }
+}
+
 module.exports = {
   ORDERS_DIR,
   useRemoteStore,
@@ -148,5 +167,5 @@ module.exports = {
   saveOrder,
   saveOrderAsync,
   listAllOrders,
-  useRemoteStore,
+  deleteOrder,
 };

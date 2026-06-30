@@ -73,6 +73,7 @@ const {
   getUploadDir,
   listAllOrders,
   listAllOrdersAsync,
+  deleteOrderAsync,
   toAdminSummary,
 } = require('./lib/order-lifecycle');
 const { generateContractPdf, streamContractPdf } = require('./lib/contract-pdf');
@@ -603,6 +604,39 @@ function createApp() {
     const order = await loadOrderAsync(req.params.id);
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
     streamContractPdf(order, res);
+  });
+
+  app.delete('/api/admin/orders/:id', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const order = await loadOrderAsync(req.params.id);
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      await deleteOrderAsync(req.params.id);
+      logInfo('Inscription supprimée (admin)', { order_id: req.params.id });
+      res.json({ ok: true, deleted: req.params.id });
+    } catch (err) {
+      logError('Suppression inscription admin', { order_id: req.params.id, error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/test-email', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { sendTestEmail } = require('./lib/mailer');
+      const to = String(req.body?.to || 'linuxcam05@gmail.com').trim();
+      if (!to || !to.includes('@')) {
+        return res.status(400).json({ ok: false, error: 'email_invalide' });
+      }
+      const result = await sendTestEmail(to);
+      if (!result?.sent) {
+        return res.status(502).json({ ok: false, ...result });
+      }
+      res.json({ ok: true, to, via: result.via });
+    } catch (err) {
+      logError('Test email admin', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
   });
 
   app.post('/api/orders/draft', async (req, res) => {

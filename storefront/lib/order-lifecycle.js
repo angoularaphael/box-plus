@@ -191,6 +191,26 @@ function listAllOrders() {
     );
 }
 
+async function deleteOrderAsync(orderId) {
+  initDirs();
+  const { DOCS_DIR } = require('./contract-pdf');
+  const docs = [
+    path.join(DOCS_DIR, `contrat-${orderId}.pdf`),
+    path.join(DOCS_DIR, `facture-${orderId}.pdf`),
+  ];
+  for (const file of docs) {
+    if (fs.existsSync(file)) {
+      try {
+        fs.unlinkSync(file);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  await persistence.deleteOrder(orderId);
+  return true;
+}
+
 async function listAllOrdersAsync() {
   return persistence.listAllOrders();
 }
@@ -200,7 +220,7 @@ function toAdminSummary(order) {
   const full = order.customer_full || {};
   return {
     order_id: order.order_id,
-    step: order.step,
+    step: order.step || 1,
     product: order.product_snapshot?.display_name || order.product_snapshot?.name || '—',
     email: short.email || '—',
     name: `${short.first_name || ''} ${short.last_name || ''}`.trim() || '—',
@@ -234,6 +254,7 @@ module.exports = {
   generateOrderId,
   listAllOrders,
   listAllOrdersAsync,
+  deleteOrderAsync,
   toAdminSummary,
   productSnapshot,
 };
