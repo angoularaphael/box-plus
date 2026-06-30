@@ -55,6 +55,7 @@
       step: state.step,
       shortDraft: state.shortDraft,
       customerShort: state.order?.customer_short || null,
+      productSnapshot: state.product || state.order?.product_snapshot || null,
       savedAt: Date.now(),
     });
   }
@@ -78,6 +79,9 @@
       if (saved.customerShort && !state.order?.customer_short) {
         state.order = state.order || {};
         state.order.customer_short = saved.customerShort;
+      }
+      if (saved.productSnapshot && !state.product) {
+        state.product = saved.productSnapshot;
       }
       const urlStep = Number(params.get('step') || 0);
       if (saved.step > 1) {
@@ -131,6 +135,17 @@
     persistAndRender();
   }
 
+  async function ensureProductLoaded() {
+    if (state.product?.display_name || state.product?.name) return state.product;
+    if (state.order?.product_snapshot) {
+      state.product = state.order.product_snapshot;
+      if (!state.productId && state.product.id) state.productId = state.product.id;
+      return state.product;
+    }
+    if (!state.productId) return null;
+    return loadProduct();
+  }
+
   function backButton(label, targetStep) {
     return `<button type="button" class="btn secondary block step-back" data-step="${targetStep}">${label}</button>`;
   }
@@ -165,10 +180,24 @@
   }
 
   async function loadProduct() {
-    if (!state.productId) return;
+    if (!state.productId) return null;
+    const pid = state.productId;
     const res = await fetch('/api/products');
     const data = await res.json();
-    state.product = (data.products || []).find((p) => p.id === state.productId);
+    state.product = (data.products || []).find(
+      (p) => p.id === pid || p.legacy_id === pid
+    );
+    if (!state.product) {
+      const one = await fetch(`/api/products/${encodeURIComponent(pid)}`);
+      if (one.ok) {
+        const body = await one.json();
+        state.product = body.product;
+      }
+    }
+    if (state.product?.id && state.product.id !== pid) {
+      state.productId = state.product.id;
+    }
+    return state.product;
   }
 
   async function loadOrder() {
@@ -231,7 +260,12 @@
   function renderStep1() {
     const p = state.product;
     if (!p) {
-      stepContent.innerHTML = '<p>Produit introuvable. <a href="/abonnements">Voir les offres</a></p>';
+      stepContent.innerHTML = `
+        <h1>Votre offre</h1>
+        <p class="sub">Cette offre est introuvable ou n'est plus disponible.</p>
+        <a href="/abonnements" class="btn block">Voir les offres disponibles</a>
+        ${state.orderId ? backButton('← Retour aux coordonnées', 2) : ''}`;
+      bindBackButtons();
       return;
     }
     stepContent.innerHTML = `
@@ -511,8 +545,10 @@
 
   async function render() {
     updateStepper(state.step);
-    if (state.step === 1) renderStep1();
-    else if (state.step === 2) renderStep2();
+    if (state.step === 1) {
+      await ensureProductLoaded();
+      renderStep1();
+    } else if (state.step === 2) renderStep2();
     else if (state.step === 3) await renderStep3();
     else if (state.step === 4) renderStep4();
     else if (state.step === 5) renderStep5();
@@ -532,16 +568,15 @@
           'Impossible de recharger votre dossier — vous pouvez tout de même payer si vos coordonnées sont enregistrées ci-dessus.',
           'err'
         );
-      } else if (state.step === 3 && !state.product?.stripe_price_label && !state.product?.price_label) {
-        await loadProduct();
       }
-    } else {
-      await loadProduct();
-      if (state.step > 1 && state.productId) {
-        /* étape restaurée localement (ex. formulaire identité) */
-      } else if (!state.productId) {
-        state.step = 1;
-      }
+    }
+
+    await ensureProductLoaded();
+
+    if (!state.orderId && state.step > 1 && state.productId) {
+      /* étape restaurée localement (ex. formulaire identité) */
+    } else if (!state.productId && !state.product) {
+      state.step = 1;
     }
 
     if (!state.productId && state.product) state.productId = state.product.id;

@@ -354,6 +354,17 @@ function createApp() {
     }
   });
 
+  app.get('/api/products/:id', async (req, res) => {
+    try {
+      await hydrateMerchOnce();
+      const product = findProduct(req.params.id);
+      if (!product) return res.status(404).json({ ok: false, error: 'not_found' });
+      res.json({ ok: true, product });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   app.get('/api/materiel', (req, res) => {
     try {
       const catalog = loadMaterielCatalog();
