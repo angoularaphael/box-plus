@@ -211,14 +211,14 @@ async function fulfillStripeSession(sessionId, stripeSession = null, lifecycleMo
   if (lifecycleMode && lifecycleOrderId) {
     let order = await loadOrderAsync(lifecycleOrderId);
     if (!order && stripeSession?.metadata?.bc_token) {
-      order = rebuildLifecycleOrderFromSession(stripeSession, {
+      order = await rebuildLifecycleOrderFromSession(stripeSession, {
         accessToken: stripeSession.metadata.bc_token,
         findProduct,
       });
     }
     if (order) {
       if (order.payment?.status !== 'paid') {
-        markPaymentPaid(order.order_id, {
+        await markPaymentPaid(order.order_id, {
           method: 'stripe',
           stripe_session_id: sessionId,
           iban: pending.payment?.iban || pending.customer_full?.iban,
@@ -684,7 +684,7 @@ function createApp() {
       const errors = validateFullForm(full, product);
       if (errors.length) return res.status(400).json({ ok: false, errors });
 
-      updateFullProfile(order.order_id, full);
+      await updateFullProfile(order.order_id, full);
       res.json({ ok: true, step: 5 });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
@@ -709,7 +709,7 @@ function createApp() {
         return res.status(400).json({ ok: false, error: 'Consentements requis' });
       }
 
-      const signed = recordSignature(order.order_id, {
+      const signed = await recordSignature(order.order_id, {
         consent_cgv: Boolean(consent_cgv),
         consent_reglement: Boolean(consent_reglement),
         ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
@@ -717,15 +717,15 @@ function createApp() {
 
       const { filepath, filename } = await generateContractPdf(signed);
       signed.documents = { contract_pdf: filepath, contract_filename: filename };
-      const { saveOrder } = require('./lib/order-lifecycle');
-      saveOrder(signed);
+      const { saveOrderAsync } = require('./lib/order-lifecycle');
+      await saveOrderAsync(signed);
 
       await dispatchLifecycleOrder(signed);
 
       const emailResult = await sendConfirmationEmail(signed, [
         { filepath, filename },
       ]);
-      if (emailResult.sent) markEmailSent(signed.order_id);
+      if (emailResult.sent) await markEmailSent(signed.order_id);
 
       res.json({
         ok: true,
@@ -777,6 +777,44 @@ function createApp() {
       }
 
       const product = findProduct(order.product_id) || order.product_snapshot;
+
+      if (order.payment?.status === 'paid') {
+        return res.json({
+          ok: true,
+          mode: 'already_paid',
+          redirect: `/inscription?order=${order.order_id}&token=${order.access_token}&step=4${
+            order.payment.stripe_session_id
+              ? `&session_id=${encodeURIComponent(order.payment.stripe_session_id)}`
+              : ''
+          }`,
+        });
+      }
+
+      if (stripe && req.body.session_id) {
+        try {
+          const session = await stripe.checkout.sessions.retrieve(req.body.session_id);
+          const lifecycleId =
+            session.metadata?.lifecycle_order_id || session.metadata?.order_id;
+          if (
+            session.payment_status === 'paid' &&
+            lifecycleId === order.order_id
+          ) {
+            await markPaymentPaid(order.order_id, {
+              method: 'stripe',
+              stripe_session_id: session.id,
+              iban: order.payment?.iban,
+            });
+            return res.json({
+              ok: true,
+              mode: 'already_paid',
+              redirect: `/inscription?order=${order.order_id}&token=${order.access_token}&step=4&session_id=${encodeURIComponent(session.id)}`,
+            });
+          }
+        } catch {
+          /* session invalide — continuer vers nouveau paiement */
+        }
+      }
+
       const paymentErrors = validatePaymentForm(req.body, product);
       if (paymentErrors.length) return res.status(400).json({ ok: false, errors: paymentErrors });
 
@@ -784,7 +822,7 @@ function createApp() {
       const form = { ...short, ...req.body, order_id: order.order_id };
 
       if (!product.requires_payment) {
-        markPaymentPaid(order.order_id, { method: 'free', status: 'paid' });
+        await markPaymentPaid(order.order_id, { method: 'free', status: 'paid' });
         return res.json({
           ok: true,
           mode: 'free',
@@ -794,7 +832,7 @@ function createApp() {
 
       if (!stripe) {
         if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true') {
-          markPaymentPaid(order.order_id, { method: 'demo', iban: req.body.iban });
+          await markPaymentPaid(order.order_id, { method: 'demo', iban: req.body.iban });
           return res.json({
             ok: true,
             mode: 'demo',

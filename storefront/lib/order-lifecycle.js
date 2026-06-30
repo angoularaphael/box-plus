@@ -99,15 +99,23 @@ function verifyAccess(order, token) {
 }
 
 function updateShortProfile(orderId, customer_short) {
-  const order = loadOrder(orderId);
+  return updateShortProfileAsync(orderId, customer_short);
+}
+
+async function updateShortProfileAsync(orderId, customer_short) {
+  const order = await loadOrderAsync(orderId);
   if (!order) return null;
   order.customer_short = customer_short;
   order.step = Math.max(order.step, 3);
-  return saveOrder(order);
+  return saveOrderAsync(order);
 }
 
 function markPaymentPaid(orderId, paymentData) {
-  const order = loadOrder(orderId);
+  return markPaymentPaidAsync(orderId, paymentData);
+}
+
+async function markPaymentPaidAsync(orderId, paymentData) {
+  const order = await loadOrderAsync(orderId);
   if (!order) return null;
   order.payment = {
     ...order.payment,
@@ -116,19 +124,27 @@ function markPaymentPaid(orderId, paymentData) {
     paid_at: new Date().toISOString(),
   };
   order.step = 4;
-  return saveOrder(order);
+  return saveOrderAsync(order);
 }
 
 function updateFullProfile(orderId, customer_full) {
-  const order = loadOrder(orderId);
+  return updateFullProfileAsync(orderId, customer_full);
+}
+
+async function updateFullProfileAsync(orderId, customer_full) {
+  const order = await loadOrderAsync(orderId);
   if (!order) return null;
   order.customer_full = customer_full;
   order.step = Math.max(order.step, 5);
-  return saveOrder(order);
+  return saveOrderAsync(order);
 }
 
 function recordSignature(orderId, signatureData) {
-  const order = loadOrder(orderId);
+  return recordSignatureAsync(orderId, signatureData);
+}
+
+async function recordSignatureAsync(orderId, signatureData) {
+  const order = await loadOrderAsync(orderId);
   if (!order) return null;
   order.signature = {
     ...signatureData,
@@ -136,14 +152,18 @@ function recordSignature(orderId, signatureData) {
   };
   order.step = 6;
   order.ready_for_dispatch = true;
-  return saveOrder(order);
+  return saveOrderAsync(order);
 }
 
 function markEmailSent(orderId) {
-  const order = loadOrder(orderId);
+  return markEmailSentAsync(orderId);
+}
+
+async function markEmailSentAsync(orderId) {
+  const order = await loadOrderAsync(orderId);
   if (!order) return null;
   order.email_sent_at = new Date().toISOString();
-  return saveOrder(order);
+  return saveOrderAsync(order);
 }
 
 function getUploadDir(type) {

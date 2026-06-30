@@ -50,12 +50,12 @@ describe('lifecycle tunnel', () => {
     const shortErrors = validateShortForm(order.customer_short);
     assert.equal(shortErrors.length, 0);
 
-    markPaymentPaid(orderId, { method: 'demo', iban: null });
+    await markPaymentPaid(orderId, { method: 'demo', iban: null });
     const paid = loadOrder(orderId);
     assert.equal(paid.payment.status, 'paid');
     assert.equal(paid.step, 4);
 
-    updateFullProfile(orderId, {
+    await updateFullProfile(orderId, {
       gender: 'M',
       gym: 'minimes',
       address: '1 rue Test',
@@ -66,7 +66,7 @@ describe('lifecycle tunnel', () => {
     const full = loadOrder(orderId);
     assert.equal(full.customer_full.gym, 'minimes');
 
-    const signed = recordSignature(orderId, {
+    const signed = await recordSignature(orderId, {
       consent_cgv: true,
       consent_reglement: true,
       ip: '127.0.0.1',
