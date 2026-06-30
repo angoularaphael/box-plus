@@ -126,10 +126,20 @@ function saveMerch(data) {
 
 async function saveMerchAsync(data) {
   writeJson(MERCH_FILE, data);
-  if (useRemoteStore()) {
+  if (!useRemoteStore()) return { data, remote_saved: false };
+
+  try {
     await saveToRemote(MERCH_KEY, data);
+    return { data, remote_saved: true };
+  } catch (err) {
+    logError('Sauvegarde merch Supabase', { error: err.message });
+    return {
+      data,
+      remote_saved: false,
+      warning:
+        'Sauvegarde locale uniquement — exécutez la migration boxplus_store_config dans Supabase pour persister sur Vercel.',
+    };
   }
-  return data;
 }
 
 function loadMaterielCatalogLocal() {

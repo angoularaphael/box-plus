@@ -224,6 +224,12 @@ function setFeaturedHome(ids) {
   return saveMerch(merch);
 }
 
+async function setFeaturedHomeAsync(ids) {
+  const merch = loadMerch();
+  merch.featured_home = (ids || []).slice(0, 3);
+  return saveMerchAsync(merch);
+}
+
 function slugifyOfferId(text) {
   return String(text || '')
     .toLowerCase()
@@ -312,6 +318,7 @@ module.exports = {
   updateMerchProduct,
   updateMaterielProduct,
   setFeaturedHome,
+  setFeaturedHomeAsync,
   createManualOffer,
   loadMerchFresh,
   hydrateMerchOnce,

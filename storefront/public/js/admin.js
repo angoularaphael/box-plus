@@ -188,7 +188,7 @@
         const inputId = `feat-${p.id}`;
         return `
         <div class="admin-featured-card${checked ? ' is-selected' : ''}">
-          <input type="checkbox" class="admin-checkbox" id="${escapeHtml(inputId)}" value="${escapeHtml(p.id)}"
+          <input type="checkbox" class="admin-checkbox admin-feat-checkbox" id="${escapeHtml(inputId)}" value="${escapeHtml(p.id)}"
             ${checked ? 'checked' : ''} data-feat-id="${escapeHtml(p.id)}" />
           <label class="admin-featured-label" for="${escapeHtml(inputId)}">
             <span class="admin-featured-name">${escapeHtml(p.display_name || p.name)}</span>
@@ -198,7 +198,7 @@
       })
       .join('');
 
-    el.querySelectorAll('.admin-checkbox').forEach((cb) => {
+    el.querySelectorAll('.admin-feat-checkbox').forEach((cb) => {
       cb.onchange = () => toggleFeatured(cb.dataset.featId, cb.checked, cb);
     });
   }
@@ -303,14 +303,26 @@
   }
 
   document.getElementById('saveFeatured').onclick = async () => {
-    await fetch('/api/admin/merch/featured', {
-      method: 'POST',
-      credentials: 'include',
-      headers: headers(),
-      body: JSON.stringify({ ids: featuredHome.slice(0, 3) }),
-    });
-    alert('Offres à la une enregistrées');
-    await loadMerch();
+    const msg = document.getElementById('featuredMsg');
+    msg.textContent = 'Enregistrement…';
+    msg.className = 'form-msg';
+    try {
+      const res = await fetch('/api/admin/merch/featured', {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(),
+        body: JSON.stringify({ ids: featuredHome.slice(0, 3) }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Échec enregistrement');
+      featuredHome = [...(data.featured_home || featuredHome)];
+      renderFeatured();
+      msg.textContent = data.warning || 'Offres à la une enregistrées.';
+      msg.className = data.warning ? 'form-msg err' : 'form-msg ok';
+    } catch (err) {
+      msg.textContent = err.message;
+      msg.className = 'form-msg err';
+    }
   };
 
   document.getElementById('addOfferForm').onsubmit = async (e) => {
