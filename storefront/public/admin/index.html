@@ -44,6 +44,48 @@
         <div class="admin-section">
           <div class="admin-section-head">
             <div>
+              <h2 class="admin-section-title">Ajouter une offre</h2>
+              <p class="admin-section-desc">Créez une offre manuelle (promo, coaching, essai…) sans passer par Deciplus.</p>
+            </div>
+          </div>
+          <form id="addOfferForm" class="admin-add-offer-form">
+            <div class="form-grid" style="gap:12px">
+              <div><label for="offer_id">ID (optionnel)</label><input id="offer_id" name="id" placeholder="offre-ete-2026" /></div>
+              <div><label for="offer_name">Nom affiché *</label><input id="offer_name" name="display_name" required placeholder="Promo été 3 mois" /></div>
+              <div><label for="offer_price">Prix CB aujourd'hui (€)</label><input id="offer_price" name="price_euros" type="number" min="0" step="0.01" placeholder="38.99" /></div>
+              <div><label for="offer_tab">Onglet</label>
+                <select id="offer_tab" name="tab">
+                  <option value="abonnements">Abonnements</option>
+                  <option value="coachings">Coachings</option>
+                  <option value="seance-essai">Séance d'essai</option>
+                </select>
+              </div>
+              <div><label for="offer_sub">Catégorie</label>
+                <select id="offer_sub" name="subsection">
+                  <option value="promo">Promo</option>
+                  <option value="prelevement">Prélèvement</option>
+                  <option value="comptant">Comptant</option>
+                  <option value="enfants">Enfants</option>
+                  <option value="essai">Essai</option>
+                  <option value="coaching">Coaching</option>
+                </select>
+              </div>
+              <div><label for="offer_iban">IBAN requis</label>
+                <select id="offer_iban" name="requires_iban">
+                  <option value="auto">Auto (selon catégorie)</option>
+                  <option value="1">Oui</option>
+                  <option value="0">Non</option>
+                </select>
+              </div>
+              <div class="full"><button type="submit" class="btn sm">Créer l'offre</button></div>
+            </div>
+          </form>
+          <p class="form-msg" id="addOfferMsg"></p>
+        </div>
+
+        <div class="admin-section">
+          <div class="admin-section-head">
+            <div>
               <h2 class="admin-section-title">Matériel PrestaShop</h2>
               <p class="admin-section-desc">Synchronise stock et prix depuis boutique.boxingcenter.fr.</p>
             </div>

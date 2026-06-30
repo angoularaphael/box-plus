@@ -1,24 +1,8 @@
 /**
- * Récupération commande lifecycle perdue (Vercel /tmp éphémère) via Stripe.
+ * Récupération commande lifecycle perdue (Vercel /tmp éphémère) via Stripe ou Supabase.
  */
-const { loadOrder, saveOrder } = require('./order-lifecycle');
+const { loadOrderAsync, saveOrder, productSnapshot } = require('./order-lifecycle');
 const { unpackOrderMetadata } = require('./orders');
-
-function snapshotFromProduct(product, productId) {
-  if (!product) {
-    return { id: productId, name: productId, display_name: productId };
-  }
-  return {
-    id: product.id,
-    name: product.name,
-    display_name: product.display_name || product.name,
-    price_cents: product.price_cents,
-    requires_iban: product.requires_iban,
-    requires_payment: product.requires_payment,
-    sale_type: product.sale_type,
-    deciplus_id: product.deciplus_id || null,
-  };
-}
 
 function rebuildLifecycleOrderFromSession(session, { accessToken, findProduct }) {
   const orderId = session.metadata?.lifecycle_order_id || session.metadata?.order_id;
@@ -42,7 +26,7 @@ function rebuildLifecycleOrderFromSession(session, { accessToken, findProduct })
     access_token: resolvedToken,
     step: 4,
     product_id: productId,
-    product_snapshot: snapshotFromProduct(product, productId),
+    product_snapshot: product ? productSnapshot(product) : { id: productId, name: productId, display_name: productId },
     customer_short: {
       first_name: pending.first_name || customer.first_name,
       last_name: pending.last_name || customer.last_name,
@@ -71,7 +55,7 @@ function rebuildLifecycleOrderFromSession(session, { accessToken, findProduct })
 }
 
 async function loadOrderOrRecover(orderId, { token, sessionId, stripe, findProduct }) {
-  const existing = loadOrder(orderId);
+  const existing = await loadOrderAsync(orderId);
   if (existing) return existing;
   if (!stripe || !sessionId || !token) return null;
 

@@ -2,6 +2,26 @@
  * Base URL + liens compatibles file:// et serveur Express
  */
 (function () {
+  if (location.protocol !== 'file:') {
+    const qs = location.search;
+    if (qs) {
+      const p = new URLSearchParams(qs);
+      const order = p.get('order');
+      const token = p.get('token');
+      const product = p.get('product');
+      const step = p.get('step');
+      const onInscription = /^\/inscription(\/|$)/.test(location.pathname);
+      if (!onInscription && order && token) {
+        location.replace(`/inscription${qs}`);
+        return;
+      }
+      if (!onInscription && product && (order || (step && Number(step) > 1))) {
+        location.replace(`/inscription${qs}`);
+        return;
+      }
+    }
+  }
+
   const baseEl = document.createElement('base');
   if (location.protocol === 'file:') {
     let href = location.href.split(/[?#]/)[0];

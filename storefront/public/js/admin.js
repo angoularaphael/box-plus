@@ -313,6 +313,44 @@
     await loadMerch();
   };
 
+  document.getElementById('addOfferForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById('addOfferMsg');
+    msg.textContent = 'Création…';
+    msg.className = 'form-msg';
+    const fd = new FormData(e.target);
+    const priceEuros = fd.get('price_euros');
+    const ibanMode = fd.get('requires_iban');
+    const body = {
+      id: fd.get('id') || undefined,
+      display_name: fd.get('display_name'),
+      tab: fd.get('tab'),
+      subsection: fd.get('subsection'),
+    };
+    if (priceEuros !== '' && priceEuros != null) {
+      body.price_cents = Math.round(Number(priceEuros) * 100);
+    }
+    if (ibanMode === '1') body.requires_iban = true;
+    if (ibanMode === '0') body.requires_iban = false;
+    try {
+      const res = await fetch('/api/admin/merch/create', {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(),
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Échec création');
+      msg.textContent = `Offre créée : ${data.id}`;
+      msg.className = 'form-msg ok';
+      e.target.reset();
+      await loadMerch();
+    } catch (err) {
+      msg.textContent = err.message;
+      msg.className = 'form-msg err';
+    }
+  };
+
   document.getElementById('syncMaterielBtn').onclick = async () => {
     const msg = document.getElementById('syncMaterielMsg');
     msg.textContent = 'Synchronisation…';
