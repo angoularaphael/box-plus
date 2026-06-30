@@ -140,7 +140,7 @@
 
     if (!list.length) {
       tbody.innerHTML =
-        '<tr><td colspan="9" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription trouvée</td></tr>';
+        '<tr><td colspan="10" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription trouvée</td></tr>';
       return;
     }
 
@@ -159,6 +159,9 @@
         <td>
           <button type="button" class="btn sm dl-contract" data-id="${o.order_id}">PDF</button>
         </td>
+        <td>
+          <button type="button" class="btn sm secondary del-order" data-id="${o.order_id}" title="Supprimer">✕</button>
+        </td>
       </tr>`
       )
       .join('');
@@ -167,6 +170,31 @@
       btn.onclick = () => {
         if (window.BCContract) {
           window.BCContract.openAdminView(btn.dataset.id);
+        }
+      };
+    });
+
+    tbody.querySelectorAll('.del-order').forEach((btn) => {
+      btn.onclick = async () => {
+        const id = btn.dataset.id;
+        if (!confirm(`Supprimer l'inscription ${id} ? Cette action est irréversible.`)) return;
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: headers(false),
+          });
+          const data = await res.json();
+          if (!data.ok) throw new Error(data.error || 'Erreur');
+          orders = orders.filter((o) => o.order_id !== id);
+          renderOrders();
+          msg.textContent = `Inscription ${id} supprimée.`;
+          msg.className = 'form-msg ok';
+        } catch (err) {
+          msg.textContent = err.message;
+          msg.className = 'form-msg err';
+          btn.disabled = false;
         }
       };
     });
@@ -453,6 +481,28 @@
   };
 
   document.getElementById('refreshOrdersBtn').onclick = loadOrders;
+  document.getElementById('testEmailBtn').onclick = async () => {
+    const msg = document.getElementById('ordersMsg');
+    const to = prompt('Email de test :', 'linuxcam05@gmail.com');
+    if (!to) return;
+    msg.textContent = 'Envoi en cours…';
+    msg.className = 'form-msg';
+    try {
+      const res = await fetch('/api/admin/test-email', {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(),
+        body: JSON.stringify({ to }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || data.reason || 'Échec envoi');
+      msg.textContent = `Email test envoyé à ${data.to} (${data.via || 'brevo'}).`;
+      msg.className = 'form-msg ok';
+    } catch (err) {
+      msg.textContent = err.message;
+      msg.className = 'form-msg err';
+    }
+  };
   document.getElementById('ordersSearch').oninput = renderOrders;
   document.getElementById('ordersFilter').onchange = renderOrders;
 

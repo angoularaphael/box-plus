@@ -204,10 +204,35 @@ async function sendMaterielConfirmationEmail(order) {
   }
 }
 
+async function sendTestEmail(to) {
+  if (!isConfigured()) {
+    return { sent: false, reason: 'brevo_not_configured' };
+  }
+  try {
+    const result = await sendEmailViaBrevo({
+      to,
+      subject: 'Test BOXPLUS — Boxing Center',
+      html: `<!DOCTYPE html><html lang="fr"><body style="font-family:Arial,sans-serif;padding:24px">
+        <h1 style="color:#0B1F3A">Test email BOXPLUS</h1>
+        <p>Ceci est un email de test envoyé depuis la boutique Boxing Center.</p>
+        <p style="color:#6B7280;font-size:13px">Si vous recevez ce message, l'envoi Brevo fonctionne correctement.</p>
+      </body></html>`,
+      replyTo: defaultReplyTo(),
+    });
+    if (!result) return { sent: false, reason: 'brevo_not_configured' };
+    logInfo('Email test envoyé', { to, via: result.via });
+    return { sent: true, via: result.via };
+  } catch (err) {
+    logWarn('Email test échoué', { to, error: err.message });
+    return { sent: false, reason: 'brevo_error', error: err.message };
+  }
+}
+
 module.exports = {
   sendConfirmationEmail,
   sendMaterielConfirmationEmail,
   sendGdprEraseRequest,
+  sendTestEmail,
   buildConfirmationHtml,
   buildMaterielConfirmationHtml,
   getMailFrom,
