@@ -7,6 +7,37 @@ const { isChooseZoneScreen, selectSiteInPicker, clickSellOnSite } = require('./d
 
 const SESSION_DIR = process.env.BOT_SESSION_DIR || path.join(ROOT, 'data', 'session');
 const STORAGE_FILE = path.join(SESSION_DIR, 'storage-state.json');
+const AUTH_COOLDOWN_MS = Number(process.env.BOT_AUTH_COOLDOWN_MS || 10 * 60 * 1000);
+
+let loginInFlight = null;
+let authBlockedUntil = 0;
+
+function isAuthBlocked() {
+  return Date.now() < authBlockedUntil;
+}
+
+function getAuthBlockedMessage() {
+  const minutes = Math.ceil((authBlockedUntil - Date.now()) / 60000);
+  return `Connexion Deciplus en cooldown (${minutes} min) — évite les demandes de code email en rafale`;
+}
+
+function isMfaAuthError(message = '') {
+  return /code.*email|DECIPLUS_EMAIL_CODE|vérification|verification|otp|mfa|cooldown/i.test(message);
+}
+
+function blockAuthRetries(reason) {
+  authBlockedUntil = Date.now() + AUTH_COOLDOWN_MS;
+  logWarn('Connexion Deciplus en cooldown', {
+    reason,
+    cooldown_min: Math.round(AUTH_COOLDOWN_MS / 60000),
+  });
+}
+
+function assertAuthAllowed() {
+  if (isAuthBlocked()) {
+    throw new Error(getAuthBlockedMessage());
+  }
+}
 
 async function getAccessToken(page) {
   return page.evaluate(() => {
@@ -227,7 +258,7 @@ async function submitLoginForm(page, user, pass) {
   await randomDelay(process.env.BOT_MIN_DELAY_MS, process.env.BOT_MAX_DELAY_MS);
 }
 
-async function login(page, options = {}) {
+async function performLogin(page, options = {}) {
   const url = process.env.DECIPLUS_URL;
   const user = process.env.DECIPLUS_USER;
   const pass = process.env.DECIPLUS_PASSWORD;
@@ -303,6 +334,26 @@ async function login(page, options = {}) {
   await handleChooseZone(page, options.siteLabel);
 }
 
+async function login(page, options = {}) {
+  assertAuthAllowed();
+  if (loginInFlight) return loginInFlight;
+
+  loginInFlight = (async () => {
+    try {
+      await performLogin(page, options);
+    } catch (err) {
+      if (isMfaAuthError(err.message)) {
+        blockAuthRetries(err.message);
+      }
+      throw err;
+    }
+  })().finally(() => {
+    loginInFlight = null;
+  });
+
+  return loginInFlight;
+}
+
 module.exports = {
   SESSION_DIR,
   STORAGE_FILE,
@@ -314,4 +365,6 @@ module.exports = {
   gotoDeciplus,
   getAccessToken,
   login,
+  isAuthBlocked,
+  isMfaAuthError,
 };

@@ -4,7 +4,7 @@
  */
 require('dotenv').config();
 
-const { login } = require('./auth');
+const { login, isMfaAuthError } = require('./auth');
 const { runWithSession, closeBrowser } = require('./browser-pool');
 const { findOrCreateMember } = require('./member');
 const { recordSale } = require('./sale');
@@ -28,6 +28,7 @@ const {
 const { fetchDeciplusCatalog, resolveProductConfig, resolveBadgeProductConfig } = require('./catalog');
 const { logInfo, logError, logWarn, sendAlert } = require('../lib/logger');
 const { sleep } = require('../lib/utils');
+const { maybeKeepSessionAlive, touchKeepAliveClock } = require('./session-keepalive');
 
 const MAX_RETRIES = Number(process.env.BOT_MAX_RETRIES || 3);
 const POLL_MS = Number(process.env.BOT_POLL_MS || 5000);
@@ -215,6 +216,7 @@ async function processOneJob(job) {
       status: outcome.status,
     });
 
+    touchKeepAliveClock();
     return { ok: true, result: outcome };
   } catch (err) {
     if (err.message.startsWith('Validation:')) {
@@ -223,7 +225,8 @@ async function processOneJob(job) {
     }
 
     const attempts = (job.attempts || 0) + 1;
-    const status = attempts >= MAX_RETRIES ? STATUS.MANUAL_REVIEW : STATUS.ERROR;
+    const noRetry = isMfaAuthError(err.message);
+    const status = noRetry || attempts >= MAX_RETRIES ? STATUS.MANUAL_REVIEW : STATUS.ERROR;
 
     updateJob(filePath, {
       status,
@@ -269,10 +272,16 @@ async function runLoop(once = false) {
   }, CATALOG_PUSH_MS);
   if (catalogTimer.unref) catalogTimer.unref();
 
+  const keepaliveTimer = setInterval(() => {
+    maybeKeepSessionAlive().catch(() => {});
+  }, Number(process.env.BOT_KEEPALIVE_CHECK_MS || 60000));
+  if (keepaliveTimer.unref) keepaliveTimer.unref();
+
   do {
     const pending = listPending();
     if (pending.length === 0) {
       if (once) break;
+      await maybeKeepSessionAlive();
       await sleep(POLL_MS);
       continue;
     }
