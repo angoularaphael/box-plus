@@ -18,6 +18,11 @@ const CATALOG_FILE =
 let merchHydrated = false;
 let merchHydratePromise = null;
 
+function resetMerchHydration() {
+  merchHydrated = false;
+  merchHydratePromise = null;
+}
+
 function useRemoteStore() {
   return Boolean(
     (process.env.VERCEL || process.env.BOXPLUS_MERCH_REMOTE === '1') &&
@@ -130,6 +135,7 @@ async function saveMerchAsync(data) {
 
   try {
     await saveToRemote(MERCH_KEY, data);
+    resetMerchHydration();
     return { data, remote_saved: true };
   } catch (err) {
     logError('Sauvegarde merch Supabase', { error: err.message });
@@ -163,4 +169,5 @@ module.exports = {
   saveMerchAsync,
   loadMaterielCatalogLocal,
   saveMaterielCatalog,
+  resetMerchHydration,
 };

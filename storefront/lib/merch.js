@@ -9,6 +9,7 @@ const {
   saveMerchAsync,
   loadMerchFresh,
   hydrateMerchOnce,
+  resetMerchHydration,
   loadMaterielCatalogLocal,
   saveMaterielCatalog,
 } = require('./merch-persistence');
@@ -191,16 +192,30 @@ function getEnrichedProducts(options = {}) {
 
 function getFeaturedProducts(limit = 3) {
   const merch = loadMerch();
-  const ids = (merch.featured_home || []).slice(0, limit);
+  const ids = (merch.featured_home || []).filter(Boolean).slice(0, limit);
   const all = getEnrichedProducts({ activeOnly: true });
-  const byId = Object.fromEntries(all.map((p) => [p.id, p]));
-  const featured = ids.map((id) => byId[id]).filter(Boolean);
-  if (featured.length < limit) {
-    for (const p of all.filter((x) => x.featured && !featured.find((f) => f.id === x.id))) {
+  const byId = new Map();
+  for (const p of all) {
+    byId.set(p.id, p);
+    if (p.legacy_id) byId.set(p.legacy_id, p);
+  }
+
+  let featured = ids.map((id) => byId.get(id)).filter(Boolean);
+
+  if (!featured.length) {
+    for (const p of all.filter((x) => x.featured)) {
       if (featured.length >= limit) break;
-      featured.push(p);
+      if (!featured.find((f) => f.id === p.id)) featured.push(p);
     }
   }
+
+  if (!featured.length) {
+    featured = all.filter((p) => p.tab === 'abonnements' || p.tab === 'seance-essai').slice(0, limit);
+  }
+  if (!featured.length) {
+    featured = all.slice(0, limit);
+  }
+
   return featured.slice(0, limit);
 }
 
@@ -216,6 +231,13 @@ function updateMerchProduct(productId, patch) {
   if (!merch.products) merch.products = {};
   merch.products[productId] = { ...(merch.products[productId] || {}), ...patch };
   return saveMerch(merch);
+}
+
+async function updateMerchProductAsync(productId, patch) {
+  const merch = loadMerch();
+  if (!merch.products) merch.products = {};
+  merch.products[productId] = { ...(merch.products[productId] || {}), ...patch };
+  return saveMerchAsync(merch);
 }
 
 function setFeaturedHome(ids) {
@@ -316,6 +338,7 @@ module.exports = {
   getFeaturedProducts,
   findEnrichedProduct,
   updateMerchProduct,
+  updateMerchProductAsync,
   updateMaterielProduct,
   setFeaturedHome,
   setFeaturedHomeAsync,
@@ -323,6 +346,7 @@ module.exports = {
   loadMerchFresh,
   hydrateMerchOnce,
   saveMerchAsync,
+  resetMerchHydration,
   MERCH_FILE,
   CATALOG_FILE,
 };

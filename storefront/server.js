@@ -38,6 +38,7 @@ const {
   loadMaterielCatalog,
   saveMaterielCatalog,
   updateMerchProduct,
+  updateMerchProductAsync,
   setFeaturedHome,
   setFeaturedHomeAsync,
   createManualOffer,
@@ -526,7 +527,8 @@ function createApp() {
       await loadMerchFresh();
       const result = createManualOffer(req.body || {});
       const saved = await saveMerchAsync(loadMerch());
-      res.json({ ok: true, ...result, warning: saved.warning || null });
+      const product = getEnrichedProducts({ activeOnly: false }).find((p) => p.id === result.id);
+      res.json({ ok: true, ...result, product: product || null, warning: saved.warning || null });
     } catch (err) {
       res.status(400).json({ ok: false, error: err.message });
     }
@@ -538,9 +540,15 @@ function createApp() {
       await loadMerchFresh();
       const { product_id, patch } = req.body;
       if (!product_id) return res.status(400).json({ ok: false, error: 'product_id requis' });
-      updateMerchProduct(product_id, patch);
-      const saved = await saveMerchAsync(loadMerch());
-      res.json({ ok: true, warning: saved.warning || null });
+      const saved = await updateMerchProductAsync(product_id, patch || {});
+      const product = getEnrichedProducts({ activeOnly: false }).find((p) => p.id === product_id);
+      res.json({
+        ok: true,
+        product_id,
+        patch,
+        product: product || null,
+        warning: saved.warning || null,
+      });
     } catch (err) {
       res.status(400).json({ ok: false, error: err.message });
     }

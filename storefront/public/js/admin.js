@@ -172,6 +172,42 @@
     });
   }
 
+  function setCatalogMsg(text, type) {
+    const el = document.getElementById('catalogMsg');
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'form-msg' + (type ? ` ${type}` : '');
+  }
+
+  function applyLocalProductPatch(product_id, patchBody) {
+    const idx = products.findIndex((p) => p.id === product_id);
+    if (idx < 0) return null;
+    const prev = { ...products[idx] };
+    products[idx] = { ...products[idx], ...patchBody };
+    if (patchBody.display_name != null) products[idx].display_name = patchBody.display_name;
+    return prev;
+  }
+
+  function flashSaved(btn) {
+    if (!btn) return;
+    const prev = btn.textContent;
+    btn.textContent = '✓ Enregistré';
+    btn.disabled = true;
+    btn.classList.add('is-saved');
+    setTimeout(() => {
+      btn.textContent = prev;
+      btn.disabled = false;
+      btn.classList.remove('is-saved');
+    }, 1800);
+  }
+
+  function updateFeaturedCardLabel(productId, displayName) {
+    const card = document.querySelector(`.admin-featured-card input[data-feat-id="${CSS.escape(productId)}"]`);
+    if (!card) return;
+    const nameEl = card.closest('.admin-featured-card')?.querySelector('.admin-featured-name');
+    if (nameEl) nameEl.textContent = displayName;
+  }
+
   function renderFeatured() {
     const el = document.getElementById('featuredList');
     const countEl = document.getElementById('featuredCount');
@@ -233,14 +269,40 @@
 
   function bindTableActions(root) {
     root.querySelectorAll('.toggle-active').forEach((cb) => {
-      cb.onchange = () => patch(cb.dataset.id, { active: cb.checked });
+      cb.onchange = async () => {
+        const id = cb.dataset.id;
+        const prevActive = !cb.checked;
+        applyLocalProductPatch(id, { active: cb.checked });
+        setCatalogMsg('Enregistrement…');
+        try {
+          await patch(id, { active: cb.checked }, { silent: true });
+          setCatalogMsg(cb.checked ? 'Offre activée.' : 'Offre désactivée.', 'ok');
+          renderFeatured();
+        } catch {
+          applyLocalProductPatch(id, { active: prevActive });
+          cb.checked = prevActive;
+        }
+      };
     });
     root.querySelectorAll('.save-row').forEach((btn) => {
-      btn.onclick = () => {
+      btn.onclick = async () => {
         const id = btn.dataset.id;
-        const name = root.querySelector(`.edit-name[data-id="${id}"]`).value;
-        const sort = Number(root.querySelector(`.edit-sort[data-id="${id}"]`).value);
-        patch(id, { display_name: name, sort_order: sort });
+        const name = root.querySelector(`.edit-name[data-id="${CSS.escape(id)}"]`)?.value;
+        const sort = Number(root.querySelector(`.edit-sort[data-id="${CSS.escape(id)}"]`)?.value);
+        const prev = applyLocalProductPatch(id, { display_name: name, sort_order: sort });
+        updateFeaturedCardLabel(id, name);
+        setCatalogMsg('Enregistrement…');
+        try {
+          await patch(id, { display_name: name, sort_order: sort }, { triggerEl: btn, silent: true });
+          setCatalogMsg('Modifications enregistrées.', 'ok');
+        } catch {
+          if (prev) {
+            const idx = products.findIndex((p) => p.id === id);
+            if (idx >= 0) products[idx] = prev;
+            renderTable();
+            renderFeatured();
+          }
+        }
       };
     });
   }
@@ -287,14 +349,31 @@
     bindTableActions(container);
   }
 
-  async function patch(product_id, patchBody) {
-    await fetch('/api/admin/merch', {
+  async function patch(product_id, patchBody, opts = {}) {
+    const res = await fetch('/api/admin/merch', {
       method: 'PUT',
       credentials: 'include',
       headers: headers(),
       body: JSON.stringify({ product_id, patch: patchBody }),
     });
-    await loadMerch();
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || 'Échec enregistrement');
+
+    if (data.product) {
+      const idx = products.findIndex((p) => p.id === product_id);
+      if (idx >= 0) products[idx] = data.product;
+      else products.push(data.product);
+      if (!opts.silent) renderFeatured();
+    }
+
+    if (data.warning && !opts.silent) {
+      setCatalogMsg(data.warning, 'err');
+    } else if (!opts.silent) {
+      setCatalogMsg('Modifications enregistrées.', 'ok');
+    }
+
+    if (opts.triggerEl) flashSaved(opts.triggerEl);
+    return data;
   }
 
   function renderMerch() {
@@ -356,7 +435,12 @@
       msg.textContent = `Offre créée : ${data.id}`;
       msg.className = 'form-msg ok';
       e.target.reset();
-      await loadMerch();
+      if (data.product) {
+        products.push(data.product);
+        renderMerch();
+      } else {
+        await loadMerch();
+      }
     } catch (err) {
       msg.textContent = err.message;
       msg.className = 'form-msg err';

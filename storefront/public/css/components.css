@@ -966,7 +966,10 @@ body:has(#adminPanel:not([hidden])) {
   font-family: ui-monospace, monospace;
 }
 
-.admin-checkbox {
+.btn.sm.is-saved {
+  background: #0d9488;
+  border-color: #0d9488;
+}
   width: 18px !important;
   height: 18px;
   min-width: 18px;
