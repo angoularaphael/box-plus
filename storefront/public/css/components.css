@@ -842,9 +842,226 @@
 }
 
 .admin-layout {
-  max-width: 1000px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 32px 20px;
+  padding: 32px 20px 48px;
+}
+
+body:has(#adminPanel:not([hidden])) {
+  background: var(--bc-bg, #f4f6f9);
+}
+
+.admin-lead {
+  color: var(--bc-muted);
+  font-size: 14px;
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.admin-section {
+  background: #fff;
+  border: 1px solid var(--bc-border);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 24px rgba(11, 31, 58, 0.06);
+}
+
+.admin-section--flush {
+  padding-bottom: 12px;
+}
+
+.admin-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.admin-section-title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--bc-navy);
+}
+
+.admin-section-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--bc-muted);
+  line-height: 1.45;
+}
+
+.admin-section-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(46, 196, 198, 0.12);
+  color: var(--bc-navy);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.admin-section-foot {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--bc-muted);
+}
+
+.admin-featured-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.admin-featured-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--bc-border);
+  border-radius: 12px;
+  background: #fafbfc;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.admin-featured-card.is-selected {
+  border-color: var(--bc-cta);
+  background: rgba(46, 196, 198, 0.08);
+  box-shadow: 0 0 0 1px rgba(46, 196, 198, 0.25);
+}
+
+.admin-featured-label {
+  display: block;
+  margin: 0;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-featured-name {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bc-navy);
+  line-height: 1.35;
+}
+
+.admin-featured-id {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--bc-muted);
+  font-family: ui-monospace, monospace;
+}
+
+.admin-checkbox {
+  width: 18px !important;
+  height: 18px;
+  min-width: 18px;
+  margin: 2px 0 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0;
+  accent-color: var(--bc-cta);
+}
+
+.admin-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-catalog-block {
+  border: 1px solid var(--bc-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fafbfc;
+}
+
+.admin-catalog-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, #f8f9fb 0%, #f1f3f6 100%);
+  border-bottom: 1px solid var(--bc-border);
+}
+
+.admin-catalog-block-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--bc-navy);
+}
+
+.admin-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-table-wrap .admin-table {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.admin-input-inline {
+  width: 100%;
+  min-width: 160px;
+  padding: 8px 10px !important;
+  font-size: 13px !important;
+}
+
+.admin-input-sort {
+  width: 72px !important;
+  padding: 8px 10px !important;
+  font-size: 13px !important;
+}
+
+.admin-code {
+  font-size: 11px;
+  color: var(--bc-muted);
+  background: #eef1f5;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+
+.admin-tab-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: rgba(11, 31, 58, 0.08);
+  color: var(--bc-navy);
+}
+
+.admin-empty {
+  margin: 0;
+  padding: 20px;
+  text-align: center;
+  color: var(--bc-muted);
+  font-size: 14px;
+}
+
+.admin-section .admin-toolbar {
+  margin-bottom: 14px;
+}
+
+.admin-section .form-msg {
+  margin-top: 12px;
 }
 
 .admin-table {
