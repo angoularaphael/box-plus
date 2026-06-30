@@ -279,28 +279,122 @@ function drawSignatureBlock(doc, order) {
   }
 }
 
-function drawPageFooter(doc) {
+function clubEmitterRowsCompact() {
+  return [
+    { label: 'Société', value: CLUB.name },
+    { label: 'Adresse', value: `${CLUB.address}, ${CLUB.city}` },
+    { label: 'SIRET', value: CLUB.siret },
+    { label: 'Contact', value: `${CLUB.phone} — ${CLUB.email}` },
+  ];
+}
+
+function drawPartyColumnCompact(doc, x, y, width, heading, rows) {
+  doc.fontSize(9).fillColor(NAVY).font('Helvetica-Bold').text(heading, x, y, { width });
+  let cy = y + 14;
+  for (const row of rows) {
+    if (!row?.value) continue;
+    doc.fontSize(7.5).fillColor(LABEL).font('Helvetica').text(`${row.label} : `, x, cy, {
+      width,
+      continued: true,
+    });
+    doc.fillColor('#1F2937').font('Helvetica-Bold').text(row.value.replace(/\n/g, ', '), { width });
+    cy = doc.y + 4;
+  }
+  return cy;
+}
+
+function drawTwoPartiesCompact(doc, emitterRows, recipientRows) {
   const left = doc.page.margins.left;
   const width = contentWidth(doc);
-  const footerY = doc.page.height - 42;
+  const colW = (width - 16) / 2;
+  const y = doc.y;
+  const h1 = drawPartyColumnCompact(doc, left, y, colW, 'Émetteur', emitterRows);
+  const h2 = drawPartyColumnCompact(doc, left + colW + 16, y, colW, 'Adhérent', recipientRows);
+  doc.y = Math.max(h1, h2) + 8;
+}
+
+function drawProHeaderCompact(doc, { title, date, ref }) {
+  const left = doc.page.margins.left;
+  const width = contentWidth(doc);
+  const top = doc.page.margins.top;
+
+  doc.fontSize(16).fillColor(NAVY).font('Helvetica-Bold').text(title, left, top, { width: width * 0.65 });
+  doc.fontSize(8).fillColor(MUTED).font('Helvetica');
+  doc.text(`${formatDateFr(date)}${ref ? `  ·  Réf. ${ref}` : ''}`, left, doc.y + 2);
+
+  const logoW = 52;
+  const logoX = left + width - logoW;
+  if (fs.existsSync(LOGO_PATH)) {
+    try {
+      doc.image(LOGO_PATH, logoX, top, { width: logoW });
+    } catch {
+      doc.fontSize(11).fillColor(NAVY).font('Helvetica-Bold').text(CLUB.brand, logoX, top + 4, {
+        width: logoW,
+        align: 'right',
+      });
+    }
+  }
+  doc.y = Math.max(doc.y, top + 56) + 6;
+}
+
+function drawDetailTableCompact(doc, opts) {
+  return drawDetailTable(doc, {
+    ...opts,
+    rows: (opts.rows || []).map((r) => ({ ...r, height: r.height || 22 })),
+  });
+}
+
+function drawSignatureBlockCompact(doc, order) {
+  const short = order.customer_short || {};
+  const left = doc.page.margins.left;
+  const width = contentWidth(doc);
+
+  doc.fontSize(10).fillColor(NAVY).font('Helvetica-Bold').text('Signature électronique', left, doc.y);
+  doc.y += 14;
+
+  if (order.signature) {
+    const sigH = 58;
+    doc.roundedRect(left, doc.y, width, sigH, 4).fill('#F0FAFB').stroke(TEAL);
+    const sigY = doc.y + 8;
+    doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(8.5).text('Document signé électroniquement', left + 10, sigY);
+    doc.font('Helvetica').fontSize(7.5).fillColor('#374151');
+    const name = memberDisplayName(short);
+    const line1 = `Par : ${name}${short.email ? ` — ${short.email}` : ''}`;
+    const line2 = `Le ${new Date(order.signature.signed_at).toLocaleString('fr-FR')}  ·  CGV : ${order.signature.consent_cgv ? 'Oui' : 'Non'}  ·  Règlement : ${order.signature.consent_reglement ? 'Oui' : 'Non'}`;
+    doc.text(line1, left + 10, sigY + 13, { width: width - 20 });
+    doc.text(line2, left + 10, sigY + 26, { width: width - 20 });
+    if (order.signature.ip) {
+      doc.fontSize(6.5).fillColor(MUTED).text(`IP : ${order.signature.ip}`, left + 10, sigY + 40);
+    }
+    doc.y = doc.y + sigH;
+  } else {
+    doc.fontSize(7.5).fillColor(MUTED).font('Helvetica').text(
+      'Prévisualisation — signature à la validation finale.',
+      { width }
+    );
+  }
+}
+
+function drawPageFooter(doc) {
   const range = doc.bufferedPageRange();
   const total = range.count;
+  const footerText = `${CLUB.name} — SIRET ${CLUB.siret} — ${CLUB.phone} — ${CLUB.web}`;
 
   for (let i = 0; i < total; i += 1) {
     doc.switchToPage(range.start + i);
-    doc.moveTo(left, footerY).lineTo(left + width, footerY).stroke(BORDER);
-    doc.fontSize(7).fillColor(MUTED).font('Helvetica');
-    doc.text(
-      `${CLUB.name} — SIRET ${CLUB.siret} — TVA ${CLUB.tva} — ${CLUB.address}, ${CLUB.city} — ${CLUB.phone}`,
-      left,
-      footerY + 8,
-      { width: width * 0.78, lineGap: 1 }
-    );
-    doc.text(`Page ${i + 1} sur ${total}`, left + width * 0.78, footerY + 8, {
-      width: width * 0.22,
-      align: 'right',
-    });
+    const left = doc.page.margins.left;
+    const right = doc.page.width - doc.page.margins.right;
+    const width = right - left;
+    const footerY = doc.page.height - doc.page.margins.bottom - 16;
+
+    doc.save();
+    doc.lineWidth(0.5).strokeColor(BORDER).moveTo(left, footerY).lineTo(right, footerY).stroke();
+    doc.fontSize(6.5).fillColor(MUTED).font('Helvetica');
+    doc.text(footerText, left, footerY + 3, { width: width - 48, lineBreak: false });
+    doc.text(`${i + 1}/${total}`, right - 40, footerY + 3, { width: 40, align: 'right', lineBreak: false });
+    doc.restore();
   }
+  doc.switchToPage(range.start + total - 1);
 }
 
 module.exports = {
@@ -323,5 +417,10 @@ module.exports = {
   drawArticle,
   drawSignatureBlock,
   drawPageFooter,
+  drawProHeaderCompact,
+  drawTwoPartiesCompact,
+  clubEmitterRowsCompact,
+  drawDetailTableCompact,
+  drawSignatureBlockCompact,
   contentWidth,
 };
