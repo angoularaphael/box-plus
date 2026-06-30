@@ -1099,6 +1099,7 @@ function createApp() {
     '/mon-inscription': 'mon-inscription.html',
     '/checkout.html': 'checkout.html',
     '/admin': 'admin/index.html',
+    '/admin/': 'admin/index.html',
     '/admin/login': 'admin/login.html',
     '/admin/contrats': 'admin/index.html',
     '/contrat': 'contrat.html',

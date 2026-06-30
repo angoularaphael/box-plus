@@ -54,7 +54,7 @@
     });
     if (name === 'contracts') loadOrders();
     if (location.hash !== `#${name}`) {
-      history.replaceState(null, '', `#${name}`);
+      history.replaceState(null, '', `/admin/#${name}`);
     }
   }
 
