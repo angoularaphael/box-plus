@@ -51,7 +51,7 @@
       <header class="topbar">
         <div class="topbar-inner">
           <a class="logo" href="${L('/')}">
-            <img src="${A('/assets/logo-boxing-center.svg')}" alt="Boxing Center" width="160" height="44" />
+            <img src="${A('/assets/logo-boxing-center.jpg')}" alt="Boxing Center" width="180" height="48" style="object-fit:contain;height:44px;width:auto" onerror="this.src='${A('/assets/logo-boxing-center.svg')}'" />
           </a>
           <button class="nav-toggle" id="navToggle" aria-label="Menu" type="button">
             <span></span><span></span><span></span>

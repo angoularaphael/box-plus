@@ -741,6 +741,43 @@
   margin-top: 3px;
 }
 
+.consent-box a.legal-link {
+  color: var(--bc-cta);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.consent-box a.legal-link:hover {
+  color: var(--bc-cta-hover);
+}
+
+.e-sign-panel {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  margin: 0 0 20px;
+  background: linear-gradient(135deg, rgba(46, 196, 198, 0.12), rgba(11, 31, 58, 0.06));
+  border: 1px solid rgba(46, 196, 198, 0.35);
+  border-radius: var(--radius);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.e-sign-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bc-navy);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 20px;
+}
+
 /* Admin */
 .admin-layout {
   max-width: 1000px;
