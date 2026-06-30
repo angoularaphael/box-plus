@@ -1,5 +1,8 @@
 (function () {
   const params = new URLSearchParams(window.location.search);
+  const STORAGE_KEY = 'bc_inscription_progress';
+  const STORAGE_TTL_MS = 48 * 60 * 60 * 1000;
+
   const state = {
     productId: params.get('product'),
     orderId: params.get('order'),
@@ -9,6 +12,7 @@
     product: null,
     order: null,
     config: null,
+    shortDraft: null,
   };
 
   const stepContent = document.getElementById('stepContent');
@@ -17,6 +21,81 @@
   function setMsg(text, type) {
     formMsg.textContent = text || '';
     formMsg.className = 'form-msg' + (type ? ` ${type}` : '');
+  }
+
+  function saveProgress() {
+    try {
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          productId: state.productId,
+          orderId: state.orderId,
+          token: state.token,
+          sessionId: state.sessionId,
+          step: state.step,
+          shortDraft: state.shortDraft,
+          savedAt: Date.now(),
+        })
+      );
+    } catch {
+      /* quota / mode privé */
+    }
+  }
+
+  function restoreProgress() {
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (!saved.savedAt || Date.now() - saved.savedAt > STORAGE_TTL_MS) {
+        sessionStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+      if (saved.productId && (!state.productId || state.productId === saved.productId)) {
+        state.productId = saved.productId;
+      }
+      if (saved.orderId) state.orderId = state.orderId || saved.orderId;
+      if (saved.token) state.token = state.token || saved.token;
+      if (saved.sessionId) state.sessionId = state.sessionId || saved.sessionId;
+      if (saved.shortDraft) state.shortDraft = saved.shortDraft;
+      if (!params.get('step') && saved.step > 1) {
+        state.step = Math.max(state.step, saved.step);
+      }
+    } catch {
+      sessionStorage.removeItem(STORAGE_KEY);
+    }
+  }
+
+  function clearProgress() {
+    sessionStorage.removeItem(STORAGE_KEY);
+  }
+
+  function syncUrl() {
+    const qs = new URLSearchParams();
+    if (state.productId) qs.set('product', state.productId);
+    if (state.orderId) qs.set('order', state.orderId);
+    if (state.token) qs.set('token', state.token);
+    if (state.sessionId) qs.set('session_id', state.sessionId);
+    qs.set('step', String(state.step));
+    const next = `?${qs}`;
+    if (window.location.search !== next) {
+      history.replaceState(null, '', next);
+    }
+  }
+
+  function stepFromOrder(order) {
+    if (!order) return state.step;
+    if (order.step >= 6) return 6;
+    if (order.step >= 5) return 5;
+    if (order.step >= 4 || order.payment?.status === 'paid') return 4;
+    if (order.order_id) return 3;
+    return 2;
+  }
+
+  function persistAndRender() {
+    saveProgress();
+    syncUrl();
+    render();
   }
 
   function updateStepper(step) {
@@ -50,15 +129,17 @@
   }
 
   async function loadOrder() {
-    if (!state.orderId || !state.token) return;
+    if (!state.orderId || !state.token) return false;
     const qs = new URLSearchParams({ token: state.token });
     if (state.sessionId) qs.set('session_id', state.sessionId);
     const res = await fetch(`/api/orders/${state.orderId}?${qs}`);
-    if (!res.ok) return;
+    if (!res.ok) return false;
     const data = await res.json();
     state.order = data.order;
     state.product = state.order.product_snapshot;
-    state.step = state.order.step >= 6 ? 6 : Math.max(state.step, state.order.step);
+    if (!state.productId && state.product?.id) state.productId = state.product.id;
+    state.step = stepFromOrder(state.order);
+    return true;
   }
 
   function orderErrorMessage(data) {
@@ -66,6 +147,21 @@
       return 'Dossier introuvable. Rechargez la page depuis le lien reçu après paiement, ou contactez le club.';
     }
     return (data.errors || [data.error]).join(', ');
+  }
+
+  function bindShortDraftAutosave(form) {
+    let timer;
+    const capture = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        state.shortDraft = Object.fromEntries(new FormData(form).entries());
+        saveProgress();
+      }, 400);
+    };
+    form.querySelectorAll('input').forEach((el) => {
+      el.addEventListener('input', capture);
+      el.addEventListener('change', capture);
+    });
   }
 
   function renderStep1() {
@@ -86,12 +182,12 @@
       <button type="button" class="btn block" id="toStep2">Commencer l'inscription</button>`;
     document.getElementById('toStep2').onclick = () => {
       state.step = 2;
-      render();
+      persistAndRender();
     };
   }
 
   function renderStep2() {
-    const short = state.order?.customer_short || {};
+    const short = state.order?.customer_short || state.shortDraft || {};
     stepContent.innerHTML = `
       <h1>Vos coordonnées</h1>
       <p class="sub">Quelques informations pour préparer votre inscription — rien de plus pour l'instant.</p>
@@ -103,12 +199,16 @@
         <div class="full"><label for="birthdate">Date de naissance *</label><input id="birthdate" name="birthdate" type="date" required value="${short.birthdate || ''}" /></div>
         <div class="full"><button type="submit" class="btn block">Continuer vers le paiement</button></div>
       </form>`;
-    document.getElementById('shortForm').onsubmit = async (e) => {
+    const form = document.getElementById('shortForm');
+    bindShortDraftAutosave(form);
+    form.onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Envoi…');
       const fd = new FormData(e.target);
       const body = Object.fromEntries(fd.entries());
       body.product_id = state.productId;
+      state.shortDraft = body;
+      saveProgress();
       const res = await fetch('/api/orders/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -122,8 +222,11 @@
       state.orderId = data.order_id;
       state.token = data.access_token;
       state.step = 3;
-      history.replaceState(null, '', `?order=${state.orderId}&token=${state.token}&step=3&product=${state.productId}`);
+      state.shortDraft = null;
       setMsg('');
+      saveProgress();
+      syncUrl();
+      await loadOrder();
       render();
     };
   }
@@ -145,6 +248,7 @@
     document.getElementById('payForm').onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Redirection…');
+      saveProgress();
       const body = { token: state.token };
       if (needsIban) body.iban = document.getElementById('iban').value;
       const res = await fetch(`/api/orders/${state.orderId}/pay`, {
@@ -199,8 +303,9 @@
         return;
       }
       state.step = 5;
-      history.replaceState(null, '', `?order=${state.orderId}&token=${state.token}&step=5`);
       setMsg('');
+      saveProgress();
+      syncUrl();
       await loadOrder();
       render();
     };
@@ -251,7 +356,10 @@
         return;
       }
       state.step = 6;
+      clearProgress();
       setMsg('');
+      saveProgress();
+      syncUrl();
       render();
     };
   }
@@ -293,20 +401,42 @@
     else if (state.step === 4) renderStep4();
     else if (state.step === 5) renderStep5();
     else renderStep6();
+    saveProgress();
   }
 
   async function init() {
+    restoreProgress();
     await loadConfig();
-    if (state.orderId) {
+
+    if (state.orderId && state.token) {
       await confirmStripeReturn();
-      await loadOrder();
+      const loaded = await loadOrder();
+      if (!loaded && state.step > 3) {
+        setMsg(
+          'Session expirée sur le serveur — reprenez depuis le lien reçu après paiement ou contactez le club.',
+          'err'
+        );
+      }
     } else {
       await loadProduct();
+      if (state.step > 1 && state.productId) {
+        /* étape restaurée localement (ex. formulaire identité) */
+      } else if (!state.productId) {
+        state.step = 1;
+      }
     }
+
     if (!state.productId && state.product) state.productId = state.product.id;
-    if (state.order && state.order.step >= 4 && state.step < 4) state.step = state.order.step;
+
+    if (state.step === 1 && state.orderId && state.order) {
+      state.step = stepFromOrder(state.order);
+    }
+
+    syncUrl();
     render();
   }
+
+  window.addEventListener('beforeunload', saveProgress);
 
   init();
 })();
