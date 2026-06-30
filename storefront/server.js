@@ -39,6 +39,7 @@ const {
   saveMaterielCatalog,
   updateMerchProduct,
   setFeaturedHome,
+  setFeaturedHomeAsync,
   createManualOffer,
   loadMerchFresh,
   hydrateMerchOnce,
@@ -524,8 +525,8 @@ function createApp() {
     try {
       await loadMerchFresh();
       const result = createManualOffer(req.body || {});
-      await saveMerchAsync(loadMerch());
-      res.json({ ok: true, ...result });
+      const saved = await saveMerchAsync(loadMerch());
+      res.json({ ok: true, ...result, warning: saved.warning || null });
     } catch (err) {
       res.status(400).json({ ok: false, error: err.message });
     }
@@ -538,8 +539,8 @@ function createApp() {
       const { product_id, patch } = req.body;
       if (!product_id) return res.status(400).json({ ok: false, error: 'product_id requis' });
       updateMerchProduct(product_id, patch);
-      await saveMerchAsync(loadMerch());
-      res.json({ ok: true });
+      const saved = await saveMerchAsync(loadMerch());
+      res.json({ ok: true, warning: saved.warning || null });
     } catch (err) {
       res.status(400).json({ ok: false, error: err.message });
     }
@@ -547,11 +548,21 @@ function createApp() {
 
   app.post('/api/admin/merch/featured', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
-    const ids = req.body.ids || [];
-    if (ids.length > 3) return res.status(400).json({ ok: false, error: 'max 3 offres featured' });
-    setFeaturedHome(ids);
-    await saveMerchAsync(loadMerch());
-    res.json({ ok: true, featured_home: ids });
+    try {
+      await loadMerchFresh();
+      const ids = (req.body.ids || []).slice(0, 3);
+      if (ids.length > 3) return res.status(400).json({ ok: false, error: 'max 3 offres featured' });
+      const saved = await setFeaturedHomeAsync(ids);
+      res.json({
+        ok: true,
+        featured_home: saved.data.featured_home,
+        remote_saved: saved.remote_saved,
+        warning: saved.warning || null,
+      });
+    } catch (err) {
+      logError('Erreur featured admin', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
   });
 
   app.get('/api/admin/orders', async (req, res) => {
