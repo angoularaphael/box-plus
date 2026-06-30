@@ -4,7 +4,7 @@
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 
-const DEFAULT_SENDER_EMAIL = 'suzinabot@11426075.brevosend.com';
+const DEFAULT_SENDER_EMAIL = 'suzinabot@gmail.com';
 const DEFAULT_SENDER_NAME = 'Boxing Center';
 
 function readApiKey() {
@@ -115,7 +115,7 @@ async function sendViaRestApi({ to, subject, html, text, replyTo, attachments })
   if (!res.ok) {
     throw new Error(data.message || data.error || `Brevo API HTTP ${res.status}`);
   }
-  return { sent: true, messageId: data.messageId, via: 'brevo-api' };
+  return { sent: true, messageId: data.messageId, via: 'brevo-api', sender: senderEmail() };
 }
 
 async function sendViaSmtp({ to, subject, html, text, replyTo, attachments }) {
