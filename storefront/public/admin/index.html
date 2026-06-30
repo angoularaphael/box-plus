@@ -25,39 +25,54 @@
       </nav>
 
       <section id="tabOffers">
-        <p style="color:var(--bc-muted);margin-bottom:24px;font-size:14px">Activez/désactivez les offres, modifiez les textes et choisissez les 3 offres à la une (homepage).</p>
+        <p class="admin-lead">Activez les offres, modifiez les textes boutique et choisissez les 3 offres mises en avant sur l'accueil.</p>
 
-        <h2 style="font-size:1rem;color:var(--bc-navy);margin-bottom:12px">Offres à la une (max 3)</h2>
-        <div id="featuredList" style="margin-bottom:32px"></div>
-        <button type="button" class="btn sm" id="saveFeatured">Enregistrer la une</button>
+        <div class="admin-section">
+          <div class="admin-section-head">
+            <div>
+              <h2 class="admin-section-title">Offres à la une</h2>
+              <p class="admin-section-desc">Maximum 3 offres affichées sur la page d'accueil.</p>
+            </div>
+            <span class="admin-section-badge" id="featuredCount">0 / 3</span>
+          </div>
+          <div id="featuredList" class="admin-featured-grid"></div>
+          <div class="admin-section-actions">
+            <button type="button" class="btn sm" id="saveFeatured">Enregistrer la une</button>
+          </div>
+        </div>
 
-        <h2 style="font-size:1rem;color:var(--bc-navy);margin:32px 0 12px">Matériel PrestaShop</h2>
-        <p style="color:var(--bc-muted);font-size:14px;margin-bottom:12px">Synchronise stock et prix depuis boutique.boxingcenter.fr (API).</p>
-        <button type="button" class="btn sm" id="syncMaterielBtn">Sync matériel PrestaShop</button>
-        <p class="form-msg" id="syncMaterielMsg"></p>
+        <div class="admin-section">
+          <div class="admin-section-head">
+            <div>
+              <h2 class="admin-section-title">Matériel PrestaShop</h2>
+              <p class="admin-section-desc">Synchronise stock et prix depuis boutique.boxingcenter.fr.</p>
+            </div>
+          </div>
+          <div class="admin-section-actions">
+            <button type="button" class="btn sm" id="syncMaterielBtn">Lancer la synchronisation</button>
+          </div>
+          <p class="form-msg" id="syncMaterielMsg"></p>
+        </div>
 
-        <h2 style="font-size:1rem;color:var(--bc-navy);margin:32px 0 12px">Catalogue</h2>
-        <div style="overflow-x:auto">
-          <table class="admin-table" id="productsTable">
-            <thead>
-              <tr>
-                <th>Actif</th>
-                <th>ID</th>
-                <th>Nom affiché</th>
-                <th>Onglet</th>
-                <th>Tri</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="productsBody"></tbody>
-          </table>
+        <div class="admin-section admin-section--flush">
+          <div class="admin-section-head">
+            <div>
+              <h2 class="admin-section-title">Catalogue des offres</h2>
+              <p class="admin-section-desc">Regroupé par catégorie comme sur la boutique (prélèvement, comptant, enfants…).</p>
+            </div>
+          </div>
+          <div id="productsCatalog" class="admin-catalog"></div>
         </div>
       </section>
 
       <section id="tabContracts" hidden>
-        <p style="color:var(--bc-muted);margin-bottom:16px;font-size:14px">
-          Liste des inscriptions en cours et finalisées. Téléchargez le contrat PDF de chaque adhérent.
-        </p>
+        <div class="admin-section">
+          <div class="admin-section-head">
+            <div>
+              <h2 class="admin-section-title">Contrats & inscriptions</h2>
+              <p class="admin-section-desc">Inscriptions en cours et finalisées — téléchargez le contrat PDF de chaque adhérent.</p>
+            </div>
+          </div>
         <div class="admin-toolbar">
           <input type="search" id="ordersSearch" placeholder="Rechercher nom, email, référence…" class="admin-search" />
           <select id="ordersFilter" class="admin-search">
@@ -86,7 +101,8 @@
             <tbody id="ordersBody"></tbody>
           </table>
         </div>
-        <p id="ordersCount" style="font-size:13px;color:var(--bc-muted);margin-top:12px"></p>
+        <p id="ordersCount" class="admin-section-foot"></p>
+        </div>
       </section>
     </div>
   </div>

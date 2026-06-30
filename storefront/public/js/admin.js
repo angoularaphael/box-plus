@@ -14,6 +14,32 @@
     6: 'Confirmé',
   };
 
+  const CATALOG_SECTIONS = [
+    { key: 'promo', label: 'Offres promotionnelles' },
+    { key: 'prelevement', label: 'Prélèvement sans engagement' },
+    { key: 'comptant', label: 'Comptant' },
+    { key: 'enfants', label: 'Enfants — Baby boxe & boxe éducative' },
+    { key: 'coachings', label: 'Coachings' },
+    { key: 'essai', label: "Séance d'essai" },
+    { key: 'other', label: 'Autres offres' },
+  ];
+
+  function catalogSectionKey(product) {
+    if (product.tab === 'coachings') return 'coachings';
+    if (product.tab === 'seance-essai' || product.id === 'seance-essai') return 'essai';
+    const sub = product.subsection || 'other';
+    if (CATALOG_SECTIONS.some((s) => s.key === sub)) return sub;
+    return 'other';
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
   function headers(json = true) {
     const h = {};
     if (json) h['Content-Type'] = 'application/json';
@@ -148,58 +174,117 @@
 
   function renderFeatured() {
     const el = document.getElementById('featuredList');
+    const countEl = document.getElementById('featuredCount');
+    if (countEl) countEl.textContent = `${featuredHome.length} / 3`;
+
+    if (!products.length) {
+      el.innerHTML = '<p class="admin-empty">Aucune offre dans le catalogue.</p>';
+      return;
+    }
+
     el.innerHTML = products
-      .map(
-        (p) => `
-      <label style="display:flex;align-items:center;gap:8px;margin:6px 0;font-size:14px">
-        <input type="checkbox" value="${p.id}" ${featuredHome.includes(p.id) ? 'checked' : ''}
-          onchange="window._toggleFeatured('${p.id}', this.checked)" />
-        ${p.display_name || p.name} (${p.id})
-      </label>`
-      )
+      .map((p) => {
+        const checked = featuredHome.includes(p.id);
+        const inputId = `feat-${p.id}`;
+        return `
+        <div class="admin-featured-card${checked ? ' is-selected' : ''}">
+          <input type="checkbox" class="admin-checkbox" id="${escapeHtml(inputId)}" value="${escapeHtml(p.id)}"
+            ${checked ? 'checked' : ''} data-feat-id="${escapeHtml(p.id)}" />
+          <label class="admin-featured-label" for="${escapeHtml(inputId)}">
+            <span class="admin-featured-name">${escapeHtml(p.display_name || p.name)}</span>
+            <span class="admin-featured-id">${escapeHtml(p.id)}</span>
+          </label>
+        </div>`;
+      })
       .join('');
+
+    el.querySelectorAll('.admin-checkbox').forEach((cb) => {
+      cb.onchange = () => toggleFeatured(cb.dataset.featId, cb.checked, cb);
+    });
   }
 
-  window._toggleFeatured = (id, checked) => {
+  function toggleFeatured(id, checked, inputEl) {
     if (checked) {
       if (featuredHome.length >= 3) {
         alert('Maximum 3 offres à la une');
-        loadMerch();
+        if (inputEl) inputEl.checked = false;
         return;
       }
       featuredHome.push(id);
     } else {
       featuredHome = featuredHome.filter((x) => x !== id);
     }
-  };
+    renderFeatured();
+  }
 
-  function renderTable() {
-    const tbody = document.getElementById('productsBody');
-    tbody.innerHTML = products
-      .map(
-        (p) => `
+  window._toggleFeatured = toggleFeatured;
+
+  function productRowHtml(p) {
+    return `
       <tr>
-        <td><label class="toggle-switch"><input type="checkbox" ${p.active !== false ? 'checked' : ''} data-id="${p.id}" class="toggle-active" /><span class="toggle-slider"></span></label></td>
-        <td><code>${p.id}</code></td>
-        <td><input value="${p.display_name || p.name}" data-id="${p.id}" class="edit-name" style="padding:6px;font-size:13px" /></td>
-        <td>${p.tab || '—'}</td>
-        <td><input type="number" value="${p.sort_order ?? 99}" data-id="${p.id}" class="edit-sort" style="width:60px;padding:6px" /></td>
-        <td><button type="button" class="btn sm save-row" data-id="${p.id}">Sauver</button></td>
-      </tr>`
-      )
-      .join('');
+        <td><label class="toggle-switch"><input type="checkbox" ${p.active !== false ? 'checked' : ''} data-id="${escapeHtml(p.id)}" class="toggle-active admin-checkbox" /><span class="toggle-slider"></span></label></td>
+        <td><code class="admin-code">${escapeHtml(p.id)}</code></td>
+        <td><input value="${escapeHtml(p.display_name || p.name)}" data-id="${escapeHtml(p.id)}" class="edit-name admin-input-inline" /></td>
+        <td><span class="admin-tab-pill">${escapeHtml(p.tab || '—')}</span></td>
+        <td><input type="number" value="${p.sort_order ?? 99}" data-id="${escapeHtml(p.id)}" class="edit-sort admin-input-sort" /></td>
+        <td><button type="button" class="btn sm save-row" data-id="${escapeHtml(p.id)}">Sauver</button></td>
+      </tr>`;
+  }
 
-    tbody.querySelectorAll('.toggle-active').forEach((cb) => {
+  function bindTableActions(root) {
+    root.querySelectorAll('.toggle-active').forEach((cb) => {
       cb.onchange = () => patch(cb.dataset.id, { active: cb.checked });
     });
-    tbody.querySelectorAll('.save-row').forEach((btn) => {
+    root.querySelectorAll('.save-row').forEach((btn) => {
       btn.onclick = () => {
         const id = btn.dataset.id;
-        const name = tbody.querySelector(`.edit-name[data-id="${id}"]`).value;
-        const sort = Number(tbody.querySelector(`.edit-sort[data-id="${id}"]`).value);
+        const name = root.querySelector(`.edit-name[data-id="${id}"]`).value;
+        const sort = Number(root.querySelector(`.edit-sort[data-id="${id}"]`).value);
         patch(id, { display_name: name, sort_order: sort });
       };
     });
+  }
+
+  function renderTable() {
+    const container = document.getElementById('productsCatalog');
+    const grouped = new Map();
+    for (const p of products) {
+      const key = catalogSectionKey(p);
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(p);
+    }
+
+    const sections = CATALOG_SECTIONS.filter((s) => grouped.has(s.key) && grouped.get(s.key).length)
+      .map((s) => {
+        const items = grouped.get(s.key);
+        return `
+        <div class="admin-catalog-block">
+          <div class="admin-catalog-block-head">
+            <h3 class="admin-catalog-block-title">${escapeHtml(s.label)}</h3>
+            <span class="admin-section-badge">${items.length} offre${items.length > 1 ? 's' : ''}</span>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Actif</th>
+                  <th>ID</th>
+                  <th>Nom affiché</th>
+                  <th>Onglet</th>
+                  <th>Tri</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>${items.map(productRowHtml).join('')}</tbody>
+            </table>
+          </div>
+        </div>`;
+      })
+      .join('');
+
+    container.innerHTML =
+      sections || '<p class="admin-empty">Aucune offre à afficher.</p>';
+    bindTableActions(container);
   }
 
   async function patch(product_id, patchBody) {
