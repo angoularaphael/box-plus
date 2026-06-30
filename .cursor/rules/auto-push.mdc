@@ -1,0 +1,15 @@
+---
+description: Pousser automatiquement sur main après chaque modification BOXPLUS
+alwaysApply: true
+---
+
+# Auto-push BOXPLUS
+
+Après avoir terminé une tâche de code dans ce dépôt (`BOXPLUS`) :
+
+1. Commit uniquement les fichiers liés à la tâche en cours (pas de fichiers non liés, secrets, ou WIP local).
+2. Pousse sur `origin main` sans attendre que l'utilisateur le demande.
+3. Message de commit court, en français ou anglais selon le style du dépôt.
+4. Ne pas demander « voulez-vous que je push ? » — le faire directement et confirmer l'URL/commit dans la réponse.
+
+Exceptions : ne pas push si l'utilisateur dit explicitement de ne pas le faire, ou si le commit échoue (hook, conflit) — dans ce cas corriger puis recommencer.
