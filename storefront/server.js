@@ -63,6 +63,8 @@ const {
   recordSignature,
   markEmailSent,
   getUploadDir,
+  listAllOrders,
+  toAdminSummary,
 } = require('./lib/order-lifecycle');
 const { generateContractPdf, streamContractPdf } = require('./lib/contract-pdf');
 const { sendConfirmationEmail, sendGdprEraseRequest } = require('./lib/mailer');
@@ -496,6 +498,27 @@ function createApp() {
     res.json({ ok: true, featured_home: ids });
   });
 
+  app.get('/api/admin/orders', (req, res) => {
+    if (!isAuthorizedAdmin(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const orders = listAllOrders().map(toAdminSummary);
+    res.json({ ok: true, orders, count: orders.length });
+  });
+
+  app.get('/api/admin/orders/:id', (req, res) => {
+    if (!isAuthorizedAdmin(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const order = loadOrder(req.params.id);
+    if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+    const { access_token, ...safe } = order;
+    res.json({ ok: true, order: safe });
+  });
+
+  app.get('/api/admin/orders/:id/contract.pdf', (req, res) => {
+    if (!isAuthorizedAdmin(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const order = loadOrder(req.params.id);
+    if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+    streamContractPdf(order, res);
+  });
+
   app.post('/api/orders/draft', (req, res) => {
     try {
       const { product_id, ...customer_short } = req.body;
@@ -867,6 +890,7 @@ function createApp() {
     '/mon-inscription': 'mon-inscription.html',
     '/checkout.html': 'checkout.html',
     '/admin': 'admin/index.html',
+    '/admin/contrats': 'admin/index.html',
   };
 
   for (const [route, file] of Object.entries(pageRoutes)) {

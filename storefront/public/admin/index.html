@@ -6,13 +6,13 @@
   <title>Admin — Boutique Boxing Center</title>
   <script src="../js/boot.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/boutique.css" />
-  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="../css/boutique.css" />
+  <link rel="stylesheet" href="../css/components.css" />
 </head>
 <body>
   <div id="loginPanel" class="admin-login">
     <h1 style="color:var(--bc-navy);margin-bottom:16px">Administration</h1>
-    <p style="color:var(--bc-muted);margin-bottom:20px;font-size:14px">Gestion des offres et mise en avant homepage.</p>
+    <p style="color:var(--bc-muted);margin-bottom:20px;font-size:14px">Offres, inscriptions et contrats membres.</p>
     <label for="adminSecret">Clé d'accès</label>
     <input id="adminSecret" type="password" placeholder="ADMIN_SECRET" />
     <button type="button" class="btn block" id="loginBtn" style="margin-top:16px">Connexion</button>
@@ -21,37 +21,79 @@
 
   <div id="adminPanel" hidden>
     <div class="admin-layout">
-      <h1 style="color:var(--bc-navy);margin-bottom:8px">Offres boutique</h1>
-      <p style="color:var(--bc-muted);margin-bottom:24px;font-size:14px">Activez/désactivez les offres, modifiez les textes et choisissez les 3 offres à la une (homepage).</p>
+      <h1 style="color:var(--bc-navy);margin-bottom:8px">Administration boutique</h1>
+      <nav class="admin-tabs" id="adminTabs">
+        <button type="button" class="admin-tab active" data-tab="offers">Offres</button>
+        <button type="button" class="admin-tab" data-tab="contracts">Contrats & inscriptions</button>
+      </nav>
 
-      <h2 style="font-size:1rem;color:var(--bc-navy);margin-bottom:12px">Offres à la une (max 3)</h2>
-      <div id="featuredList" style="margin-bottom:32px"></div>
-      <button type="button" class="btn sm" id="saveFeatured">Enregistrer la une</button>
+      <section id="tabOffers">
+        <p style="color:var(--bc-muted);margin-bottom:24px;font-size:14px">Activez/désactivez les offres, modifiez les textes et choisissez les 3 offres à la une (homepage).</p>
 
-      <h2 style="font-size:1rem;color:var(--bc-navy);margin:32px 0 12px">Matériel PrestaShop</h2>
-      <p style="color:var(--bc-muted);font-size:14px;margin-bottom:12px">Synchronise stock et prix depuis boutique.boxingcenter.fr (API).</p>
-      <button type="button" class="btn sm" id="syncMaterielBtn">Sync matériel PrestaShop</button>
-      <p class="form-msg" id="syncMaterielMsg"></p>
+        <h2 style="font-size:1rem;color:var(--bc-navy);margin-bottom:12px">Offres à la une (max 3)</h2>
+        <div id="featuredList" style="margin-bottom:32px"></div>
+        <button type="button" class="btn sm" id="saveFeatured">Enregistrer la une</button>
 
-      <h2 style="font-size:1rem;color:var(--bc-navy);margin:32px 0 12px">Catalogue</h2>
-      <div style="overflow-x:auto">
-        <table class="admin-table" id="productsTable">
-          <thead>
-            <tr>
-              <th>Actif</th>
-              <th>ID</th>
-              <th>Nom affiché</th>
-              <th>Onglet</th>
-              <th>Tri</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="productsBody"></tbody>
-        </table>
-      </div>
+        <h2 style="font-size:1rem;color:var(--bc-navy);margin:32px 0 12px">Matériel PrestaShop</h2>
+        <p style="color:var(--bc-muted);font-size:14px;margin-bottom:12px">Synchronise stock et prix depuis boutique.boxingcenter.fr (API).</p>
+        <button type="button" class="btn sm" id="syncMaterielBtn">Sync matériel PrestaShop</button>
+        <p class="form-msg" id="syncMaterielMsg"></p>
+
+        <h2 style="font-size:1rem;color:var(--bc-navy);margin:32px 0 12px">Catalogue</h2>
+        <div style="overflow-x:auto">
+          <table class="admin-table" id="productsTable">
+            <thead>
+              <tr>
+                <th>Actif</th>
+                <th>ID</th>
+                <th>Nom affiché</th>
+                <th>Onglet</th>
+                <th>Tri</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="tabContracts" hidden>
+        <p style="color:var(--bc-muted);margin-bottom:16px;font-size:14px">
+          Liste des inscriptions en cours et finalisées. Téléchargez le contrat PDF de chaque adhérent.
+        </p>
+        <div class="admin-toolbar">
+          <input type="search" id="ordersSearch" placeholder="Rechercher nom, email, référence…" class="admin-search" />
+          <select id="ordersFilter" class="admin-search">
+            <option value="all">Toutes</option>
+            <option value="signed">Signées</option>
+            <option value="progress">En cours</option>
+          </select>
+          <button type="button" class="btn sm" id="refreshOrdersBtn">Actualiser</button>
+        </div>
+        <p class="form-msg" id="ordersMsg"></p>
+        <div style="overflow-x:auto;margin-top:12px">
+          <table class="admin-table" id="ordersTable">
+            <thead>
+              <tr>
+                <th>Référence</th>
+                <th>Adhérent</th>
+                <th>Email</th>
+                <th>Offre</th>
+                <th>Étape</th>
+                <th>Paiement</th>
+                <th>Signé</th>
+                <th>Date</th>
+                <th>Contrat</th>
+              </tr>
+            </thead>
+            <tbody id="ordersBody"></tbody>
+          </table>
+        </div>
+        <p id="ordersCount" style="font-size:13px;color:var(--bc-muted);margin-top:12px"></p>
+      </section>
     </div>
   </div>
 
-  <script src="js/admin.js"></script>
+  <script src="../js/admin.js"></script>
 </body>
 </html>

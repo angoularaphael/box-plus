@@ -9,6 +9,8 @@ const {
   updateFullProfile,
   recordSignature,
   ORDERS_DIR,
+  listAllOrders,
+  toAdminSummary,
 } = require('../storefront/lib/order-lifecycle');
 const { getEnrichedProducts, getFeaturedProducts, findEnrichedProduct } = require('../storefront/lib/merch');
 const { buildOrderFromLifecycle, validateShortForm, validateFullForm } = require('../storefront/lib/orders');
@@ -78,6 +80,12 @@ describe('lifecycle tunnel', () => {
 
     const { filepath } = await generateContractPdf(signed);
     assert.ok(fs.existsSync(filepath));
+
+    const all = listAllOrders();
+    assert.ok(all.some((o) => o.order_id === orderId));
+    const summary = toAdminSummary(signed);
+    assert.equal(summary.signed, true);
+    assert.equal(summary.email, 'lifecycle@test.boxplus.local');
   });
 
   after(() => {

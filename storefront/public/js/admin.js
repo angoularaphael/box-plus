@@ -4,18 +4,145 @@
   const adminPanel = document.getElementById('adminPanel');
   let products = [];
   let featuredHome = [];
+  let orders = [];
 
-  function headers() {
-    return { 'Content-Type': 'application/json', 'x-admin-secret': secret };
+  const STEP_LABELS = {
+    1: 'Offre',
+    2: 'Identité',
+    3: 'Paiement',
+    4: 'Dossier',
+    5: 'Signature',
+    6: 'Confirmé',
+  };
+
+  function headers(json = true) {
+    const h = { 'x-admin-secret': secret };
+    if (json) h['Content-Type'] = 'application/json';
+    return h;
+  }
+
+  function showTab(name) {
+    document.getElementById('tabOffers').hidden = name !== 'offers';
+    document.getElementById('tabContracts').hidden = name !== 'contracts';
+    document.querySelectorAll('.admin-tab').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.tab === name);
+    });
+    if (name === 'contracts') loadOrders();
+    if (location.hash !== `#${name}`) {
+      history.replaceState(null, '', `#${name}`);
+    }
+  }
+
+  document.querySelectorAll('.admin-tab').forEach((btn) => {
+    btn.onclick = () => showTab(btn.dataset.tab);
+  });
+
+  if (location.hash === '#contracts' || location.pathname.endsWith('/contrats')) {
+    showTab('contracts');
   }
 
   async function loadMerch() {
-    const res = await fetch('/api/admin/merch', { headers: { 'x-admin-secret': secret } });
+    const res = await fetch('/api/admin/merch', { headers: headers(false) });
     if (!res.ok) throw new Error('unauthorized');
     const data = await res.json();
     products = data.products || [];
     featuredHome = [...(data.featured_home || [])];
-    render();
+    renderMerch();
+  }
+
+  async function loadOrders() {
+    const msg = document.getElementById('ordersMsg');
+    msg.textContent = 'Chargement…';
+    msg.className = 'form-msg';
+    try {
+      const res = await fetch('/api/admin/orders', { headers: headers(false) });
+      if (!res.ok) throw new Error('Accès refusé');
+      const data = await res.json();
+      orders = data.orders || [];
+      msg.textContent = '';
+      renderOrders();
+    } catch (err) {
+      msg.textContent = err.message;
+      msg.className = 'form-msg err';
+    }
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  function filteredOrders() {
+    const q = (document.getElementById('ordersSearch')?.value || '').toLowerCase().trim();
+    const filter = document.getElementById('ordersFilter')?.value || 'all';
+    return orders.filter((o) => {
+      if (filter === 'signed' && !o.signed) return false;
+      if (filter === 'progress' && o.signed) return false;
+      if (!q) return true;
+      const hay = `${o.order_id} ${o.name} ${o.email} ${o.product}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  function renderOrders() {
+    const tbody = document.getElementById('ordersBody');
+    const list = filteredOrders();
+    document.getElementById('ordersCount').textContent =
+      list.length === orders.length
+        ? `${orders.length} inscription(s)`
+        : `${list.length} sur ${orders.length} inscription(s)`;
+
+    if (!list.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="9" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription trouvée</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list
+      .map(
+        (o) => `
+      <tr>
+        <td><code style="font-size:11px">${o.order_id}</code></td>
+        <td>${o.name}</td>
+        <td><a href="mailto:${o.email}" style="color:var(--bc-cta)">${o.email}</a></td>
+        <td>${o.product}</td>
+        <td>${STEP_LABELS[o.step] || o.step}</td>
+        <td><span class="badge ${o.payment_status === 'paid' ? 'ok' : 'pending'}">${o.payment_status === 'paid' ? 'Payé' : 'En attente'}</span></td>
+        <td>${o.signed ? `✓ ${formatDate(o.signed_at)}` : '—'}</td>
+        <td style="font-size:12px">${formatDate(o.updated_at || o.created_at)}</td>
+        <td>
+          <button type="button" class="btn sm dl-contract" data-id="${o.order_id}">PDF</button>
+        </td>
+      </tr>`
+      )
+      .join('');
+
+    tbody.querySelectorAll('.dl-contract').forEach((btn) => {
+      btn.onclick = () => downloadContract(btn.dataset.id);
+    });
+  }
+
+  async function downloadContract(orderId) {
+    const res = await fetch(`/api/admin/orders/${orderId}/contract.pdf`, {
+      headers: headers(false),
+    });
+    if (!res.ok) {
+      alert('Impossible de télécharger le contrat');
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `contrat-${orderId}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function renderFeatured() {
@@ -74,27 +201,34 @@
     });
   }
 
-  async function patch(product_id, patch) {
+  async function patch(product_id, patchBody) {
     await fetch('/api/admin/merch', {
       method: 'PUT',
       headers: headers(),
-      body: JSON.stringify({ product_id, patch }),
+      body: JSON.stringify({ product_id, patch: patchBody }),
     });
     await loadMerch();
   }
 
-  function render() {
+  function renderMerch() {
     renderFeatured();
     renderTable();
+  }
+
+  async function afterLogin() {
+    sessionStorage.setItem('bc_admin_secret', secret);
+    loginPanel.hidden = true;
+    adminPanel.hidden = false;
+    await loadMerch();
+    if (location.hash === '#contracts' || location.pathname.endsWith('/contrats')) {
+      showTab('contracts');
+    }
   }
 
   document.getElementById('loginBtn').onclick = async () => {
     secret = document.getElementById('adminSecret').value;
     try {
-      await loadMerch();
-      sessionStorage.setItem('bc_admin_secret', secret);
-      loginPanel.hidden = true;
-      adminPanel.hidden = false;
+      await afterLogin();
     } catch {
       document.getElementById('loginMsg').textContent = 'Accès refusé';
       document.getElementById('loginMsg').className = 'form-msg err';
@@ -127,12 +261,11 @@
     }
   };
 
+  document.getElementById('refreshOrdersBtn').onclick = loadOrders;
+  document.getElementById('ordersSearch').oninput = renderOrders;
+  document.getElementById('ordersFilter').onchange = renderOrders;
+
   if (secret) {
-    loadMerch()
-      .then(() => {
-        loginPanel.hidden = true;
-        adminPanel.hidden = false;
-      })
-      .catch(() => {});
+    afterLogin().catch(() => {});
   }
 })();

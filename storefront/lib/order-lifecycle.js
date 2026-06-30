@@ -136,6 +136,46 @@ function getUploadDir(type) {
   return path.join(UPLOADS_DIR, type);
 }
 
+function listAllOrders() {
+  initDirs();
+  if (!fs.existsSync(ORDERS_DIR)) return [];
+  return fs
+    .readdirSync(ORDERS_DIR)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => {
+      try {
+        return JSON.parse(fs.readFileSync(path.join(ORDERS_DIR, f), 'utf8'));
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean)
+    .sort(
+      (a, b) =>
+        new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0)
+    );
+}
+
+function toAdminSummary(order) {
+  const short = order.customer_short || {};
+  const full = order.customer_full || {};
+  return {
+    order_id: order.order_id,
+    step: order.step,
+    product: order.product_snapshot?.display_name || order.product_snapshot?.name || '—',
+    email: short.email || '—',
+    name: `${short.first_name || ''} ${short.last_name || ''}`.trim() || '—',
+    gym: full.gym || null,
+    payment_status: order.payment?.status || 'pending',
+    signed: Boolean(order.signature?.signed_at),
+    signed_at: order.signature?.signed_at || null,
+    dispatched: Boolean(order.dispatched_at),
+    email_sent: Boolean(order.email_sent_at),
+    created_at: order.created_at,
+    updated_at: order.updated_at,
+  };
+}
+
 module.exports = {
   ORDERS_DIR,
   UPLOADS_DIR,
@@ -150,4 +190,6 @@ module.exports = {
   markEmailSent,
   getUploadDir,
   generateOrderId,
+  listAllOrders,
+  toAdminSummary,
 };
