@@ -351,26 +351,6 @@
     }
   };
 
-  document.getElementById('syncMaterielBtn').onclick = async () => {
-    const msg = document.getElementById('syncMaterielMsg');
-    msg.textContent = 'Synchronisation…';
-    msg.className = 'form-msg';
-    try {
-      const res = await fetch('/api/admin/sync-materiel', {
-        method: 'POST',
-        credentials: 'include',
-        headers: headers(),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Échec sync');
-      msg.textContent = `OK — ${data.updated} produits mis à jour (${data.synced_at})`;
-      msg.className = 'form-msg ok';
-    } catch (err) {
-      msg.textContent = err.message;
-      msg.className = 'form-msg err';
-    }
-  };
-
   document.getElementById('logoutBtn').onclick = async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     location.replace('/admin/login');
