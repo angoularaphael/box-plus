@@ -119,6 +119,15 @@ function saveOrder(order) {
   return order;
 }
 
+async function saveOrderAsync(order) {
+  order.updated_at = new Date().toISOString();
+  saveOrderToFs(order);
+  if (useRemoteStore()) {
+    await saveOrderToRemote(order);
+  }
+  return order;
+}
+
 async function listAllOrders() {
   if (useRemoteStore()) {
     try {
@@ -137,5 +146,7 @@ module.exports = {
   loadOrderFromFs,
   loadOrder,
   saveOrder,
+  saveOrderAsync,
   listAllOrders,
+  useRemoteStore,
 };

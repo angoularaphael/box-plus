@@ -1,8 +1,31 @@
 /**
- * Récupération commande lifecycle perdue (Vercel /tmp éphémère) via Stripe ou Supabase.
+ * Récupération commande lifecycle perdue (Vercel /tmp éphémère) via Stripe, Supabase ou client.
  */
-const { loadOrderAsync, saveOrder, productSnapshot } = require('./order-lifecycle');
+const { loadOrderAsync, saveOrder, saveOrderAsync, productSnapshot } = require('./order-lifecycle');
 const { unpackOrderMetadata } = require('./orders');
+
+function rehydrateOrderFromClient(orderId, body, findProduct) {
+  const { token, product_id, customer_short, product_snapshot } = body || {};
+  if (!token || !product_id || !customer_short?.email) return null;
+
+  const product = findProduct ? findProduct(product_id) : null;
+  return {
+    order_id: orderId,
+    access_token: token,
+    step: 3,
+    product_id,
+    product_snapshot: product ? productSnapshot(product) : product_snapshot || { id: product_id },
+    customer_short,
+    customer_full: null,
+    payment: { status: 'pending', iban: body.iban || undefined },
+    signature: null,
+    documents: {},
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    ready_for_dispatch: false,
+    rehydrated_from_client: true,
+  };
+}
 
 function rebuildLifecycleOrderFromSession(session, { accessToken, findProduct }) {
   const orderId = session.metadata?.lifecycle_order_id || session.metadata?.order_id;
@@ -54,9 +77,18 @@ function rebuildLifecycleOrderFromSession(session, { accessToken, findProduct })
   return order;
 }
 
-async function loadOrderOrRecover(orderId, { token, sessionId, stripe, findProduct }) {
+async function loadOrderOrRecover(orderId, { token, sessionId, stripe, findProduct, rehydrateBody }) {
   const existing = await loadOrderAsync(orderId);
   if (existing) return existing;
+
+  if (rehydrateBody?.token && token && rehydrateBody.token === token) {
+    const rebuilt = rehydrateOrderFromClient(orderId, rehydrateBody, findProduct);
+    if (rebuilt) {
+      await saveOrderAsync(rebuilt);
+      return rebuilt;
+    }
+  }
+
   if (!stripe || !sessionId || !token) return null;
 
   try {
@@ -72,5 +104,6 @@ async function loadOrderOrRecover(orderId, { token, sessionId, stripe, findProdu
 
 module.exports = {
   rebuildLifecycleOrderFromSession,
+  rehydrateOrderFromClient,
   loadOrderOrRecover,
 };

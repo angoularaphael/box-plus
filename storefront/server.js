@@ -59,6 +59,7 @@ const {
 const { sendMaterielConfirmationEmail } = require('./lib/mailer');
 const {
   createDraft,
+  createDraftAsync,
   loadOrder,
   loadOrderAsync,
   verifyAccess,
@@ -574,7 +575,7 @@ function createApp() {
     streamContractPdf(order, res);
   });
 
-  app.post('/api/orders/draft', (req, res) => {
+  app.post('/api/orders/draft', async (req, res) => {
     try {
       const { product_id, ...customer_short } = req.body;
       const product = findProduct(product_id);
@@ -583,7 +584,7 @@ function createApp() {
       const errors = validateShortForm(customer_short);
       if (errors.length) return res.status(400).json({ ok: false, errors });
 
-      const order = createDraft({ product_id, product, customer_short });
+      const order = await createDraftAsync({ product_id, product, customer_short });
       res.json({
         ok: true,
         order_id: order.order_id,
@@ -591,6 +592,7 @@ function createApp() {
         step: order.step,
       });
     } catch (err) {
+      logError('Erreur création brouillon', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });
@@ -724,9 +726,23 @@ function createApp() {
 
   app.post('/api/orders/:id/pay', async (req, res) => {
     try {
-      const order = await loadOrderAsync(req.params.id);
-      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
-      if (!verifyAccess(order, req.body.token)) {
+      const token = req.body.token;
+      const order = await loadOrderOrRecover(req.params.id, {
+        token,
+        sessionId: req.body.session_id,
+        stripe,
+        findProduct,
+        rehydrateBody: req.body,
+      });
+      if (!order) {
+        return res.status(404).json({
+          ok: false,
+          error: 'not_found',
+          message:
+            'Dossier introuvable. Revenez à l\'étape identité et recommencez, ou contactez le club si le problème persiste.',
+        });
+      }
+      if (!verifyAccess(order, token)) {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
 
