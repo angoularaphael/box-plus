@@ -8,7 +8,7 @@ const { rebuildLifecycleOrderFromSession } = require('../storefront/lib/order-re
 const { findEnrichedProduct } = require('../storefront/lib/merch');
 
 describe('order recovery from Stripe', () => {
-  it('rebuilds lifecycle order from paid session metadata', () => {
+  it('rebuilds lifecycle order from paid session metadata', async () => {
     const product = findEnrichedProduct('seance-essai');
     const orderId = 'BC-RECOVER-TEST';
     const accessToken = 'abc123token';
@@ -42,7 +42,7 @@ describe('order recovery from Stripe', () => {
     const orderFile = path.join(ORDERS_DIR, `${orderId}.json`);
     if (fs.existsSync(orderFile)) fs.unlinkSync(orderFile);
 
-    const order = rebuildLifecycleOrderFromSession(session, {
+    const order = await rebuildLifecycleOrderFromSession(session, {
       accessToken,
       findProduct: findEnrichedProduct,
     });
@@ -62,7 +62,7 @@ describe('order recovery from Stripe', () => {
     fs.unlinkSync(orderFile);
   });
 
-  it('rejects recovery when token does not match', () => {
+  it('rejects recovery when token does not match', async () => {
     const product = findEnrichedProduct('seance-essai');
     const payload = buildOrderPayload(
       {
@@ -88,7 +88,7 @@ describe('order recovery from Stripe', () => {
       },
     };
 
-    const order = rebuildLifecycleOrderFromSession(session, {
+    const order = await rebuildLifecycleOrderFromSession(session, {
       accessToken: 'wrong-token',
       findProduct: findEnrichedProduct,
     });

@@ -360,6 +360,19 @@
   }
 
   async function renderStep3() {
+    if (state.order?.payment?.status === 'paid' || state.step >= 4) {
+      state.step = 4;
+      persistAndRender();
+      return;
+    }
+    if (state.sessionId) {
+      await confirmStripeReturn();
+      if (state.order?.payment?.status === 'paid') {
+        state.step = 4;
+        persistAndRender();
+        return;
+      }
+    }
     await ensureProductForPayment();
     const p = state.product;
     const needsIban = p?.requires_iban;
@@ -391,8 +404,11 @@
         setMsg(orderErrorMessage(data), 'err');
         return;
       }
+      if (data.redirect) {
+        window.location.href = data.redirect;
+        return;
+      }
       if (data.url) window.location.href = data.url;
-      else if (data.redirect) window.location.href = data.redirect;
     };
     bindBackButtons();
   }
@@ -531,16 +547,29 @@
     };
   }
 
+  let stripeConfirmDone = false;
+
   async function confirmStripeReturn() {
-    const sessionId = params.get('session_id');
-    if (!sessionId) return;
+    const sessionId = params.get('session_id') || state.sessionId;
+    if (!sessionId || stripeConfirmDone) return false;
+    stripeConfirmDone = true;
     state.sessionId = sessionId;
-    await fetch('/api/checkout/confirm-session', {
+    const res = await fetch('/api/checkout/confirm-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId }),
     });
     await loadOrder();
+    if (state.order?.payment?.status === 'paid') {
+      state.step = 4;
+      return true;
+    }
+    if (res.ok) {
+      state.step = Math.max(state.step, 4);
+      await loadOrder();
+      if (state.order?.payment?.status === 'paid') state.step = 4;
+    }
+    return res.ok;
   }
 
   async function render() {
@@ -563,7 +592,9 @@
     if (state.orderId && state.token) {
       await confirmStripeReturn();
       const loaded = await loadOrder();
-      if (!loaded && state.step >= 3) {
+      if (state.order?.payment?.status === 'paid') {
+        state.step = Math.max(state.step, 4);
+      } else if (!loaded && state.step >= 3) {
         setMsg(
           'Impossible de recharger votre dossier — vous pouvez tout de même payer si vos coordonnées sont enregistrées ci-dessus.',
           'err'
