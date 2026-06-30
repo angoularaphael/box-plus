@@ -443,3 +443,190 @@ input:focus, select:focus, textarea:focus {
 }
 
 .breadcrumb a { color: var(--bc-cta); }
+
+/* Legal pages */
+.legal-page { max-width: 720px; }
+.legal-page h1 { color: var(--bc-navy); margin-bottom: 8px; font-size: clamp(1.6rem, 4vw, 2.2rem); }
+.legal-page h2 { font-size: 1.1rem; margin: 28px 0 12px; color: var(--bc-navy); }
+.legal-page p { color: var(--bc-muted); margin-bottom: 14px; line-height: 1.7; }
+.legal-page ul { color: var(--bc-muted); padding-left: 24px; margin-bottom: 14px; line-height: 1.7; }
+.legal-page ul li { margin-bottom: 6px; }
+.legal-page a { color: var(--bc-cta); text-decoration: underline; }
+.legal-update { color: var(--bc-muted); font-size: 13px; margin-bottom: 32px; font-style: italic; }
+.legal-footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--bc-border); color: var(--bc-muted); font-size: 14px; }
+
+/* Animations - fade in */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-32px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+.animate-in { animation: fadeInUp 0.6s ease forwards; opacity: 0; }
+.animate-in:nth-child(2) { animation-delay: 0.1s; }
+.animate-in:nth-child(3) { animation-delay: 0.2s; }
+.animate-in:nth-child(4) { animation-delay: 0.3s; }
+.animate-in:nth-child(5) { animation-delay: 0.4s; }
+
+/* Gym cards with images */
+.gym-card {
+  background: var(--bc-card);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.gym-card:hover { transform: translateY(-4px); box-shadow: 0 8px 32px rgba(11, 31, 58, 0.14); }
+.gym-card-img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  display: block;
+}
+.gym-card-body { padding: 20px; }
+.gym-card-body h4 { color: var(--bc-navy); margin-bottom: 6px; font-size: 1.1rem; }
+.gym-card-body p { color: var(--bc-muted); font-size: 14px; margin: 0; }
+
+.gyms-grid {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+
+/* Hero enhanced with gradient overlay for images */
+.hero-home {
+  background: linear-gradient(135deg, var(--bc-navy) 0%, #1a3a5c 60%, var(--bc-navy-light) 100%);
+  color: #fff;
+  padding: 72px 20px 64px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-home::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url('/assets/img/hero-bg.jpg') center/cover no-repeat;
+  opacity: 0.15;
+  z-index: 0;
+}
+.hero-home-inner {
+  max-width: var(--max);
+  margin: 0 auto;
+  display: grid;
+  gap: 40px;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+@media (min-width: 900px) {
+  .hero-home-inner { grid-template-columns: 1fr 1fr; }
+}
+
+.hero-badge {
+  display: inline-block;
+  background: rgba(46, 196, 198, 0.2);
+  color: var(--bc-cta);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  animation: fadeInUp 0.5s ease forwards;
+}
+
+.hero-home h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.15;
+  margin-bottom: 16px;
+  animation: fadeInUp 0.6s ease 0.1s forwards;
+  opacity: 0;
+}
+
+.hero-home .lead {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 1.1rem;
+  line-height: 1.7;
+  margin-bottom: 28px;
+  animation: fadeInUp 0.6s ease 0.2s forwards;
+  opacity: 0;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  animation: fadeInUp 0.6s ease 0.3s forwards;
+  opacity: 0;
+}
+
+.hero-visual {
+  animation: fadeInUp 0.8s ease 0.3s forwards;
+  opacity: 0;
+}
+
+.hero-visual-frame {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 36px;
+  text-align: center;
+}
+
+/* Offer cards animation */
+.offer-card {
+  animation: fadeInUp 0.5s ease forwards;
+  opacity: 0;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.offer-card:hover { transform: translateY(-4px); box-shadow: 0 8px 32px rgba(11, 31, 58, 0.12); }
+.offer-card:nth-child(1) { animation-delay: 0s; }
+.offer-card:nth-child(2) { animation-delay: 0.1s; }
+.offer-card:nth-child(3) { animation-delay: 0.2s; }
+
+/* Decision cards enhanced */
+.decision-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.decision-card:hover { transform: translateY(-4px); box-shadow: 0 8px 32px rgba(11, 31, 58, 0.12); }
+
+/* Reassurance strip animation */
+.reassurance-item {
+  animation: fadeInUp 0.5s ease forwards;
+  opacity: 0;
+}
+.reassurance-item:nth-child(1) { animation-delay: 0s; }
+.reassurance-item:nth-child(2) { animation-delay: 0.08s; }
+.reassurance-item:nth-child(3) { animation-delay: 0.16s; }
+.reassurance-item:nth-child(4) { animation-delay: 0.24s; }
+.reassurance-item:nth-child(5) { animation-delay: 0.32s; }
+
+/* Testimonial cards */
+.testimonial-card {
+  background: var(--bc-card);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s;
+}
+.testimonial-card:hover { transform: translateY(-2px); }
+
+/* CTA band */
+.cta-band {
+  background: linear-gradient(135deg, var(--bc-navy), #1a3a5c);
+  color: #fff;
+  text-align: center;
+  padding: 56px 20px;
+}
+.cta-band h2 { font-size: clamp(1.5rem, 4vw, 2rem); margin-bottom: 12px; }
+.cta-band p { color: rgba(255, 255, 255, 0.8); margin-bottom: 24px; max-width: 560px; margin-left: auto; margin-right: auto; }
+.cta-band .hero-actions { justify-content: center; opacity: 1; }

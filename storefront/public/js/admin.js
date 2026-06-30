@@ -455,7 +455,6 @@
     const priceEuros = fd.get('price_euros');
     const ibanMode = fd.get('requires_iban');
     const body = {
-      id: fd.get('id') || undefined,
       display_name: fd.get('display_name'),
       tab: fd.get('tab'),
       subsection: fd.get('subsection'),

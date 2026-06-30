@@ -32,6 +32,8 @@
         'inscription.html': '/inscription',
         'faq.html': '/faq',
         'confidentialite.html': '/politique-confidentialite',
+        'cgv.html': '/cgv',
+        'reglement-interieur.html': '/reglement-interieur',
         'mon-inscription.html': '/mon-inscription',
       };
       if (map[file]) return map[file];
@@ -85,6 +87,8 @@
           <div class="footer-links">
             <h4>Informations</h4>
             <a href="${L('/faq')}">FAQ</a>
+            <a href="${L('/cgv')}">CGV</a>
+            <a href="${L('/reglement-interieur')}">Règlement intérieur</a>
             <a href="${L('/politique-confidentialite')}">Confidentialité</a>
             <a href="https://boxingcenter.fr" target="_blank" rel="noopener">boxingcenter.fr</a>
           </div>

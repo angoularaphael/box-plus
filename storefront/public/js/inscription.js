@@ -467,8 +467,8 @@
   }
 
   const LEGAL = {
-    cgv: 'https://boutique.boxingcenter.fr/content/3-conditions',
-    reglement: 'https://boxingcenter.fr/participez-seance-essai/',
+    cgv: '/cgv',
+    reglement: '/reglement-interieur',
   };
 
   function renderStep5() {

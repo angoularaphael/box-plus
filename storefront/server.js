@@ -1094,6 +1094,8 @@ function createApp() {
     '/inscription': 'inscription.html',
     '/faq': 'faq.html',
     '/politique-confidentialite': 'legal/confidentialite.html',
+    '/cgv': 'cgv.html',
+    '/reglement-interieur': 'reglement-interieur.html',
     '/mon-inscription': 'mon-inscription.html',
     '/checkout.html': 'checkout.html',
     '/admin': 'admin/index.html',

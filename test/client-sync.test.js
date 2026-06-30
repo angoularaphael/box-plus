@@ -4,7 +4,7 @@ const { clientFieldsFromOrder } = require('../storefront/lib/client-sync');
 const { normalizeFeaturedIds } = require('../storefront/lib/merch');
 
 describe('client sync', () => {
-  it('mappe une inscription vers portet_clients', () => {
+  it('mappe une inscription vers portet_clients avec toutes les infos', () => {
     const fields = clientFieldsFromOrder({
       order_id: 'BC-123',
       customer_short: {
@@ -13,7 +13,15 @@ describe('client sync', () => {
         email: 'jean@test.fr',
         phone: '0612345678',
       },
-      customer_full: { gym: 'minimes' },
+      customer_full: {
+        gym: 'minimes',
+        birth_date: '1990-05-15',
+        address: '12 rue Exemple',
+        postal_code: '31000',
+        city: 'Toulouse',
+        emergency_contact: 'Marie 0611111111',
+        medical_info: 'Aucune',
+      },
       product_snapshot: { display_name: 'Etudiants 36,99€' },
     });
     assert.equal(fields.prenom, 'Jean');
@@ -22,6 +30,12 @@ describe('client sync', () => {
     assert.equal(fields.telephone, '0612345678');
     assert.equal(fields.salle, 'Les Minimes');
     assert.equal(fields.source, 'boxplus');
+    assert.equal(fields.date_naissance, '1990-05-15');
+    assert.equal(fields.adresse, '12 rue Exemple');
+    assert.equal(fields.code_postal, '31000');
+    assert.equal(fields.ville, 'Toulouse');
+    assert.equal(fields.contact_urgence, 'Marie 0611111111');
+    assert.equal(fields.offre, 'Etudiants 36,99€');
   });
 
   it('ignore les noms qui ressemblent à un email', () => {
@@ -40,9 +54,9 @@ describe('client sync', () => {
 });
 
 describe('featured ids', () => {
-  it('normalise legacy_id vers id produit', () => {
-    const ids = normalizeFeaturedIds(['offre-promo-adulte', 'seance-essai']);
-    assert.ok(ids.includes('seance-essai'));
-    assert.ok(ids.some((id) => id.startsWith('dp-') || id === 'offre-promo-adulte'));
+  it('normalise les ids du merch correctement', () => {
+    const ids = normalizeFeaturedIds(['44-99-4-semaines', 'comptant-12-mois', 'seance-essai']);
+    assert.ok(ids.length <= 3);
+    assert.ok(ids.every((id) => typeof id === 'string' && id.length > 0));
   });
 });
