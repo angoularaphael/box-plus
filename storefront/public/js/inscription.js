@@ -54,6 +54,7 @@
       sessionId: state.sessionId,
       step: state.step,
       shortDraft: state.shortDraft,
+      customerShort: state.order?.customer_short || null,
       savedAt: Date.now(),
     });
   }
@@ -74,6 +75,10 @@
       if (saved.token) state.token = state.token || saved.token;
       if (saved.sessionId) state.sessionId = state.sessionId || saved.sessionId;
       if (saved.shortDraft) state.shortDraft = saved.shortDraft;
+      if (saved.customerShort && !state.order?.customer_short) {
+        state.order = state.order || {};
+        state.order.customer_short = saved.customerShort;
+      }
       const urlStep = Number(params.get('step') || 0);
       if (saved.step > 1) {
         if (!urlStep || (saved.orderId && state.orderId === saved.orderId && saved.step > urlStep)) {
@@ -165,10 +170,31 @@
   }
 
   function orderErrorMessage(data) {
+    if (data.message) return data.message;
     if (data.error === 'not_found') {
-      return 'Dossier introuvable. Rechargez la page depuis le lien reçu après paiement, ou contactez le club.';
+      return 'Dossier introuvable. Revenez à l\'étape identité et recommencez, ou contactez le club.';
     }
-    return (data.errors || [data.error]).join(', ');
+    return (data.errors || [data.error]).filter(Boolean).join(', ');
+  }
+
+  function payRequestBody(extra = {}) {
+    const short = state.order?.customer_short || state.shortDraft;
+    return {
+      token: state.token,
+      product_id: state.productId,
+      customer_short: short
+        ? {
+            first_name: short.first_name,
+            last_name: short.last_name,
+            email: short.email,
+            phone: short.phone,
+            birthdate: short.birthdate,
+          }
+        : undefined,
+      product_snapshot: state.product || state.order?.product_snapshot,
+      session_id: state.sessionId || undefined,
+      ...extra,
+    };
   }
 
   function bindShortDraftAutosave(form) {
@@ -245,6 +271,17 @@
       state.token = data.access_token;
       state.step = 3;
       state.shortDraft = null;
+      state.order = {
+        order_id: data.order_id,
+        customer_short: {
+          first_name: body.first_name,
+          last_name: body.last_name,
+          email: body.email,
+          phone: body.phone,
+          birthdate: body.birthdate,
+        },
+        product_snapshot: state.product,
+      };
       setMsg('');
       saveProgress();
       syncUrl();
@@ -288,7 +325,7 @@
       e.preventDefault();
       setMsg('Redirection…');
       saveProgress();
-      const body = { token: state.token };
+      const body = payRequestBody();
       if (needsIban) body.iban = document.getElementById('iban').value;
       const res = await fetch(`/api/orders/${state.orderId}/pay`, {
         method: 'POST',
@@ -464,7 +501,7 @@
       const loaded = await loadOrder();
       if (!loaded && state.step >= 3) {
         setMsg(
-          'Dossier introuvable sur le serveur. Recommencez depuis l\'étape identité ou contactez le club.',
+          'Impossible de recharger votre dossier — vous pouvez tout de même payer si vos coordonnées sont enregistrées ci-dessus.',
           'err'
         );
       } else if (state.step === 3 && !state.product?.stripe_price_label && !state.product?.price_label) {

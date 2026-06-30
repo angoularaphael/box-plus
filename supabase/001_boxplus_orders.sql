@@ -16,4 +16,6 @@ create table if not exists public.boxplus_store_config (
   updated_at timestamptz not null default now()
 );
 
+alter table public.boxplus_orders enable row level security;
+
 alter table public.boxplus_store_config enable row level security;

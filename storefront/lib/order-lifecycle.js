@@ -50,7 +50,7 @@ function createDraft({ product_id, product, customer_short }) {
   const order = {
     order_id,
     access_token,
-    step: 2,
+    step: customer_short ? 3 : 2,
     product_id,
     product_snapshot: productSnapshot(product),
     customer_short: customer_short || null,
@@ -63,6 +63,12 @@ function createDraft({ product_id, product, customer_short }) {
     ready_for_dispatch: false,
   };
   saveOrder(order);
+  return order;
+}
+
+async function createDraftAsync({ product_id, product, customer_short }) {
+  const order = createDraft({ product_id, product, customer_short });
+  await persistence.saveOrderAsync(order);
   return order;
 }
 
@@ -81,6 +87,11 @@ async function loadOrderAsync(orderId) {
 function saveOrder(order) {
   initDirs();
   return persistence.saveOrder(order);
+}
+
+async function saveOrderAsync(order) {
+  initDirs();
+  return persistence.saveOrderAsync(order);
 }
 
 function verifyAccess(order, token) {
@@ -188,9 +199,11 @@ module.exports = {
   ORDERS_DIR,
   UPLOADS_DIR,
   createDraft,
+  createDraftAsync,
   loadOrder,
   loadOrderAsync,
   saveOrder,
+  saveOrderAsync,
   verifyAccess,
   updateShortProfile,
   markPaymentPaid,

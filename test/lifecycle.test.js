@@ -45,7 +45,7 @@ describe('lifecycle tunnel', () => {
       },
     });
     orderId = order.order_id;
-    assert.equal(order.step, 2);
+    assert.equal(order.step, 3);
 
     const shortErrors = validateShortForm(order.customer_short);
     assert.equal(shortErrors.length, 0);
