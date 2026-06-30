@@ -240,15 +240,25 @@ async function updateMerchProductAsync(productId, patch) {
   return saveMerchAsync(merch);
 }
 
+function normalizeFeaturedIds(ids) {
+  const all = getEnrichedProducts({ activeOnly: false });
+  const canonical = new Map();
+  for (const p of all) {
+    canonical.set(p.id, p.id);
+    if (p.legacy_id) canonical.set(p.legacy_id, p.id);
+  }
+  return [...new Set((ids || []).map((id) => canonical.get(id) || id).filter(Boolean))];
+}
+
 function setFeaturedHome(ids) {
   const merch = loadMerch();
-  merch.featured_home = ids.slice(0, 3);
+  merch.featured_home = normalizeFeaturedIds(ids).slice(0, 3);
   return saveMerch(merch);
 }
 
 async function setFeaturedHomeAsync(ids) {
   const merch = loadMerch();
-  merch.featured_home = (ids || []).slice(0, 3);
+  merch.featured_home = normalizeFeaturedIds(ids).slice(0, 3);
   return saveMerchAsync(merch);
 }
 
@@ -342,6 +352,7 @@ module.exports = {
   updateMaterielProduct,
   setFeaturedHome,
   setFeaturedHomeAsync,
+  normalizeFeaturedIds,
   createManualOffer,
   loadMerchFresh,
   hydrateMerchOnce,

@@ -86,8 +86,21 @@
     if (!res.ok) throw new Error('unauthorized');
     const data = await res.json();
     products = data.products || [];
-    featuredHome = [...(data.featured_home || [])];
+    featuredHome = resolveFeaturedIds(data.featured_home || []);
     renderMerch();
+  }
+
+  function resolveFeaturedIds(ids) {
+    const canonical = new Map();
+    for (const p of products) {
+      canonical.set(p.id, p.id);
+      if (p.legacy_id) canonical.set(p.legacy_id, p.id);
+    }
+    return [...new Set(ids.map((id) => canonical.get(id) || id).filter(Boolean))].slice(0, 3);
+  }
+
+  function isFeaturedProduct(p) {
+    return featuredHome.includes(p.id) || (p.legacy_id && featuredHome.includes(p.legacy_id));
   }
 
   async function loadOrders() {
@@ -248,7 +261,7 @@
 
     el.innerHTML = products
       .map((p) => {
-        const checked = featuredHome.includes(p.id);
+        const checked = isFeaturedProduct(p);
         const inputId = `feat-${p.id}`;
         return `
         <div class="admin-featured-card${checked ? ' is-selected' : ''}">
@@ -268,15 +281,16 @@
   }
 
   function toggleFeatured(id, checked, inputEl) {
+    const pid = resolveFeaturedIds([id])[0] || id;
     if (checked) {
       if (featuredHome.length >= 3) {
         alert('Maximum 3 offres à la une');
         if (inputEl) inputEl.checked = false;
         return;
       }
-      featuredHome.push(id);
+      if (!featuredHome.includes(pid)) featuredHome.push(pid);
     } else {
-      featuredHome = featuredHome.filter((x) => x !== id);
+      featuredHome = featuredHome.filter((x) => x !== pid);
     }
     renderFeatured();
   }
@@ -422,7 +436,7 @@
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Échec enregistrement');
-      featuredHome = [...(data.featured_home || featuredHome)];
+      featuredHome = resolveFeaturedIds(data.featured_home || featuredHome);
       renderFeatured();
       msg.textContent = data.warning || 'Offres à la une enregistrées.';
       msg.className = data.warning ? 'form-msg err' : 'form-msg ok';
@@ -481,28 +495,6 @@
   };
 
   document.getElementById('refreshOrdersBtn').onclick = loadOrders;
-  document.getElementById('testEmailBtn').onclick = async () => {
-    const msg = document.getElementById('ordersMsg');
-    const to = prompt('Email de test :', 'linuxcam05@gmail.com');
-    if (!to) return;
-    msg.textContent = 'Envoi en cours…';
-    msg.className = 'form-msg';
-    try {
-      const res = await fetch('/api/admin/test-email', {
-        method: 'POST',
-        credentials: 'include',
-        headers: headers(),
-        body: JSON.stringify({ to }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || data.reason || 'Échec envoi');
-      msg.textContent = `Email test envoyé à ${data.to} (expéditeur : ${data.sender || 'suzinabot@gmail.com'}).`;
-      msg.className = 'form-msg ok';
-    } catch (err) {
-      msg.textContent = err.message;
-      msg.className = 'form-msg err';
-    }
-  };
   document.getElementById('ordersSearch').oninput = renderOrders;
   document.getElementById('ordersFilter').onchange = renderOrders;
 
