@@ -1,6 +1,13 @@
-const { SignJWT, jwtVerify } = require('jose');
-
 const COOKIE = 'bc_admin_session';
+
+let josePromise;
+
+function loadJose() {
+  if (!josePromise) {
+    josePromise = import('jose');
+  }
+  return josePromise;
+}
 
 function secret() {
   const s =
@@ -24,6 +31,7 @@ function cookieFlags() {
 }
 
 async function setAdminSessionCookie(res, user) {
+  const { SignJWT } = await loadJose();
   const token = await new SignJWT({
     email: user.email,
     role: user.role,
@@ -49,6 +57,7 @@ async function getAdminSession(req) {
   const token = parseCookie(req, COOKIE);
   if (!token) return null;
   try {
+    const { jwtVerify } = await loadJose();
     const { payload } = await jwtVerify(token, secret());
     return { email: payload.email, role: payload.role, name: payload.name };
   } catch {
