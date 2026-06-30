@@ -1,0 +1,10 @@
+bot/
+analyzer/
+deploy/
+prestashop/
+scripts/
+test/
+data/session/
+data/queue/
+playwright-report/
+test-results/
