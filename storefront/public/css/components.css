@@ -374,7 +374,14 @@
   max-width: 72px;
 }
 
-.stepper-step.active .stepper-label { color: var(--bc-navy); font-weight: 600; }
+.step-back,
+.step-back-link {
+  margin-top: 12px;
+}
+
+.form-grid .step-back {
+  margin-top: 4px;
+}
 
 @media (max-width: 600px) {
   .stepper-label { display: none; }

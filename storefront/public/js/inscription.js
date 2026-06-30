@@ -125,6 +125,22 @@
     void render();
   }
 
+  function goToStep(step) {
+    setMsg('');
+    state.step = step;
+    persistAndRender();
+  }
+
+  function backButton(label, targetStep) {
+    return `<button type="button" class="btn secondary block step-back" data-step="${targetStep}">${label}</button>`;
+  }
+
+  function bindBackButtons() {
+    stepContent.querySelectorAll('.step-back').forEach((btn) => {
+      btn.onclick = () => goToStep(Number(btn.dataset.step));
+    });
+  }
+
   function updateStepper(step) {
     document.querySelectorAll('.stepper-step').forEach((el) => {
       const s = Number(el.dataset.step);
@@ -227,7 +243,8 @@
         ${p.installments_note ? `<p class="offer-price-sub">${p.installments_note}</p>` : ''}
       </div>
       <div class="info-box">Nos cours sont accessibles aux débutants. L'ambiance est bienveillante et motivante.</div>
-      <button type="button" class="btn block" id="toStep2">Commencer l'inscription</button>`;
+      <button type="button" class="btn block" id="toStep2">Commencer l'inscription</button>
+      <a href="/abonnements" class="btn secondary block step-back-link" style="margin-top:12px">← Choisir une autre offre</a>`;
     document.getElementById('toStep2').onclick = () => {
       state.step = 2;
       persistAndRender();
@@ -246,9 +263,11 @@
         <div class="full"><label for="phone">Téléphone *</label><input id="phone" name="phone" type="tel" required value="${short.phone || ''}" /></div>
         <div class="full"><label for="birthdate">Date de naissance *</label><input id="birthdate" name="birthdate" type="date" required value="${short.birthdate || ''}" /></div>
         <div class="full"><button type="submit" class="btn block">Continuer vers le paiement</button></div>
+        <div class="full">${backButton('← Retour à l\'offre', 1)}</div>
       </form>`;
     const form = document.getElementById('shortForm');
     bindShortDraftAutosave(form);
+    bindBackButtons();
     form.onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Envoi…');
@@ -320,6 +339,7 @@
         <p class="info-box">Votre IBAN sera enregistré pour les échéances suivantes dans Deciplus.</p></div>` : ''}
         ${state.config?.badge_fee_notice && needsIban ? `<div class="notice-important"><strong>Badge d'accès</strong><p>${state.config.badge_fee_notice}</p></div>` : ''}
         <button type="submit" class="btn stripe block" id="payBtn">${p?.requires_payment === false ? 'Continuer gratuitement' : 'Payer par carte bancaire'}</button>
+        ${backButton('← Retour aux coordonnées', 2)}
       </form>`;
     document.getElementById('payForm').onsubmit = async (e) => {
       e.preventDefault();
@@ -340,10 +360,14 @@
       if (data.url) window.location.href = data.url;
       else if (data.redirect) window.location.href = data.redirect;
     };
+    bindBackButtons();
   }
 
   function renderStep4() {
     const full = state.order?.customer_full || {};
+    const paid = state.order?.payment?.status === 'paid';
+    const backTarget = paid ? 2 : 3;
+    const backLabel = paid ? '← Modifier mes coordonnées' : '← Retour au paiement';
     stepContent.innerHTML = `
       <h1>Complétez votre dossier</h1>
       <p class="sub">Ces informations complètent votre fiche membre Deciplus. Votre abonnement donne accès aux 5 centres.</p>
@@ -365,6 +389,7 @@
         <div class="full"><label for="medical_info">Informations médicales (optionnel)</label><textarea id="medical_info" name="medical_info" rows="2">${full.medical_info || ''}</textarea></div>
         ${state.product?.requires_iban ? `<div class="full info-box" style="margin-top:0">Votre IBAN a déjà été enregistré à l'étape paiement pour les prélèvements suivants.</div>` : ''}
         <div class="full"><button type="submit" class="btn block">Continuer vers la signature</button></div>
+        <div class="full">${backButton(backLabel, backTarget)}</div>
       </form>`;
     if (full.gym) document.getElementById('gym').value = full.gym;
     document.getElementById('fullForm').onsubmit = async (e) => {
@@ -388,6 +413,7 @@
       await loadOrder();
       await render();
     };
+    bindBackButtons();
   }
 
   const LEGAL = {
@@ -412,7 +438,8 @@
           J'accepte le <a class="legal-link" href="${LEGAL.reglement}" target="_blank" rel="noopener">règlement intérieur du club</a> *</label>
       </div>
       <button type="button" class="btn block" id="signBtn">Valider mon inscription — signer électroniquement</button>
-      <button type="button" class="btn secondary block" id="previewContractBtn" style="margin-top:12px">Prévisualiser le contrat</button>`;
+      <button type="button" class="btn secondary block" id="previewContractBtn" style="margin-top:12px">Prévisualiser le contrat</button>
+      ${backButton('← Retour au dossier', 4)}`;
     document.getElementById('previewContractBtn').onclick = () => {
       window.BCContract.openView(state.orderId, {
         token: state.token,
@@ -447,6 +474,7 @@
       syncUrl();
       await render();
     };
+    bindBackButtons();
   }
 
   function renderStep6() {
