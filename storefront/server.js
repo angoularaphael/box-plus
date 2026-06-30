@@ -704,6 +704,17 @@ function createApp() {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
 
+      if (order.step >= 6 || order.signature?.signed_at) {
+        return res.json({
+          ok: true,
+          step: 6,
+          already_signed: true,
+          order_id: order.order_id,
+          email_sent: Boolean(order.email_sent_at),
+          status_url: `/mon-inscription?order=${order.order_id}&token=${order.access_token}`,
+        });
+      }
+
       const { consent_cgv, consent_reglement } = req.body;
       if (!consent_cgv || !consent_reglement) {
         return res.status(400).json({ ok: false, error: 'Consentements requis' });
@@ -720,7 +731,16 @@ function createApp() {
       const { saveOrderAsync } = require('./lib/order-lifecycle');
       await saveOrderAsync(signed);
 
-      await dispatchLifecycleOrder(signed);
+      let dispatchError = null;
+      try {
+        await dispatchLifecycleOrder(signed);
+      } catch (dispatchErr) {
+        dispatchError = dispatchErr.message;
+        logError('Dispatch lifecycle après signature', {
+          order_id: signed.order_id,
+          error: dispatchErr.message,
+        });
+      }
 
       const emailResult = await sendConfirmationEmail(signed, [
         { filepath, filename },
@@ -732,6 +752,13 @@ function createApp() {
         step: 6,
         order_id: signed.order_id,
         email_sent: emailResult.sent,
+        email_warning: emailResult.sent
+          ? undefined
+          : emailResult.error ||
+            (emailResult.reason === 'smtp_not_configured'
+              ? 'Email non configuré'
+              : 'Email non envoyé'),
+        dispatch_error: dispatchError || undefined,
         status_url: `/mon-inscription?order=${signed.order_id}&token=${signed.access_token}`,
       });
     } catch (err) {

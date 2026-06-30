@@ -96,17 +96,22 @@ async function sendConfirmationEmail(order, attachments = []) {
     return { sent: false, reason: 'smtp_not_configured', preview: html };
   }
 
-  await transport.sendMail({
-    from,
-    to,
-    replyTo: getReplyTo(),
-    subject: `Confirmation inscription Boxing Center — ${order.order_id}`,
-    html,
-    attachments: defaultAttachments,
-  });
+  try {
+    await transport.sendMail({
+      from,
+      to,
+      replyTo: getReplyTo(),
+      subject: `Confirmation inscription Boxing Center — ${order.order_id}`,
+      html,
+      attachments: defaultAttachments,
+    });
 
-  logInfo('Email confirmation envoyé', { to, order_id: order.order_id });
-  return { sent: true };
+    logInfo('Email confirmation envoyé', { to, order_id: order.order_id });
+    return { sent: true };
+  } catch (err) {
+    logWarn('Email confirmation échoué', { order_id: order.order_id, error: err.message });
+    return { sent: false, reason: 'smtp_error', error: err.message };
+  }
 }
 
 async function sendGdprEraseRequest(data) {
@@ -196,17 +201,22 @@ async function sendMaterielConfirmationEmail(order) {
     return { sent: false, reason: 'smtp_not_configured', preview: html };
   }
 
-  await transport.sendMail({
-    from,
-    to,
-    replyTo: getReplyTo(),
-    subject: `Commande matériel Boxing Center — ${order.order_id}`,
-    html,
-    attachments,
-  });
+  try {
+    await transport.sendMail({
+      from,
+      to,
+      replyTo: getReplyTo(),
+      subject: `Commande matériel Boxing Center — ${order.order_id}`,
+      html,
+      attachments,
+    });
 
-  logInfo('Email matériel envoyé', { to, order_id: order.order_id });
-  return { sent: true };
+    logInfo('Email matériel envoyé', { to, order_id: order.order_id });
+    return { sent: true };
+  } catch (err) {
+    logWarn('Email matériel échoué', { order_id: order.order_id, error: err.message });
+    return { sent: false, reason: 'smtp_error', error: err.message };
+  }
 }
 
 module.exports = {

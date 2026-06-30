@@ -518,6 +518,7 @@
         return;
       }
       state.step = 6;
+      state.emailWarning = data.email_warning || null;
       clearProgress();
       setMsg('');
       saveProgress();
@@ -529,11 +530,15 @@
 
   function renderStep6() {
     const p = state.product;
+    const emailNote = state.emailWarning
+      ? `<div class="notice-important" style="margin-top:16px;text-align:left"><strong>Email non envoyé</strong><p>Votre inscription est bien enregistrée. L'email de confirmation n'a pas pu être envoyé (${state.emailWarning}). Téléchargez votre contrat ci-dessous ou contactez le club.</p></div>`
+      : '';
     stepContent.innerHTML = `
       <div class="success-page" style="margin:20px auto">
         <div class="success-icon" aria-hidden="true"></div>
         <h1>Inscription confirmée !</h1>
-        <p>Bienvenue chez Boxing Center. Un email de confirmation avec votre contrat vous a été envoyé.</p>
+        <p>Bienvenue chez Boxing Center.${state.emailWarning ? '' : ' Un email de confirmation avec votre contrat vous a été envoyé.'}</p>
+        ${emailNote}
         <div class="info-box" style="text-align:left">
           <strong>Référence :</strong> ${state.orderId}<br />
           <strong>Offre :</strong> ${p?.display_name || p?.name || '—'}<br />

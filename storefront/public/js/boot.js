@@ -11,7 +11,9 @@
       const product = p.get('product');
       const step = p.get('step');
       const onInscription = /^\/inscription(\/|$)/.test(location.pathname);
-      if (!onInscription && order && token) {
+      const onContrat = /^\/contrat(\/|$)/.test(location.pathname);
+      const onMonInscription = /^\/mon-inscription(\/|$)/.test(location.pathname);
+      if (!onInscription && !onContrat && !onMonInscription && order && token) {
         location.replace(`/inscription${qs}`);
         return;
       }
