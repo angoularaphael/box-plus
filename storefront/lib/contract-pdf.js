@@ -4,13 +4,13 @@ const PDFDocument = require('pdfkit');
 const { ROOT, ensureDir } = require('../../lib/utils');
 const {
   formatEuros,
-  drawProHeader,
-  drawTwoParties,
-  clubEmitterRows,
+  drawProHeaderCompact,
+  drawTwoPartiesCompact,
+  clubEmitterRowsCompact,
   memberRecipientRows,
   drawSectionHeading,
-  drawDetailTable,
-  drawSignatureBlock,
+  drawDetailTableCompact,
+  drawSignatureBlockCompact,
   drawPageFooter,
 } = require('./pdf-layout');
 
@@ -18,6 +18,8 @@ const LEGAL_DIR = path.join(ROOT, 'storefront', 'legal');
 const DOCS_DIR =
   process.env.BOXPLUS_DOCS_DIR ||
   (process.env.VERCEL ? '/tmp/boxplus-documents' : path.join(ROOT, 'data', 'storefront', 'documents'));
+
+const CONTRACT_MARGINS = 40;
 
 function readLegal(name) {
   const file = path.join(LEGAL_DIR, name);
@@ -52,22 +54,24 @@ function renderContractBody(doc, order) {
     gym: full.gym ? gymLabel(full.gym) : undefined,
   });
 
-  drawProHeader(doc, {
-    title: `Contrat ${order.order_id}`,
+  drawProHeaderCompact(doc, {
+    title: "Contrat d'adhésion",
     date: contractDate,
     ref: order.order_id,
   });
 
-  drawTwoParties(doc, clubEmitterRows(), recipient);
+  drawTwoPartiesCompact(doc, clubEmitterRowsCompact(), recipient);
 
-  drawSectionHeading(doc, 'Détail');
-  drawDetailTable(doc, {
+  doc.fontSize(10).fillColor('#0B1F3A').font('Helvetica-Bold').text('Détail', doc.page.margins.left, doc.y);
+  doc.y += 12;
+
+  drawDetailTableCompact(doc, {
     columns: [
-      { key: 'type', label: 'Type', width: 0.14 },
-      { key: 'description', label: 'Description', width: 0.46 },
+      { key: 'type', label: 'Type', width: 0.12 },
+      { key: 'description', label: 'Description', width: 0.5 },
       { key: 'qty', label: 'Qté', width: 0.08, align: 'center' },
-      { key: 'price', label: 'Prix TTC', width: 0.16, align: 'right' },
-      { key: 'total', label: 'Total TTC', width: 0.16, align: 'right' },
+      { key: 'price', label: 'Prix TTC', width: 0.14, align: 'right' },
+      { key: 'total', label: 'Total', width: 0.16, align: 'right' },
     ],
     rows: [
       {
@@ -76,15 +80,23 @@ function renderContractBody(doc, order) {
         qty: '1',
         price: formatEuros(product.price_cents),
         total: formatEuros(product.price_cents),
-        height: 32,
       },
     ],
     totalLabel: 'Total TTC',
     totalValue: formatEuros(product.price_cents),
   });
 
-  drawSignatureBlock(doc, order);
+  doc.y += 4;
+  drawSignatureBlockCompact(doc, order);
   drawPageFooter(doc);
+}
+
+function createContractDoc() {
+  return new PDFDocument({
+    size: 'A4',
+    margin: CONTRACT_MARGINS,
+    bufferPages: true,
+  });
 }
 
 function generateContractPdf(order) {
@@ -93,7 +105,7 @@ function generateContractPdf(order) {
   const filepath = path.join(DOCS_DIR, filename);
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
+    const doc = createContractDoc();
     const stream = fs.createWriteStream(filepath);
     doc.pipe(stream);
     renderContractBody(doc, order);
@@ -106,7 +118,7 @@ function generateContractPdf(order) {
 function streamContractPdf(order, res) {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `inline; filename="contrat-${order.order_id}.pdf"`);
-  const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
+  const doc = createContractDoc();
   doc.pipe(res);
   renderContractBody(doc, order);
   doc.end();
