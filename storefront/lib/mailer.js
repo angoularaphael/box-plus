@@ -4,18 +4,27 @@ const nodemailer = require('nodemailer');
 const { logInfo, logWarn } = require('../../lib/logger');
 const { readLegal } = require('./contract-pdf');
 const { getMailFrom, CGV_URL, REGLEMENT_URL, SITE_URL } = require('./branding');
+const {
+  generateInscriptionInvoicePdf,
+  generateMaterielInvoicePdf,
+} = require('./invoice-pdf');
 
 function createTransport() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  if (!host) return null;
+  const host = process.env.SMTP_HOST || process.env.BREVO_SMTP_HOST;
+  const user = process.env.SMTP_USER || process.env.BREVO_SMTP_LOGIN;
+  const pass = process.env.SMTP_PASS || process.env.BREVO_SMTP_KEY;
+  if (!host || !user || !pass) return null;
+  const port = Number(process.env.SMTP_PORT || process.env.BREVO_SMTP_PORT || 587);
   return nodemailer.createTransport({
     host,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: user ? { user, pass } : undefined,
+    port,
+    secure: port === 465 || process.env.SMTP_SECURE === 'true',
+    auth: { user, pass },
   });
+}
+
+function getReplyTo() {
+  return process.env.BREVO_REPLY_TO || process.env.MAIL_REPLY_TO || undefined;
 }
 
 function buildConfirmationHtml(order) {
@@ -41,7 +50,7 @@ function buildConfirmationHtml(order) {
     <li>Pas besoin d'expérience — nos coachs vous accueillent</li>
     <li>Votre abonnement donne accès à nos 5 salles</li>
   </ul>
-  <p>Vous trouverez en pièces jointes votre contrat signé, le règlement intérieur et les CGV.</p>
+  <p>Vous trouverez en pièces jointes votre contrat signé, votre facture, le règlement intérieur et les CGV.</p>
   <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="${SITE_URL}" style="color:#2EC4C6">${SITE_URL.replace('https://', '')}</a></p>
 </body>
 </html>`;
@@ -73,6 +82,15 @@ async function sendConfirmationEmail(order, attachments = []) {
     }
   }
 
+  try {
+    const invoice = await generateInscriptionInvoicePdf(order);
+    if (invoice?.filepath) {
+      defaultAttachments.push({ filename: invoice.filename, path: invoice.filepath });
+    }
+  } catch (err) {
+    logWarn('Facture inscription non générée', { order_id: order.order_id, error: err.message });
+  }
+
   if (!transport) {
     logInfo('Email confirmation (mode log)', { to, order_id: order.order_id });
     return { sent: false, reason: 'smtp_not_configured', preview: html };
@@ -81,6 +99,7 @@ async function sendConfirmationEmail(order, attachments = []) {
   await transport.sendMail({
     from,
     to,
+    replyTo: getReplyTo(),
     subject: `Confirmation inscription Boxing Center — ${order.order_id}`,
     html,
     attachments: defaultAttachments,
@@ -145,6 +164,7 @@ function buildMaterielConfirmationHtml(order) {
   <p><strong>Lieu de retrait :</strong> ${order.pickup_gym || customer.pickup_gym || '—'}</p>
   <p><strong>Référence commande :</strong> ${order.order_id}</p>
   <p>Présentez cet email à l'accueil de la salle pour récupérer votre matériel.</p>
+  <p>Votre facture est jointe à cet email.</p>
   <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="https://boxingcenter.fr">boxingcenter.fr</a></p>
 </body>
 </html>`;
@@ -161,6 +181,16 @@ async function sendMaterielConfirmationEmail(order) {
   const from = getMailFrom();
   const html = buildMaterielConfirmationHtml(order);
 
+  const attachments = [];
+  try {
+    const invoice = await generateMaterielInvoicePdf(order);
+    if (invoice?.filepath) {
+      attachments.push({ filename: invoice.filename, path: invoice.filepath });
+    }
+  } catch (err) {
+    logWarn('Facture matériel non générée', { order_id: order.order_id, error: err.message });
+  }
+
   if (!transport) {
     logInfo('Email matériel (mode log)', { to, order_id: order.order_id });
     return { sent: false, reason: 'smtp_not_configured', preview: html };
@@ -169,8 +199,10 @@ async function sendMaterielConfirmationEmail(order) {
   await transport.sendMail({
     from,
     to,
+    replyTo: getReplyTo(),
     subject: `Commande matériel Boxing Center — ${order.order_id}`,
     html,
+    attachments,
   });
 
   logInfo('Email matériel envoyé', { to, order_id: order.order_id });
