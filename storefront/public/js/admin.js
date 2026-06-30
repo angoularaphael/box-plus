@@ -584,11 +584,13 @@
           const res = await fetch(`/api/admin/materiel/${encodeURIComponent(id)}`, {
             method: 'PUT',
             credentials: 'include',
-            headers: headers(),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ active }),
           });
-          const data = await res.json();
-          if (!res.ok || !data.ok) throw new Error(data.error || 'Erreur');
+          const text = await res.text();
+          let data;
+          try { data = JSON.parse(text); } catch { data = {}; }
+          if (!res.ok || !data.ok) throw new Error(data.error || `Erreur ${res.status}`);
           const idx = materielProducts.findIndex((p) => p.id === id);
           if (idx >= 0) materielProducts[idx] = { ...materielProducts[idx], active };
           setMaterielMsg(active ? 'Produit activé.' : 'Produit désactivé.', 'ok');
@@ -621,15 +623,18 @@
     if (materielLoaded) { renderMaterielTable(); return; }
     setMaterielMsg('Chargement du catalogue…');
     try {
-      const res = await fetch('/api/admin/materiel', { credentials: 'include', headers: headers(false) });
-      if (!res.ok) throw new Error('Accès refusé');
+      const res = await fetch('/api/materiel?all=1', { credentials: 'include' });
+      if (!res.ok) throw new Error(`Erreur ${res.status}`);
       const data = await res.json();
       materielProducts = data.products || [];
       materielCategories = data.categories || [];
       materielLoaded = true;
       const info = document.getElementById('materielSyncInfo');
-      if (info && data.synced_at) {
-        info.textContent = `Catalogue synchronisé le ${new Date(data.synced_at).toLocaleString('fr-FR')} — ${materielProducts.length} produit(s)`;
+      if (info) {
+        const syncDate = data.synced_at
+          ? new Date(data.synced_at).toLocaleString('fr-FR')
+          : 'date inconnue';
+        info.textContent = `Catalogue synchronisé le ${syncDate} — ${materielProducts.length} produit(s)`;
       }
       populateCatFilter();
       setMaterielMsg('');
