@@ -3,6 +3,7 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const { logInfo, logWarn } = require('../../lib/logger');
 const { readLegal } = require('./contract-pdf');
+const { getMailFrom, CGV_URL, REGLEMENT_URL, SITE_URL } = require('./branding');
 
 function createTransport() {
   const host = process.env.SMTP_HOST;
@@ -40,8 +41,8 @@ function buildConfirmationHtml(order) {
     <li>Pas besoin d'expérience — nos coachs vous accueillent</li>
     <li>Votre abonnement donne accès à nos 5 salles</li>
   </ul>
-  <p>Vous trouverez en pièces jointes votre contrat, le règlement intérieur et les CGV.</p>
-  <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="https://boxingcenter.fr">boxingcenter.fr</a></p>
+  <p>Vous trouverez en pièces jointes votre contrat signé, le règlement intérieur et les CGV.</p>
+  <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="${SITE_URL}" style="color:#2EC4C6">${SITE_URL.replace('https://', '')}</a></p>
 </body>
 </html>`;
 }
@@ -54,7 +55,7 @@ async function sendConfirmationEmail(order, attachments = []) {
     return { sent: false, reason: 'no_email' };
   }
 
-  const from = process.env.MAIL_FROM || 'boutique@boxingcenter.fr';
+  const from = getMailFrom();
   const html = buildConfirmationHtml(order);
 
   const defaultAttachments = [];
@@ -97,7 +98,7 @@ async function sendGdprEraseRequest(data) {
     return { sent: false };
   }
   await transport.sendMail({
-    from: process.env.MAIL_FROM || 'boutique@boxingcenter.fr',
+    from: process.env.MAIL_FROM || getMailFrom(),
     to: adminEmail,
     subject: 'Demande suppression données RGPD',
     text: `Email: ${data.email}\nMessage: ${data.message || '—'}`,
@@ -157,7 +158,7 @@ async function sendMaterielConfirmationEmail(order) {
     return { sent: false, reason: 'no_email' };
   }
 
-  const from = process.env.MAIL_FROM || 'boutique@boxingcenter.fr';
+  const from = getMailFrom();
   const html = buildMaterielConfirmationHtml(order);
 
   if (!transport) {

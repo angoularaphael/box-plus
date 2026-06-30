@@ -43,6 +43,22 @@
   }
 
   window.BCPaths = { link, asset };
+
+  function injectFavicon() {
+    if (document.querySelector('link[rel="icon"]')) return;
+    const svg = document.createElement('link');
+    svg.rel = 'icon';
+    svg.type = 'image/svg+xml';
+    svg.href = asset('/assets/favicon.svg');
+    document.head.appendChild(svg);
+    const ico = document.createElement('link');
+    ico.rel = 'shortcut icon';
+    ico.type = 'image/x-icon';
+    ico.href = asset('/assets/favicon.ico');
+    document.head.appendChild(ico);
+  }
+  injectFavicon();
+
   document.addEventListener('DOMContentLoaded', () => {
     if (location.protocol !== 'file:') return;
     document.querySelectorAll('a[href^="/"]').forEach((a) => {

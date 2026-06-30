@@ -184,7 +184,7 @@
         <div class="full"><label for="emergency_contact">Contact d'urgence (optionnel)</label><input id="emergency_contact" name="emergency_contact" placeholder="Nom + téléphone" value="${full.emergency_contact || ''}" /></div>
         <div class="full"><label for="medical_info">Informations médicales (optionnel)</label><textarea id="medical_info" name="medical_info" rows="2">${full.medical_info || ''}</textarea></div>
         <div class="full"><label for="photo">Photo de profil (optionnel)</label><input id="photo" name="photo" type="file" accept="image/*" /></div>
-        ${state.product?.requires_iban ? `<div class="full"><label for="iban_full">IBAN *</label><input id="iban_full" name="iban" required /></div>` : ''}
+        ${state.product?.requires_iban ? `<div class="full info-box" style="margin-top:0">Votre IBAN a déjà été enregistré à l'étape paiement pour les prélèvements suivants.</div>` : ''}
         <div class="full"><button type="submit" class="btn block">Continuer vers la signature</button></div>
       </form>`;
     if (full.gym) document.getElementById('gym').value = full.gym;
@@ -206,21 +206,29 @@
     };
   }
 
+  const LEGAL = {
+    cgv: 'https://boutique.boxingcenter.fr/content/3-conditions',
+    reglement: 'https://boxingcenter.fr/participez-seance-essai/',
+  };
+
   function renderStep5() {
     stepContent.innerHTML = `
       <h1>Signature et validation</h1>
-      <p class="sub">Veuillez lire et accepter les documents suivants.</p>
-      <div class="consent-box">
-        <label><input type="checkbox" id="consent_cgv" required /> J'accepte les <a href="/politique-confidentialite" target="_blank">conditions générales de vente</a> *</label>
+      <p class="sub">Lisez les documents, cochez les cases puis validez — cela vaut signature électronique de votre contrat.</p>
+      <div class="e-sign-panel">
+        <div class="e-sign-icon" aria-hidden="true">✍</div>
+        <p><strong>Comment ça marche ?</strong> Pas de paraphe à dessiner : en cliquant sur « Valider mon inscription », vous signez électroniquement votre contrat d'adhésion. Un PDF signé vous sera envoyé par email.</p>
       </div>
       <div class="consent-box">
-        <label><input type="checkbox" id="consent_reglement" required /> J'accepte le règlement intérieur du club *</label>
+        <label><input type="checkbox" id="consent_cgv" required />
+          J'accepte les <a class="legal-link" href="${LEGAL.cgv}" target="_blank" rel="noopener">conditions générales de vente</a> *</label>
       </div>
-      <p style="font-size:13px;color:var(--bc-muted);margin:16px 0">
-        En validant, vous signez électroniquement votre contrat d'adhésion. Un PDF vous sera envoyé par email.
-      </p>
-      <button type="button" class="btn block" id="signBtn">Valider mon inscription</button>
-      <a href="/api/orders/${state.orderId}/contract.pdf?token=${state.token}" class="btn secondary block" style="margin-top:12px" target="_blank">Prévisualiser le contrat</a>`;
+      <div class="consent-box">
+        <label><input type="checkbox" id="consent_reglement" required />
+          J'accepte le <a class="legal-link" href="${LEGAL.reglement}" target="_blank" rel="noopener">règlement intérieur du club</a> *</label>
+      </div>
+      <button type="button" class="btn block" id="signBtn">Valider mon inscription — signer électroniquement</button>
+      <a href="/api/orders/${state.orderId}/contract.pdf?token=${state.token}${state.sessionId ? `&session_id=${state.sessionId}` : ''}" class="btn secondary block" style="margin-top:12px" target="_blank">Prévisualiser le contrat</a>`;
     document.getElementById('signBtn').onclick = async () => {
       if (!document.getElementById('consent_cgv').checked || !document.getElementById('consent_reglement').checked) {
         setMsg('Veuillez accepter les conditions.', 'err');
@@ -232,6 +240,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token: state.token,
+          session_id: state.sessionId || undefined,
           consent_cgv: true,
           consent_reglement: true,
         }),
