@@ -26,16 +26,21 @@
     "vercel-build": "echo Vercel build OK"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.8",
     "bcryptjs": "^3.0.2",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jose": "^6.0.11",
-    "@supabase/supabase-js": "^2.49.8",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.1",
     "pdfkit": "^0.19.1",
-    "playwright": "^1.51.1",
     "stripe": "^17.7.0",
     "uuid": "^14.0.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.51.1"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }
