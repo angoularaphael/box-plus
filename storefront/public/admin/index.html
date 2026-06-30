@@ -10,18 +10,15 @@
   <link rel="stylesheet" href="../css/components.css" />
 </head>
 <body>
-  <div id="loginPanel" class="admin-login">
-    <h1 style="color:var(--bc-navy);margin-bottom:16px">Administration</h1>
-    <p style="color:var(--bc-muted);margin-bottom:20px;font-size:14px">Offres, inscriptions et contrats membres.</p>
-    <label for="adminSecret">Clé d'accès</label>
-    <input id="adminSecret" type="password" placeholder="ADMIN_SECRET" />
-    <button type="button" class="btn block" id="loginBtn" style="margin-top:16px">Connexion</button>
-    <p class="form-msg" id="loginMsg"></p>
-  </div>
-
   <div id="adminPanel" hidden>
     <div class="admin-layout">
-      <h1 style="color:var(--bc-navy);margin-bottom:8px">Administration boutique</h1>
+      <div class="admin-topbar">
+        <div>
+          <h1 style="color:var(--bc-navy);margin-bottom:4px">Administration boutique</h1>
+          <p id="adminUserLine" style="color:var(--bc-muted);font-size:13px;margin:0"></p>
+        </div>
+        <button type="button" class="btn secondary sm" id="logoutBtn">Déconnexion</button>
+      </div>
       <nav class="admin-tabs" id="adminTabs">
         <button type="button" class="admin-tab active" data-tab="offers">Offres</button>
         <button type="button" class="admin-tab" data-tab="contracts">Contrats & inscriptions</button>
@@ -94,6 +91,7 @@
     </div>
   </div>
 
+  <script src="../js/contract-open.js"></script>
   <script src="../js/admin.js"></script>
 </body>
 </html>

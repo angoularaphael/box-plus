@@ -69,6 +69,12 @@ const {
 const { generateContractPdf, streamContractPdf } = require('./lib/contract-pdf');
 const { sendConfirmationEmail, sendGdprEraseRequest } = require('./lib/mailer');
 const { rebuildLifecycleOrderFromSession, loadOrderOrRecover } = require('./lib/order-recovery');
+const { verifyAdminLogin } = require('./lib/admin-auth');
+const {
+  getAdminSession,
+  setAdminSessionCookie,
+  clearAdminSessionCookie,
+} = require('./lib/admin-session');
 
 const PORT = Number(process.env.STORE_PORT || 3040);
 const HOST = process.env.STORE_HOST || '0.0.0.0';
@@ -82,8 +88,7 @@ const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      const type = file.fieldname === 'rib_file' ? 'ribs' : 'photos';
-      cb(null, getUploadDir(type));
+      cb(null, getUploadDir('ribs'));
     },
     filename: (req, file, cb) => {
       const ext = path.extname(file.originalname) || '.jpg';
@@ -100,7 +105,9 @@ function isAuthorizedSync(req) {
   return token === SYNC_SECRET;
 }
 
-function isAuthorizedAdmin(req) {
+async function isAuthorizedAdmin(req) {
+  const session = await getAdminSession(req);
+  if (session) return true;
   if (!ADMIN_SECRET) return false;
   const header = req.headers['x-admin-secret'] || req.headers['authorization'] || '';
   const token = String(header).replace(/^Bearer\s+/i, '').trim();
@@ -282,6 +289,31 @@ function createApp() {
 
   app.use(express.json());
 
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = req.body || {};
+      const user = await verifyAdminLogin(email, password);
+      if (!user) {
+        return res.status(401).json({ ok: false, error: 'Email ou mot de passe incorrect' });
+      }
+      await setAdminSessionCookie(res, user);
+      res.json({ ok: true, user: { email: user.email, name: user.name, role: user.role } });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    clearAdminSessionCookie(res);
+    res.json({ ok: true });
+  });
+
+  app.get('/api/auth/me', async (req, res) => {
+    const session = await getAdminSession(req);
+    if (!session) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    res.json({ ok: true, user: session });
+  });
+
   app.get('/api/health', (_req, res) => {
     res.json({ ok: true, vercel: Boolean(process.env.VERCEL) });
   });
@@ -422,7 +454,7 @@ function createApp() {
   });
 
   app.post('/api/admin/sync-materiel', async (req, res) => {
-    if (!isAuthorizedAdmin(req) && !isAuthorizedSync(req)) {
+    if (!(await isAuthorizedAdmin(req)) && !isAuthorizedSync(req)) {
       return res.status(401).json({ ok: false, error: 'unauthorized' });
     }
     try {
@@ -471,15 +503,15 @@ function createApp() {
     }
   });
 
-  app.get('/api/admin/merch', (req, res) => {
-    if (!isAuthorizedAdmin(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  app.get('/api/admin/merch', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const products = getEnrichedProducts({ activeOnly: false });
     const merch = loadMerch();
     res.json({ featured_home: merch.featured_home, products });
   });
 
-  app.put('/api/admin/merch', (req, res) => {
-    if (!isAuthorizedAdmin(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  app.put('/api/admin/merch', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
       const { product_id, patch } = req.body;
       if (!product_id) return res.status(400).json({ ok: false, error: 'product_id requis' });
@@ -490,30 +522,30 @@ function createApp() {
     }
   });
 
-  app.post('/api/admin/merch/featured', (req, res) => {
-    if (!isAuthorizedAdmin(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  app.post('/api/admin/merch/featured', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const ids = req.body.ids || [];
     if (ids.length > 3) return res.status(400).json({ ok: false, error: 'max 3 offres featured' });
     setFeaturedHome(ids);
     res.json({ ok: true, featured_home: ids });
   });
 
-  app.get('/api/admin/orders', (req, res) => {
-    if (!isAuthorizedAdmin(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  app.get('/api/admin/orders', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const orders = listAllOrders().map(toAdminSummary);
     res.json({ ok: true, orders, count: orders.length });
   });
 
-  app.get('/api/admin/orders/:id', (req, res) => {
-    if (!isAuthorizedAdmin(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  app.get('/api/admin/orders/:id', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const order = loadOrder(req.params.id);
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
     const { access_token, ...safe } = order;
     res.json({ ok: true, order: safe });
   });
 
-  app.get('/api/admin/orders/:id/contract.pdf', (req, res) => {
-    if (!isAuthorizedAdmin(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  app.get('/api/admin/orders/:id/contract.pdf', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const order = loadOrder(req.params.id);
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
     streamContractPdf(order, res);
@@ -577,7 +609,7 @@ function createApp() {
     });
   });
 
-  app.patch('/api/orders/:id/profile', upload.fields([{ name: 'photo', maxCount: 1 }, { name: 'rib_file', maxCount: 1 }]), async (req, res) => {
+  app.patch('/api/orders/:id/profile', async (req, res) => {
     try {
       const order = await loadOrderOrRecover(req.params.id, {
         token: req.body.token || req.query.token,
@@ -592,8 +624,6 @@ function createApp() {
 
       const product = findProduct(order.product_id) || order.product_snapshot;
       const full = { ...req.body };
-      if (req.files?.photo?.[0]) full.photo_path = req.files.photo[0].path;
-      if (req.files?.rib_file?.[0]) full.rib_path = req.files.rib_file[0].path;
       if (!full.iban && order.payment?.iban) full.iban = order.payment.iban;
 
       const errors = validateFullForm(full, product);
@@ -890,7 +920,9 @@ function createApp() {
     '/mon-inscription': 'mon-inscription.html',
     '/checkout.html': 'checkout.html',
     '/admin': 'admin/index.html',
+    '/admin/login': 'admin/login.html',
     '/admin/contrats': 'admin/index.html',
+    '/contrat': 'contrat.html',
   };
 
   for (const [route, file] of Object.entries(pageRoutes)) {

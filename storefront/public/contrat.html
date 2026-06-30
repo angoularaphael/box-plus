@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contrat — Boxing Center</title>
+  <script src="js/boot.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/boutique.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body class="contract-view-body">
+  <header class="contract-view-toolbar">
+    <a href="/" class="btn secondary sm">Retour</a>
+    <h1 style="font-size:16px;color:var(--bc-navy);margin:0">Votre contrat d'adhésion</h1>
+    <button type="button" class="btn sm" id="downloadBtn">Télécharger le PDF</button>
+  </header>
+  <iframe id="pdfFrame" class="contract-view-frame" title="Contrat PDF"></iframe>
+  <p class="form-msg err" id="contractErr" hidden></p>
+  <script src="js/contrat.js"></script>
+</body>
+</html>

@@ -271,7 +271,7 @@
     stepContent.innerHTML = `
       <h1>Complétez votre dossier</h1>
       <p class="sub">Ces informations complètent votre fiche membre Deciplus. Votre abonnement donne accès aux 5 centres.</p>
-      <form id="fullForm" class="form-grid" enctype="multipart/form-data">
+      <form id="fullForm" class="form-grid">
         <input type="hidden" name="token" value="${state.token}" />
         ${state.sessionId ? `<input type="hidden" name="session_id" value="${state.sessionId}" />` : ''}
         <div><label for="gender">Sexe *</label>
@@ -287,7 +287,6 @@
         <div><label for="city">Ville *</label><input id="city" name="city" required value="${full.city || ''}" /></div>
         <div class="full"><label for="emergency_contact">Contact d'urgence (optionnel)</label><input id="emergency_contact" name="emergency_contact" placeholder="Nom + téléphone" value="${full.emergency_contact || ''}" /></div>
         <div class="full"><label for="medical_info">Informations médicales (optionnel)</label><textarea id="medical_info" name="medical_info" rows="2">${full.medical_info || ''}</textarea></div>
-        <div class="full"><label for="photo">Photo de profil (optionnel)</label><input id="photo" name="photo" type="file" accept="image/*" /></div>
         ${state.product?.requires_iban ? `<div class="full info-box" style="margin-top:0">Votre IBAN a déjà été enregistré à l'étape paiement pour les prélèvements suivants.</div>` : ''}
         <div class="full"><button type="submit" class="btn block">Continuer vers la signature</button></div>
       </form>`;
@@ -296,7 +295,11 @@
       e.preventDefault();
       setMsg('Enregistrement…');
       const fd = new FormData(e.target);
-      const res = await fetch(`/api/orders/${state.orderId}/profile`, { method: 'PATCH', body: fd });
+      const res = await fetch(`/api/orders/${state.orderId}/profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.fromEntries(fd.entries())),
+      });
       const data = await res.json();
       if (!data.ok) {
         setMsg(orderErrorMessage(data), 'err');
@@ -333,7 +336,13 @@
           J'accepte le <a class="legal-link" href="${LEGAL.reglement}" target="_blank" rel="noopener">règlement intérieur du club</a> *</label>
       </div>
       <button type="button" class="btn block" id="signBtn">Valider mon inscription — signer électroniquement</button>
-      <a href="/api/orders/${state.orderId}/contract.pdf?token=${state.token}${state.sessionId ? `&session_id=${state.sessionId}` : ''}" class="btn secondary block" style="margin-top:12px" target="_blank">Prévisualiser le contrat</a>`;
+      <button type="button" class="btn secondary block" id="previewContractBtn" style="margin-top:12px">Prévisualiser le contrat</button>`;
+    document.getElementById('previewContractBtn').onclick = () => {
+      window.BCContract.openView(state.orderId, {
+        token: state.token,
+        sessionId: state.sessionId,
+      });
+    };
     document.getElementById('signBtn').onclick = async () => {
       if (!document.getElementById('consent_cgv').checked || !document.getElementById('consent_reglement').checked) {
         setMsg('Veuillez accepter les conditions.', 'err');
@@ -377,8 +386,11 @@
           <strong>Prochaine étape :</strong> présentez-vous 15 min avant votre premier cours.
         </div>
         <a href="/" class="btn block" style="margin-top:24px">Retour à l'accueil</a>
-        <a href="/api/orders/${state.orderId}/contract.pdf?token=${state.token}" class="btn secondary block" style="margin-top:12px">Télécharger mon contrat</a>
+        <button type="button" class="btn secondary block" id="downloadContractBtn" style="margin-top:12px">Télécharger mon contrat</button>
       </div>`;
+    document.getElementById('downloadContractBtn').onclick = () => {
+      window.BCContract.openView(state.orderId, { token: state.token });
+    };
   }
 
   async function confirmStripeReturn() {

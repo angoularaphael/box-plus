@@ -17,7 +17,6 @@ const UPLOADS_DIR =
 function initDirs() {
   ensureDir(ORDERS_DIR);
   ensureDir(UPLOADS_DIR);
-  ensureDir(path.join(UPLOADS_DIR, 'photos'));
   ensureDir(path.join(UPLOADS_DIR, 'ribs'));
 }
 
