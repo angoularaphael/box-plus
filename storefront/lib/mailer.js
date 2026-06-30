@@ -1,6 +1,4 @@
 const fs = require('fs');
-const path = require('path');
-const nodemailer = require('nodemailer');
 const { logInfo, logWarn } = require('../../lib/logger');
 const { readLegal } = require('./contract-pdf');
 const { getMailFrom, CGV_URL, REGLEMENT_URL, SITE_URL } = require('./branding');
@@ -8,24 +6,7 @@ const {
   generateInscriptionInvoicePdf,
   generateMaterielInvoicePdf,
 } = require('./invoice-pdf');
-
-function createTransport() {
-  const host = process.env.SMTP_HOST || process.env.BREVO_SMTP_HOST;
-  const user = process.env.SMTP_USER || process.env.BREVO_SMTP_LOGIN;
-  const pass = process.env.SMTP_PASS || process.env.BREVO_SMTP_KEY;
-  if (!host || !user || !pass) return null;
-  const port = Number(process.env.SMTP_PORT || process.env.BREVO_SMTP_PORT || 587);
-  return nodemailer.createTransport({
-    host,
-    port,
-    secure: port === 465 || process.env.SMTP_SECURE === 'true',
-    auth: { user, pass },
-  });
-}
-
-function getReplyTo() {
-  return process.env.BREVO_REPLY_TO || process.env.MAIL_REPLY_TO || undefined;
-}
+const { sendEmailViaBrevo, isConfigured, defaultReplyTo } = require('./brevo-send');
 
 function buildConfirmationHtml(order) {
   const short = order.customer_short || {};
@@ -56,78 +37,84 @@ function buildConfirmationHtml(order) {
 </html>`;
 }
 
+async function buildInscriptionAttachments(order, extra = []) {
+  const attachments = [];
+  const cgv = readLegal('cgv.md');
+  const reglement = readLegal('reglement.md');
+  if (cgv) {
+    attachments.push({ filename: 'CGV-Boxing-Center.txt', content: cgv });
+  }
+  if (reglement) {
+    attachments.push({ filename: 'Reglement-interieur.txt', content: reglement });
+  }
+  for (const att of extra) {
+    if (att.filepath && fs.existsSync(att.filepath)) {
+      attachments.push({ filename: att.filename, path: att.filepath });
+    }
+  }
+  try {
+    const invoice = await generateInscriptionInvoicePdf(order);
+    if (invoice?.filepath) {
+      attachments.push({ filename: invoice.filename, path: invoice.filepath });
+    }
+  } catch (err) {
+    logWarn('Facture inscription non générée', { order_id: order.order_id, error: err.message });
+  }
+  return attachments;
+}
+
 async function sendConfirmationEmail(order, attachments = []) {
-  const transport = createTransport();
   const to = order.customer_short?.email;
   if (!to) {
     logWarn('Email confirmation ignoré — pas d\'email client', { order_id: order.order_id });
     return { sent: false, reason: 'no_email' };
   }
 
-  const from = getMailFrom();
   const html = buildConfirmationHtml(order);
+  const mailAttachments = await buildInscriptionAttachments(order, attachments);
 
-  const defaultAttachments = [];
-  const cgv = readLegal('cgv.md');
-  const reglement = readLegal('reglement.md');
-  if (cgv) {
-    defaultAttachments.push({ filename: 'CGV-Boxing-Center.txt', content: cgv });
-  }
-  if (reglement) {
-    defaultAttachments.push({ filename: 'Reglement-interieur.txt', content: reglement });
-  }
-  for (const att of attachments) {
-    if (att.filepath && fs.existsSync(att.filepath)) {
-      defaultAttachments.push({ filename: att.filename, path: att.filepath });
-    }
-  }
-
-  try {
-    const invoice = await generateInscriptionInvoicePdf(order);
-    if (invoice?.filepath) {
-      defaultAttachments.push({ filename: invoice.filename, path: invoice.filepath });
-    }
-  } catch (err) {
-    logWarn('Facture inscription non générée', { order_id: order.order_id, error: err.message });
-  }
-
-  if (!transport) {
+  if (!isConfigured()) {
     logInfo('Email confirmation (mode log)', { to, order_id: order.order_id });
-    return { sent: false, reason: 'smtp_not_configured', preview: html };
+    return { sent: false, reason: 'brevo_not_configured', preview: html };
   }
 
   try {
-    await transport.sendMail({
-      from,
+    const result = await sendEmailViaBrevo({
       to,
-      replyTo: getReplyTo(),
       subject: `Confirmation inscription Boxing Center — ${order.order_id}`,
       html,
-      attachments: defaultAttachments,
+      replyTo: defaultReplyTo(),
+      attachments: mailAttachments,
     });
-
-    logInfo('Email confirmation envoyé', { to, order_id: order.order_id });
-    return { sent: true };
+    if (!result) {
+      return { sent: false, reason: 'brevo_not_configured' };
+    }
+    logInfo('Email confirmation envoyé', { to, order_id: order.order_id, via: result.via });
+    return { sent: true, via: result.via };
   } catch (err) {
     logWarn('Email confirmation échoué', { order_id: order.order_id, error: err.message });
-    return { sent: false, reason: 'smtp_error', error: err.message };
+    return { sent: false, reason: 'brevo_error', error: err.message };
   }
 }
 
 async function sendGdprEraseRequest(data) {
-  const transport = createTransport();
   const adminEmail = process.env.ADMIN_EMAIL || process.env.ALERT_EMAIL;
-  if (!transport || !adminEmail) {
+  if (!isConfigured() || !adminEmail) {
     logInfo('Demande RGPD (log)', data);
     return { sent: false };
   }
-  await transport.sendMail({
-    from: process.env.MAIL_FROM || getMailFrom(),
-    to: adminEmail,
-    subject: 'Demande suppression données RGPD',
-    text: `Email: ${data.email}\nMessage: ${data.message || '—'}`,
-  });
-  return { sent: true };
+  try {
+    await sendEmailViaBrevo({
+      to: adminEmail,
+      subject: 'Demande suppression données RGPD',
+      text: `Email: ${data.email}\nMessage: ${data.message || '—'}`,
+      replyTo: data.email,
+    });
+    return { sent: true };
+  } catch (err) {
+    logWarn('Email RGPD échoué', { error: err.message });
+    return { sent: false, error: err.message };
+  }
 }
 
 function formatEuros(cents) {
@@ -176,16 +163,13 @@ function buildMaterielConfirmationHtml(order) {
 }
 
 async function sendMaterielConfirmationEmail(order) {
-  const transport = createTransport();
   const to = order.customer?.email;
   if (!to) {
     logWarn('Email matériel ignoré — pas d\'email client', { order_id: order.order_id });
     return { sent: false, reason: 'no_email' };
   }
 
-  const from = getMailFrom();
   const html = buildMaterielConfirmationHtml(order);
-
   const attachments = [];
   try {
     const invoice = await generateMaterielInvoicePdf(order);
@@ -196,26 +180,27 @@ async function sendMaterielConfirmationEmail(order) {
     logWarn('Facture matériel non générée', { order_id: order.order_id, error: err.message });
   }
 
-  if (!transport) {
+  if (!isConfigured()) {
     logInfo('Email matériel (mode log)', { to, order_id: order.order_id });
-    return { sent: false, reason: 'smtp_not_configured', preview: html };
+    return { sent: false, reason: 'brevo_not_configured', preview: html };
   }
 
   try {
-    await transport.sendMail({
-      from,
+    const result = await sendEmailViaBrevo({
       to,
-      replyTo: getReplyTo(),
       subject: `Commande matériel Boxing Center — ${order.order_id}`,
       html,
+      replyTo: defaultReplyTo(),
       attachments,
     });
-
-    logInfo('Email matériel envoyé', { to, order_id: order.order_id });
-    return { sent: true };
+    if (!result) {
+      return { sent: false, reason: 'brevo_not_configured' };
+    }
+    logInfo('Email matériel envoyé', { to, order_id: order.order_id, via: result.via });
+    return { sent: true, via: result.via };
   } catch (err) {
     logWarn('Email matériel échoué', { order_id: order.order_id, error: err.message });
-    return { sent: false, reason: 'smtp_error', error: err.message };
+    return { sent: false, reason: 'brevo_error', error: err.message };
   }
 }
 
@@ -225,4 +210,5 @@ module.exports = {
   sendGdprEraseRequest,
   buildConfirmationHtml,
   buildMaterielConfirmationHtml,
+  getMailFrom,
 };
