@@ -39,6 +39,7 @@ const {
   saveMaterielCatalog,
   updateMerchProduct,
   updateMerchProductAsync,
+  updateMaterielProduct,
   setFeaturedHome,
   setFeaturedHomeAsync,
   createManualOffer,
@@ -501,6 +502,30 @@ function createApp() {
       res.json({ ok: true, ...result });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/admin/materiel', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const catalog = loadMaterielCatalog();
+      const products = getMaterielProducts({ activeOnly: false });
+      res.json({ ok: true, synced_at: catalog.synced_at, categories: getMaterielCategories(), products });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.put('/api/admin/materiel/:id', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { id } = req.params;
+      const patch = req.body || {};
+      const updated = updateMaterielProduct(id, patch);
+      const product = findMaterielProduct(id);
+      res.json({ ok: true, id, updated, product });
+    } catch (err) {
+      res.status(400).json({ ok: false, error: err.message });
     }
   });
 
