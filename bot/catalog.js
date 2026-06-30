@@ -11,6 +11,7 @@ const {
   inferSaleType,
   buildDeciplusProductSearch,
 } = require('../lib/catalog-text');
+const { isTrialOrder, buildProductConfig } = require('../lib/catalog-sale');
 
 const API_BASE = 'https://api.deciplus.pro/staff/v1';
 const CATALOG_CACHE_MS = Number(process.env.BOT_CATALOG_CACHE_MS || 300000);
@@ -210,11 +211,6 @@ function findProductInCatalog(catalog, order) {
   return best;
 }
 
-function isTrialOrder(order) {
-  const name = normalizeText(order.product_name || order.offer);
-  return order.payment.amount === 0 || name.includes('essai');
-}
-
 function buildSearchTokens(title) {
   const name = String(title || '').replace(/\s+/g, ' ').trim();
   const tokens = new Set();
@@ -239,45 +235,6 @@ function buildSearchTokens(title) {
   }
 
   return [...tokens].filter((t) => t.length >= 2 && t.length <= 45);
-}
-
-function buildProductConfig(order, matchedProduct = null) {
-  const defaults = loadJson('config/sale-defaults.json');
-
-  if (isTrialOrder(order)) {
-    return {
-      key: 'essai',
-      label: order.product_name || 'Séance essai',
-      sale_type: 'none',
-      ...defaults.none,
-    };
-  }
-
-  if (!matchedProduct) {
-    throw new Error(
-      `Produit introuvable dans Deciplus: "${order.product_name || order.offer}"`
-    );
-  }
-
-  const saleType = inferSaleType(matchedProduct);
-  const typeDefaults = defaults[saleType] || defaults.abonnement;
-  const comptant = /comptant/i.test(matchedProduct.title);
-
-  return {
-    key: String(matchedProduct.id),
-    label: matchedProduct.title,
-    deciplus_product_name: matchedProduct.title,
-    deciplus_product_search:
-      order.deciplus_product_search ||
-      buildDeciplusProductSearch(matchedProduct.title, matchedProduct.id),
-    deciplus_product_id: matchedProduct.id,
-    deciplus_reference: matchedProduct.reference || null,
-    amount: order.payment.amount || matchedProduct.price,
-    ...typeDefaults,
-    sale_type: saleType,
-    paiement_comptant: comptant,
-    auto_badge: saleType === 'abonnement',
-  };
 }
 
 function findBadgeProduct(catalog) {
