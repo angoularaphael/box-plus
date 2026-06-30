@@ -21,6 +21,7 @@
       </div>
       <nav class="admin-tabs" id="adminTabs">
         <button type="button" class="admin-tab active" data-tab="offers">Offres</button>
+        <button type="button" class="admin-tab" data-tab="materiel">Matériel</button>
         <button type="button" class="admin-tab" data-tab="contracts">Contrats & inscriptions</button>
       </nav>
 
@@ -92,6 +93,42 @@
           </div>
           <p class="form-msg" id="catalogMsg"></p>
           <div id="productsCatalog" class="admin-catalog"></div>
+        </div>
+      </section>
+
+      <!-- ── Onglet Matériel ── -->
+      <section id="tabMateriel" hidden>
+        <div class="admin-section">
+          <div class="admin-section-head">
+            <div>
+              <h2 class="admin-section-title">Catalogue matériel</h2>
+              <p class="admin-section-desc" id="materielSyncInfo">Chargement…</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="search" id="materielSearch" placeholder="Rechercher…" class="admin-search" style="width:200px" />
+              <select id="materielCatFilter" class="admin-search" style="width:170px">
+                <option value="">Toutes les catégories</option>
+              </select>
+            </div>
+          </div>
+          <p class="form-msg" id="materielMsg"></p>
+          <div style="overflow-x:auto;margin-top:12px">
+            <table class="admin-table" id="materielTable">
+              <thead>
+                <tr>
+                  <th>Actif</th>
+                  <th>Photo</th>
+                  <th>Produit</th>
+                  <th>Catégorie</th>
+                  <th style="text-align:right">Prix</th>
+                  <th style="text-align:right">Stock</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="materielBody"></tbody>
+            </table>
+          </div>
+          <p id="materielCount" class="admin-section-foot" style="margin-top:10px"></p>
         </div>
       </section>
 

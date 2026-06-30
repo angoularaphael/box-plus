@@ -48,11 +48,13 @@
 
   function showTab(name) {
     document.getElementById('tabOffers').hidden = name !== 'offers';
+    document.getElementById('tabMateriel').hidden = name !== 'materiel';
     document.getElementById('tabContracts').hidden = name !== 'contracts';
     document.querySelectorAll('.admin-tab').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.tab === name);
     });
     if (name === 'contracts') loadOrders();
+    if (name === 'materiel') loadMateriel();
     if (location.hash !== `#${name}`) {
       history.replaceState(null, '', `/admin/#${name}`);
     }
@@ -64,6 +66,8 @@
 
   if (location.hash === '#contracts' || location.pathname.endsWith('/contrats')) {
     showTab('contracts');
+  } else if (location.hash === '#materiel') {
+    showTab('materiel');
   }
 
   async function ensureAuth() {
@@ -488,6 +492,156 @@
     }
   };
 
+  /* ─────────────────────────────────────────────
+     ONGLET MATERIEL
+  ───────────────────────────────────────────── */
+  let materielProducts = [];
+  let materielCategories = [];
+  let materielLoaded = false;
+
+  function setMaterielMsg(text, type) {
+    const el = document.getElementById('materielMsg');
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'form-msg' + (type ? ` ${type}` : '');
+  }
+
+  function filteredMateriel() {
+    const q = (document.getElementById('materielSearch')?.value || '').toLowerCase().trim();
+    const cat = document.getElementById('materielCatFilter')?.value || '';
+    return materielProducts.filter((p) => {
+      if (cat && p.category !== cat) return false;
+      if (!q) return true;
+      return (
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.reference || '').toLowerCase().includes(q) ||
+        (p.category_label || '').toLowerCase().includes(q)
+      );
+    });
+  }
+
+  function stockClass(stock) {
+    if (stock > 5) return 'badge ok';
+    if (stock > 0) return 'badge warn';
+    return 'badge err';
+  }
+
+  function renderMaterielTable() {
+    const tbody = document.getElementById('materielBody');
+    const countEl = document.getElementById('materielCount');
+    const list = filteredMateriel();
+
+    if (countEl) {
+      countEl.textContent =
+        list.length === materielProducts.length
+          ? `${materielProducts.length} produit(s)`
+          : `${list.length} sur ${materielProducts.length} produit(s)`;
+    }
+
+    if (!list.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="7" style="text-align:center;color:var(--bc-muted);padding:24px">Aucun produit trouvé</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list
+      .map((p) => {
+        const img = p.image
+          ? `<img src="${escapeHtml(p.image)}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0" />`
+          : `<div style="width:40px;height:40px;background:#f1f5f9;border-radius:6px;border:1px solid #e2e8f0"></div>`;
+        const stockBadge = `<span class="${stockClass(p.stock)}" style="font-size:11px">${p.stock > 0 ? p.stock : 'Rupture'}</span>`;
+        return `
+        <tr data-id="${escapeHtml(p.id)}" style="${p.active === false ? 'opacity:0.55' : ''}">
+          <td>
+            <label class="toggle-switch">
+              <input type="checkbox" class="mat-toggle admin-checkbox" data-id="${escapeHtml(p.id)}" ${p.active !== false ? 'checked' : ''} />
+              <span class="toggle-slider"></span>
+            </label>
+          </td>
+          <td>${img}</td>
+          <td>
+            <div style="font-weight:600;font-size:13px;line-height:1.3">${escapeHtml(p.name)}</div>
+            <div style="font-size:11px;color:var(--bc-muted);margin-top:2px">${escapeHtml(p.reference || p.id)}</div>
+          </td>
+          <td><span style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:4px;color:#475569">${escapeHtml(p.category_label || p.category || '—')}</span></td>
+          <td style="text-align:right;font-weight:700;white-space:nowrap">${escapeHtml(p.price_label || '—')}</td>
+          <td style="text-align:right">${stockBadge}</td>
+          <td>
+            <a href="/materiel/produit?id=${encodeURIComponent(p.id)}" target="_blank" class="btn sm secondary" style="font-size:11px">Voir</a>
+          </td>
+        </tr>`;
+      })
+      .join('');
+
+    tbody.querySelectorAll('.mat-toggle').forEach((cb) => {
+      cb.onchange = async () => {
+        const id = cb.dataset.id;
+        const active = cb.checked;
+        const row = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+        if (row) row.style.opacity = active ? '1' : '0.55';
+        setMaterielMsg('Enregistrement…');
+        try {
+          const res = await fetch(`/api/admin/materiel/${encodeURIComponent(id)}`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: headers(),
+            body: JSON.stringify({ active }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) throw new Error(data.error || 'Erreur');
+          const idx = materielProducts.findIndex((p) => p.id === id);
+          if (idx >= 0) materielProducts[idx] = { ...materielProducts[idx], active };
+          setMaterielMsg(active ? 'Produit activé.' : 'Produit désactivé.', 'ok');
+        } catch (err) {
+          cb.checked = !active;
+          if (row) row.style.opacity = !active ? '0.55' : '1';
+          setMaterielMsg(err.message, 'err');
+        }
+      };
+    });
+  }
+
+  function populateCatFilter() {
+    const sel = document.getElementById('materielCatFilter');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Toutes les catégories</option>';
+    materielCategories
+      .filter((c) => c.id !== 16)
+      .forEach((c) => {
+        const opt = document.createElement('option');
+        opt.value = c.slug;
+        opt.textContent = c.label;
+        if (c.slug === current) opt.selected = true;
+        sel.appendChild(opt);
+      });
+  }
+
+  async function loadMateriel() {
+    if (materielLoaded) { renderMaterielTable(); return; }
+    setMaterielMsg('Chargement du catalogue…');
+    try {
+      const res = await fetch('/api/admin/materiel', { credentials: 'include', headers: headers(false) });
+      if (!res.ok) throw new Error('Accès refusé');
+      const data = await res.json();
+      materielProducts = data.products || [];
+      materielCategories = data.categories || [];
+      materielLoaded = true;
+      const info = document.getElementById('materielSyncInfo');
+      if (info && data.synced_at) {
+        info.textContent = `Catalogue synchronisé le ${new Date(data.synced_at).toLocaleString('fr-FR')} — ${materielProducts.length} produit(s)`;
+      }
+      populateCatFilter();
+      setMaterielMsg('');
+      renderMaterielTable();
+    } catch (err) {
+      setMaterielMsg(err.message, 'err');
+    }
+  }
+
+  document.getElementById('materielSearch')?.addEventListener('input', renderMaterielTable);
+  document.getElementById('materielCatFilter')?.addEventListener('change', renderMaterielTable);
+
   document.getElementById('logoutBtn').onclick = async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     location.replace('/admin/login');
@@ -503,6 +657,8 @@
       await loadMerch();
       if (location.hash === '#contracts' || location.pathname.endsWith('/contrats')) {
         showTab('contracts');
+      } else if (location.hash === '#materiel') {
+        showTab('materiel');
       }
     } catch {
       /* redirect handled */
