@@ -927,19 +927,21 @@ body:has(#adminPanel:not([hidden])) {
 
 .admin-featured-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 12px;
 }
 
 .admin-featured-card {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 12px 14px;
   border: 1px solid var(--bc-border);
   border-radius: 12px;
   background: #fafbfc;
   transition: border-color 0.15s, box-shadow 0.15s;
+  overflow: hidden;
+  min-width: 0;
 }
 
 .admin-featured-card.is-selected {
@@ -954,23 +956,30 @@ body:has(#adminPanel:not([hidden])) {
   cursor: pointer;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .admin-featured-name {
   display: block;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--bc-navy);
   line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .admin-featured-id {
   display: block;
-  margin-top: 4px;
-  font-size: 11px;
+  margin-top: 3px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--bc-muted);
   font-family: ui-monospace, monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .btn.sm.is-saved {
