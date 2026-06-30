@@ -1,10 +1,10 @@
-/** URLs et expéditeur email — alignés PrestaShop / campagne Boxing Center */
+/** URLs et expéditeur email — Boxing Center */
 const { DEFAULT_SENDER_EMAIL, DEFAULT_SENDER_NAME } = require('./brevo-send');
 
-const CGV_URL = 'https://boutique.boxingcenter.fr/content/3-conditions';
-const REGLEMENT_URL = 'https://boxingcenter.fr/participez-seance-essai/';
+const CGV_URL = '/cgv';
+const REGLEMENT_URL = '/reglement-interieur';
 const SITE_URL = 'https://boxingcenter.fr';
-const BOUTIQUE_URL = 'https://boutique.boxingcenter.fr';
+const BOUTIQUE_URL = 'https://box-plus.vercel.app';
 const DEFAULT_MAIL_FROM = `${DEFAULT_SENDER_NAME} <${DEFAULT_SENDER_EMAIL}>`;
 
 function getMailFrom() {

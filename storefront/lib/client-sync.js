@@ -62,6 +62,7 @@ function cleanNamePart(value) {
 function clientFieldsFromOrder(order) {
   const short = order.customer_short || {};
   const full = order.customer_full || {};
+  const product = order.product_snapshot || {};
 
   return {
     prenom: cleanNamePart(short.first_name),
@@ -69,6 +70,13 @@ function clientFieldsFromOrder(order) {
     email: normalizeEmail(short.email),
     telephone: normalizeFrenchPhone(short.phone),
     salle: gymToSalle(full.gym),
+    date_naissance: full.birth_date || null,
+    adresse: full.address || null,
+    code_postal: full.postal_code || null,
+    ville: full.city || null,
+    contact_urgence: full.emergency_contact || null,
+    info_medicale: full.medical_info || null,
+    offre: product.display_name || product.name || null,
     source: 'boxplus',
   };
 }
@@ -107,6 +115,13 @@ async function upsertClientFromInscription(order) {
     email: fields.email,
     telephone: fields.telephone,
     salle: fields.salle,
+    date_naissance: fields.date_naissance,
+    adresse: fields.adresse,
+    code_postal: fields.code_postal,
+    ville: fields.ville,
+    contact_urgence: fields.contact_urgence,
+    info_medicale: fields.info_medicale,
+    offre: fields.offre,
     source: 'boxplus',
     updated_at: now,
   };
