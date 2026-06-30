@@ -15,6 +15,16 @@ const CATALOG_FILE =
   process.env.BOXPLUS_MATERIEL_CATALOG_FILE ||
   (process.env.VERCEL ? '/tmp/boxplus-materiel-catalog.json' : BUNDLED_CATALOG);
 
+// Static require() so Vercel nft (node-file-tracing) picks up the file automatically.
+// fs.readFileSync() with dynamic paths is not traced; require() on a literal path is.
+let BUNDLED_CATALOG_DATA;
+try {
+  // eslint-disable-next-line import/no-dynamic-require
+  BUNDLED_CATALOG_DATA = require('../../data/storefront/materiel-catalog.json');
+} catch {
+  BUNDLED_CATALOG_DATA = { products: [], categories: [] };
+}
+
 let merchHydrated = false;
 let merchHydratePromise = null;
 
@@ -150,7 +160,7 @@ async function saveMerchAsync(data) {
 
 function loadMaterielCatalogLocal() {
   seedCatalogFile();
-  return readJson(CATALOG_FILE, readJson(BUNDLED_CATALOG, { products: [], categories: [] }));
+  return readJson(CATALOG_FILE, BUNDLED_CATALOG_DATA);
 }
 
 function saveMaterielCatalog(data) {
