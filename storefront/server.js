@@ -54,13 +54,15 @@ const {
   validateCustomerForm,
   buildStripeLineItems,
   createMaterielOrder,
+  createMaterielOrderAsync,
   markMaterielPaid,
+  markMaterielPaidAsync,
   savePendingCheckout,
   loadPendingCheckout,
   removePendingCheckout,
-  listAllMaterielOrders,
-  loadOrder: loadMaterielOrder,
-  saveOrder: saveMaterielOrderRecord,
+  listAllMaterielOrdersAsync,
+  loadOrderAsync: loadMaterielOrderAsync,
+  saveOrderAsync: saveMaterielOrderRecordAsync,
 } = require('./lib/materiel-cart');
 const { sendMaterielConfirmationEmail } = require('./lib/mailer');
 const {
@@ -159,27 +161,36 @@ async function dispatchLifecycleOrder(order) {
   const result = await dispatchOrder(payload);
   order.dispatched_at = new Date().toISOString();
   order.dispatch_result = { queued: result.queued, forwarded: result.forwarded };
-  const { saveOrder } = require('./lib/order-lifecycle');
-  saveOrder(order);
+  const { saveOrderAsync } = require('./lib/order-lifecycle');
+  await saveOrderAsync(order);
   logInfo('Commande lifecycle → BOXPLUS', { order_id: order.order_id, queued: result.queued });
   return result;
 }
 
+async function sendMaterielEmailIfNeeded(order) {
+  if (order.email_sent) return order;
+  try {
+    const emailResult = await sendMaterielConfirmationEmail(order);
+    order.email_sent = emailResult.sent;
+    await saveMaterielOrderRecordAsync(order);
+  } catch (err) {
+    logError('Email matériel échoué', { error: err.message, order_id: order.order_id });
+  }
+  return order;
+}
+
 async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
   const pending = loadPendingCheckout(sessionId);
-  if (!pending) {
-    if (stripeSession?.metadata?.order_type === 'materiel') {
-      const order = loadMaterielOrder(stripeSession.metadata.order_id);
-      if (order?.payment?.status === 'paid') {
-        return { ok: true, order_id: order.order_id, materiel: true, already_processed: true };
-      }
-    }
+  const orderId = pending?.order_id || stripeSession?.metadata?.order_id;
+
+  if (!orderId) {
     return { ok: false, error: 'pending_not_found' };
   }
 
-  let order = loadMaterielOrder(pending.order_id);
-  if (!order) {
-    order = createMaterielOrder({
+  let order = await loadMaterielOrderAsync(orderId);
+
+  if (!order && pending) {
+    order = await createMaterielOrderAsync({
       order_id: pending.order_id,
       customer: pending.customer,
       items: pending.items,
@@ -188,22 +199,27 @@ async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
     });
   }
 
-  order = markMaterielPaid(order.order_id, {
+  if (!order) {
+    return { ok: false, error: 'order_not_found' };
+  }
+
+  if (order.payment?.status === 'paid') {
+    await sendMaterielEmailIfNeeded(order);
+    return { ok: true, order_id: order.order_id, materiel: true, already_processed: true };
+  }
+
+  order = await markMaterielPaidAsync(order.order_id, {
     method: 'stripe',
     stripe_session_id: sessionId,
   });
 
-  removePendingCheckout(sessionId);
-
-  try {
-    const emailResult = await sendMaterielConfirmationEmail(order);
-    order.email_sent = emailResult.sent;
-    saveMaterielOrderRecord(order);
-  } catch (err) {
-    logError('Email matériel échoué', { error: err.message, order_id: order.order_id });
+  if (!order) {
+    return { ok: false, error: 'mark_paid_failed' };
   }
 
-  // Sync client → portet_clients (gestion-manager)
+  removePendingCheckout(sessionId);
+  await sendMaterielEmailIfNeeded(order);
+
   upsertMaterielClient(order).catch((err) =>
     logError('Sync client matériel', { error: err.message, order_id: order.order_id })
   );
@@ -219,7 +235,10 @@ async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
 
 async function fulfillStripeSession(sessionId, stripeSession = null, lifecycleMode = false) {
   const materielPending = loadPendingCheckout(sessionId);
-  if (materielPending?.order_type === 'materiel') {
+  if (
+    materielPending?.order_type === 'materiel' ||
+    stripeSession?.metadata?.order_type === 'materiel'
+  ) {
     return fulfillMaterielCheckout(sessionId, stripeSession);
   }
 
@@ -299,7 +318,10 @@ function createApp() {
         if (event.type === 'checkout.session.completed') {
           const session = event.data.object;
           const materielPending = loadPendingCheckout(session.id);
-          if (materielPending?.order_type === 'materiel') {
+          if (
+            materielPending?.order_type === 'materiel' ||
+            session.metadata?.order_type === 'materiel'
+          ) {
             await fulfillMaterielCheckout(session.id, session);
           } else {
             const pending =
@@ -433,13 +455,13 @@ function createApp() {
 
       if (!stripe) {
         if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true') {
-          const order = createMaterielOrder({
+          const order = await createMaterielOrderAsync({
             customer,
             items,
             total_cents,
             pickup_gym: customer.pickup_gym,
           });
-          markMaterielPaid(order.order_id, { method: 'demo' });
+          await markMaterielPaidAsync(order.order_id, { method: 'demo' });
           await sendMaterielConfirmationEmail(order).catch(() => {});
           return res.json({
             ok: true,
@@ -452,6 +474,14 @@ function createApp() {
       }
 
       const baseUrl = getCheckoutBaseUrl(req);
+      await createMaterielOrderAsync({
+        order_id: orderId,
+        customer,
+        items,
+        total_cents,
+        pickup_gym: customer.pickup_gym,
+      });
+
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         payment_method_types: ['card'],
@@ -571,7 +601,9 @@ function createApp() {
       }
 
       // Materiel orders
-      const materielOrders = listAllMaterielOrders().filter((o) => o.payment?.status === 'paid');
+      const materielOrders = (await listAllMaterielOrdersAsync()).filter(
+        (o) => o.payment?.status === 'paid'
+      );
       const materielByMonth = {};
       for (const o of materielOrders) {
         const k = monthKey(o.paid_at || o.created_at);
@@ -622,7 +654,7 @@ function createApp() {
   // Public invoice download for materiel orders (token-gated by order_id)
   app.get('/api/facture/materiel/:orderId', async (req, res) => {
     try {
-      const order = loadMaterielOrder(req.params.orderId);
+      const order = await loadMaterielOrderAsync(req.params.orderId);
       if (!order) return res.status(404).json({ ok: false, error: 'Commande introuvable' });
       if (order.payment?.status !== 'paid') {
         return res.status(403).json({ ok: false, error: 'Facture disponible uniquement après paiement' });
@@ -1174,11 +1206,11 @@ function createApp() {
       }
 
       const materielPending = loadPendingCheckout(sessionId);
-      if (materielPending?.order_type === 'materiel') {
+      if (
+        materielPending?.order_type === 'materiel' ||
+        session.metadata?.order_type === 'materiel'
+      ) {
         const out = await fulfillMaterielCheckout(sessionId, session);
-        if (!out.ok && out.error === 'pending_not_found') {
-          return res.json({ ok: true, already_processed: true, materiel: true });
-        }
         if (!out.ok) return res.status(500).json(out);
         return res.json({ ok: true, ...out });
       }
