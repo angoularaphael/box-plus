@@ -187,6 +187,19 @@ function markMaterielPaid(orderId, paymentMeta = {}) {
   return order;
 }
 
+function listAllMaterielOrders() {
+  if (!fs.existsSync(ORDERS_DIR)) return [];
+  try {
+    return fs.readdirSync(ORDERS_DIR)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => {
+        try { return JSON.parse(fs.readFileSync(path.join(ORDERS_DIR, f), 'utf8')); }
+        catch { return null; }
+      })
+      .filter(Boolean);
+  } catch { return []; }
+}
+
 module.exports = {
   validateCartLines,
   validateCustomerForm,
@@ -196,6 +209,7 @@ module.exports = {
   savePendingCheckout,
   loadPendingCheckout,
   removePendingCheckout,
+  listAllMaterielOrders,
   loadOrder,
   saveOrder,
   ORDERS_DIR,

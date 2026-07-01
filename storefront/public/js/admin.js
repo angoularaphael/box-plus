@@ -47,14 +47,16 @@
   }
 
   function showTab(name) {
-    document.getElementById('tabOffers').hidden = name !== 'offers';
-    document.getElementById('tabMateriel').hidden = name !== 'materiel';
-    document.getElementById('tabContracts').hidden = name !== 'contracts';
+    ['tabOffers','tabMateriel','tabContracts','tabStats'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.hidden = id !== `tab${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+    });
     document.querySelectorAll('.admin-tab').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.tab === name);
     });
     if (name === 'contracts') loadOrders();
     if (name === 'materiel') loadMateriel();
+    if (name === 'stats') initStats();
     if (location.hash !== `#${name}`) {
       history.replaceState(null, '', `/admin/#${name}`);
     }
@@ -68,6 +70,8 @@
     showTab('contracts');
   } else if (location.hash === '#materiel') {
     showTab('materiel');
+  } else if (location.hash === '#stats') {
+    showTab('stats');
   }
 
   async function ensureAuth() {
@@ -566,12 +570,17 @@
           <td><span style="font-size:12px;background:#f1f5f9;padding:2px 8px;border-radius:4px;color:#475569">${escapeHtml(p.category_label || p.category || '—')}</span></td>
           <td style="text-align:right;font-weight:700;white-space:nowrap">${escapeHtml(p.price_label || '—')}</td>
           <td style="text-align:right">${stockBadge}</td>
-          <td>
+          <td style="display:flex;gap:4px;flex-wrap:wrap">
+            <button type="button" class="btn sm secondary mat-edit-btn" data-id="${escapeHtml(p.id)}" style="font-size:11px">Éditer</button>
             <a href="/materiel/produit?id=${encodeURIComponent(p.id)}" target="_blank" class="btn sm secondary" style="font-size:11px">Voir</a>
           </td>
         </tr>`;
       })
       .join('');
+
+    tbody.querySelectorAll('.mat-edit-btn').forEach((btn) => {
+      btn.onclick = () => openEditRow(btn.dataset.id, tbody);
+    });
 
     tbody.querySelectorAll('.mat-toggle').forEach((cb) => {
       cb.onchange = async () => {
@@ -646,6 +655,242 @@
 
   document.getElementById('materielSearch')?.addEventListener('input', renderMaterielTable);
   document.getElementById('materielCatFilter')?.addEventListener('change', renderMaterielTable);
+
+  // ─── Ajout produit matériel ───
+  const toggleAddBtn = document.getElementById('toggleAddProductBtn');
+  const addProductForm = document.getElementById('addProductForm');
+  const cancelAddBtn = document.getElementById('cancelAddProductBtn');
+
+  toggleAddBtn?.addEventListener('click', () => {
+    const hidden = addProductForm.hidden;
+    addProductForm.hidden = !hidden;
+    toggleAddBtn.textContent = hidden ? 'Masquer le formulaire' : 'Afficher le formulaire';
+  });
+  cancelAddBtn?.addEventListener('click', () => {
+    addProductForm.hidden = true;
+    addProductForm.reset();
+    const preview = document.getElementById('prd_img_preview');
+    if (preview) { preview.src = ''; preview.style.display = 'none'; }
+    toggleAddBtn.textContent = 'Afficher le formulaire';
+  });
+
+  // Image file → base64 preview
+  document.getElementById('prd_img_file')?.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setAddProductMsg('Image trop grande (max 2 Mo)', 'err');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const preview = document.getElementById('prd_img_preview');
+      if (preview) { preview.src = ev.target.result; preview.style.display = 'block'; }
+      document.getElementById('prd_img_url').value = '';
+      document.getElementById('prd_img_url').dataset.base64 = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('prd_img_url')?.addEventListener('input', () => {
+    delete document.getElementById('prd_img_url').dataset.base64;
+    const preview = document.getElementById('prd_img_preview');
+    if (preview) { preview.src = ''; preview.style.display = 'none'; }
+    document.getElementById('prd_img_file').value = '';
+  });
+
+  function setAddProductMsg(msg, type) {
+    const el = document.getElementById('addProductMsg');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = `form-msg${type === 'err' ? ' err' : type === 'ok' ? ' ok' : ''}`;
+  }
+
+  addProductForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const imgUrlEl = document.getElementById('prd_img_url');
+    const imgSrc = imgUrlEl?.dataset.base64 || imgUrlEl?.value?.trim() || null;
+    const priceEuros = parseFloat(document.getElementById('prd_price').value) || 0;
+    const body = {
+      name: document.getElementById('prd_name').value.trim(),
+      reference: document.getElementById('prd_ref').value.trim(),
+      category: document.getElementById('prd_cat').value.trim(),
+      category_label: document.getElementById('prd_cat_label').value.trim(),
+      price_cents: Math.round(priceEuros * 100),
+      stock: parseInt(document.getElementById('prd_stock').value, 10) || 0,
+      description: document.getElementById('prd_desc').value.trim(),
+      image: imgSrc,
+    };
+    if (!body.name) { setAddProductMsg('Le nom est requis.', 'err'); return; }
+    setAddProductMsg('Création en cours…');
+    try {
+      const res = await fetch('/api/admin/materiel', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      setAddProductMsg('Produit créé !', 'ok');
+      addProductForm.reset();
+      const preview = document.getElementById('prd_img_preview');
+      if (preview) { preview.src = ''; preview.style.display = 'none'; }
+      delete imgUrlEl.dataset.base64;
+      // Rafraîchir le catalogue
+      materielLoaded = false;
+      await loadMateriel();
+    } catch (err) {
+      setAddProductMsg(err.message, 'err');
+    }
+  });
+
+  // ─── Édition inline produit matériel ───
+  function openEditRow(id, tbody) {
+    const p = materielProducts.find((x) => x.id === id);
+    if (!p) return;
+    const existing = tbody.querySelector(`tr.mat-edit-row[data-edit="${CSS.escape(id)}"]`);
+    if (existing) { existing.remove(); return; }
+    const priceEuros = ((p.price_cents || 0) / 100).toFixed(2);
+    const tr = document.createElement('tr');
+    tr.className = 'mat-edit-row';
+    tr.dataset.edit = id;
+    tr.style.background = '#f8fafc';
+    tr.innerHTML = `<td colspan="7" style="padding:12px 8px">
+      <div class="mat-edit-form">
+        <div class="mat-edit-grid">
+          <div><label style="font-size:12px;color:#64748b">Nom</label><input class="me-name" value="${escapeHtml(p.name)}" style="width:100%" /></div>
+          <div><label style="font-size:12px;color:#64748b">Prix (€)</label><input class="me-price" type="number" min="0" step="0.01" value="${priceEuros}" /></div>
+          <div><label style="font-size:12px;color:#64748b">Stock</label><input class="me-stock" type="number" min="0" value="${p.stock ?? 0}" /></div>
+          <div><label style="font-size:12px;color:#64748b">Catégorie</label><input class="me-cat" value="${escapeHtml(p.category_label || p.category || '')}" /></div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button type="button" class="btn sm me-save">Sauvegarder</button>
+          <button type="button" class="btn sm secondary me-cancel">Annuler</button>
+        </div>
+        <p class="form-msg me-msg" style="margin-top:6px"></p>
+      </div>
+    </td>`;
+    const srcRow = tbody.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+    if (srcRow) srcRow.after(tr);
+
+    tr.querySelector('.me-cancel').onclick = () => tr.remove();
+    tr.querySelector('.me-save').onclick = async () => {
+      const priceC = Math.round(parseFloat(tr.querySelector('.me-price').value) * 100) || 0;
+      const patch = {
+        name: tr.querySelector('.me-name').value.trim(),
+        price_cents: priceC,
+        price_label: priceC > 0 ? `${(priceC / 100).toFixed(2).replace('.', ',')} €` : 'Gratuit',
+        stock: parseInt(tr.querySelector('.me-stock').value, 10) || 0,
+        category_label: tr.querySelector('.me-cat').value.trim(),
+      };
+      const msg = tr.querySelector('.me-msg');
+      msg.textContent = 'Enregistrement…';
+      try {
+        const res = await fetch(`/api/admin/materiel/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || `Erreur ${res.status}`);
+        const idx = materielProducts.findIndex((x) => x.id === id);
+        if (idx >= 0) materielProducts[idx] = { ...materielProducts[idx], ...patch };
+        msg.textContent = 'Sauvegardé !';
+        msg.className = 'form-msg ok';
+        setTimeout(() => tr.remove(), 1000);
+        renderMaterielTable();
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.className = 'form-msg err';
+      }
+    };
+  }
+
+  // ─── Stats ───
+  function fmtEur(cents) {
+    return `${(cents / 100).toFixed(2).replace('.', ',')} €`;
+  }
+  function fmtMonth(k) {
+    if (!k || !k.includes('-')) return k;
+    const [y, m] = k.split('-');
+    return new Date(Number(y), Number(m) - 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  }
+
+  let statsLoaded = false;
+  function initStats() {
+    if (statsLoaded) return;
+    // Pre-fill dates: current month
+    const now = new Date();
+    const ym = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const fromEl = document.getElementById('statsFrom');
+    const toEl = document.getElementById('statsTo');
+    if (fromEl && !fromEl.value) {
+      const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+      fromEl.value = ym(start);
+    }
+    if (toEl && !toEl.value) toEl.value = ym(now);
+    loadStats();
+  }
+
+  function setStatsMsg(msg, type) {
+    const el = document.getElementById('statsMsg');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = `form-msg${type === 'err' ? ' err' : type === 'ok' ? ' ok' : ''}`;
+  }
+
+  async function loadStats() {
+    setStatsMsg('Chargement des stats…');
+    const from = document.getElementById('statsFrom')?.value || '';
+    const to = document.getElementById('statsTo')?.value || '';
+    try {
+      const url = `/api/admin/stats${from || to ? `?from=${from}&to=${to}` : ''}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Erreur ${res.status}`);
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error);
+
+      // KPI cards
+      const kpis = document.getElementById('statsKpis');
+      if (kpis) {
+        kpis.style.display = '';
+        document.getElementById('kpiMaterielRev').textContent = fmtEur(data.totals.materiel_revenue);
+        document.getElementById('kpiMaterielOrders').textContent = data.totals.materiel_orders;
+        document.getElementById('kpiInscRev').textContent = fmtEur(data.totals.inscription_revenue);
+        document.getElementById('kpiInscOrders').textContent = data.totals.inscription_orders;
+      }
+
+      // Table
+      const wrap = document.getElementById('statsTableWrap');
+      const body = document.getElementById('statsBody');
+      if (body) {
+        if (!data.rows.length) {
+          body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune vente sur cette période.</td></tr>';
+        } else {
+          body.innerHTML = data.rows.map((r) => `
+            <tr>
+              <td style="font-weight:600">${fmtMonth(r.month)}</td>
+              <td style="text-align:right">${r.materiel_orders}</td>
+              <td style="text-align:right;font-weight:600">${fmtEur(r.materiel_revenue)}</td>
+              <td style="text-align:right">${r.inscription_orders}</td>
+              <td style="text-align:right;font-weight:600">${fmtEur(r.inscription_revenue)}</td>
+              <td style="text-align:right;font-weight:700;color:var(--bc-navy)">${fmtEur(r.materiel_revenue + r.inscription_revenue)}</td>
+            </tr>`).join('');
+        }
+        if (wrap) wrap.hidden = false;
+      }
+      statsLoaded = true;
+      setStatsMsg('');
+    } catch (err) {
+      setStatsMsg(err.message, 'err');
+    }
+  }
+
+  document.getElementById('loadStatsBtn')?.addEventListener('click', () => {
+    statsLoaded = false;
+    loadStats();
+  });
 
   document.getElementById('logoutBtn').onclick = async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });

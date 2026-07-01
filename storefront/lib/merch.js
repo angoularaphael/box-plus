@@ -12,6 +12,7 @@ const {
   resetMerchHydration,
   loadMaterielCatalogLocal,
   saveMaterielCatalog,
+  addMaterielProduct,
 } = require('./merch-persistence');
 
 function loadMaterielCatalog() {
@@ -341,6 +342,7 @@ module.exports = {
   saveMerch,
   loadMaterielCatalog,
   saveMaterielCatalog,
+  addMaterielProduct,
   getMaterielCategories,
   getMaterielProducts,
   findMaterielProduct,

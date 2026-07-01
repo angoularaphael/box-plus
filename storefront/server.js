@@ -37,6 +37,7 @@ const {
   saveMerch,
   loadMaterielCatalog,
   saveMaterielCatalog,
+  addMaterielProduct,
   updateMerchProduct,
   updateMerchProductAsync,
   updateMaterielProduct,
@@ -57,6 +58,7 @@ const {
   savePendingCheckout,
   loadPendingCheckout,
   removePendingCheckout,
+  listAllMaterielOrders,
   loadOrder: loadMaterielOrder,
   saveOrder: saveMaterielOrderRecord,
 } = require('./lib/materiel-cart');
@@ -532,6 +534,88 @@ function createApp() {
       res.json({ ok: true, id, updated, product });
     } catch (err) {
       res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Create new custom materiel product (with optional base64 image)
+  app.post('/api/admin/materiel', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const fields = req.body || {};
+      if (!fields.name) return res.status(400).json({ ok: false, error: 'name requis' });
+      const product = addMaterielProduct(fields);
+      res.json({ ok: true, product });
+    } catch (err) {
+      res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Stats admin — ventes matériel + abonnements par mois
+  app.get('/api/admin/stats', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { from, to } = req.query; // format: YYYY-MM
+
+      function monthKey(dateStr) {
+        if (!dateStr) return null;
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return null;
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      }
+
+      function inRange(key) {
+        if (!key) return false;
+        if (from && key < from) return false;
+        if (to && key > to) return false;
+        return true;
+      }
+
+      // Materiel orders
+      const materielOrders = listAllMaterielOrders().filter((o) => o.payment?.status === 'paid');
+      const materielByMonth = {};
+      for (const o of materielOrders) {
+        const k = monthKey(o.paid_at || o.created_at);
+        if (!k || !inRange(k)) continue;
+        if (!materielByMonth[k]) materielByMonth[k] = { month: k, orders: 0, revenue: 0 };
+        materielByMonth[k].orders += 1;
+        materielByMonth[k].revenue += o.total_cents || 0;
+      }
+
+      // Inscription orders
+      const allOrders = await listAllOrdersAsync();
+      const inscByMonth = {};
+      for (const o of allOrders) {
+        if (o.payment?.status !== 'paid') continue;
+        const k = monthKey(o.payment?.paid_at || o.updated_at || o.created_at);
+        if (!k || !inRange(k)) continue;
+        if (!inscByMonth[k]) inscByMonth[k] = { month: k, orders: 0, revenue: 0 };
+        inscByMonth[k].orders += 1;
+        inscByMonth[k].revenue += o.product_snapshot?.price_cents || 0;
+      }
+
+      const months = [...new Set([...Object.keys(materielByMonth), ...Object.keys(inscByMonth)])].sort();
+
+      const rows = months.map((m) => ({
+        month: m,
+        materiel_orders: materielByMonth[m]?.orders || 0,
+        materiel_revenue: materielByMonth[m]?.revenue || 0,
+        inscription_orders: inscByMonth[m]?.orders || 0,
+        inscription_revenue: inscByMonth[m]?.revenue || 0,
+      }));
+
+      const totals = rows.reduce(
+        (acc, r) => ({
+          materiel_orders: acc.materiel_orders + r.materiel_orders,
+          materiel_revenue: acc.materiel_revenue + r.materiel_revenue,
+          inscription_orders: acc.inscription_orders + r.inscription_orders,
+          inscription_revenue: acc.inscription_revenue + r.inscription_revenue,
+        }),
+        { materiel_orders: 0, materiel_revenue: 0, inscription_orders: 0, inscription_revenue: 0 }
+      );
+
+      res.json({ ok: true, rows, totals });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 
