@@ -153,7 +153,71 @@ async function upsertClientFromInscription(order) {
   }
 }
 
+function clientFieldsFromMaterielOrder(order) {
+  const c = order.customer || {};
+  return {
+    prenom: cleanNamePart(c.first_name),
+    nom: cleanNamePart(c.last_name),
+    email: normalizeEmail(c.email),
+    telephone: normalizeFrenchPhone(c.phone),
+    salle: gymToSalle(c.pickup_gym || c.gym),
+    source: 'boxplus',
+    offre: 'Matériel',
+  };
+}
+
+async function upsertMaterielClient(order) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { synced: false, reason: 'supabase_not_configured' };
+  }
+
+  const fields = clientFieldsFromMaterielOrder(order);
+  if (!fields.email && !fields.telephone) {
+    return { synced: false, reason: 'no_contact' };
+  }
+
+  const sb = getSupabase();
+  const now = new Date().toISOString();
+  const row = {
+    prenom: fields.prenom,
+    nom: fields.nom,
+    email: fields.email,
+    telephone: fields.telephone,
+    salle: fields.salle,
+    offre: fields.offre,
+    source: 'boxplus',
+    updated_at: now,
+  };
+
+  try {
+    const existingId = await findExistingClientId(sb, {
+      email: fields.email,
+      telephone: fields.telephone,
+    });
+
+    if (existingId) {
+      const { data, error } = await sb.from(TABLE).update(row).eq('id', existingId).select('id').single();
+      if (error) throw error;
+      logInfo('Client gestion-manager mis à jour (matériel)', { order_id: order.order_id, client_id: data.id });
+      return { synced: true, client_id: data.id, updated: true };
+    }
+
+    const { data, error } = await sb
+      .from(TABLE)
+      .insert({ ...row, created_at: now })
+      .select('id')
+      .single();
+    if (error) throw error;
+    logInfo('Client gestion-manager créé (matériel)', { order_id: order.order_id, client_id: data.id });
+    return { synced: true, client_id: data.id, created: true };
+  } catch (err) {
+    logWarn('Sync client matériel échouée', { order_id: order.order_id, error: err.message });
+    return { synced: false, reason: 'db_error', error: err.message };
+  }
+}
+
 module.exports = {
   clientFieldsFromOrder,
   upsertClientFromInscription,
+  upsertMaterielClient,
 };

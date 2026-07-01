@@ -113,6 +113,45 @@
     const n = window.BCCart.count();
     badge.textContent = String(n);
     badge.hidden = n <= 0;
+    updateCartFab(n);
+  }
+
+  function renderCartFab() {
+    const path = currentPath();
+    if (path === '/panier' || path.includes('panier') || path.includes('checkout') || path.includes('inscription') || path.includes('/admin')) return;
+    const fab = document.createElement('a');
+    fab.id = 'cartFab';
+    fab.href = L('/panier');
+    fab.setAttribute('aria-label', 'Voir le panier');
+    fab.innerHTML = `
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+      </svg>
+      <span class="cart-fab-count" id="cartFabCount" hidden>0</span>`;
+    fab.style.cssText = [
+      'position:fixed', 'bottom:1.5rem', 'right:1.5rem', 'z-index:900',
+      'display:none', 'align-items:center', 'justify-content:center',
+      'width:52px', 'height:52px', 'border-radius:50%',
+      'background:#B8282B', 'color:#fff',
+      'box-shadow:0 4px 16px rgba(0,0,0,0.25)',
+      'text-decoration:none', 'transition:transform .2s,box-shadow .2s',
+    ].join(';');
+    fab.onmouseenter = () => { fab.style.transform = 'scale(1.08)'; fab.style.boxShadow = '0 6px 24px rgba(0,0,0,0.35)'; };
+    fab.onmouseleave = () => { fab.style.transform = ''; fab.style.boxShadow = '0 4px 16px rgba(0,0,0,0.25)'; };
+    document.body.appendChild(fab);
+  }
+
+  function updateCartFab(n) {
+    const fab = document.getElementById('cartFab');
+    if (!fab) return;
+    const cnt = document.getElementById('cartFabCount');
+    if (n > 0) {
+      fab.style.display = 'flex';
+      if (cnt) { cnt.textContent = String(n); cnt.hidden = false; }
+    } else {
+      fab.style.display = 'none';
+    }
   }
 
   function mountLayout() {
@@ -121,6 +160,7 @@
     if (headerSlot) headerSlot.innerHTML = renderHeader();
     if (footerSlot) footerSlot.innerHTML = renderFooter();
     initNav();
+    renderCartFab();
     updateCartBadge();
     window.addEventListener('bccart:change', updateCartBadge);
   }
