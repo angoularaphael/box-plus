@@ -23,6 +23,7 @@
         <button type="button" class="admin-tab active" data-tab="offers">Offres</button>
         <button type="button" class="admin-tab" data-tab="materiel">Matériel</button>
         <button type="button" class="admin-tab" data-tab="contracts">Contrats & inscriptions</button>
+        <button type="button" class="admin-tab" data-tab="stats">Stats</button>
       </nav>
 
       <section id="tabOffers">
@@ -98,15 +99,55 @@
 
       <!-- ── Onglet Matériel ── -->
       <section id="tabMateriel" hidden>
+
+        <!-- Formulaire ajout produit -->
         <div class="admin-section">
           <div class="admin-section-head">
+            <div>
+              <h2 class="admin-section-title">Ajouter un produit</h2>
+              <p class="admin-section-desc">Créez un article personnalisé en dehors du catalogue PrestaShop.</p>
+            </div>
+            <button type="button" class="btn sm secondary" id="toggleAddProductBtn">Afficher le formulaire</button>
+          </div>
+          <form id="addProductForm" hidden style="margin-top:12px">
+            <div class="form-grid" style="gap:12px">
+              <div><label>Nom *</label><input id="prd_name" placeholder="Gants de boxe adulte" required /></div>
+              <div><label>Référence</label><input id="prd_ref" placeholder="REF-001" /></div>
+              <div><label>Catégorie</label><input id="prd_cat" placeholder="gants-de-boxe" /></div>
+              <div><label>Libellé catégorie</label><input id="prd_cat_label" placeholder="Gants de boxe" /></div>
+              <div><label>Prix (€)</label><input id="prd_price" type="number" min="0" step="0.01" placeholder="39.90" /></div>
+              <div><label>Stock</label><input id="prd_stock" type="number" min="0" value="0" /></div>
+              <div class="full"><label>Description</label><textarea id="prd_desc" rows="2" placeholder="Description du produit…" style="width:100%;resize:vertical"></textarea></div>
+              <div class="full">
+                <label>Image</label>
+                <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+                  <input id="prd_img_url" placeholder="https://… ou laisser vide pour charger un fichier" style="flex:1;min-width:200px" />
+                  <label class="btn sm secondary" style="cursor:pointer;white-space:nowrap">
+                    Choisir un fichier
+                    <input id="prd_img_file" type="file" accept="image/*" style="display:none" />
+                  </label>
+                </div>
+                <img id="prd_img_preview" src="" alt="" style="display:none;margin-top:8px;max-height:80px;border-radius:6px;border:1px solid #e2e8f0" />
+              </div>
+              <div class="full" style="display:flex;gap:10px">
+                <button type="submit" class="btn sm">Créer le produit</button>
+                <button type="button" class="btn sm secondary" id="cancelAddProductBtn">Annuler</button>
+              </div>
+            </div>
+          </form>
+          <p class="form-msg" id="addProductMsg"></p>
+        </div>
+
+        <!-- Catalogue -->
+        <div class="admin-section">
+          <div class="admin-section-head" style="flex-wrap:wrap;gap:10px">
             <div>
               <h2 class="admin-section-title">Catalogue matériel</h2>
               <p class="admin-section-desc" id="materielSyncInfo">Chargement…</p>
             </div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input type="search" id="materielSearch" placeholder="Rechercher…" class="admin-search" style="width:200px" />
-              <select id="materielCatFilter" class="admin-search" style="width:170px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input type="search" id="materielSearch" placeholder="Rechercher…" class="admin-search" style="width:180px" />
+              <select id="materielCatFilter" class="admin-search" style="width:160px">
                 <option value="">Toutes les catégories</option>
               </select>
             </div>
@@ -129,6 +170,51 @@
             </table>
           </div>
           <p id="materielCount" class="admin-section-foot" style="margin-top:10px"></p>
+        </div>
+      </section>
+
+      <!-- ── Onglet Stats ── -->
+      <section id="tabStats" hidden>
+        <div class="admin-section">
+          <div class="admin-section-head" style="flex-wrap:wrap;gap:10px">
+            <div>
+              <h2 class="admin-section-title">Statistiques des ventes</h2>
+              <p class="admin-section-desc">Ventes matériel et inscriptions par période.</p>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <label style="font-size:13px;color:var(--bc-muted)">Du</label>
+              <input type="month" id="statsFrom" class="admin-search" style="width:150px" />
+              <label style="font-size:13px;color:var(--bc-muted)">au</label>
+              <input type="month" id="statsTo" class="admin-search" style="width:150px" />
+              <button type="button" class="btn sm" id="loadStatsBtn">Actualiser</button>
+            </div>
+          </div>
+          <p class="form-msg" id="statsMsg"></p>
+
+          <!-- KPI cards -->
+          <div class="stats-kpi-grid" id="statsKpis" style="display:none">
+            <div class="stats-kpi"><span class="stats-kpi-label">CA Matériel</span><span class="stats-kpi-value" id="kpiMaterielRev">—</span></div>
+            <div class="stats-kpi"><span class="stats-kpi-label">Commandes matériel</span><span class="stats-kpi-value" id="kpiMaterielOrders">—</span></div>
+            <div class="stats-kpi"><span class="stats-kpi-label">CA Abonnements</span><span class="stats-kpi-value" id="kpiInscRev">—</span></div>
+            <div class="stats-kpi"><span class="stats-kpi-label">Inscriptions</span><span class="stats-kpi-value" id="kpiInscOrders">—</span></div>
+          </div>
+
+          <!-- Table par mois -->
+          <div style="overflow-x:auto;margin-top:16px" id="statsTableWrap" hidden>
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Mois</th>
+                  <th style="text-align:right">Cmd matériel</th>
+                  <th style="text-align:right">CA matériel</th>
+                  <th style="text-align:right">Inscriptions</th>
+                  <th style="text-align:right">CA abonnements</th>
+                  <th style="text-align:right">Total CA</th>
+                </tr>
+              </thead>
+              <tbody id="statsBody"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 

@@ -168,6 +168,31 @@ function saveMaterielCatalog(data) {
   return data;
 }
 
+function addMaterielProduct(fields) {
+  const catalog = loadMaterielCatalogLocal();
+  const id = `custom-${Date.now()}`;
+  const priceCents = Math.round(Number(fields.price_cents || 0));
+  const product = {
+    id,
+    name: String(fields.name || '').trim(),
+    reference: String(fields.reference || '').trim(),
+    price_cents: priceCents,
+    price_label: priceCents > 0 ? `${(priceCents / 100).toFixed(2).replace('.', ',')} €` : 'Gratuit',
+    category: String(fields.category || 'autre').trim(),
+    category_label: String(fields.category_label || fields.category || 'Autre').trim(),
+    stock: Number(fields.stock ?? 0),
+    image: fields.image || null,
+    description: fields.description || null,
+    combinations: [],
+    active: fields.active !== false,
+    source: 'admin',
+    created_at: new Date().toISOString(),
+  };
+  catalog.products = [product, ...(catalog.products || [])];
+  saveMaterielCatalog(catalog);
+  return product;
+}
+
 module.exports = {
   MERCH_FILE,
   CATALOG_FILE,
@@ -179,5 +204,6 @@ module.exports = {
   saveMerchAsync,
   loadMaterielCatalogLocal,
   saveMaterielCatalog,
+  addMaterielProduct,
   resetMerchHydration,
 };
