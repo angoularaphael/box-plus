@@ -79,8 +79,9 @@ const {
   toAdminSummary,
 } = require('./lib/order-lifecycle');
 const { generateContractPdf, streamContractPdf } = require('./lib/contract-pdf');
+const { generateMaterielInvoicePdf } = require('./lib/invoice-pdf');
 const { sendConfirmationEmail, sendGdprEraseRequest } = require('./lib/mailer');
-const { upsertClientFromInscription } = require('./lib/client-sync');
+const { upsertClientFromInscription, upsertMaterielClient } = require('./lib/client-sync');
 
 async function syncInscriptionClient(order) {
   if (order.gestion_client_id) {
@@ -199,6 +200,11 @@ async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
   } catch (err) {
     logError('Email matériel échoué', { error: err.message, order_id: order.order_id });
   }
+
+  // Sync client → portet_clients (gestion-manager)
+  upsertMaterielClient(order).catch((err) =>
+    logError('Sync client matériel', { error: err.message, order_id: order.order_id })
+  );
 
   logInfo('Paiement matériel confirmé', { order_id: order.order_id });
   return {
@@ -526,6 +532,29 @@ function createApp() {
       res.json({ ok: true, id, updated, product });
     } catch (err) {
       res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Public invoice download for materiel orders (token-gated by order_id)
+  app.get('/api/facture/materiel/:orderId', async (req, res) => {
+    try {
+      const order = loadMaterielOrder(req.params.orderId);
+      if (!order) return res.status(404).json({ ok: false, error: 'Commande introuvable' });
+      if (order.payment?.status !== 'paid') {
+        return res.status(403).json({ ok: false, error: 'Facture disponible uniquement après paiement' });
+      }
+      const result = await generateMaterielInvoicePdf(order);
+      if (!result?.filepath) {
+        return res.status(500).json({ ok: false, error: 'Génération PDF échouée' });
+      }
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="facture-${order.order_id}.pdf"`
+      );
+      require('fs').createReadStream(result.filepath).pipe(res);
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 

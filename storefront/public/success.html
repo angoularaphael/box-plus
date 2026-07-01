@@ -15,7 +15,12 @@
     <div class="success-icon" aria-hidden="true"></div>
     <h1>Merci !</h1>
     <p id="successText">Votre commande a été enregistrée.</p>
-    <a href="/" class="btn">Retour à l'accueil</a>
+    <div id="successActions" style="display:flex;flex-direction:column;align-items:center;gap:0.75rem;margin-top:0.5rem">
+      <a href="/" class="btn">Retour à l'accueil</a>
+      <a id="downloadInvoiceBtn" href="#" class="btn btn-outline" style="display:none">
+        Télécharger ma facture PDF
+      </a>
+    </div>
   </main>
   <div id="site-footer"></div>
   <script src="js/layout.js"></script>
