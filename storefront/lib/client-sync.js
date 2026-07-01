@@ -70,7 +70,7 @@ function clientFieldsFromOrder(order) {
     email: normalizeEmail(short.email),
     telephone: normalizeFrenchPhone(short.phone),
     salle: gymToSalle(full.gym),
-    date_naissance: full.birth_date || null,
+    date_naissance: full.birth_date || short.birthdate || null,
     adresse: full.address || null,
     code_postal: full.postal_code || null,
     ville: full.city || null,
@@ -160,7 +160,7 @@ function clientFieldsFromMaterielOrder(order) {
     nom: cleanNamePart(c.last_name),
     email: normalizeEmail(c.email),
     telephone: normalizeFrenchPhone(c.phone),
-    salle: gymToSalle(c.pickup_gym || c.gym),
+    salle: gymToSalle(order.pickup_gym || c.pickup_gym || c.gym),
     source: 'boxplus',
     offre: 'Matériel',
   };

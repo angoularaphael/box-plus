@@ -88,14 +88,20 @@ const { sendConfirmationEmail, sendGdprEraseRequest } = require('./lib/mailer');
 const { upsertClientFromInscription, upsertMaterielClient } = require('./lib/client-sync');
 
 async function syncInscriptionClient(order) {
-  if (order.gestion_client_id) {
-    return { synced: true, client_id: order.gestion_client_id, skipped: true };
-  }
   const result = await upsertClientFromInscription(order);
-  if (result.synced && result.client_id) {
+  if (result.synced && result.client_id && order.gestion_client_id !== result.client_id) {
     order.gestion_client_id = result.client_id;
     const { saveOrderAsync } = require('./lib/order-lifecycle');
     await saveOrderAsync(order);
+  }
+  return result;
+}
+
+async function syncMaterielClient(order) {
+  const result = await upsertMaterielClient(order);
+  if (result.synced && result.client_id && order.gestion_client_id !== result.client_id) {
+    order.gestion_client_id = result.client_id;
+    await saveMaterielOrderRecordAsync(order);
   }
   return result;
 }
@@ -220,7 +226,7 @@ async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
   removePendingCheckout(sessionId);
   await sendMaterielEmailIfNeeded(order);
 
-  upsertMaterielClient(order).catch((err) =>
+  syncMaterielClient(order).catch((err) =>
     logError('Sync client matériel', { error: err.message, order_id: order.order_id })
   );
 
@@ -462,6 +468,7 @@ function createApp() {
             pickup_gym: customer.pickup_gym,
           });
           await markMaterielPaidAsync(order.order_id, { method: 'demo' });
+          await syncMaterielClient(order).catch(() => {});
           await sendMaterielConfirmationEmail(order).catch(() => {});
           return res.json({
             ok: true,
@@ -474,13 +481,16 @@ function createApp() {
       }
 
       const baseUrl = getCheckoutBaseUrl(req);
-      await createMaterielOrderAsync({
+      const order = await createMaterielOrderAsync({
         order_id: orderId,
         customer,
         items,
         total_cents,
         pickup_gym: customer.pickup_gym,
       });
+      await syncMaterielClient(order).catch((err) =>
+        logError('Sync client matériel (checkout)', { order_id: orderId, error: err.message })
+      );
 
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
@@ -822,6 +832,9 @@ function createApp() {
       if (errors.length) return res.status(400).json({ ok: false, errors });
 
       const order = await createDraftAsync({ product_id, product, customer_short });
+      await syncInscriptionClient(order).catch((err) =>
+        logError('Sync client inscription (draft)', { order_id: order.order_id, error: err.message })
+      );
       res.json({
         ok: true,
         order_id: order.order_id,
@@ -1057,6 +1070,17 @@ function createApp() {
 
       const paymentErrors = validatePaymentForm(req.body, product);
       if (paymentErrors.length) return res.status(400).json({ ok: false, errors: paymentErrors });
+
+      const orderForSync = {
+        ...order,
+        customer_full: {
+          ...(order.customer_full || {}),
+          gym: req.body.gym || order.customer_full?.gym,
+        },
+      };
+      await syncInscriptionClient(orderForSync).catch((err) =>
+        logError('Sync client inscription (pay)', { order_id: order.order_id, error: err.message })
+      );
 
       const short = order.customer_short;
       const form = { ...short, ...req.body, order_id: order.order_id };

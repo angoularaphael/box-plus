@@ -38,6 +38,20 @@ describe('client sync', () => {
     assert.equal(fields.offre, 'Etudiants 36,99€');
   });
 
+  it('mappe birthdate depuis customer_short si customer_full absent', () => {
+    const fields = clientFieldsFromOrder({
+      customer_short: {
+        first_name: 'A',
+        last_name: 'B',
+        email: 'a@test.fr',
+        phone: '0612345678',
+        birthdate: '1992-03-10',
+      },
+      product_snapshot: { name: 'Offre test' },
+    });
+    assert.equal(fields.date_naissance, '1992-03-10');
+  });
+
   it('ignore les noms qui ressemblent à un email', () => {
     const fields = clientFieldsFromOrder({
       customer_short: {
