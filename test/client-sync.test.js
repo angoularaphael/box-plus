@@ -52,6 +52,22 @@ describe('client sync', () => {
     assert.equal(fields.date_naissance, '1992-03-10');
   });
 
+  it('propose un fallback sans colonnes optionnelles', () => {
+    const { buildRowVariants } = require('../storefront/lib/client-sync');
+    const variants = buildRowVariants({
+      prenom: 'Jean',
+      nom: 'Dupont',
+      email: 'jean@test.fr',
+      telephone: '0612345678',
+      salle: 'Les Minimes',
+      offre: 'Matériel',
+    });
+    assert.equal(variants.length, 3);
+    assert.equal(variants[0].offre, 'Matériel');
+    assert.equal(variants[1].offre, undefined);
+    assert.equal(variants[2].source, 'manual');
+  });
+
   it('ignore les noms qui ressemblent à un email', () => {
     const fields = clientFieldsFromOrder({
       customer_short: {
