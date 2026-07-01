@@ -59,6 +59,110 @@ function cleanNamePart(value) {
   return s;
 }
 
+function compactRow(row) {
+  const out = {};
+  for (const [key, value] of Object.entries(row)) {
+    if (value !== null && value !== undefined && value !== '') out[key] = value;
+  }
+  return out;
+}
+
+function buildRowVariants(fields) {
+  const core = compactRow({
+    prenom: fields.prenom,
+    nom: fields.nom,
+    email: fields.email,
+    telephone: fields.telephone,
+    salle: fields.salle,
+    source: 'boxplus',
+  });
+  const extended = compactRow({
+    ...core,
+    date_naissance: fields.date_naissance,
+    adresse: fields.adresse,
+    code_postal: fields.code_postal,
+    ville: fields.ville,
+    contact_urgence: fields.contact_urgence,
+    info_medicale: fields.info_medicale,
+    offre: fields.offre,
+  });
+  return [
+    extended,
+    core,
+    { ...core, source: 'manual' },
+  ];
+}
+
+function isSchemaOrConstraintError(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  return (
+    msg.includes('schema cache') ||
+    msg.includes('could not find') ||
+    msg.includes('column') ||
+    msg.includes('portet_clients_source_check') ||
+    msg.includes('check constraint') ||
+    msg.includes('23514')
+  );
+}
+
+async function findExistingClientId(sb, { email, telephone }) {
+  if (email) {
+    const { data } = await sb.from(TABLE).select('id').ilike('email', email).maybeSingle();
+    if (data?.id) return data.id;
+  }
+  if (telephone) {
+    const variants = phoneLookupVariants(telephone);
+    if (variants.length) {
+      const { data } = await sb.from(TABLE).select('id').in('telephone', variants).limit(1).maybeSingle();
+      if (data?.id) return data.id;
+    }
+  }
+  return null;
+}
+
+async function upsertPortetClient(sb, fields, { orderId, logLabel }) {
+  const now = new Date().toISOString();
+  const existingId = await findExistingClientId(sb, {
+    email: fields.email,
+    telephone: fields.telephone,
+  });
+
+  let lastError = null;
+  for (const variant of buildRowVariants(fields)) {
+    const row = { ...variant, updated_at: now };
+    try {
+      if (existingId) {
+        const { data, error } = await sb.from(TABLE).update(row).eq('id', existingId).select('id').single();
+        if (error) throw error;
+        logInfo(`Client gestion-manager mis à jour (${logLabel})`, {
+          order_id: orderId,
+          client_id: data.id,
+          source: row.source,
+        });
+        return { synced: true, client_id: data.id, updated: true, source: row.source };
+      }
+
+      const { data, error } = await sb
+        .from(TABLE)
+        .insert({ ...row, created_at: now })
+        .select('id')
+        .single();
+      if (error) throw error;
+      logInfo(`Client gestion-manager créé (${logLabel})`, {
+        order_id: orderId,
+        client_id: data.id,
+        source: row.source,
+      });
+      return { synced: true, client_id: data.id, created: true, source: row.source };
+    } catch (err) {
+      lastError = err;
+      if (!isSchemaOrConstraintError(err)) break;
+    }
+  }
+
+  throw lastError || new Error('Sync client impossible');
+}
+
 function clientFieldsFromOrder(order) {
   const short = order.customer_short || {};
   const full = order.customer_full || {};
@@ -81,21 +185,6 @@ function clientFieldsFromOrder(order) {
   };
 }
 
-async function findExistingClientId(sb, { email, telephone }) {
-  if (email) {
-    const { data } = await sb.from(TABLE).select('id').ilike('email', email).maybeSingle();
-    if (data?.id) return data.id;
-  }
-  if (telephone) {
-    const variants = phoneLookupVariants(telephone);
-    if (variants.length) {
-      const { data } = await sb.from(TABLE).select('id').in('telephone', variants).limit(1).maybeSingle();
-      if (data?.id) return data.id;
-    }
-  }
-  return null;
-}
-
 async function upsertClientFromInscription(order) {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return { synced: false, reason: 'supabase_not_configured' };
@@ -107,46 +196,11 @@ async function upsertClientFromInscription(order) {
     return { synced: false, reason: 'no_contact' };
   }
 
-  const sb = getSupabase();
-  const now = new Date().toISOString();
-  const row = {
-    prenom: fields.prenom,
-    nom: fields.nom,
-    email: fields.email,
-    telephone: fields.telephone,
-    salle: fields.salle,
-    date_naissance: fields.date_naissance,
-    adresse: fields.adresse,
-    code_postal: fields.code_postal,
-    ville: fields.ville,
-    contact_urgence: fields.contact_urgence,
-    info_medicale: fields.info_medicale,
-    offre: fields.offre,
-    source: 'boxplus',
-    updated_at: now,
-  };
-
   try {
-    const existingId = await findExistingClientId(sb, {
-      email: fields.email,
-      telephone: fields.telephone,
+    return await upsertPortetClient(getSupabase(), fields, {
+      orderId: order.order_id,
+      logLabel: 'inscription',
     });
-
-    if (existingId) {
-      const { data, error } = await sb.from(TABLE).update(row).eq('id', existingId).select('id').single();
-      if (error) throw error;
-      logInfo('Client gestion-manager mis à jour', { order_id: order.order_id, client_id: data.id });
-      return { synced: true, client_id: data.id, updated: true };
-    }
-
-    const { data, error } = await sb
-      .from(TABLE)
-      .insert({ ...row, created_at: now })
-      .select('id')
-      .single();
-    if (error) throw error;
-    logInfo('Client gestion-manager créé', { order_id: order.order_id, client_id: data.id });
-    return { synced: true, client_id: data.id, created: true };
   } catch (err) {
     logWarn('Sync client gestion-manager échouée', { order_id: order.order_id, error: err.message });
     return { synced: false, reason: 'db_error', error: err.message };
@@ -176,40 +230,11 @@ async function upsertMaterielClient(order) {
     return { synced: false, reason: 'no_contact' };
   }
 
-  const sb = getSupabase();
-  const now = new Date().toISOString();
-  const row = {
-    prenom: fields.prenom,
-    nom: fields.nom,
-    email: fields.email,
-    telephone: fields.telephone,
-    salle: fields.salle,
-    offre: fields.offre,
-    source: 'boxplus',
-    updated_at: now,
-  };
-
   try {
-    const existingId = await findExistingClientId(sb, {
-      email: fields.email,
-      telephone: fields.telephone,
+    return await upsertPortetClient(getSupabase(), fields, {
+      orderId: order.order_id,
+      logLabel: 'matériel',
     });
-
-    if (existingId) {
-      const { data, error } = await sb.from(TABLE).update(row).eq('id', existingId).select('id').single();
-      if (error) throw error;
-      logInfo('Client gestion-manager mis à jour (matériel)', { order_id: order.order_id, client_id: data.id });
-      return { synced: true, client_id: data.id, updated: true };
-    }
-
-    const { data, error } = await sb
-      .from(TABLE)
-      .insert({ ...row, created_at: now })
-      .select('id')
-      .single();
-    if (error) throw error;
-    logInfo('Client gestion-manager créé (matériel)', { order_id: order.order_id, client_id: data.id });
-    return { synced: true, client_id: data.id, created: true };
   } catch (err) {
     logWarn('Sync client matériel échouée', { order_id: order.order_id, error: err.message });
     return { synced: false, reason: 'db_error', error: err.message };
@@ -220,4 +245,6 @@ module.exports = {
   clientFieldsFromOrder,
   upsertClientFromInscription,
   upsertMaterielClient,
+  buildRowVariants,
+  isSchemaOrConstraintError,
 };
