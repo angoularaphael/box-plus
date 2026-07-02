@@ -15,6 +15,16 @@ const CATALOG_FILE =
   process.env.BOXPLUS_MATERIEL_CATALOG_FILE ||
   (process.env.VERCEL ? '/tmp/boxplus-materiel-catalog.json' : BUNDLED_CATALOG);
 
+// Static require() so Vercel nft (node-file-tracing) picks up the file automatically.
+// fs.readFileSync() with dynamic paths is not traced; require() on a literal path is.
+let BUNDLED_CATALOG_DATA;
+try {
+  // eslint-disable-next-line import/no-dynamic-require
+  BUNDLED_CATALOG_DATA = require('../../data/storefront/materiel-catalog.json');
+} catch {
+  BUNDLED_CATALOG_DATA = { products: [], categories: [] };
+}
+
 let merchHydrated = false;
 let merchHydratePromise = null;
 
@@ -150,12 +160,37 @@ async function saveMerchAsync(data) {
 
 function loadMaterielCatalogLocal() {
   seedCatalogFile();
-  return readJson(CATALOG_FILE, readJson(BUNDLED_CATALOG, { products: [], categories: [] }));
+  return readJson(CATALOG_FILE, BUNDLED_CATALOG_DATA);
 }
 
 function saveMaterielCatalog(data) {
   writeJson(CATALOG_FILE, data);
   return data;
+}
+
+function addMaterielProduct(fields) {
+  const catalog = loadMaterielCatalogLocal();
+  const id = `custom-${Date.now()}`;
+  const priceCents = Math.round(Number(fields.price_cents || 0));
+  const product = {
+    id,
+    name: String(fields.name || '').trim(),
+    reference: String(fields.reference || '').trim(),
+    price_cents: priceCents,
+    price_label: priceCents > 0 ? `${(priceCents / 100).toFixed(2).replace('.', ',')} €` : 'Gratuit',
+    category: String(fields.category || 'autre').trim(),
+    category_label: String(fields.category_label || fields.category || 'Autre').trim(),
+    stock: Number(fields.stock ?? 0),
+    image: fields.image || null,
+    description: fields.description || null,
+    combinations: [],
+    active: fields.active !== false,
+    source: 'admin',
+    created_at: new Date().toISOString(),
+  };
+  catalog.products = [product, ...(catalog.products || [])];
+  saveMaterielCatalog(catalog);
+  return product;
 }
 
 module.exports = {
@@ -169,5 +204,6 @@ module.exports = {
   saveMerchAsync,
   loadMaterielCatalogLocal,
   saveMaterielCatalog,
+  addMaterielProduct,
   resetMerchHydration,
 };

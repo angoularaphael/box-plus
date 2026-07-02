@@ -2,8 +2,8 @@
 
 Session: `test-session`
 Scénario: login
-Début: 2026-06-28T10:58:01.361Z
-Fin: 2026-06-28T10:58:01.361Z
+Début: 2026-06-30T22:16:00.965Z
+Fin: 2026-06-30T22:16:00.965Z
 
 ## Endpoints détectés
 
@@ -13,6 +13,6 @@ Fin: 2026-06-28T10:58:01.361Z
 
 ## Milestones enregistrés
 
-- **login-success** — 2026-06-28T10:58:01.361Z — https://manager.deciplus.pro/
+- **login-success** — 2026-06-30T22:16:00.965Z — https://manager.deciplus.pro/
 
 ## Requêtes POST/PUT significatives

@@ -12,6 +12,7 @@ const {
   resetMerchHydration,
   loadMaterielCatalogLocal,
   saveMaterielCatalog,
+  addMaterielProduct,
 } = require('./merch-persistence');
 
 function loadMaterielCatalog() {
@@ -164,15 +165,16 @@ function getEnrichedProducts(options = {}) {
   const seen = new Set();
 
   for (const p of catalog.products || []) {
-    const entry = merch.products?.[p.id] || {};
+    const entry = merch.products?.[p.id] || (p.legacy_id ? merch.products?.[p.legacy_id] : null) || {};
     if (activeOnly && entry.active === false) continue;
     if (activeOnly && entry.subsection === 'promo' && !isPromoActive(entry)) continue;
     const enriched = enrichProduct(p, entry);
     if (tab && enriched.tab !== tab) continue;
     if (subsection && enriched.subsection !== subsection) continue;
-    if (featured && !enriched.featured && !merch.featured_home?.includes(p.id)) continue;
+    if (featured && !enriched.featured && !merch.featured_home?.includes(p.id) && !(p.legacy_id && merch.featured_home?.includes(p.legacy_id))) continue;
     results.push(enriched);
     seen.add(p.id);
+    if (p.legacy_id) seen.add(p.legacy_id);
   }
 
   for (const [id, entry] of Object.entries(merch.products || {})) {
@@ -340,6 +342,7 @@ module.exports = {
   saveMerch,
   loadMaterielCatalog,
   saveMaterielCatalog,
+  addMaterielProduct,
   getMaterielCategories,
   getMaterielProducts,
   findMaterielProduct,
