@@ -21,12 +21,22 @@
     else document.addEventListener('DOMContentLoaded', fn);
   }
 
-  /* ---- sticky header: gains a shadow once scrolled ---- */
+  /* ---- sticky header: shadow when scrolled, hide on scroll-down, reveal on scroll-up ---- */
   function initHeader() {
-    var topbar;
+    var topbar, last = 0;
     function apply() {
       topbar = topbar || document.querySelector('.topbar');
-      if (topbar) topbar.classList.toggle('scrolled', window.scrollY > 16);
+      if (!topbar) return;
+      var y = window.scrollY;
+      topbar.classList.toggle('scrolled', y > 16);
+      if (document.querySelector('.main-nav.open') || y <= 200) {
+        topbar.classList.remove('nav-hidden');
+      } else if (y > last + 3) {
+        topbar.classList.add('nav-hidden');       // scrolling down → hide
+      } else if (y < last - 3) {
+        topbar.classList.remove('nav-hidden');     // scrolling up → reveal
+      }
+      last = y;
     }
     apply();
     window.addEventListener('scroll', apply, { passive: true });

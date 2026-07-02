@@ -31,7 +31,8 @@
       <div class="breadcrumb"><a href="${L('/')}">Accueil</a> / <a href="${L('/materiel')}">Matériel</a> / ${p.name}</div>
       <div class="product-detail-grid">
         <div class="product-gallery">${gallery || '<div class="materiel-img-placeholder">Photo</div>'}</div>
-        <div class="product-info card-panel">
+        <div class="product-info">
+          <span class="materiel-cat">${p.category_label || p.category || ''}</span>
           <h1>${p.name}</h1>
           <p class="product-ref">${p.reference ? `Réf. ${p.reference}` : ''}</p>
           <div class="materiel-price" id="productPrice">${p.price_label}</div>
@@ -39,7 +40,7 @@
           ${hasVariants ? `<label>Variante<select id="variantSelect">${combos.map((c) => `<option value="${c.id}" data-price="${c.price_cents}" data-label="${c.price_label}" data-stock="${c.stock}">${c.label}</option>`).join('')}</select></label>` : ''}
           <label>Quantité<input type="number" id="qtyInput" min="1" value="1" max="99" /></label>
           <button type="button" class="btn block" id="addBtn">Ajouter au panier</button>
-          <a href="${L('/panier')}" class="btn outline block" style="margin-top:8px">Voir le panier</a>
+          <a href="${L('/panier')}" class="btn secondary block" style="margin-top:8px">Voir le panier</a>
           ${p.description_short ? `<div class="product-desc"><h3>Description</h3><p>${p.description_short}</p></div>` : ''}
         </div>
       </div>`;

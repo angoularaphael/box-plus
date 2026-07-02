@@ -82,7 +82,10 @@ main { flex: 1; }
   background: var(--bc-card);
   border-bottom: 1px solid var(--bc-border);
   box-shadow: var(--shadow);
+  transition: transform 0.35s var(--ease-out);
 }
+
+.topbar.nav-hidden { transform: translateY(-100%); }
 
 .topbar-inner {
   max-width: var(--max);
