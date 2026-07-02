@@ -498,3 +498,14 @@ input:focus, select:focus, textarea:focus {
 }
 
 .breadcrumb a { color: var(--bc-cta); }
+
+/* Legal pages */
+.legal-page { max-width: 720px; }
+.legal-page h1 { color: var(--bc-navy); margin-bottom: 8px; font-size: clamp(1.6rem, 4vw, 2.2rem); }
+.legal-page h2 { font-size: 1.1rem; margin: 28px 0 12px; color: var(--bc-navy); }
+.legal-page p { color: var(--bc-muted); margin-bottom: 14px; line-height: 1.7; }
+.legal-page ul { color: var(--bc-muted); padding-left: 24px; margin-bottom: 14px; line-height: 1.7; }
+.legal-page ul li { margin-bottom: 6px; }
+.legal-page a { color: var(--bc-cta); text-decoration: underline; }
+.legal-update { color: var(--bc-muted); font-size: 13px; margin-bottom: 32px; font-style: italic; }
+.legal-footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--bc-border); color: var(--bc-muted); font-size: 14px; }

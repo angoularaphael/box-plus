@@ -1,7 +1,7 @@
 {
-  "featured_home": ["dp-88", "dp-22", "seance-essai"],
+  "featured_home": ["44-99-4-semaines", "comptant-12-mois", "seance-essai"],
   "products": {
-    "dp-88": {
+    "44-99-4-semaines": {
       "tab": "abonnements",
       "subsection": "prelevement",
       "display_name": "Sans engagement — Adulte",
@@ -12,7 +12,7 @@
       "active": true,
       "featured": true
     },
-    "dp-89": {
+    "etudiants-4-semaines": {
       "tab": "abonnements",
       "subsection": "prelevement",
       "display_name": "Sans engagement — Étudiant",
@@ -22,7 +22,7 @@
       "sort_order": 2,
       "active": true
     },
-    "dp-22": {
+    "comptant-12-mois": {
       "tab": "abonnements",
       "subsection": "comptant",
       "display_name": "Comptant 12 mois",
@@ -33,7 +33,7 @@
       "active": true,
       "featured": true
     },
-    "dp-91": {
+    "comptant-6-mois": {
       "tab": "abonnements",
       "subsection": "comptant",
       "display_name": "Comptant 6 mois",
@@ -43,7 +43,7 @@
       "sort_order": 2,
       "active": true
     },
-    "dp-92": {
+    "comptant-3-mois": {
       "tab": "abonnements",
       "subsection": "comptant",
       "display_name": "Comptant 3 mois",
@@ -53,7 +53,7 @@
       "sort_order": 3,
       "active": true
     },
-    "dp-93": {
+    "baby-boxe": {
       "tab": "abonnements",
       "subsection": "enfants",
       "display_name": "Baby Boxe",
@@ -63,7 +63,7 @@
       "sort_order": 1,
       "active": true
     },
-    "dp-45": {
+    "boxe-educative": {
       "tab": "abonnements",
       "subsection": "enfants",
       "display_name": "Boxe éducative",
@@ -73,7 +73,7 @@
       "sort_order": 2,
       "active": true
     },
-    "dp-104": {
+    "offre-duo": {
       "tab": "abonnements",
       "subsection": "promo",
       "display_name": "Offre DUO 29 €",
@@ -83,7 +83,7 @@
       "active": true,
       "badge": "Promo"
     },
-    "dp-101": {
+    "offre-promo-9": {
       "tab": "abonnements",
       "subsection": "promo",
       "display_name": "Offre promo 9 €",
@@ -93,7 +93,7 @@
       "active": true,
       "badge": "Promo"
     },
-    "dp-102": {
+    "offre-promo-adulte": {
       "tab": "abonnements",
       "subsection": "promo",
       "display_name": "Promo adulte 38,99 €",
@@ -103,7 +103,7 @@
       "active": true,
       "badge": "Promo"
     },
-    "dp-103": {
+    "offre-promo-etudiant": {
       "tab": "abonnements",
       "subsection": "promo",
       "display_name": "Promo étudiant 34,99 €",
@@ -113,7 +113,7 @@
       "active": true,
       "badge": "Promo"
     },
-    "dp-100": {
+    "offre-saison": {
       "tab": "abonnements",
       "subsection": "promo",
       "display_name": "Promo 12 mois",
@@ -123,7 +123,7 @@
       "active": true,
       "badge": "Promo"
     },
-    "dp-105": {
+    "offre-ete": {
       "tab": "abonnements",
       "subsection": "promo",
       "display_name": "Été 2026 — 3 mois illimités",
@@ -133,7 +133,8 @@
       "active": true,
       "badge": "Été 2026",
       "promo_start": "2026-06-01",
-      "promo_end": "2026-09-30"
+      "promo_end": "2026-09-30",
+      "image": "/assets/img/offre-ete-2026.jpg"
     },
     "seance-essai": {
       "tab": "seance-essai",

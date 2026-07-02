@@ -37,8 +37,10 @@ const {
   saveMerch,
   loadMaterielCatalog,
   saveMaterielCatalog,
+  addMaterielProduct,
   updateMerchProduct,
   updateMerchProductAsync,
+  updateMaterielProduct,
   setFeaturedHome,
   setFeaturedHomeAsync,
   createManualOffer,
@@ -52,12 +54,15 @@ const {
   validateCustomerForm,
   buildStripeLineItems,
   createMaterielOrder,
+  createMaterielOrderAsync,
   markMaterielPaid,
+  markMaterielPaidAsync,
   savePendingCheckout,
   loadPendingCheckout,
   removePendingCheckout,
-  loadOrder: loadMaterielOrder,
-  saveOrder: saveMaterielOrderRecord,
+  listAllMaterielOrdersAsync,
+  loadOrderAsync: loadMaterielOrderAsync,
+  saveOrderAsync: saveMaterielOrderRecordAsync,
 } = require('./lib/materiel-cart');
 const { sendMaterielConfirmationEmail } = require('./lib/mailer');
 const {
@@ -78,18 +83,25 @@ const {
   toAdminSummary,
 } = require('./lib/order-lifecycle');
 const { generateContractPdf, streamContractPdf } = require('./lib/contract-pdf');
+const { generateMaterielInvoicePdf } = require('./lib/invoice-pdf');
 const { sendConfirmationEmail, sendGdprEraseRequest } = require('./lib/mailer');
-const { upsertClientFromInscription } = require('./lib/client-sync');
+const { upsertClientFromInscription, upsertMaterielClient } = require('./lib/client-sync');
 
 async function syncInscriptionClient(order) {
-  if (order.gestion_client_id) {
-    return { synced: true, client_id: order.gestion_client_id, skipped: true };
-  }
   const result = await upsertClientFromInscription(order);
-  if (result.synced && result.client_id) {
+  if (result.synced && result.client_id && order.gestion_client_id !== result.client_id) {
     order.gestion_client_id = result.client_id;
     const { saveOrderAsync } = require('./lib/order-lifecycle');
     await saveOrderAsync(order);
+  }
+  return result;
+}
+
+async function syncMaterielClient(order) {
+  const result = await upsertMaterielClient(order);
+  if (result.synced && result.client_id && order.gestion_client_id !== result.client_id) {
+    order.gestion_client_id = result.client_id;
+    await saveMaterielOrderRecordAsync(order);
   }
   return result;
 }
@@ -155,27 +167,36 @@ async function dispatchLifecycleOrder(order) {
   const result = await dispatchOrder(payload);
   order.dispatched_at = new Date().toISOString();
   order.dispatch_result = { queued: result.queued, forwarded: result.forwarded };
-  const { saveOrder } = require('./lib/order-lifecycle');
-  saveOrder(order);
+  const { saveOrderAsync } = require('./lib/order-lifecycle');
+  await saveOrderAsync(order);
   logInfo('Commande lifecycle → BOXPLUS', { order_id: order.order_id, queued: result.queued });
   return result;
 }
 
+async function sendMaterielEmailIfNeeded(order) {
+  if (order.email_sent) return order;
+  try {
+    const emailResult = await sendMaterielConfirmationEmail(order);
+    order.email_sent = emailResult.sent;
+    await saveMaterielOrderRecordAsync(order);
+  } catch (err) {
+    logError('Email matériel échoué', { error: err.message, order_id: order.order_id });
+  }
+  return order;
+}
+
 async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
   const pending = loadPendingCheckout(sessionId);
-  if (!pending) {
-    if (stripeSession?.metadata?.order_type === 'materiel') {
-      const order = loadMaterielOrder(stripeSession.metadata.order_id);
-      if (order?.payment?.status === 'paid') {
-        return { ok: true, order_id: order.order_id, materiel: true, already_processed: true };
-      }
-    }
+  const orderId = pending?.order_id || stripeSession?.metadata?.order_id;
+
+  if (!orderId) {
     return { ok: false, error: 'pending_not_found' };
   }
 
-  let order = loadMaterielOrder(pending.order_id);
-  if (!order) {
-    order = createMaterielOrder({
+  let order = await loadMaterielOrderAsync(orderId);
+
+  if (!order && pending) {
+    order = await createMaterielOrderAsync({
       order_id: pending.order_id,
       customer: pending.customer,
       items: pending.items,
@@ -184,20 +205,30 @@ async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
     });
   }
 
-  order = markMaterielPaid(order.order_id, {
+  if (!order) {
+    return { ok: false, error: 'order_not_found' };
+  }
+
+  if (order.payment?.status === 'paid') {
+    await sendMaterielEmailIfNeeded(order);
+    return { ok: true, order_id: order.order_id, materiel: true, already_processed: true };
+  }
+
+  order = await markMaterielPaidAsync(order.order_id, {
     method: 'stripe',
     stripe_session_id: sessionId,
   });
 
-  removePendingCheckout(sessionId);
-
-  try {
-    const emailResult = await sendMaterielConfirmationEmail(order);
-    order.email_sent = emailResult.sent;
-    saveMaterielOrderRecord(order);
-  } catch (err) {
-    logError('Email matériel échoué', { error: err.message, order_id: order.order_id });
+  if (!order) {
+    return { ok: false, error: 'mark_paid_failed' };
   }
+
+  removePendingCheckout(sessionId);
+  await sendMaterielEmailIfNeeded(order);
+
+  syncMaterielClient(order).catch((err) =>
+    logError('Sync client matériel', { error: err.message, order_id: order.order_id })
+  );
 
   logInfo('Paiement matériel confirmé', { order_id: order.order_id });
   return {
@@ -210,7 +241,10 @@ async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
 
 async function fulfillStripeSession(sessionId, stripeSession = null, lifecycleMode = false) {
   const materielPending = loadPendingCheckout(sessionId);
-  if (materielPending?.order_type === 'materiel') {
+  if (
+    materielPending?.order_type === 'materiel' ||
+    stripeSession?.metadata?.order_type === 'materiel'
+  ) {
     return fulfillMaterielCheckout(sessionId, stripeSession);
   }
 
@@ -290,7 +324,10 @@ function createApp() {
         if (event.type === 'checkout.session.completed') {
           const session = event.data.object;
           const materielPending = loadPendingCheckout(session.id);
-          if (materielPending?.order_type === 'materiel') {
+          if (
+            materielPending?.order_type === 'materiel' ||
+            session.metadata?.order_type === 'materiel'
+          ) {
             await fulfillMaterielCheckout(session.id, session);
           } else {
             const pending =
@@ -424,13 +461,14 @@ function createApp() {
 
       if (!stripe) {
         if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true') {
-          const order = createMaterielOrder({
+          const order = await createMaterielOrderAsync({
             customer,
             items,
             total_cents,
             pickup_gym: customer.pickup_gym,
           });
-          markMaterielPaid(order.order_id, { method: 'demo' });
+          await markMaterielPaidAsync(order.order_id, { method: 'demo' });
+          await syncMaterielClient(order).catch(() => {});
           await sendMaterielConfirmationEmail(order).catch(() => {});
           return res.json({
             ok: true,
@@ -443,6 +481,17 @@ function createApp() {
       }
 
       const baseUrl = getCheckoutBaseUrl(req);
+      const order = await createMaterielOrderAsync({
+        order_id: orderId,
+        customer,
+        items,
+        total_cents,
+        pickup_gym: customer.pickup_gym,
+      });
+      await syncMaterielClient(order).catch((err) =>
+        logError('Sync client matériel (checkout)', { order_id: orderId, error: err.message })
+      );
+
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         payment_method_types: ['card'],
@@ -499,6 +548,137 @@ function createApp() {
       const { syncMaterielFromPrestaShop } = require('./lib/sync-prestashop-materiel');
       const result = await syncMaterielFromPrestaShop();
       res.json({ ok: true, ...result });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/admin/materiel', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const catalog = loadMaterielCatalog();
+      const products = getMaterielProducts({ activeOnly: false });
+      res.json({ ok: true, synced_at: catalog.synced_at, categories: getMaterielCategories(), products });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.put('/api/admin/materiel/:id', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { id } = req.params;
+      const patch = req.body || {};
+      const updated = updateMaterielProduct(id, patch);
+      const product = findMaterielProduct(id);
+      res.json({ ok: true, id, updated, product });
+    } catch (err) {
+      res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Create new custom materiel product (with optional base64 image)
+  app.post('/api/admin/materiel', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const fields = req.body || {};
+      if (!fields.name) return res.status(400).json({ ok: false, error: 'name requis' });
+      const product = addMaterielProduct(fields);
+      res.json({ ok: true, product });
+    } catch (err) {
+      res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Stats admin — ventes matériel + abonnements par mois
+  app.get('/api/admin/stats', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { from, to } = req.query; // format: YYYY-MM
+
+      function monthKey(dateStr) {
+        if (!dateStr) return null;
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return null;
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      }
+
+      function inRange(key) {
+        if (!key) return false;
+        if (from && key < from) return false;
+        if (to && key > to) return false;
+        return true;
+      }
+
+      // Materiel orders
+      const materielOrders = (await listAllMaterielOrdersAsync()).filter(
+        (o) => o.payment?.status === 'paid'
+      );
+      const materielByMonth = {};
+      for (const o of materielOrders) {
+        const k = monthKey(o.paid_at || o.created_at);
+        if (!k || !inRange(k)) continue;
+        if (!materielByMonth[k]) materielByMonth[k] = { month: k, orders: 0, revenue: 0 };
+        materielByMonth[k].orders += 1;
+        materielByMonth[k].revenue += o.total_cents || 0;
+      }
+
+      // Inscription orders
+      const allOrders = await listAllOrdersAsync();
+      const inscByMonth = {};
+      for (const o of allOrders) {
+        if (o.payment?.status !== 'paid') continue;
+        const k = monthKey(o.payment?.paid_at || o.updated_at || o.created_at);
+        if (!k || !inRange(k)) continue;
+        if (!inscByMonth[k]) inscByMonth[k] = { month: k, orders: 0, revenue: 0 };
+        inscByMonth[k].orders += 1;
+        inscByMonth[k].revenue += o.product_snapshot?.price_cents || 0;
+      }
+
+      const months = [...new Set([...Object.keys(materielByMonth), ...Object.keys(inscByMonth)])].sort();
+
+      const rows = months.map((m) => ({
+        month: m,
+        materiel_orders: materielByMonth[m]?.orders || 0,
+        materiel_revenue: materielByMonth[m]?.revenue || 0,
+        inscription_orders: inscByMonth[m]?.orders || 0,
+        inscription_revenue: inscByMonth[m]?.revenue || 0,
+      }));
+
+      const totals = rows.reduce(
+        (acc, r) => ({
+          materiel_orders: acc.materiel_orders + r.materiel_orders,
+          materiel_revenue: acc.materiel_revenue + r.materiel_revenue,
+          inscription_orders: acc.inscription_orders + r.inscription_orders,
+          inscription_revenue: acc.inscription_revenue + r.inscription_revenue,
+        }),
+        { materiel_orders: 0, materiel_revenue: 0, inscription_orders: 0, inscription_revenue: 0 }
+      );
+
+      res.json({ ok: true, rows, totals });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Public invoice download for materiel orders (token-gated by order_id)
+  app.get('/api/facture/materiel/:orderId', async (req, res) => {
+    try {
+      const order = await loadMaterielOrderAsync(req.params.orderId);
+      if (!order) return res.status(404).json({ ok: false, error: 'Commande introuvable' });
+      if (order.payment?.status !== 'paid') {
+        return res.status(403).json({ ok: false, error: 'Facture disponible uniquement après paiement' });
+      }
+      const result = await generateMaterielInvoicePdf(order);
+      if (!result?.filepath) {
+        return res.status(500).json({ ok: false, error: 'Génération PDF échouée' });
+      }
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="facture-${order.order_id}.pdf"`
+      );
+      require('fs').createReadStream(result.filepath).pipe(res);
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
@@ -652,6 +832,9 @@ function createApp() {
       if (errors.length) return res.status(400).json({ ok: false, errors });
 
       const order = await createDraftAsync({ product_id, product, customer_short });
+      await syncInscriptionClient(order).catch((err) =>
+        logError('Sync client inscription (draft)', { order_id: order.order_id, error: err.message })
+      );
       res.json({
         ok: true,
         order_id: order.order_id,
@@ -888,6 +1071,17 @@ function createApp() {
       const paymentErrors = validatePaymentForm(req.body, product);
       if (paymentErrors.length) return res.status(400).json({ ok: false, errors: paymentErrors });
 
+      const orderForSync = {
+        ...order,
+        customer_full: {
+          ...(order.customer_full || {}),
+          gym: req.body.gym || order.customer_full?.gym,
+        },
+      };
+      await syncInscriptionClient(orderForSync).catch((err) =>
+        logError('Sync client inscription (pay)', { order_id: order.order_id, error: err.message })
+      );
+
       const short = order.customer_short;
       const form = { ...short, ...req.body, order_id: order.order_id };
 
@@ -1036,11 +1230,11 @@ function createApp() {
       }
 
       const materielPending = loadPendingCheckout(sessionId);
-      if (materielPending?.order_type === 'materiel') {
+      if (
+        materielPending?.order_type === 'materiel' ||
+        session.metadata?.order_type === 'materiel'
+      ) {
         const out = await fulfillMaterielCheckout(sessionId, session);
-        if (!out.ok && out.error === 'pending_not_found') {
-          return res.json({ ok: true, already_processed: true, materiel: true });
-        }
         if (!out.ok) return res.status(500).json(out);
         return res.json({ ok: true, ...out });
       }
@@ -1094,9 +1288,12 @@ function createApp() {
     '/inscription': 'inscription.html',
     '/faq': 'faq.html',
     '/politique-confidentialite': 'legal/confidentialite.html',
+    '/cgv': 'cgv.html',
+    '/reglement-interieur': 'reglement-interieur.html',
     '/mon-inscription': 'mon-inscription.html',
     '/checkout.html': 'checkout.html',
     '/admin': 'admin/index.html',
+    '/admin/': 'admin/index.html',
     '/admin/login': 'admin/login.html',
     '/admin/contrats': 'admin/index.html',
     '/contrat': 'contrat.html',

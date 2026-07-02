@@ -59,18 +59,50 @@ function cleanNamePart(value) {
   return s;
 }
 
-function clientFieldsFromOrder(order) {
-  const short = order.customer_short || {};
-  const full = order.customer_full || {};
+function compactRow(row) {
+  const out = {};
+  for (const [key, value] of Object.entries(row)) {
+    if (value !== null && value !== undefined && value !== '') out[key] = value;
+  }
+  return out;
+}
 
-  return {
-    prenom: cleanNamePart(short.first_name),
-    nom: cleanNamePart(short.last_name),
-    email: normalizeEmail(short.email),
-    telephone: normalizeFrenchPhone(short.phone),
-    salle: gymToSalle(full.gym),
+function buildRowVariants(fields) {
+  const core = compactRow({
+    prenom: fields.prenom,
+    nom: fields.nom,
+    email: fields.email,
+    telephone: fields.telephone,
+    salle: fields.salle,
     source: 'boxplus',
-  };
+  });
+  const extended = compactRow({
+    ...core,
+    date_naissance: fields.date_naissance,
+    adresse: fields.adresse,
+    code_postal: fields.code_postal,
+    ville: fields.ville,
+    contact_urgence: fields.contact_urgence,
+    info_medicale: fields.info_medicale,
+    offre: fields.offre,
+  });
+  return [
+    extended,
+    core,
+    { ...core, source: 'manual' },
+  ];
+}
+
+function isSchemaOrConstraintError(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  return (
+    msg.includes('schema cache') ||
+    msg.includes('could not find') ||
+    msg.includes('column') ||
+    msg.includes('portet_clients_source_check') ||
+    msg.includes('check constraint') ||
+    msg.includes('23514')
+  );
 }
 
 async function findExistingClientId(sb, { email, telephone }) {
@@ -88,6 +120,71 @@ async function findExistingClientId(sb, { email, telephone }) {
   return null;
 }
 
+async function upsertPortetClient(sb, fields, { orderId, logLabel }) {
+  const now = new Date().toISOString();
+  const existingId = await findExistingClientId(sb, {
+    email: fields.email,
+    telephone: fields.telephone,
+  });
+
+  let lastError = null;
+  for (const variant of buildRowVariants(fields)) {
+    const row = { ...variant, updated_at: now };
+    try {
+      if (existingId) {
+        const { data, error } = await sb.from(TABLE).update(row).eq('id', existingId).select('id').single();
+        if (error) throw error;
+        logInfo(`Client gestion-manager mis à jour (${logLabel})`, {
+          order_id: orderId,
+          client_id: data.id,
+          source: row.source,
+        });
+        return { synced: true, client_id: data.id, updated: true, source: row.source };
+      }
+
+      const { data, error } = await sb
+        .from(TABLE)
+        .insert({ ...row, created_at: now })
+        .select('id')
+        .single();
+      if (error) throw error;
+      logInfo(`Client gestion-manager créé (${logLabel})`, {
+        order_id: orderId,
+        client_id: data.id,
+        source: row.source,
+      });
+      return { synced: true, client_id: data.id, created: true, source: row.source };
+    } catch (err) {
+      lastError = err;
+      if (!isSchemaOrConstraintError(err)) break;
+    }
+  }
+
+  throw lastError || new Error('Sync client impossible');
+}
+
+function clientFieldsFromOrder(order) {
+  const short = order.customer_short || {};
+  const full = order.customer_full || {};
+  const product = order.product_snapshot || {};
+
+  return {
+    prenom: cleanNamePart(short.first_name),
+    nom: cleanNamePart(short.last_name),
+    email: normalizeEmail(short.email),
+    telephone: normalizeFrenchPhone(short.phone),
+    salle: gymToSalle(full.gym),
+    date_naissance: full.birth_date || short.birthdate || null,
+    adresse: full.address || null,
+    code_postal: full.postal_code || null,
+    ville: full.city || null,
+    contact_urgence: full.emergency_contact || null,
+    info_medicale: full.medical_info || null,
+    offre: product.display_name || product.name || null,
+    source: 'boxplus',
+  };
+}
+
 async function upsertClientFromInscription(order) {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return { synced: false, reason: 'supabase_not_configured' };
@@ -99,41 +196,47 @@ async function upsertClientFromInscription(order) {
     return { synced: false, reason: 'no_contact' };
   }
 
-  const sb = getSupabase();
-  const now = new Date().toISOString();
-  const row = {
-    prenom: fields.prenom,
-    nom: fields.nom,
-    email: fields.email,
-    telephone: fields.telephone,
-    salle: fields.salle,
-    source: 'boxplus',
-    updated_at: now,
-  };
-
   try {
-    const existingId = await findExistingClientId(sb, {
-      email: fields.email,
-      telephone: fields.telephone,
+    return await upsertPortetClient(getSupabase(), fields, {
+      orderId: order.order_id,
+      logLabel: 'inscription',
     });
-
-    if (existingId) {
-      const { data, error } = await sb.from(TABLE).update(row).eq('id', existingId).select('id').single();
-      if (error) throw error;
-      logInfo('Client gestion-manager mis à jour', { order_id: order.order_id, client_id: data.id });
-      return { synced: true, client_id: data.id, updated: true };
-    }
-
-    const { data, error } = await sb
-      .from(TABLE)
-      .insert({ ...row, created_at: now })
-      .select('id')
-      .single();
-    if (error) throw error;
-    logInfo('Client gestion-manager créé', { order_id: order.order_id, client_id: data.id });
-    return { synced: true, client_id: data.id, created: true };
   } catch (err) {
     logWarn('Sync client gestion-manager échouée', { order_id: order.order_id, error: err.message });
+    return { synced: false, reason: 'db_error', error: err.message };
+  }
+}
+
+function clientFieldsFromMaterielOrder(order) {
+  const c = order.customer || {};
+  return {
+    prenom: cleanNamePart(c.first_name),
+    nom: cleanNamePart(c.last_name),
+    email: normalizeEmail(c.email),
+    telephone: normalizeFrenchPhone(c.phone),
+    salle: gymToSalle(order.pickup_gym || c.pickup_gym || c.gym),
+    source: 'boxplus',
+    offre: 'Matériel',
+  };
+}
+
+async function upsertMaterielClient(order) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { synced: false, reason: 'supabase_not_configured' };
+  }
+
+  const fields = clientFieldsFromMaterielOrder(order);
+  if (!fields.email && !fields.telephone) {
+    return { synced: false, reason: 'no_contact' };
+  }
+
+  try {
+    return await upsertPortetClient(getSupabase(), fields, {
+      orderId: order.order_id,
+      logLabel: 'matériel',
+    });
+  } catch (err) {
+    logWarn('Sync client matériel échouée', { order_id: order.order_id, error: err.message });
     return { synced: false, reason: 'db_error', error: err.message };
   }
 }
@@ -141,4 +244,7 @@ async function upsertClientFromInscription(order) {
 module.exports = {
   clientFieldsFromOrder,
   upsertClientFromInscription,
+  upsertMaterielClient,
+  buildRowVariants,
+  isSchemaOrConstraintError,
 };

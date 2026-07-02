@@ -6,12 +6,14 @@ const path = require('path');
 const crypto = require('crypto');
 const { ROOT, ensureDir } = require('../../lib/utils');
 const { findMaterielVariant, loadMaterielCatalog, saveMaterielCatalog } = require('./merch');
-
-const ORDERS_DIR =
-  process.env.BOXPLUS_MATERIEL_ORDERS_DIR ||
-  (process.env.VERCEL
-    ? path.join('/tmp', 'boxplus-materiel-orders')
-    : path.join(ROOT, 'data', 'storefront', 'materiel-orders'));
+const {
+  ORDERS_DIR,
+  loadOrder,
+  loadOrderAsync,
+  saveOrder,
+  saveOrderAsync,
+  listAllOrdersAsync,
+} = require('./materiel-order-persistence');
 
 const PENDING_DIR =
   process.env.BOXPLUS_MATERIEL_PENDING_DIR ||
@@ -28,28 +30,8 @@ function generateOrderId() {
   return `MAT-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
 }
 
-function orderPath(orderId) {
-  return path.join(ORDERS_DIR, `${orderId}.json`);
-}
-
 function pendingPath(sessionId) {
   return path.join(PENDING_DIR, `${sessionId}.json`);
-}
-
-function saveOrder(order) {
-  ensureStores();
-  fs.writeFileSync(orderPath(order.order_id), JSON.stringify(order, null, 2), 'utf8');
-  return order;
-}
-
-function loadOrder(orderId) {
-  const file = orderPath(orderId);
-  if (!fs.existsSync(file)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return null;
-  }
 }
 
 function savePendingCheckout(sessionId, payload) {
@@ -161,8 +143,8 @@ function decrementStock(items) {
   if (changed) saveMaterielCatalog(catalog);
 }
 
-function createMaterielOrder({ customer, items, total_cents, pickup_gym, order_id }) {
-  const order = {
+function buildMaterielOrder({ customer, items, total_cents, pickup_gym, order_id }) {
+  return {
     order_id: order_id || generateOrderId(),
     order_type: 'materiel',
     created_at: new Date().toISOString(),
@@ -173,7 +155,17 @@ function createMaterielOrder({ customer, items, total_cents, pickup_gym, order_i
     payment: { status: 'pending', method: null },
     email_sent: false,
   };
+}
+
+function createMaterielOrder(params) {
+  const order = buildMaterielOrder(params);
   saveOrder(order);
+  return order;
+}
+
+async function createMaterielOrderAsync(params) {
+  const order = buildMaterielOrder(params);
+  await saveOrderAsync(order);
   return order;
 }
 
@@ -187,16 +179,59 @@ function markMaterielPaid(orderId, paymentMeta = {}) {
   return order;
 }
 
+async function markMaterielPaidAsync(orderId, paymentMeta = {}) {
+  const order = await loadOrderAsync(orderId);
+  if (!order) return null;
+  if (order.payment?.status !== 'paid') {
+    order.payment = { status: 'paid', ...paymentMeta };
+    order.paid_at = new Date().toISOString();
+    decrementStock(order.items);
+  } else {
+    order.payment = { ...order.payment, ...paymentMeta };
+  }
+  await saveOrderAsync(order);
+  return order;
+}
+
+function listAllMaterielOrders() {
+  if (!fs.existsSync(ORDERS_DIR)) return [];
+  try {
+    return fs
+      .readdirSync(ORDERS_DIR)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => {
+        try {
+          return JSON.parse(fs.readFileSync(path.join(ORDERS_DIR, f), 'utf8'));
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+async function listAllMaterielOrdersAsync() {
+  return listAllOrdersAsync();
+}
+
 module.exports = {
   validateCartLines,
   validateCustomerForm,
   buildStripeLineItems,
   createMaterielOrder,
+  createMaterielOrderAsync,
   markMaterielPaid,
+  markMaterielPaidAsync,
   savePendingCheckout,
   loadPendingCheckout,
   removePendingCheckout,
+  listAllMaterielOrders,
+  listAllMaterielOrdersAsync,
   loadOrder,
+  loadOrderAsync,
   saveOrder,
+  saveOrderAsync,
   ORDERS_DIR,
 };

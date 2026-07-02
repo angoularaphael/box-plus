@@ -5,6 +5,14 @@ const demo = params.get('demo');
 const productId = params.get('product') || '';
 const orderType = params.get('type') || '';
 
+function showInvoiceButton(orderId) {
+  const btn = document.getElementById('downloadInvoiceBtn');
+  if (btn && orderId) {
+    btn.href = `/api/facture/materiel/${encodeURIComponent(orderId)}`;
+    btn.style.display = '';
+  }
+}
+
 const successText = document.getElementById('successText');
 if (!successText) {
   /* legacy page */
@@ -21,9 +29,11 @@ if (!successText) {
     })
       .then((r) => r.json())
       .then((data) => {
+        const orderId = order || data.order_id || '';
         successText.textContent = data.ok
-          ? `Paiement confirmé — réf. ${order || data.order_id || ''}. Retirez votre matériel en salle.`
+          ? `Paiement confirmé — réf. ${orderId}. Retirez votre matériel en salle.`
           : 'Paiement reçu — contactez la salle si la confirmation tarde.';
+        if (data.ok) showInvoiceButton(orderId);
       })
       .catch(() => {
         successText.textContent =
@@ -34,6 +44,7 @@ if (!successText) {
       order
         ? `Commande ${order} confirmée — retrait en salle.`
         : 'Commande matériel confirmée — retrait en salle.';
+    if (order) showInvoiceButton(order);
   }
 } else if (demo) {
   successText.textContent = 'Commande enregistrée — traitement Deciplus automatique.';
