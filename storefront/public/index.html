@@ -7,7 +7,7 @@
   <meta name="description" content="Rejoignez Boxing Center — club accessible aux débutants, 5 salles, encadrement professionnel. Abonnements, séance d'essai, coachings." />
   <script src="js/boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="css/boutique.css" />
   <link rel="stylesheet" href="css/components.css" />
 </head>
@@ -15,72 +15,153 @@
   <div id="site-header"></div>
 
   <main>
-    <section class="hero-home">
-      <div class="hero-home-inner">
-        <div>
-          <span class="hero-badge">Club accessible à tous</span>
-          <h1>Rejoignez Boxing Center</h1>
-          <p class="lead">Boxe, remise en forme et confiance — encadré par des coachs professionnels. Pas besoin d'expérience, ambiance bienveillante et motivante.</p>
-          <div class="hero-actions">
-            <a href="/abonnements" class="btn">Choisir mon abonnement</a>
-            <a href="/seance-essai" class="btn secondary hero-btn-outline">Réserver ma séance d'essai</a>
+    <section class="hero">
+      <div class="hero__inner">
+        <div class="hero__content" data-reveal-group>
+          <span class="hero__eyebrow eyebrow" data-reveal>Boutique officielle · 5 salles à Toulouse</span>
+          <h1 class="hero__title">
+            <span data-reveal>La boxe,</span>
+            <span data-reveal>pour <span class="accent">tout le monde</span></span>
+          </h1>
+          <p class="hero__lead" data-reveal>Abonnements, séance d'essai, coachings et matériel — encadrés par
+            des coachs professionnels. Débutant ou confirmé, femme ou homme, trouvez exactement ce qu'il
+            vous faut.</p>
+          <div class="hero__cta" data-reveal>
+            <a href="/abonnements" class="btn btn--lg" data-magnetic="0.25">Choisir mon abonnement</a>
+            <a href="/seance-essai" class="btn secondary btn--lg">Séance d'essai · 10 €</a>
           </div>
+          <ul class="hero__trust" data-reveal>
+            <li><strong>5</strong> salles à Toulouse</li>
+            <li><strong>8</strong> disciplines</li>
+            <li><strong>Tous niveaux</strong> · débutants bienvenus</li>
+          </ul>
         </div>
-        <div class="hero-visual" aria-hidden="true">
-          <div class="hero-visual-frame">
-            <img src="assets/logo-brand-white.svg" alt="" class="hero-visual-logo" width="200" height="48" />
-            <p class="hero-visual-title">Entraînement encadré</p>
-            <p class="hero-visual-sub">Tous niveaux · 5 salles · Toulouse</p>
+        <div class="hero__media" data-reveal>
+          <img class="hero__img" src="img/bc/disc/boxing-training.webp"
+               alt="Entraînement de boxe encadré au Boxing Center" width="560" height="672" />
+          <div class="hero__chip">
+            <span>
+              <span class="hero__chip-k">Séance d'essai</span>
+              <span class="hero__chip-v">10 €</span>
+            </span>
+            <a href="/seance-essai" class="hero__chip-cta">Réserver →</a>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="section">
+    <section class="section quickshop" aria-label="Catégories de la boutique">
+      <div class="quickshop__grid" data-reveal-group>
+        <a class="qtile" href="/abonnements" data-reveal>
+          <img src="img/bc/disc/boxe-anglaise.webp" alt="" loading="lazy" />
+          <span class="qtile__arrow" aria-hidden="true">↗</span>
+          <div class="qtile__label"><h3>Abonnements</h3><p>3, 6, 12 mois · sans engagement</p></div>
+        </a>
+        <a class="qtile" href="/seance-essai" data-reveal>
+          <img src="img/bc/disc/lady.webp" alt="" loading="lazy" />
+          <span class="qtile__arrow" aria-hidden="true">↗</span>
+          <div class="qtile__label"><h3>Séance d'essai</h3><p>Découvrez le club · 10 €</p></div>
+        </a>
+        <a class="qtile" href="/coachings" data-reveal>
+          <img src="img/bc/disc/mma.webp" alt="" loading="lazy" />
+          <span class="qtile__arrow" aria-hidden="true">↗</span>
+          <div class="qtile__label"><h3>Coachings</h3><p>Cours particuliers · packs 1 à 10</p></div>
+        </a>
+        <a class="qtile" href="/materiel" data-reveal>
+          <img src="img/bc/disc/cross.webp" alt="" loading="lazy" />
+          <span class="qtile__arrow" aria-hidden="true">↗</span>
+          <div class="qtile__label"><h3>Matériel</h3><p>Gants, protections, textile club</p></div>
+        </a>
+      </div>
+    </section>
+
+    <section class="trustbar">
+      <div class="trustbar__row">
+        <span class="trustbar__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg> Paiement 100&nbsp;% sécurisé</span>
+        <span class="trustbar__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg> Accès aux 5 salles</span>
+        <span class="trustbar__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg> Sans engagement possible</span>
+        <span class="trustbar__item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="9" r="5"/><path d="M9 13l-1.5 8L12 18l4.5 3L15 13"/></svg> Coachs diplômés</span>
+      </div>
+    </section>
+
+    <section class="section" id="offres">
       <div class="section-head">
-        <h2>Nos offres à la une</h2>
-        <p>3 formules sélectionnées pour bien démarrer — comparables et sans surprise.</p>
+        <span class="kicker">Les indispensables</span>
+        <h2>Trouve ta formule</h2>
+        <p>3 offres sélectionnées pour bien démarrer — claires, comparables, sans surprise.</p>
       </div>
       <div id="featuredOffers"></div>
     </section>
 
-    <section class="section section-alt">
-      <div class="section-head">
-        <h2>Pourquoi choisir Boxing Center ?</h2>
+    <section class="disciplines">
+      <div class="section">
+        <div class="section-head">
+          <span class="kicker">8 disciplines</span>
+          <h2>Choisis ton sport</h2>
+          <p>De la boxe anglaise au MMA, du cross training au Boxing Lady — un même abonnement, toutes les disciplines, tous les niveaux.</p>
+        </div>
+        <div class="disc-grid" data-reveal-group>
+          <a class="disc-tile" href="/abonnements" data-reveal><img src="img/bc/disc/boxe-anglaise.webp" alt="Boxe anglaise" loading="lazy"><span class="disc-tile__name">Boxe anglaise</span></a>
+          <a class="disc-tile" href="/abonnements" data-reveal><img src="img/bc/disc/muay-thai.webp" alt="Boxe thaï" loading="lazy"><span class="disc-tile__name">Boxe thaï</span></a>
+          <a class="disc-tile" href="/abonnements" data-reveal><img src="img/bc/disc/kick.webp" alt="Kickboxing" loading="lazy"><span class="disc-tile__name">Kickboxing</span></a>
+          <a class="disc-tile" href="/abonnements" data-reveal><img src="img/bc/disc/mma.webp" alt="MMA" loading="lazy"><span class="disc-tile__name">MMA</span></a>
+          <a class="disc-tile" href="/abonnements" data-reveal><img src="img/bc/disc/cross.webp" alt="Cross training" loading="lazy"><span class="disc-tile__name">Cross training</span></a>
+          <a class="disc-tile" href="/abonnements" data-reveal><img src="img/bc/disc/lady.webp" alt="Boxing Lady" loading="lazy"><span class="disc-tile__name">Boxing Lady</span></a>
+          <a class="disc-tile" href="/abonnements#enfants" data-reveal><img src="img/bc/disc/educative.webp" alt="Boxe éducative" loading="lazy"><span class="disc-tile__name">Boxe éducative</span></a>
+          <a class="disc-tile" href="/abonnements" data-reveal><img src="img/bc/disc/boxing-training.webp" alt="Fitness boxing" loading="lazy"><span class="disc-tile__name">Fitness boxing</span></a>
+        </div>
       </div>
-      <div class="reassurance-strip">
-        <div class="reassurance-item">
-          <div class="reassurance-icon"><span>01</span></div>
-          <h4>Accessible débutants</h4>
-          <p>Aucune expérience requise pour commencer</p>
+    </section>
+
+    <section class="section section-alt" id="gearSection">
+      <div class="section-head">
+        <span class="kicker">L'équipement</span>
+        <h2>Le matériel essentiel</h2>
+        <p>Gants, protections, textile club — l'indispensable pour bien s'équiper. Commande en ligne, retrait en salle.</p>
+      </div>
+      <div class="gear-strip" id="featuredGear"></div>
+      <div class="section-cta"><a href="/materiel" class="btn secondary">Voir tout le matériel</a></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <span class="kicker">Pourquoi nous</span>
+        <h2>Un club fait pour progresser</h2>
+      </div>
+      <div class="reassurance-strip" data-reveal-group>
+        <div class="reassurance-item" data-reveal>
+          <div class="reassurance-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.4"/><path d="M2.5 20c0-3.3 2.9-6 6.5-6s6.5 2.7 6.5 6"/><path d="M19 7v6M16 10h6"/></svg></div>
+          <h4>Accessible aux débutants</h4>
+          <p>Aucune expérience requise — on vous accompagne dès le premier cours.</p>
         </div>
-        <div class="reassurance-item">
-          <div class="reassurance-icon"><span>02</span></div>
-          <h4>5 salles</h4>
-          <p>Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet</p>
+        <div class="reassurance-item" data-reveal>
+          <div class="reassurance-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s7-6 7-12a7 7 0 10-14 0c0 6 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+          <h4>5 salles à Toulouse</h4>
+          <p>Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet.</p>
         </div>
-        <div class="reassurance-item">
-          <div class="reassurance-icon"><span>03</span></div>
-          <h4>Coachs professionnels</h4>
-          <p>Encadrement adapté à chaque niveau</p>
+        <div class="reassurance-item" data-reveal>
+          <div class="reassurance-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8.5" r="5"/><path d="M8.5 13l-1.5 8L12 18l5 3-1.5-8"/></svg></div>
+          <h4>Coachs diplômés</h4>
+          <p>Un encadrement professionnel, adapté à chaque niveau.</p>
         </div>
-        <div class="reassurance-item">
-          <div class="reassurance-icon"><span>04</span></div>
-          <h4>Disciplines variées</h4>
-          <p>Boxe anglaise, pieds-poings, remise en forme</p>
+        <div class="reassurance-item" data-reveal>
+          <div class="reassurance-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 13l9 5 9-5"/></svg></div>
+          <h4>8 disciplines</h4>
+          <p>Boxe anglaise, thaï, MMA, cross training, Boxing Lady…</p>
         </div>
-        <div class="reassurance-item">
-          <div class="reassurance-icon"><span>05</span></div>
-          <h4>Ambiance structurée</h4>
-          <p>Progression, loisir, sans pression compétitive</p>
+        <div class="reassurance-item" data-reveal>
+          <div class="reassurance-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20s-7-4.5-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.5-7 10-7 10z"/></svg></div>
+          <h4>Ambiance bienveillante</h4>
+          <p>On progresse ensemble, sans pression compétitive.</p>
         </div>
       </div>
     </section>
 
     <section class="section">
       <div class="section-head">
-        <h2>Quel abonnement choisir ?</h2>
-        <p>Trouvez la formule qui vous correspond en un clic.</p>
+        <span class="kicker">Aide au choix</span>
+        <h2>Par où commencer ?</h2>
+        <p>Dites-nous votre objectif — on vous oriente vers la bonne formule en un clic.</p>
       </div>
       <div class="decision-grid">
         <a href="/seance-essai" class="decision-card">
@@ -108,26 +189,28 @@
 
     <section class="section section-alt" id="testimonialsSection">
       <div class="section-head">
-        <h2>Ils ont rejoint Boxing Center</h2>
-        <p>Témoignages de nos adhérents — débutants comme confirmés.</p>
+        <span class="kicker">Témoignages</span>
+        <h2>Ils ont franchi la porte</h2>
+        <p>Débutants comme confirmés — ce qu'en disent nos adhérents.</p>
       </div>
       <div class="testimonials-grid" id="testimonialsGrid"></div>
     </section>
 
     <section class="section" id="sallesSection">
       <div class="section-head">
-        <h2>Nos 5 salles</h2>
-        <p>Un même abonnement, plusieurs centres en région toulousaine.</p>
+        <span class="kicker">Le réseau</span>
+        <h2>5 salles à Toulouse</h2>
+        <p>Un même abonnement, cinq centres en région toulousaine — entraînez-vous où vous voulez.</p>
       </div>
       <div class="gyms-grid" id="gymsGrid"></div>
     </section>
 
     <section class="cta-band">
-      <h2>Prêt à commencer ?</h2>
+      <h2>Prêt à monter sur le ring ?</h2>
       <p>Rejoignez un club où l'on progresse sereinement, quel que soit votre niveau.</p>
       <div class="hero-actions">
-        <a href="/abonnements" class="btn">Voir les abonnements</a>
-        <a href="/seance-essai" class="btn white">Réserver ma séance d'essai</a>
+        <a href="/abonnements" class="btn">Choisir mon abonnement</a>
+        <a href="/seance-essai" class="btn white">Séance d'essai · 10 €</a>
       </div>
     </section>
   </main>
@@ -135,9 +218,11 @@
   <div id="site-footer"></div>
 
   <script src="js/layout.js"></script>
+  <script src="js/motion.js"></script>
   <script src="js/tracking.js" defer></script>
   <script src="js/offers.js"></script>
   <script src="js/faq.js"></script>
   <script src="js/home.js"></script>
+  <script src="js/home-gear.js"></script>
 </body>
 </html>

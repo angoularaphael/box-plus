@@ -1,37 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap');
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bc-navy: #0B1F3A;
-  --bc-navy-light: #152d4f;
+  /* ── Boxing Center brand (official) ── */
+  --bc-navy: #20254B;
+  --bc-navy-light: #2c3360;
+  --bc-navy-deep: #0C1829;
+  --bc-black: #080808;
+  --bc-bronze: #6D3111;
+  --bc-gold: #C8902F;
+  --bc-gold-soft: rgba(200, 144, 47, 0.14);
+  --bc-red: #E8001C;
+  --bc-red-hover: #c5001a;
+
   --bc-bg: #F4F5F7;
   --bc-card: #FFFFFF;
-  --bc-border: #E2E5EA;
-  --bc-text: #1A1A2E;
+  --bc-border: #E4E7ED;
+  --bc-text: #161A2E;
   --bc-muted: #5C6370;
-  --bc-cta: #2EC4C6;
-  --bc-cta-hover: #25a8aa;
-  --bc-accent: #E30613;
+
+  /* semantic */
+  --bc-cta: var(--bc-red);
+  --bc-cta-hover: var(--bc-red-hover);
+  --bc-accent: var(--bc-red);
   --bc-success: #16a34a;
   --bc-error: #dc2626;
-  --bc-warning: #d97706;
-  --max: 1140px;
+  --bc-warning: #b45309;
+
+  /* motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --t-fast: 0.25s;
+  --t-med: 0.5s;
+  --t-slow: 0.9s;
+
+  /* type */
+  --font-display: 'Barlow Condensed', 'Oswald', 'Arial Narrow', system-ui, sans-serif;
+  --font-body: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* layout */
+  --max: 1180px;
+  --wide: 1320px;
   --radius: 12px;
-  --shadow: 0 4px 24px rgba(11, 31, 58, 0.08);
+  --radius-lg: 18px;
+  --section-pad: clamp(64px, 9vw, 124px);
+  --shadow: 0 4px 24px rgba(22, 26, 46, 0.08);
+  --shadow-lg: 0 18px 50px -12px rgba(22, 26, 46, 0.22);
 }
 
 html { scroll-behavior: smooth; }
 
 body {
-  font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
   background: var(--bc-bg);
   color: var(--bc-text);
   line-height: 1.6;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  -webkit-font-smoothing: antialiased;
 }
 
 a { color: inherit; text-decoration: none; }
+
+h1, h2, .display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.02;
+}
+
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
 
 main { flex: 1; }
 
@@ -121,11 +161,12 @@ main { flex: 1; }
 .nav-cta {
   margin-top: 8px;
   background: var(--bc-cta) !important;
-  color: var(--bc-navy) !important;
+  color: #fff !important;
   text-align: center;
+  white-space: nowrap;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   .nav-toggle { display: none; }
   .topbar-inner { position: relative; }
   .main-nav {
@@ -149,21 +190,33 @@ main { flex: 1; }
 
 .section-head {
   text-align: center;
-  margin-bottom: 36px;
+  margin-bottom: 42px;
+}
+
+.section-head .kicker {
+  display: inline-block;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--bc-red); margin-bottom: 14px;
 }
 
 .section-head h2 {
-  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-size: clamp(2rem, 5vw, 3.3rem);
+  text-transform: uppercase;
   color: var(--bc-navy);
-  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+  line-height: 0.98;
+  margin-bottom: 12px;
 }
 
 .section-head p {
   color: var(--bc-muted);
-  max-width: 560px;
+  max-width: 580px;
   margin: 0 auto;
   font-size: 15px;
 }
+
+.section-head.left { text-align: left; }
+.section-head.left p { margin: 0; }
 
 .section-alt { background: var(--bc-card); }
 
@@ -218,19 +271,20 @@ footer.site-footer {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 14px 28px;
+  padding: 15px 30px;
   background: var(--bc-cta);
-  color: var(--bc-navy);
+  color: #fff;
   font-weight: 700;
   border: none;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 15px;
-  transition: background 0.15s, transform 0.15s;
+  letter-spacing: 0.01em;
+  transition: background var(--t-fast) var(--ease-out), transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out);
   text-decoration: none;
 }
 
-.btn:hover { background: var(--bc-cta-hover); transform: translateY(-1px); }
+.btn:hover { background: var(--bc-cta-hover); transform: translateY(-2px); box-shadow: 0 14px 26px -12px rgba(232, 0, 28, 0.55); }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .btn.secondary {
@@ -275,8 +329,9 @@ input, select, textarea {
 }
 
 input:focus, select:focus, textarea:focus {
-  outline: 2px solid rgba(46, 196, 198, 0.4);
-  border-color: var(--bc-cta);
+  outline: 2px solid rgba(32, 37, 75, 0.35);
+  outline-offset: 1px;
+  border-color: var(--bc-navy);
 }
 
 .form-grid {
@@ -300,8 +355,8 @@ input:focus, select:focus, textarea:focus {
   padding: 14px 16px;
   border-radius: 8px;
   font-size: 13px;
-  background: rgba(46, 196, 198, 0.1);
-  border: 1px solid rgba(46, 196, 198, 0.3);
+  background: var(--bc-gold-soft);
+  border: 1px solid rgba(200, 144, 47, 0.3);
   color: var(--bc-muted);
 }
 
