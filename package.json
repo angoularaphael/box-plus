@@ -4,6 +4,7 @@
   "private": true,
   "description": "Analyse et automatisation Deciplus pour Boxing Center (PrestaShop → Deciplus)",
   "scripts": {
+    "dev": "node storefront/server.js",
     "analyze:record": "node analyzer/record-session.js",
     "analyze:scenario": "node analyzer/run-scenario.js",
     "analyze:report": "node analyzer/generate-report.js",
