@@ -19,7 +19,7 @@
         .map(
           (t) => `
         <div class="testimonial-card">
-          <div class="testimonial-rating">Recommandé</div>
+          <div class="testimonial-rating" aria-label="Note 5 sur 5">★★★★★</div>
           <p class="testimonial-text">« ${t.text} »</p>
           <div class="testimonial-author">${t.author}</div>
           <div class="testimonial-meta">${t.meta || ''}</div>
@@ -32,21 +32,25 @@
   }
 
   const gyms = [
-    { name: 'Minimes', desc: 'Cours collectifs, accueil débutants' },
-    { name: 'Ramonville', desc: 'Ambiance conviviale, tous niveaux' },
-    { name: 'États-Unis', desc: 'Large choix de disciplines' },
-    { name: 'Saint-Cyprien', desc: 'Centre historique du club' },
-    { name: 'Portet', desc: 'Encadrement personnalisé' },
+    { name: 'Minimes', desc: 'Cours collectifs · accueil débutants', img: 'img/bc/gym/gym-01.jpg' },
+    { name: 'Ramonville', desc: 'Ambiance conviviale · tous niveaux', img: 'img/bc/gym/gym-06.jpg' },
+    { name: 'États-Unis', desc: 'Large choix de disciplines', img: 'img/bc/gym/gym-11.jpg' },
+    { name: 'Saint-Cyprien', desc: 'Centre historique du club', img: 'img/bc/gym/gym-16.jpg' },
+    { name: 'Portet', desc: 'Crosstraining & Hyrox', img: 'img/bc/gym/portet-exterior.jpg' },
   ];
 
   if (gymsEl) {
+    const gymHref = window.BCPaths?.link('/abonnements') || '/abonnements';
     gymsEl.innerHTML = gyms
       .map(
         (g) => `
-      <div class="gym-card">
-        <h4>${g.name}</h4>
-        <p>${g.desc}</p>
-      </div>`
+      <a class="gym-card" href="${gymHref}">
+        <img src="${g.img}" alt="Boxing Center ${g.name}" loading="lazy" />
+        <div class="gym-card__body">
+          <h4>${g.name}</h4>
+          <p>${g.desc}</p>
+        </div>
+      </a>`
       )
       .join('');
   }

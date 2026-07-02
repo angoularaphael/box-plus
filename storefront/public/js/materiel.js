@@ -48,6 +48,7 @@
       <article class="materiel-card">
         <a href="${L('/materiel/produit')}?id=${encodeURIComponent(p.id)}" class="materiel-img-link">${img}</a>
         <div class="materiel-body">
+          <span class="materiel-cat">${p.category_label || p.category || ''}</span>
           <h4><a href="${L('/materiel/produit')}?id=${encodeURIComponent(p.id)}">${p.name}</a></h4>
           <div class="materiel-price">${p.price_label}</div>
           <div class="${stock.cls}">${stock.label}</div>
