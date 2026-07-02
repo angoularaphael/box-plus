@@ -6,7 +6,8 @@
   <title>Séance d'essai — Boxing Center</title>
   <meta name="description" content="Réservez votre séance d'essai à 10 € — découvrez Boxing Center sans engagement. Débutants bienvenus." />
   <script src="js/boot.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="css/boutique.css" />
   <link rel="stylesheet" href="css/components.css" />
 </head>
@@ -14,10 +15,11 @@
   <div id="site-header"></div>
 
   <div class="page-hero">
-    <div class="page-hero-inner">
-      <div class="breadcrumb"><a href="/">Accueil</a> / Séance d'essai</div>
-      <h1>Votre séance d'essai à 10 €</h1>
-      <p>Découvrez Boxing Center en toute sérénité — pas besoin d'expérience, ambiance accueillante et encadrée.</p>
+    <div class="page-hero-inner" data-reveal-group>
+      <div class="breadcrumb" data-reveal><a href="/">Accueil</a> / Séance d'essai</div>
+      <span class="eyebrow" style="color:var(--bc-gold);display:block;margin-bottom:10px" data-reveal>Sans engagement</span>
+      <h1 data-reveal>Votre séance d'essai à 10 €</h1>
+      <p data-reveal>Découvrez Boxing Center en toute sérénité — pas besoin d'expérience, ambiance accueillante et encadrée.</p>
     </div>
   </div>
 
@@ -46,21 +48,27 @@
       <div class="section-head">
         <h2>À qui s'adresse la séance d'essai ?</h2>
       </div>
-      <div class="reassurance-strip">
-        <div class="reassurance-item">
-          <div class="reassurance-icon"><span>01</span></div>
-          <h4>Débutants</h4>
-          <p>Jamais fait de boxe ? C'est fait pour vous.</p>
+      <div class="aud-grid" data-reveal-group>
+        <div class="aud-card" data-reveal>
+          <div class="aud-card__media"><img src="img/bc/disc/boxing-training.webp" alt="Débutants en cours de boxe encadrés" loading="lazy" /></div>
+          <div class="aud-card__body">
+            <h4>Débutants</h4>
+            <p>Jamais mis un gant ? C'est exactement pour vous — on vous guide dès la première minute.</p>
+          </div>
         </div>
-        <div class="reassurance-item">
-          <div class="reassurance-icon"><span>02</span></div>
-          <h4>Femmes & hommes</h4>
-          <p>Tous les cours sont mixtes et encadrés.</p>
+        <div class="aud-card" data-reveal>
+          <div class="aud-card__media"><img src="img/bc/disc/lady.webp" alt="Cours de boxe pour femmes au Boxing Center" loading="lazy" /></div>
+          <div class="aud-card__body">
+            <h4>Femmes &amp; hommes</h4>
+            <p>Cours mixtes et créneaux Lady Punch — la boxe sans cliché, pour la forme comme pour la confiance.</p>
+          </div>
         </div>
-        <div class="reassurance-item">
-          <div class="reassurance-icon"><span>03</span></div>
-          <h4>Tous niveaux</h4>
-          <p>Pas besoin d'être en forme pour commencer.</p>
+        <div class="aud-card" data-reveal>
+          <div class="aud-card__media"><img src="img/bc/disc/cross.webp" alt="Entraînement tous niveaux" loading="lazy" /></div>
+          <div class="aud-card__body">
+            <h4>Tous niveaux</h4>
+            <p>Pas besoin d'être en forme pour commencer — chaque séance s'adapte à votre rythme.</p>
+          </div>
         </div>
       </div>
       <div style="text-align:center;margin-top:32px">
@@ -76,6 +84,7 @@
 
   <div id="site-footer"></div>
   <script src="js/layout.js"></script>
+  <script src="js/motion.js"></script>
   <script src="js/faq.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
