@@ -5,30 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Politique de confidentialité — Boxing Center</title>
   <script src="../js/boot.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="css/boutique.css" />
   <link rel="stylesheet" href="css/components.css" />
 </head>
 <body>
   <div id="site-header"></div>
 
-  <main class="section" style="max-width:720px">
-    <h1 style="color:var(--bc-navy);margin-bottom:24px">Politique de confidentialité</h1>
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <div class="breadcrumb"><a href="/">Accueil</a> / Confidentialité</div>
+      <span class="eyebrow" style="color:var(--bc-gold);display:block;margin-bottom:10px">Vos données</span>
+      <h1>Politique de confidentialité</h1>
+      <p>Ce que nous collectons, pourquoi, et comment exercer vos droits (RGPD).</p>
+    </div>
+  </div>
 
-    <h2 style="font-size:1.1rem;margin:24px 0 12px;color:var(--bc-navy)">Responsable du traitement</h2>
-    <p style="color:var(--bc-muted);margin-bottom:16px">Boxing Center — www.boxingcenter.fr</p>
+  <main class="section legal-page">
+    <h2>Responsable du traitement</h2>
+    <p>Boxing Center — www.boxingcenter.fr</p>
 
-    <h2 style="font-size:1.1rem;margin:24px 0 12px;color:var(--bc-navy)">Données collectées</h2>
-    <p style="color:var(--bc-muted);margin-bottom:16px">Lors de votre inscription, nous collectons uniquement les données nécessaires : identité, coordonnées, date de naissance, salle principale et informations médicales optionnelles.</p>
+    <h2>Données collectées</h2>
+    <p>Lors de votre inscription, nous collectons uniquement les données nécessaires : identité, coordonnées, date de naissance, salle principale et informations médicales optionnelles.</p>
 
-    <h2 style="font-size:1.1rem;margin:24px 0 12px;color:var(--bc-navy)">Finalités</h2>
-    <p style="color:var(--bc-muted);margin-bottom:16px">Gestion de votre adhésion, transmission à notre logiciel de gestion (Deciplus), facturation et communication relative à votre inscription.</p>
+    <h2>Finalités</h2>
+    <p>Gestion de votre adhésion, transmission à notre logiciel de gestion (Deciplus), facturation et communication relative à votre inscription.</p>
 
-    <h2 style="font-size:1.1rem;margin:24px 0 12px;color:var(--bc-navy)">Conservation</h2>
-    <p style="color:var(--bc-muted);margin-bottom:16px">Les données sont conservées pendant la durée de votre adhésion et conformément aux obligations légales.</p>
+    <h2>Conservation</h2>
+    <p>Les données sont conservées pendant la durée de votre adhésion et conformément aux obligations légales.</p>
 
-    <h2 style="font-size:1.1rem;margin:24px 0 12px;color:var(--bc-navy)">Vos droits</h2>
-    <p style="color:var(--bc-muted);margin-bottom:16px">Vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Pour exercer vos droits :</p>
+    <h2>Vos droits</h2>
+    <p>Vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Pour exercer vos droits :</p>
 
     <form id="gdprForm" style="background:#fff;padding:24px;border-radius:12px;border:1px solid var(--bc-border)">
       <label for="gdpr_email">Votre email</label>
@@ -42,6 +50,7 @@
 
   <div id="site-footer"></div>
   <script src="js/layout.js"></script>
+  <script src="js/motion.js"></script>
   <script>
     document.getElementById('gdprForm').onsubmit = async (e) => {
       e.preventDefault();
