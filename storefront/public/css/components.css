@@ -606,6 +606,12 @@
   border: 1px solid var(--bc-border);
   border-radius: var(--radius);
   padding: 24px;
+  transition: transform 0.28s var(--ease-out), box-shadow 0.28s var(--ease-out);
+}
+
+.testimonial-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
 }
 
 .testimonial-head {
@@ -667,7 +673,9 @@
   position: relative; display: block; overflow: hidden;
   border-radius: var(--radius-lg); aspect-ratio: 4 / 5; min-height: 230px;
   color: #fff; box-shadow: var(--shadow);
+  transition: transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out);
 }
+.gym-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
 .gym-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s var(--ease-out); }
 .gym-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(12, 24, 41, 0.05) 30%, rgba(12, 24, 41, 0.9) 100%); }
 .gym-card:hover img { transform: scale(1.06); }
@@ -1605,7 +1613,8 @@ body:has(#adminPanel:not([hidden])) {
   max-width: var(--max); margin: 0 auto; display: flex; flex-wrap: wrap;
   justify-content: center; gap: 14px 40px; padding: 20px;
 }
-.trustbar__item { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--bc-navy); }
+.trustbar__item { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--bc-navy); transition: transform 0.25s var(--ease-out); }
+.trustbar__item:hover { transform: translateY(-2px); }
 .trustbar__item svg { width: 20px; height: 20px; color: var(--bc-red); flex-shrink: 0; }
 
 /* ── Disciplines dark band ── */
@@ -1721,4 +1730,32 @@ body:has(#adminPanel:not([hidden])) {
   .admin-search {
     width: 100% !important;
   }
+}
+
+/* ── Extra motion polish ── */
+.has-motion .disc-tile { transition: transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out); }
+.has-motion .disc-tile:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.has-motion .disc-tile.in img { animation: discZoom 0.9s var(--ease-out) both; }
+@keyframes discZoom { from { transform: scale(1.08); } to { transform: scale(1); } }
+
+.has-motion .offer-badge {
+  animation: badgePop 0.5s var(--ease-out) 0.35s both;
+}
+@keyframes badgePop {
+  from { opacity: 0; transform: translateX(-50%) scale(0.7); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+.has-motion .hover-lift:hover,
+.has-motion .testimonial-card:hover,
+.has-motion .decision-card:hover {
+  transform: translateY(-5px);
+}
+
+.has-motion .cta-band .btn {
+  transition: transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
+}
+.has-motion .cta-band .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(232, 0, 28, 0.25);
 }

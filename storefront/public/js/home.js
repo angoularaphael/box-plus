@@ -1,14 +1,27 @@
 (async function () {
   const featuredEl = document.getElementById('featuredOffers');
+  const offersSection = document.getElementById('offres');
   const testimonialsEl = document.getElementById('testimonialsGrid');
   const gymsEl = document.getElementById('gymsGrid');
 
   try {
     const res = await fetch(`${window.BCPaths?.link('/api/products') || '/api/products'}?featured=3`);
     const data = await res.json();
-    BCOffers.renderOfferGrid(data.products || [], featuredEl, { featured: true });
+    const products = data.products || [];
+
+    if (!products.length) {
+      if (offersSection) offersSection.hidden = true;
+    } else {
+      if (offersSection) offersSection.hidden = false;
+      BCOffers.renderOfferGrid(products, featuredEl, {
+        featuredIds: data.featured_home || [],
+        animate: true,
+      });
+    }
   } catch {
-    if (featuredEl) featuredEl.innerHTML = '<p style="text-align:center;color:var(--bc-muted)">Chargement des offres…</p>';
+    if (featuredEl) {
+      featuredEl.innerHTML = '<p style="text-align:center;color:var(--bc-muted)">Chargement des offres…</p>';
+    }
   }
 
   try {
@@ -22,11 +35,11 @@
           .slice(0, 2)
           .map((w) => w[0].toUpperCase())
           .join('');
-      testimonialsEl.innerHTML = items
+      testimonialsEl.innerHTML = `<div class="testimonials-grid" data-reveal-group>${items
         .map((t) => {
           const n = Math.max(1, Math.min(5, t.rating || 5));
           return `
-        <div class="testimonial-card">
+        <div class="testimonial-card" data-reveal>
           <div class="testimonial-head">
             <span class="testimonial-avatar" aria-hidden="true">${initials(t.author)}</span>
             <div>
@@ -38,7 +51,7 @@
           <p class="testimonial-text">« ${t.text} »</p>
         </div>`;
         })
-        .join('');
+        .join('')}</div>`;
     }
   } catch {
     /* optional */
@@ -54,10 +67,10 @@
 
   if (gymsEl) {
     const gymHref = window.BCPaths?.link('/abonnements') || '/abonnements';
-    gymsEl.innerHTML = gyms
+    gymsEl.innerHTML = `<div class="gyms-grid" data-reveal-group>${gyms
       .map(
         (g) => `
-      <a class="gym-card" href="${gymHref}">
+      <a class="gym-card" href="${gymHref}" data-reveal>
         <img src="${g.img}" alt="Boxing Center ${g.name}" loading="lazy" />
         <div class="gym-card__body">
           <h4>${g.name}</h4>
@@ -65,6 +78,8 @@
         </div>
       </a>`
       )
-      .join('');
+      .join('')}</div>`;
   }
+
+  if (window.BCMotion?.refresh) window.BCMotion.refresh();
 })();
