@@ -26,8 +26,14 @@
     return product.duration_label || '—';
   }
 
+  function isFeaturedOffer(product, opts = {}) {
+    if (product.featured_home) return true;
+    const ids = opts.featuredIds || [];
+    return ids.includes(product.id) || (product.legacy_id && ids.includes(product.legacy_id));
+  }
+
   function renderOfferCard(product, opts = {}) {
-    const featured = product.featured || opts.featured;
+    const featured = isFeaturedOffer(product, opts);
     const displayName = product.display_name || product.name;
     const price = product.marketing_price_label || product.stripe_price_label || product.price_label || '—';
     const benefits = product.benefits || [];
@@ -36,9 +42,10 @@
       : [];
 
     const list = benefits.length ? benefits : defaultBenefits;
+    const reveal = opts.animate ? ' data-reveal' : '';
 
     return `
-      <article class="offer-card ${featured ? 'featured' : ''}" data-id="${esc(product.id)}">
+      <article class="offer-card ${featured ? 'featured' : ''}" data-id="${esc(product.id)}"${reveal}>
         ${featured ? '<span class="offer-badge">Populaire</span>' : ''}
         ${product.badge ? `<span class="offer-tag">${esc(product.badge)}</span>` : ''}
         <h3>${esc(displayName)}</h3>
@@ -62,11 +69,12 @@
   function renderOfferGrid(products, container, opts = {}) {
     if (!container) return;
     if (!products.length) {
-      container.innerHTML = '<p style="color:var(--bc-muted);text-align:center">Aucune offre disponible pour le moment.</p>';
+      container.innerHTML = '';
       return;
     }
-    container.innerHTML = `<div class="products-grid">${products.map((p) => renderOfferCard(p, opts)).join('')}</div>`;
+    container.innerHTML = `<div class="products-grid" data-reveal-group>${products.map((p) => renderOfferCard(p, opts)).join('')}</div>`;
+    if (opts.animate && window.BCMotion?.refresh) window.BCMotion.refresh();
   }
 
-  window.BCOffers = { renderOfferCard, renderOfferGrid, esc };
+  window.BCOffers = { renderOfferCard, renderOfferGrid, esc, isFeaturedOffer };
 })();
