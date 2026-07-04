@@ -5,14 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Mon inscription — Boxing Center</title>
   <script src="js/boot.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="css/boutique.css" />
   <link rel="stylesheet" href="css/components.css" />
 </head>
 <body>
   <div id="site-header"></div>
-  <main class="section" style="max-width:560px">
-    <h1 style="color:var(--bc-navy);margin-bottom:16px">Statut de votre inscription</h1>
+  <div class="page-hero">
+    <div class="page-hero-inner" data-reveal-group>
+      <div class="breadcrumb" data-reveal><a href="/">Accueil</a> / Mon inscription</div>
+      <span class="eyebrow" style="color:var(--bc-gold);display:block;margin-bottom:10px" data-reveal>Suivi</span>
+      <h1 data-reveal>Votre inscription</h1>
+      <p data-reveal>Suivez l'avancement de votre dossier et téléchargez votre contrat.</p>
+    </div>
+  </div>
+  <main class="section" style="max-width:600px">
     <div id="statusBox"><p style="color:var(--bc-muted)">Chargement…</p></div>
   </main>
   <div id="site-footer"></div>
@@ -35,13 +43,23 @@
         box.innerHTML = '<p>Impossible de charger votre inscription.</p>';
         return;
       }
+      const PAY_LABELS = {
+        paid: ['Payé', 'ok'],
+        pending: ['En attente', 'warn'],
+        failed: ['Échec du paiement', 'err'],
+        refunded: ['Remboursé', 'warn'],
+        free: ['Offre gratuite', 'ok'],
+      };
+      const pay = PAY_LABELS[data.payment_status] || [data.payment_status || '—', 'warn'];
+      const step = Math.max(1, Math.min(6, Number(data.step) || 1));
       box.innerHTML = `
         <div class="form-panel">
-          <p><strong>Offre :</strong> ${data.product}</p>
-          <p><strong>Étape :</strong> ${data.step} / 6</p>
-          <p><strong>Paiement :</strong> ${data.payment_status}</p>
-          <p><strong>Transmis Deciplus :</strong> ${data.dispatched ? 'Oui' : 'En cours'}</p>
-          <button type="button" class="btn block" id="contractBtn" style="margin-top:16px">Télécharger le contrat</button>
+          <div class="status-row"><span>Offre</span><strong>${data.product}</strong></div>
+          <div class="status-row"><span>Avancement</span><strong>Étape ${step} / 6</strong></div>
+          <div class="status-progress" role="progressbar" aria-valuenow="${step}" aria-valuemin="1" aria-valuemax="6"><i style="width:${Math.round((step / 6) * 100)}%"></i></div>
+          <div class="status-row"><span>Paiement</span><span class="status-chip status-chip--${pay[1]}">${pay[0]}</span></div>
+          <div class="status-row"><span>Fiche membre Deciplus</span><span class="status-chip status-chip--${data.dispatched ? 'ok' : 'warn'}">${data.dispatched ? 'Transmise' : 'En cours'}</span></div>
+          <button type="button" class="btn block" id="contractBtn" style="margin-top:20px">Télécharger le contrat</button>
         </div>`;
       document.getElementById('contractBtn').onclick = () => {
         window.BCContract.openView(id, { token });

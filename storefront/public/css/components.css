@@ -594,6 +594,43 @@
 .success-next svg { width: 18px; height: 18px; color: var(--bc-gold); flex-shrink: 0; margin-top: 1px; }
 .success-next strong { color: var(--bc-navy); }
 
+/* mon-inscription status card */
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--bc-border);
+  font-size: 14px;
+}
+.status-row > span:first-child { color: var(--bc-muted); }
+.status-row strong { color: var(--bc-navy); text-align: right; }
+.status-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bc-bg);
+  margin: 14px 0 6px;
+  overflow: hidden;
+}
+.status-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--bc-navy), var(--bc-red));
+  transition: width 0.8s var(--ease-out);
+}
+.status-chip {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.status-chip--ok { background: rgba(22, 163, 74, 0.12); color: var(--bc-success); }
+.status-chip--warn { background: var(--bc-gold-soft); color: var(--bc-warning); }
+.status-chip--err { background: rgba(220, 38, 38, 0.1); color: var(--bc-error); }
+
 /* Testimonials */
 .testimonials-grid {
   display: grid;
