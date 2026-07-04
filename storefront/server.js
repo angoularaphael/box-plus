@@ -390,8 +390,10 @@ function createApp() {
       const featured = req.query.featured ? Number(req.query.featured) : null;
 
       if (featured) {
+        const merch = loadMerch();
         return res.json({
           synced_at: catalog.synced_at,
+          featured_home: merch.featured_home || [],
           products: getFeaturedProducts(featured),
         });
       }

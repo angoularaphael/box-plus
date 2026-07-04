@@ -195,6 +195,8 @@ function getEnrichedProducts(options = {}) {
 function getFeaturedProducts(limit = 3) {
   const merch = loadMerch();
   const ids = (merch.featured_home || []).filter(Boolean).slice(0, limit);
+  if (!ids.length) return [];
+
   const all = getEnrichedProducts({ activeOnly: true });
   const byId = new Map();
   for (const p of all) {
@@ -202,23 +204,11 @@ function getFeaturedProducts(limit = 3) {
     if (p.legacy_id) byId.set(p.legacy_id, p);
   }
 
-  let featured = ids.map((id) => byId.get(id)).filter(Boolean);
-
-  if (!featured.length) {
-    for (const p of all.filter((x) => x.featured)) {
-      if (featured.length >= limit) break;
-      if (!featured.find((f) => f.id === p.id)) featured.push(p);
-    }
-  }
-
-  if (!featured.length) {
-    featured = all.filter((p) => p.tab === 'abonnements' || p.tab === 'seance-essai').slice(0, limit);
-  }
-  if (!featured.length) {
-    featured = all.slice(0, limit);
-  }
-
-  return featured.slice(0, limit);
+  return ids
+    .map((id) => byId.get(id))
+    .filter(Boolean)
+    .slice(0, limit)
+    .map((p) => ({ ...p, featured_home: true }));
 }
 
 function findEnrichedProduct(productId) {

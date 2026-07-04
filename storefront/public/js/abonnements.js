@@ -13,7 +13,7 @@
     grid.innerHTML = '<p style="color:var(--bc-muted)">Chargement…</p>';
     const res = await fetch(`/api/products?tab=abonnements&subsection=${sub}`);
     const data = await res.json();
-    BCOffers.renderOfferGrid(data.products || [], grid);
+    BCOffers.renderOfferGrid(data.products || [], grid, { animate: true });
   }
 
   tabs.forEach((tab) => {

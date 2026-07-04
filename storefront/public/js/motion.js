@@ -1,12 +1,6 @@
 /**
  * Boxing Center — motion engine (vanilla, dependency-free).
  * Scroll reveals · sticky-header state · count-ups · ambient video · magnetic CTAs.
- *
- * Discipline (from the design language):
- *  - No-JS = everything visible (hidden state gated behind `.has-motion`).
- *  - Respects prefers-reduced-motion (no transforms, instant reveal).
- *  - 60fps: opacity/transform only, rAF-throttled.
- *  - Desktop-only micro-interactions via (pointer: fine).
  */
 (function () {
   'use strict';
@@ -16,12 +10,39 @@
   var fine = window.matchMedia('(pointer: fine)').matches;
   if (!reduce) root.classList.add('has-motion');
 
+  var revealObserver = null;
+
   function ready(fn) {
     if (document.readyState !== 'loading') fn();
     else document.addEventListener('DOMContentLoaded', fn);
   }
 
-  /* ---- sticky header: shadow when scrolled, hide on scroll-down, reveal on scroll-up ---- */
+  function observeReveals(els) {
+    if (!els.length) return;
+
+    if (reduce || !('IntersectionObserver' in window)) {
+      els.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+
+    if (!revealObserver) {
+      revealObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) {
+            e.target.classList.add('in');
+            revealObserver.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
+    }
+
+    els.forEach(function (el) {
+      if (el.classList.contains('in') || el.dataset.revealBound === '1') return;
+      el.dataset.revealBound = '1';
+      revealObserver.observe(el);
+    });
+  }
+
   function initHeader() {
     var topbar, last = 0;
     function apply() {
@@ -32,9 +53,9 @@
       if (document.querySelector('.main-nav.open') || y <= 200) {
         topbar.classList.remove('nav-hidden');
       } else if (y > last + 3) {
-        topbar.classList.add('nav-hidden');       // scrolling down → hide
+        topbar.classList.add('nav-hidden');
       } else if (y < last - 3) {
-        topbar.classList.remove('nav-hidden');     // scrolling up → reveal
+        topbar.classList.remove('nav-hidden');
       }
       last = y;
     }
@@ -42,46 +63,45 @@
     window.addEventListener('scroll', apply, { passive: true });
   }
 
-  /* ---- scroll reveals ---- */
   function initReveals() {
-    // auto-enrol common static blocks so the whole page breathes
     document.querySelectorAll('.section-head, .cta-band').forEach(function (el) {
       if (!el.hasAttribute('data-reveal')) el.setAttribute('data-reveal-auto', '');
     });
 
-    var els = document.querySelectorAll('[data-reveal], [data-reveal-auto]');
-    if (!els.length) return;
-
-    if (reduce || !('IntersectionObserver' in window)) {
-      els.forEach(function (el) { el.classList.add('in'); });
-      return;
-    }
-
-    // stagger children inside any [data-reveal-group]
     document.querySelectorAll('[data-reveal-group]').forEach(function (group) {
       group.querySelectorAll('[data-reveal]').forEach(function (el, i) {
-        el.style.transitionDelay = Math.min(i * 0.08, 0.6) + 's';
+        if (!el.style.transitionDelay) {
+          el.style.transitionDelay = Math.min(i * 0.08, 0.6) + 's';
+        }
       });
     });
 
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' });
-    els.forEach(function (el) { io.observe(el); });
+    observeReveals(document.querySelectorAll('[data-reveal], [data-reveal-auto]'));
 
-    // failsafe — never leave content hidden
     window.setTimeout(function () {
-      els.forEach(function (el) { el.classList.add('in'); });
+      document.querySelectorAll('[data-reveal], [data-reveal-auto]').forEach(function (el) {
+        el.classList.add('in');
+      });
     }, 2600);
   }
 
-  /* ---- count-up numbers ([data-count], optional [data-count-suffix]) ---- */
+  function refresh() {
+    document.querySelectorAll('[data-reveal-group]').forEach(function (group) {
+      group.querySelectorAll('[data-reveal]').forEach(function (el, i) {
+        if (!el.style.transitionDelay) {
+          el.style.transitionDelay = Math.min(i * 0.08, 0.6) + 's';
+        }
+      });
+    });
+    observeReveals(document.querySelectorAll('[data-reveal]:not(.in), [data-reveal-auto]:not(.in)'));
+  }
+
   function initCounts() {
     var els = document.querySelectorAll('[data-count]');
     if (!els.length) return;
     els.forEach(function (el) {
+      if (el.dataset.countBound === '1') return;
+      el.dataset.countBound = '1';
       var target = parseFloat(el.getAttribute('data-count')) || 0;
       var suffix = el.getAttribute('data-count-suffix') || '';
       if (reduce || !('IntersectionObserver' in window)) {
@@ -106,7 +126,6 @@
     });
   }
 
-  /* ---- ambient <video data-ambient>: play only while visible (perf/battery) ---- */
   function initAmbientVideo() {
     var vids = document.querySelectorAll('video[data-ambient]');
     if (!vids.length || !('IntersectionObserver' in window)) return;
@@ -120,10 +139,11 @@
     vids.forEach(function (v) { io.observe(v); });
   }
 
-  /* ---- magnetic CTAs (desktop, fine pointer, motion on) ---- */
   function initMagnetic() {
     if (!fine || reduce) return;
     document.querySelectorAll('[data-magnetic]').forEach(function (el) {
+      if (el.dataset.magneticBound === '1') return;
+      el.dataset.magneticBound = '1';
       var strength = parseFloat(el.getAttribute('data-magnetic')) || 0.3;
       el.addEventListener('pointermove', function (e) {
         var r = el.getBoundingClientRect();
@@ -135,11 +155,21 @@
     });
   }
 
+  function initHoverLift() {
+    if (reduce) return;
+    document.querySelectorAll('.decision-card, .testimonial-card, .gear-card').forEach(function (el) {
+      el.classList.add('hover-lift');
+    });
+  }
+
   ready(function () {
     initHeader();
     initReveals();
     initCounts();
     initAmbientVideo();
     initMagnetic();
+    initHoverLift();
   });
+
+  window.BCMotion = { refresh };
 })();
