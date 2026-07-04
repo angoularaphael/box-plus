@@ -6,7 +6,8 @@
   <title>FAQ — Boxing Center</title>
   <meta name="description" content="Questions fréquentes — débutants, formules, séance d'essai, prélèvement, salles Boxing Center." />
   <script src="js/boot.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="css/boutique.css" />
   <link rel="stylesheet" href="css/components.css" />
 </head>
@@ -14,9 +15,11 @@
   <div id="site-header"></div>
 
   <div class="page-hero">
-    <div class="page-hero-inner">
-      <h1>Questions fréquentes</h1>
-      <p>Tout ce que vous devez savoir avant de rejoindre Boxing Center.</p>
+    <div class="page-hero-inner" data-reveal-group>
+      <div class="breadcrumb" data-reveal><a href="/">Accueil</a> / FAQ</div>
+      <span class="eyebrow" style="color:var(--bc-gold);display:block;margin-bottom:10px" data-reveal>On vous répond</span>
+      <h1 data-reveal>Questions fréquentes</h1>
+      <p data-reveal>Tout ce que vous devez savoir avant de rejoindre Boxing Center.</p>
     </div>
   </div>
 
@@ -32,6 +35,7 @@
 
   <div id="site-footer"></div>
   <script src="js/layout.js"></script>
+  <script src="js/motion.js"></script>
   <script src="js/faq.js"></script>
   <script>document.addEventListener('DOMContentLoaded', () => BCFaq.renderAll('faqList'));</script>
 </body>
