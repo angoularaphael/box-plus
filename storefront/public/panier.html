@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Panier — Boxing Center</title>
   <script src="js/boot.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="css/boutique.css" />
   <link rel="stylesheet" href="css/components.css" />
 </head>
@@ -15,14 +16,21 @@
   <div class="page-hero">
     <div class="page-hero-inner">
       <div class="breadcrumb"><a href="/">Accueil</a> / <a href="/materiel">Matériel</a> / Panier</div>
+      <span class="eyebrow" style="color:var(--bc-gold);display:block;margin-bottom:10px">Commande</span>
       <h1>Votre panier</h1>
+      <p>Vérifiez votre équipement, choisissez votre salle de retrait — et c'est parti.</p>
     </div>
   </div>
 
   <main class="section cart-page">
     <div id="cartEmpty" class="cart-empty" hidden>
-      <p>Votre panier est vide.</p>
+      <div class="cart-empty__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h2l2.4 10.4a1.5 1.5 0 001.46 1.1h6.9a1.5 1.5 0 001.45-1.06L20.5 9H7"/><circle cx="10.5" cy="20" r="1.3"/><circle cx="16.5" cy="20" r="1.3"/></svg>
+      </div>
+      <h2>Votre panier est vide</h2>
+      <p>Gants, bandes, protections — équipez-vous pour votre prochain entraînement.</p>
       <a href="/materiel" class="btn">Voir le matériel</a>
+      <a href="/abonnements" class="btn secondary">Voir les abonnements</a>
     </div>
 
     <div id="cartContent" class="cart-layout" hidden>
@@ -55,6 +63,7 @@
   <div id="site-footer"></div>
   <script src="js/cart.js"></script>
   <script src="js/layout.js"></script>
+  <script src="js/motion.js"></script>
   <script src="js/panier.js"></script>
 </body>
 </html>

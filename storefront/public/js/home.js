@@ -15,16 +15,29 @@
     const tRes = await fetch(`${window.BCPaths?.asset('/data/testimonials.json') || 'data/testimonials.json'}`);
     if (tRes.ok) {
       const items = await tRes.json();
+      const initials = (name) =>
+        (name || '')
+          .split(/[\s.]+/)
+          .filter(Boolean)
+          .slice(0, 2)
+          .map((w) => w[0].toUpperCase())
+          .join('');
       testimonialsEl.innerHTML = items
-        .map(
-          (t) => `
+        .map((t) => {
+          const n = Math.max(1, Math.min(5, t.rating || 5));
+          return `
         <div class="testimonial-card">
-          <div class="testimonial-rating" aria-label="Note 5 sur 5">★★★★★</div>
+          <div class="testimonial-head">
+            <span class="testimonial-avatar" aria-hidden="true">${initials(t.author)}</span>
+            <div>
+              <div class="testimonial-author">${t.author}</div>
+              <div class="testimonial-meta">${t.meta || ''}</div>
+            </div>
+            <span class="testimonial-rating" aria-label="Note ${n} sur 5">${'★'.repeat(n)}</span>
+          </div>
           <p class="testimonial-text">« ${t.text} »</p>
-          <div class="testimonial-author">${t.author}</div>
-          <div class="testimonial-meta">${t.meta || ''}</div>
-        </div>`
-        )
+        </div>`;
+        })
         .join('');
     }
   } catch {

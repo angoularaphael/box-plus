@@ -53,7 +53,7 @@
           <div><strong>Paiement :</strong> ${esc(formatPaymentMode(product))}</div>
           ${product.audience ? `<div><strong>Public :</strong> ${esc(product.audience)}</div>` : ''}
         </div>
-        <a href="${(window.BCPaths?.link('/inscription') || '/inscription')}?product=${encodeURIComponent(product.id)}" class="btn block">
+        <a href="${(window.BCPaths?.link('/inscription') || '/inscription')}?product=${encodeURIComponent(product.id)}" class="btn block ${featured ? '' : 'secondary'}">
           ${opts.cta || 'Je choisis cette formule'}
         </a>
       </article>`;

@@ -20,13 +20,16 @@
       .map(
         (item) => `
       <div class="faq-item" data-id="${item.id}">
-        <button type="button" class="faq-question">${item.q}</button>
-        <div class="faq-answer">${item.a}</div>
+        <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-${item.id}">${item.q}</button>
+        <div class="faq-answer" id="faq-a-${item.id}">${item.a}</div>
       </div>`
       )
       .join('');
     el.querySelectorAll('.faq-question').forEach((btn) => {
-      btn.addEventListener('click', () => btn.parentElement.classList.toggle('open'));
+      btn.addEventListener('click', () => {
+        const open = btn.parentElement.classList.toggle('open');
+        btn.setAttribute('aria-expanded', String(open));
+      });
     });
   }
 
