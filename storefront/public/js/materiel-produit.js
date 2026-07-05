@@ -1,6 +1,10 @@
 (async function () {
   const root = document.getElementById('productDetail');
-  const id = new URLSearchParams(location.search).get('id');
+  // Id resolution: server-injected (slug URLs) > /materiel/produit/<slug> path > legacy ?id=
+  const pathMatch = location.pathname.match(/\/materiel\/produit\/([^/?#]+)/);
+  const id = window.__PRODUCT_ID__
+    || (pathMatch ? decodeURIComponent(pathMatch[1]) : null)
+    || new URLSearchParams(location.search).get('id');
 
   function L(path) {
     return window.BCPaths?.link(path) || path;

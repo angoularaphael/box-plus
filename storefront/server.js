@@ -1280,6 +1280,10 @@ function createApp() {
     }
   });
 
+  // SEO/GEO layer: robots.txt, sitemap.xml, llms.txt, canonical + JSON-LD
+  // injection, slug product URLs. Registered first so its routes win.
+  require('./lib/seo').registerSeo(app, PUBLIC_DIR);
+
   const pageRoutes = {
     '/abonnements': 'abonnements.html',
     '/seance-essai': 'seance-essai.html',

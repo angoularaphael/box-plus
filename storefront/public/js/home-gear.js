@@ -28,7 +28,7 @@
     if (!picked.length) { el.closest('section').hidden = true; return; }
 
     el.innerHTML = picked.map(function (p) {
-      var link = L('/materiel/produit') + '?id=' + encodeURIComponent(p.id);
+      var link = L('/materiel/produit') + '/' + encodeURIComponent(p.slug || p.id);
       return '<article class="gear-card">' +
         '<a class="gear-card__media" href="' + link + '"><img src="' + A(p.image) + '" alt="' + esc(p.name) + '" loading="lazy"></a>' +
         '<div class="gear-card__body">' +
