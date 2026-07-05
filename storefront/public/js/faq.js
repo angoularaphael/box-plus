@@ -16,15 +16,19 @@
   function renderFaq(containerId, items) {
     const el = document.getElementById(containerId);
     if (!el) return;
-    el.innerHTML = items
-      .map(
-        (item) => `
+    // Hydrate server-rendered items when present (faq.html pre-renders them
+    // for SEO/GEO); only build the DOM for empty containers (page subsets).
+    if (!el.querySelector('.faq-item')) {
+      el.innerHTML = items
+        .map(
+          (item) => `
       <div class="faq-item" data-id="${item.id}">
         <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-${item.id}">${item.q}</button>
         <div class="faq-answer" id="faq-a-${item.id}">${item.a}</div>
       </div>`
-      )
-      .join('');
+        )
+        .join('');
+    }
     el.querySelectorAll('.faq-question').forEach((btn) => {
       btn.addEventListener('click', () => {
         const open = btn.parentElement.classList.toggle('open');
