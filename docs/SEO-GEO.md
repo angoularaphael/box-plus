@@ -57,8 +57,9 @@ locales « boxe + Toulouse », et présence maximale dans les moteurs IA
 
 ## Points de vigilance
 
-- ⚠️ Le site vitrine liste désormais **6 salles (dont Balma-Gramont)** ; la
-  boutique en vend 5. À clarifier avec le club avant d'élargir le schéma.
+- ✅ Résolu (2026-07-05) : Balma-Gramont a été **vendue** — le club compte bien
+  **5 salles**. Le schéma (5 ExerciseGym) est correct ; le site vitrine
+  boxingcenter.fr affiche encore 6 salles et devrait être mis à jour.
 - La FAQ du schéma (`lib/seo.js`) doit rester synchronisée avec
   `public/js/faq.js`.
 - Aucune donnée inventée dans le balisage (pas de fausses notes/avis —

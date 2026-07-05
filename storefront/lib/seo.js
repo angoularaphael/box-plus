@@ -46,11 +46,11 @@ const BUSINESS = {
 };
 
 const SALLES = [
-  { name: 'Minimes', street: '12 rue de Fenouillet', postal: '31200', city: 'Toulouse' },
-  { name: 'Ramonville', street: '33 rue des Ormes', postal: '31520', city: 'Ramonville-Saint-Agne' },
-  { name: 'États-Unis', street: '388 avenue des États-Unis', postal: '31200', city: 'Toulouse' },
-  { name: 'Saint-Cyprien', street: '11 rue Sainte-Lucie', postal: '31300', city: 'Toulouse' },
-  { name: 'Portet', street: '', postal: '31120', city: 'Portet-sur-Garonne' },
+  { name: 'Minimes', street: '12 rue de Fenouillet', postal: '31200', city: 'Toulouse', image: '/img/bc/gym/gym-01.jpg' },
+  { name: 'Ramonville', street: '33 rue des Ormes', postal: '31520', city: 'Ramonville-Saint-Agne', image: '/img/bc/gym/gym-06.jpg' },
+  { name: 'États-Unis', street: '388 avenue des États-Unis', postal: '31200', city: 'Toulouse', image: '/img/bc/gym/gym-11.jpg' },
+  { name: 'Saint-Cyprien', street: '11 rue Sainte-Lucie', postal: '31300', city: 'Toulouse', image: '/img/bc/gym/gym-16.jpg' },
+  { name: 'Portet', street: '', postal: '31120', city: 'Portet-sur-Garonne', image: '/img/bc/gym/portet-exterior.jpg' },
 ];
 
 const DISCIPLINES = [
@@ -61,7 +61,7 @@ const DISCIPLINES = [
 // Keep in sync with public/js/faq.js (FAQ_ITEMS).
 const FAQ = [
   ['Je suis débutant, puis-je m\'inscrire ?', 'Oui, absolument ! Boxing Center est un club accessible aux débutants. Nos coachs adaptent les cours à chaque niveau. Vous n\'avez pas besoin d\'avoir déjà pratiqué la boxe ni d\'être en forme pour commencer.'],
-  ['Est-ce que les cours sont violents ?', 'Non. Boxing Center est orienté loisir, apprentissage et remise en forme — pas la compétition professionnelle. Les entraînements sont encadrés, progressifs et dans une ambiance bienveillante.'],
+  ['Est-ce que les cours sont violents ?', 'Non. Boxing Center est orienté loisir, apprentissage et remise en forme — pas la compétition professionnelle. Les entraînements sont encadrés, progressifs et dans une ambiance bienveillante. On peut pratiquer sans chercher à prendre de mauvais coups.'],
   ['Dois-je avoir déjà pratiqué la boxe ?', 'Pas du tout. La majorité de nos nouveaux adhérents découvrent la boxe chez nous. La séance d\'essai est idéale pour faire vos premiers pas.'],
   ['Les femmes peuvent-elles participer à tous les cours ?', 'Oui, les femmes sont les bienvenues dans tous nos cours collectifs. Nos groupes sont mixtes et l\'encadrement veille à un environnement respectueux et motivant.'],
   ['Puis-je accéder aux 5 salles ?', 'Selon votre formule, votre abonnement donne accès à nos 5 centres : Minimes, Ramonville, États-Unis, Saint-Cyprien et Portet. Vous choisissez une salle principale à l\'inscription.'],
@@ -99,6 +99,7 @@ function gymsJsonLd() {
     '@type': 'ExerciseGym',
     name: `Boxing Center — ${s.name}`,
     url: `${SITE_URL}/`,
+    image: `${SITE_URL}${s.image}`,
     telephone: BUSINESS.telephone,
     openingHours: BUSINESS.openingHours,
     parentOrganization: { '@id': `${SITE_URL}/#org` },
@@ -213,6 +214,7 @@ const HTML_REDIRECTS = {
   '/panier.html': '/panier',
   '/inscription.html': '/inscription',
   '/mon-inscription.html': '/mon-inscription',
+  '/contrat.html': '/contrat',
 };
 
 /* ── helpers ──────────────────────────────────────────────────────── */
@@ -221,16 +223,28 @@ function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function headTags(route, { ogImage, jsonLd, extra } = {}) {
+// Replace an existing meta tag's content in place (no duplicate tags).
+function setMeta(html, attr, key, value) {
+  const re = new RegExp(`(<meta ${attr}="${key}" content=")[^"]*(")`);
+  return html.replace(re, `$1${esc(value)}$2`);
+}
+
+function headTags(route, { ogImage, ogImageAlt, jsonLd, extra } = {}) {
   const url = `${SITE_URL}${route === '/' ? '/' : route}`;
-  const img = `${SITE_URL}${ogImage || DEFAULT_OG_IMAGE}`;
+  const imgPath = ogImage || DEFAULT_OG_IMAGE;
+  const img = `${SITE_URL}${imgPath}`;
   const parts = [
     `<link rel="canonical" href="${url}" />`,
     `<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />`,
     `<meta property="og:url" content="${url}" />`,
     `<meta property="og:image" content="${img}" />`,
-    `<meta name="twitter:image" content="${img}" />`,
   ];
+  if (imgPath === DEFAULT_OG_IMAGE) {
+    parts.push('<meta property="og:image:width" content="1600" />');
+    parts.push('<meta property="og:image:height" content="1068" />');
+  }
+  parts.push(`<meta property="og:image:alt" content="${esc(ogImageAlt || 'Salle Boxing Center à Toulouse — entraînement de boxe')}" />`);
+  parts.push(`<meta name="twitter:image" content="${img}" />`);
   if (extra) parts.push(extra);
   if (jsonLd) parts.push(`<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`);
   return `  ${parts.join('\n  ')}\n`;
@@ -388,11 +402,12 @@ function registerSeo(app, publicDir) {
     app.get(from, (_req, res) => res.redirect(301, to));
   }
 
-  // Legacy query-string product URL → slug URL.
-  app.get('/materiel/produit', (req, res, next) => {
+  // Legacy query-string product URL → slug URL; bare/unknown → catalog page
+  // (never serve the empty "Chargement…" template on a crawlable URL).
+  app.get('/materiel/produit', (req, res) => {
     const p = findProduct(req.query.id);
     if (p) return res.redirect(301, `/materiel/produit/${encodeURIComponent(p.slug || p.id)}`);
-    return next(); // unknown/missing id: fall through to the generic page route
+    return res.redirect(302, '/materiel');
   });
 
   // Product pages with server-injected metadata + Product JSON-LD.
@@ -405,26 +420,39 @@ function registerSeo(app, publicDir) {
     const desc = `${p.name} à ${priceTxt} — ${p.category_label || 'matériel de boxe'} de la boutique officielle Boxing Center Toulouse. Commande en ligne, retrait en salle.`;
     let html = readHtml(path.join(publicDir, 'materiel-produit.html'));
     html = html.replace(/<title>[^<]*<\/title>/, `<title>${esc(title)}</title>`);
+    // Rewrite the template's fallback metas in place — never duplicate tags.
+    html = setMeta(html, 'name', 'description', desc);
+    html = setMeta(html, 'property', 'og:title', title);
+    html = setMeta(html, 'property', 'og:description', desc);
+    html = setMeta(html, 'name', 'twitter:title', title);
+    html = setMeta(html, 'name', 'twitter:description', desc);
     const tags = headTags(route, {
       ogImage: p.image || (Array.isArray(p.images) && p.images[0]) || DEFAULT_OG_IMAGE,
+      ogImageAlt: p.name,
       jsonLd: productJsonLd(p),
       extra: [
-        `<meta name="description" content="${esc(desc)}" />`,
         `<meta property="og:type" content="product" />`,
-        `<meta property="og:title" content="${esc(title)}" />`,
-        `<meta property="og:description" content="${esc(desc)}" />`,
         `<script>window.__PRODUCT_ID__=${JSON.stringify(String(p.id))};</script>`,
       ].join('\n  '),
     });
     res.type('html').send(inject(html, tags));
   });
 
+  // Crawlable no-JS fallback for the catalog page: AI crawlers (GPTBot,
+  // ClaudeBot, PerplexityBot…) don't execute JS, so the JS-rendered grid is
+  // invisible to them. Real links + names + prices, honest <noscript> use.
+  const materielNoscript = `<noscript><section class="section"><h2>Tout le matériel de boxe</h2><ul>${
+    CATALOG.map((p) => `<li><a href="/materiel/produit/${encodeURIComponent(p.slug || p.id)}">${esc(p.name)}${p.price_label ? ` — ${esc(p.price_label)}` : ''}</a></li>`).join('')
+  }</ul></section></noscript>`;
+
   // Indexable pages: canonical + og:url/og:image + robots hints + JSON-LD.
   for (const [route, cfg] of Object.entries(INDEXABLE)) {
     app.get(route, (_req, res) => {
       const abs = path.join(publicDir, cfg.file);
       const jsonLd = PAGE_JSONLD[route] ? PAGE_JSONLD[route]() : null;
-      res.type('html').send(inject(readHtml(abs), headTags(route, { jsonLd })));
+      let html = inject(readHtml(abs), headTags(route, { jsonLd }));
+      if (route === '/materiel') html = html.replace('</body>', `${materielNoscript}\n</body>`);
+      res.type('html').send(html);
     });
   }
 }

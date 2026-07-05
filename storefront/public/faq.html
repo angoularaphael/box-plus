@@ -8,6 +8,7 @@
   <script src="js/boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/boutique.css" />
   <link rel="stylesheet" href="css/components.css" />
   <meta property="og:type" content="website" />
@@ -33,7 +34,55 @@
   </div>
 
   <main class="section">
-    <div class="faq-list" id="faqList"></div>
+    <!-- Server-rendered so the content is crawlable without JS (SEO/GEO);
+         js/faq.js hydrates these items (toggles) instead of re-rendering.
+         Keep in sync with FAQ_ITEMS in js/faq.js and lib/seo.js. -->
+    <div class="faq-list" id="faqList">
+      <div class="faq-item" data-id="debutant">
+        <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-debutant">Je suis débutant, puis-je m'inscrire ?</button>
+        <div class="faq-answer" id="faq-a-debutant">Oui, absolument ! Boxing Center est un club accessible aux débutants. Nos coachs adaptent les cours à chaque niveau. Vous n'avez pas besoin d'avoir déjà pratiqué la boxe ni d'être en forme pour commencer.</div>
+      </div>
+      <div class="faq-item" data-id="violent">
+        <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-violent">Est-ce que les cours sont violents ?</button>
+        <div class="faq-answer" id="faq-a-violent">Non. Boxing Center est orienté loisir, apprentissage et remise en forme — pas la compétition professionnelle. Les entraînements sont encadrés, progressifs et dans une ambiance bienveillante. On peut pratiquer sans chercher à prendre de mauvais coups.</div>
+      </div>
+      <div class="faq-item" data-id="experience">
+        <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-experience">Dois-je avoir déjà pratiqué la boxe ?</button>
+        <div class="faq-answer" id="faq-a-experience">Pas du tout. La majorité de nos nouveaux adhérents découvrent la boxe chez nous. La séance d'essai est idéale pour faire vos premiers pas.</div>
+      </div>
+      <div class="faq-item" data-id="femmes">
+        <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-femmes">Les femmes peuvent-elles participer à tous les cours ?</button>
+        <div class="faq-answer" id="faq-a-femmes">Oui, les femmes sont les bienvenues dans tous nos cours collectifs. Nos groupes sont mixtes et l'encadrement veille à un environnement respectueux et motivant.</div>
+      </div>
+      <div class="faq-item" data-id="salles">
+        <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-salles">Puis-je accéder aux 5 salles ?</button>
+        <div class="faq-answer" id="faq-a-salles">Selon votre formule, votre abonnement donne accès à nos 5 centres : Minimes, Ramonville, États-Unis, Saint-Cyprien et Portet. Vous choisissez une salle principale à l'inscription.</div>
+      </div>
+      <div class="faq-item" data-id="formule">
+        <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-formule">Quelle formule choisir pour commencer ?</button>
+        <div class="faq-answer" id="faq-a-formule">Pour tester : la séance d'essai à 10 €. Pour la flexibilité : le prélèvement sans engagement. Pour économiser : le comptant 3, 6 ou 12 mois. Pour votre enfant : Baby Boxe ou Boxe éducative.</div>
+      </div>
+      <div class="faq-item" data-id="essai">
+        <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-essai">Comment fonctionne la séance d'essai ?</button>
+        <div class="faq-answer" id="faq-a-essai">Réservez en ligne pour 10 €. Un coach vous accueille, vous explique le déroulé et vous participez à un cours adapté aux débutants. Aucun matériel spécifique n'est requis pour commencer.</div>
+      </div>
+      <div class="faq-item" data-id="prelevement">
+        <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-prelevement">Comment fonctionne le paiement par prélèvement ?</button>
+        <div class="faq-answer" id="faq-a-prelevement">Vous payez la première échéance par carte bancaire, puis renseignez votre IBAN pour les prélèvements suivants. La formule est sans engagement longue durée — renouvelable toutes les 4 semaines.</div>
+      </div>
+      <div class="faq-item" data-id="resiliation">
+        <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-resiliation">Puis-je résilier une formule sans engagement ?</button>
+        <div class="faq-answer" id="faq-a-resiliation">Oui, les formules sans engagement peuvent être résiliées selon les conditions prévues au contrat. Contactez votre salle pour les démarches.</div>
+      </div>
+      <div class="faq-item" data-id="materiel">
+        <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-materiel">Quel matériel faut-il pour commencer ?</button>
+        <div class="faq-answer" id="faq-a-materiel">Pour votre premier cours : tenue de sport et bouteille d'eau suffisent. Nous vous conseillerons ensuite pour les gants et bandages — disponibles à la boutique du club.</div>
+      </div>
+      <div class="faq-item" data-id="enfant">
+        <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-a-enfant">Mon enfant peut-il s'inscrire ?</button>
+        <div class="faq-answer" id="faq-a-enfant">Oui ! Baby Boxe accueille les 3-6 ans et la Boxe éducative les 7-16 ans. L'encadrement est adapté à chaque tranche d'âge.</div>
+      </div>
+    </div>
   </main>
 
   <section class="cta-band">
