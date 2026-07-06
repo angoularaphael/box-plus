@@ -57,20 +57,21 @@
     /* optional */
   }
 
+  // Real per-salle facts (researched) + official salle pages on boxingcenter.fr
+  // (same URLs as the ExerciseGym JSON-LD entities in lib/seo.js).
   const gyms = [
-    { name: 'Minimes', desc: 'Cours collectifs · accueil débutants', img: 'img/bc/gym/gym-01.jpg' },
-    { name: 'Ramonville', desc: 'Ambiance conviviale · tous niveaux', img: 'img/bc/gym/gym-06.jpg' },
-    { name: 'États-Unis', desc: 'Large choix de disciplines', img: 'img/bc/gym/gym-11.jpg' },
-    { name: 'Saint-Cyprien', desc: 'Centre historique du club', img: 'img/bc/gym/gym-16.jpg' },
-    { name: 'Portet', desc: 'Crosstraining & Hyrox', img: 'img/bc/gym/portet-exterior.jpg' },
+    { name: 'Minimes', desc: 'Le berceau du club (2016) · 3 rings', img: 'img/bc/gym/gym-01.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/' },
+    { name: 'Ramonville', desc: 'Octogone 7 m · 300 m² extérieur', img: 'img/bc/gym/gym-06.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/' },
+    { name: 'États-Unis', desc: 'Cage MMA · large choix de disciplines', img: 'img/bc/gym/gym-11.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/' },
+    { name: 'Saint-Cyprien', desc: '1 200 m² · la plus récente (2025)', img: 'img/bc/gym/gym-16.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/' },
+    { name: 'Portet', desc: 'Crosstraining & Hyrox', img: 'img/bc/gym/portet-exterior.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/' },
   ];
 
   if (gymsEl) {
-    const gymHref = window.BCPaths?.link('/abonnements') || '/abonnements';
     gymsEl.innerHTML = `<div class="gyms-grid" data-reveal-group>${gyms
       .map(
         (g) => `
-      <a class="gym-card" href="${gymHref}" data-reveal>
+      <a class="gym-card" href="${g.url}" target="_blank" rel="noopener" data-reveal>
         <img src="${g.img}" alt="Boxing Center ${g.name}" loading="lazy" />
         <div class="gym-card__body">
           <h4>${g.name}</h4>
