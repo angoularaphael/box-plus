@@ -20,6 +20,10 @@ const path = require('path');
 
 const SITE_URL = (process.env.SITE_URL || 'https://box-plus.vercel.app').replace(/\/+$/, '');
 
+// IndexNow (Bing/Yandex instant indexing — also feeds ChatGPT/Copilot search).
+// The key file must be served at /<key>.txt; override via env if rotated.
+const INDEXNOW_KEY = process.env.INDEXNOW_KEY || 'a7c31f2b9e584d06b8a2c94f7d1e6503';
+
 // Static require so Vercel's file tracing bundles the catalog.
 const RAW_CATALOG = require('../../data/storefront/materiel-catalog.json');
 const CATALOG = (Array.isArray(RAW_CATALOG) ? RAW_CATALOG : RAW_CATALOG.products || RAW_CATALOG.items || [])
@@ -73,7 +77,7 @@ const FAQ = [
   ['Mon enfant peut-il s\'inscrire ?', 'Oui ! Baby Boxe accueille les 3-6 ans et la Boxe éducative les 7-16 ans. L\'encadrement est adapté à chaque tranche d\'âge.'],
 ];
 
-const DEFAULT_OG_IMAGE = '/img/bc/gym/gym-01.jpg';
+const DEFAULT_OG_IMAGE = '/img/bc/og-default.jpg'; // 1200x630, generated from gym-01
 
 /* ── JSON-LD builders ─────────────────────────────────────────────── */
 
@@ -240,8 +244,14 @@ function headTags(route, { ogImage, ogImageAlt, jsonLd, extra } = {}) {
     `<meta property="og:image" content="${img}" />`,
   ];
   if (imgPath === DEFAULT_OG_IMAGE) {
-    parts.push('<meta property="og:image:width" content="1600" />');
-    parts.push('<meta property="og:image:height" content="1068" />');
+    parts.push('<meta property="og:image:width" content="1200" />');
+    parts.push('<meta property="og:image:height" content="630" />');
+  }
+  if (process.env.GOOGLE_SITE_VERIFICATION) {
+    parts.push(`<meta name="google-site-verification" content="${esc(process.env.GOOGLE_SITE_VERIFICATION)}" />`);
+  }
+  if (process.env.BING_SITE_VERIFICATION) {
+    parts.push(`<meta name="msvalidate.01" content="${esc(process.env.BING_SITE_VERIFICATION)}" />`);
   }
   parts.push(`<meta property="og:image:alt" content="${esc(ogImageAlt || 'Salle Boxing Center à Toulouse — entraînement de boxe')}" />`);
   parts.push(`<meta name="twitter:image" content="${img}" />`);
@@ -358,6 +368,20 @@ ${salles}
 - Email : ${BUSINESS.email}
 - Site du club : https://boxingcenter.fr
 - FAQ : ${SITE_URL}/faq
+
+Catalogue complet et FAQ détaillée : ${SITE_URL}/llms-full.txt
+`;
+}
+
+function llmsFullTxt() {
+  const products = CATALOG.map((p) => `- ${p.name} — ${p.price_label || ''} — ${productUrl(p)}`).join('\n');
+  const faq = FAQ.map(([q, a]) => `### ${q}\n${a}`).join('\n\n');
+  return `${llmsTxt()}
+## Catalogue matériel de boxe (${CATALOG.length} produits, retrait en salle)
+${products}
+
+## FAQ complète
+${faq}
 `;
 }
 
@@ -386,6 +410,8 @@ function sitemapXml(publicDir) {
 function registerSeo(app, publicDir) {
   app.get('/robots.txt', (_req, res) => res.type('text/plain').send(robotsTxt()));
   app.get('/llms.txt', (_req, res) => res.type('text/plain; charset=utf-8').send(llmsTxt()));
+  app.get('/llms-full.txt', (_req, res) => res.type('text/plain; charset=utf-8').send(llmsFullTxt()));
+  app.get(`/${INDEXNOW_KEY}.txt`, (_req, res) => res.type('text/plain').send(INDEXNOW_KEY));
 
   let sitemapCache = null;
   let sitemapAt = 0;
@@ -445,6 +471,12 @@ function registerSeo(app, publicDir) {
     CATALOG.map((p) => `<li><a href="/materiel/produit/${encodeURIComponent(p.slug || p.id)}">${esc(p.name)}${p.price_label ? ` — ${esc(p.price_label)}` : ''}</a></li>`).join('')
   }</ul></section></noscript>`;
 
+  // Crawlable NAP (name/address/phone) for no-JS crawlers — the footer and
+  // gym cards are JS-rendered, so the visible addresses need a fallback.
+  const homeNoscript = `<noscript><section><h2>Nos 5 salles de boxe à Toulouse</h2><ul>${
+    SALLES.map((s) => `<li>Boxing Center ${esc(s.name)} — ${[s.street, `${s.postal} ${s.city}`].filter(Boolean).map(esc).join(', ')} — Tél. 05 62 24 46 82</li>`).join('')
+  }</ul></section></noscript>`;
+
   // Indexable pages: canonical + og:url/og:image + robots hints + JSON-LD.
   for (const [route, cfg] of Object.entries(INDEXABLE)) {
     app.get(route, (_req, res) => {
@@ -452,6 +484,7 @@ function registerSeo(app, publicDir) {
       const jsonLd = PAGE_JSONLD[route] ? PAGE_JSONLD[route]() : null;
       let html = inject(readHtml(abs), headTags(route, { jsonLd }));
       if (route === '/materiel') html = html.replace('</body>', `${materielNoscript}\n</body>`);
+      if (route === '/') html = html.replace('</body>', `${homeNoscript}\n</body>`);
       res.type('html').send(html);
     });
   }
