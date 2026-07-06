@@ -50,11 +50,11 @@ const BUSINESS = {
 };
 
 const SALLES = [
-  { name: 'Minimes', street: '12 rue de Fenouillet', postal: '31200', city: 'Toulouse', image: '/img/bc/gym/gym-01.jpg' },
-  { name: 'Ramonville', street: '33 rue des Ormes', postal: '31520', city: 'Ramonville-Saint-Agne', image: '/img/bc/gym/gym-06.jpg' },
-  { name: 'États-Unis', street: '388 avenue des États-Unis', postal: '31200', city: 'Toulouse', image: '/img/bc/gym/gym-11.jpg' },
-  { name: 'Saint-Cyprien', street: '11 rue Sainte-Lucie', postal: '31300', city: 'Toulouse', image: '/img/bc/gym/gym-16.jpg' },
-  { name: 'Portet', street: '', postal: '31120', city: 'Portet-sur-Garonne', image: '/img/bc/gym/portet-exterior.jpg' },
+  { name: 'Minimes', street: '12 rue de Fenouillet', postal: '31200', city: 'Toulouse', image: '/img/bc/gym/gym-01.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/' },
+  { name: 'Ramonville', street: '33 rue des Ormes', postal: '31520', city: 'Ramonville-Saint-Agne', image: '/img/bc/gym/gym-06.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/' },
+  { name: 'États-Unis', street: '388 avenue des États-Unis', postal: '31200', city: 'Toulouse', image: '/img/bc/gym/gym-11.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/' },
+  { name: 'Saint-Cyprien', street: '11 rue Sainte-Lucie', postal: '31300', city: 'Toulouse', image: '/img/bc/gym/gym-16.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/' },
+  { name: 'Portet', street: '', postal: '31120', city: 'Portet-sur-Garonne', image: '/img/bc/gym/portet-exterior.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/' },
 ];
 
 const DISCIPLINES = [
@@ -102,7 +102,7 @@ function gymsJsonLd() {
   return SALLES.map((s) => ({
     '@type': 'ExerciseGym',
     name: `Boxing Center — ${s.name}`,
-    url: `${SITE_URL}/`,
+    url: s.url || `${SITE_URL}/`,
     image: `${SITE_URL}${s.image}`,
     telephone: BUSINESS.telephone,
     openingHours: BUSINESS.openingHours,
