@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const {
   buildOrderPayload,
   validateCheckoutForm,
+  validateFullForm,
 } = require('../storefront/lib/orders');
 
 const product = {
@@ -41,4 +42,17 @@ test('validateCheckoutForm exige IBAN pour offre payante', () => {
     product
   );
   assert.ok(errors.includes('IBAN requis'));
+});
+
+test('validateFullForm sans IBAN si billing_plan cb (4 semaines)', () => {
+  const fourWeeks = {
+    name: '44,99€/4 semaines',
+    requires_iban: true,
+    subsection: 'prelevement',
+  };
+  const errors = validateFullForm(
+    { gender: 'M', gym: 'minimes', billing_plan: 'cb' },
+    fourWeeks
+  );
+  assert.ok(!errors.includes('IBAN requis'));
 });
