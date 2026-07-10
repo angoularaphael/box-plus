@@ -17,7 +17,12 @@ Boutique Stripe + bridge PrestaShop + sync catalogue Deciplus.
 | `BRIDGE_SECRET` | Secret webhook BOXPLUS |
 | `BOXPLUS_QUEUE_DIR` | `/tmp/boxplus-queue` sur Vercel |
 
-3. Webhook Stripe : `https://box-plus.vercel.app/api/stripe/webhook`
+3. Webhook Stripe (depuis l’UI Stripe → **Developers → Webhooks**) :
+   - URL : `https://box-plus.vercel.app/api/stripe/webhook`
+   - Événements à cocher :
+     - `checkout.session.completed` (paiement / 1ère échéance)
+     - `invoice.paid` (renouvellements CB toutes les 4 semaines)
+   - Copier le **Signing secret** (`whsec_...`) → variable Vercel `STRIPE_WEBHOOK_SECRET`
 
 ## Sync catalogue (automatique)
 

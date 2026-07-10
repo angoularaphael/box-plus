@@ -37,6 +37,7 @@ function productSnapshot(product) {
     stripe_price_label: product.stripe_price_label,
     installments_note: product.installments_note,
     requires_iban: product.requires_iban,
+    supports_billing_choice: product.supports_billing_choice,
     requires_payment: product.requires_payment,
     sale_type: product.sale_type,
     deciplus_id: product.deciplus_id || null,

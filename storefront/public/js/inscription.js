@@ -359,6 +359,39 @@
     }
   }
 
+  function formatPaymentChoiceLabel(plan) {
+    if (plan === 'cb') {
+      return 'Carte bancaire — débit automatique toutes les 4 semaines (via Stripe). Pas de RIB demandé.';
+    }
+    return 'Prélèvement bancaire (RIB) — 1ère échéance par carte aujourd\'hui, puis prélèvement SEPA toutes les 4 semaines.';
+  }
+
+  function bindBillingPlanForm() {
+    const ribBlock = document.getElementById('ibanBlock');
+    const badgeNotice = document.getElementById('badgeNotice');
+    const payBtn = document.getElementById('payBtn');
+    const radios = document.querySelectorAll('input[name="billing_plan"]');
+    if (!radios.length) return;
+
+    const refresh = () => {
+      const plan = document.querySelector('input[name="billing_plan"]:checked')?.value || 'rib';
+      if (ribBlock) ribBlock.style.display = plan === 'rib' ? '' : 'none';
+      if (badgeNotice) badgeNotice.style.display = plan === 'rib' ? '' : 'none';
+      const ibanInput = document.getElementById('iban');
+      if (ibanInput) ibanInput.required = plan === 'rib';
+      if (payBtn) {
+        payBtn.textContent = plan === 'cb'
+          ? 'Payer par carte (abonnement 4 semaines)'
+          : 'Payer la 1ère échéance par carte';
+      }
+      const hint = document.getElementById('billingPlanHint');
+      if (hint) hint.textContent = formatPaymentChoiceLabel(plan);
+    };
+
+    radios.forEach((r) => r.addEventListener('change', refresh));
+    refresh();
+  }
+
   async function renderStep3() {
     if (state.order?.payment?.status === 'paid' || state.step >= 4) {
       state.step = 4;
@@ -375,25 +408,50 @@
     }
     await ensureProductForPayment();
     const p = state.product;
-    const needsIban = p?.requires_iban;
+    const supportsChoice = p?.supports_billing_choice;
+    const savedPlan = state.order?.payment?.billing_plan || 'rib';
+    const needsIban = supportsChoice ? savedPlan === 'rib' : p?.requires_iban;
     stepContent.innerHTML = `
       <h1>Paiement</h1>
       <p class="sub">Montant à payer aujourd'hui : <strong>${priceLabel(p)}</strong></p>
       <form id="payForm">
-        ${needsIban ? `
-        <div class="full"><label for="iban">IBAN (prélèvements suivants) *</label>
-        <input id="iban" name="iban" placeholder="FR76 3000 6000 0112 3456 7890 189" required />
-        <p class="info-box">Votre IBAN sera enregistré pour les échéances suivantes dans Deciplus.</p></div>` : ''}
-        ${state.config?.badge_fee_notice && needsIban ? `<div class="notice-important"><strong>Badge d'accès</strong><p>${state.config.badge_fee_notice}</p></div>` : ''}
-        <button type="submit" class="btn stripe block" id="payBtn">${p?.requires_payment === false ? 'Continuer gratuitement' : 'Payer par carte bancaire'}</button>
+        ${supportsChoice ? `
+        <div class="full">
+          <p class="info-box" style="margin-top:0"><strong>Comment payer vos échéances ?</strong></p>
+          <label class="billing-choice">
+            <input type="radio" name="billing_plan" value="rib" ${savedPlan !== 'cb' ? 'checked' : ''} />
+            Prélèvement bancaire (RIB) — classique
+          </label>
+          <label class="billing-choice">
+            <input type="radio" name="billing_plan" value="cb" ${savedPlan === 'cb' ? 'checked' : ''} />
+            Carte bancaire toutes les 4 semaines
+          </label>
+          <p class="info-box" id="billingPlanHint">${formatPaymentChoiceLabel(savedPlan !== 'cb' ? 'rib' : 'cb')}</p>
+        </div>` : ''}
+        <div class="full" id="ibanBlock" ${supportsChoice && savedPlan === 'cb' ? 'style="display:none"' : ''}>
+          ${needsIban || supportsChoice ? `
+          <label for="iban">IBAN (prélèvements suivants) *</label>
+          <input id="iban" name="iban" placeholder="FR76 3000 6000 0112 3456 7890 189" ${supportsChoice && savedPlan === 'cb' ? '' : 'required'} />
+          <p class="info-box">Votre IBAN sera enregistré pour les échéances suivantes dans Deciplus.</p>` : ''}
+        </div>
+        ${state.config?.badge_fee_notice && (needsIban || supportsChoice) ? `<div class="notice-important" id="badgeNotice" ${supportsChoice && savedPlan === 'cb' ? 'style="display:none"' : ''}><strong>Badge d'accès</strong><p>${state.config.badge_fee_notice}</p></div>` : ''}
+        ${supportsChoice && savedPlan === 'cb' ? `<div class="info-box">Le badge d'accès pourra être réglé en salle ou par carte selon la configuration Deciplus (phase 2).</div>` : ''}
+        <button type="submit" class="btn stripe block" id="payBtn">${p?.requires_payment === false ? 'Continuer gratuitement' : (supportsChoice && savedPlan === 'cb' ? 'Payer par carte (abonnement 4 semaines)' : 'Payer la 1ère échéance par carte')}</button>
         ${backButton('← Retour aux coordonnées', 2)}
       </form>`;
+    bindBillingPlanForm();
     document.getElementById('payForm').onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Redirection…');
       saveProgress();
       const body = payRequestBody();
-      if (needsIban) body.iban = document.getElementById('iban').value;
+      const planInput = document.querySelector('input[name="billing_plan"]:checked');
+      if (planInput) body.billing_plan = planInput.value;
+      const plan = body.billing_plan || 'rib';
+      if (!supportsChoice && p?.requires_iban) body.billing_plan = 'rib';
+      if (plan === 'rib' || (!supportsChoice && p?.requires_iban)) {
+        body.iban = document.getElementById('iban')?.value;
+      }
       const res = await fetch(`/api/orders/${state.orderId}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -437,7 +495,8 @@
         <div><label for="city">Ville *</label><input id="city" name="city" required value="${full.city || ''}" /></div>
         <div class="full"><label for="emergency_contact">Contact d'urgence (optionnel)</label><input id="emergency_contact" name="emergency_contact" placeholder="Nom + téléphone" value="${full.emergency_contact || ''}" /></div>
         <div class="full"><label for="medical_info">Informations médicales (optionnel)</label><textarea id="medical_info" name="medical_info" rows="2">${full.medical_info || ''}</textarea></div>
-        ${state.product?.requires_iban ? `<div class="full info-box" style="margin-top:0">Votre IBAN a déjà été enregistré à l'étape paiement pour les prélèvements suivants.</div>` : ''}
+        ${state.product?.requires_iban && state.order?.payment?.billing_plan !== 'cb' ? `<div class="full info-box" style="margin-top:0">Votre IBAN a déjà été enregistré à l'étape paiement pour les prélèvements suivants.</div>` : ''}
+        ${state.order?.payment?.billing_plan === 'cb' ? `<div class="full info-box" style="margin-top:0">Paiement des échéances par carte bancaire (toutes les 4 semaines) via Stripe.</div>` : ''}
         <div class="full"><button type="submit" class="btn block">Continuer vers la signature</button></div>
         <div class="full">${backButton(backLabel, backTarget)}</div>
       </form>`;

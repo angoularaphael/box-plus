@@ -10,6 +10,7 @@
 
   function formatPaymentMode(product) {
     if (!product.requires_payment) return 'Gratuit';
+    if (product.supports_billing_choice) return 'RIB ou carte — toutes les 4 semaines';
     if (/comptant/i.test(product.name || '')) return 'Paiement comptant CB';
     if (product.requires_iban) return '1ère échéance CB · suite par prélèvement';
     return 'Paiement CB';

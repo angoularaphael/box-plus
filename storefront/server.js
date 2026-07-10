@@ -26,6 +26,8 @@ const {
 } = require('./lib/orders');
 const { getStoreProducts, ingestCatalogPayload } = require('./lib/deciplus-sync');
 const { BADGE_FEE_NOTICE } = require('./lib/storefront-copy');
+const { createCheckoutSessionParams } = require('./lib/stripe-checkout');
+const { normalizeBillingPlan } = require('../lib/billing-plan');
 const {
   getEnrichedProducts,
   getFeaturedProducts,
@@ -272,6 +274,12 @@ async function fulfillStripeSession(sessionId, stripeSession = null, lifecycleMo
         await markPaymentPaid(order.order_id, {
           method: 'stripe',
           stripe_session_id: sessionId,
+          stripe_subscription_id: stripeSession?.subscription || null,
+          billing_plan:
+            stripeSession?.metadata?.billing_plan ||
+            pending?.payment?.billing_plan ||
+            pending?.billing_plan ||
+            null,
           iban: pending.payment?.iban || pending.customer_full?.iban,
         });
         order = await loadOrderAsync(order.order_id);
@@ -340,6 +348,15 @@ function createApp() {
             } else {
               await fulfillStripeSession(session.id, session, lifecycleMode);
             }
+          }
+        } else if (event.type === 'invoice.paid') {
+          const invoice = event.data.object;
+          if (invoice.subscription) {
+            logInfo('Abonnement CB renouvelé (Stripe)', {
+              subscription: invoice.subscription,
+              amount_cents: invoice.amount_paid,
+              customer: invoice.customer_email || invoice.customer,
+            });
           }
         }
         res.json({ received: true });
@@ -1085,10 +1102,24 @@ function createApp() {
       );
 
       const short = order.customer_short;
-      const form = { ...short, ...req.body, order_id: order.order_id };
+      const billingPlan = normalizeBillingPlan(req.body.billing_plan, product);
+      const form = {
+        ...short,
+        ...req.body,
+        order_id: order.order_id,
+        billing_plan: billingPlan,
+      };
+
+      order.payment = {
+        ...(order.payment || {}),
+        billing_plan: billingPlan,
+        iban: req.body.iban || order.payment?.iban || null,
+      };
+      const { saveOrderAsync } = require('./lib/order-lifecycle');
+      await saveOrderAsync(order);
 
       if (!product.requires_payment) {
-        await markPaymentPaid(order.order_id, { method: 'free', status: 'paid' });
+        await markPaymentPaid(order.order_id, { method: 'free', status: 'paid', billing_plan: billingPlan });
         return res.json({
           ok: true,
           mode: 'free',
@@ -1098,7 +1129,11 @@ function createApp() {
 
       if (!stripe) {
         if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true') {
-          await markPaymentPaid(order.order_id, { method: 'demo', iban: req.body.iban });
+          await markPaymentPaid(order.order_id, {
+            method: 'demo',
+            iban: req.body.iban,
+            billing_plan: billingPlan,
+          });
           return res.json({
             ok: true,
             mode: 'demo',
@@ -1109,40 +1144,35 @@ function createApp() {
       }
 
       const payload = buildOrderPayload(
-        { ...form, gym: req.body.gym || 'minimes', gender: req.body.gender || 'M', iban: req.body.iban },
+        {
+          ...form,
+          gym: req.body.gym || 'minimes',
+          gender: req.body.gender || 'M',
+          iban: req.body.iban,
+        },
         product
       );
       payload.lifecycle_order_id = order.order_id;
       if (req.body.iban) payload.payment = { ...payload.payment, iban: req.body.iban };
 
       const baseUrl = getCheckoutBaseUrl(req);
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        payment_method_types: ['card'],
-        line_items: [
-          {
-            price_data: {
-              currency: 'eur',
-              unit_amount: product.price_cents,
-              product_data: { name: product.display_name || product.name },
-            },
-            quantity: 1,
-          },
-        ],
-        customer_email: short.email,
-        metadata: {
-          product_id: product.id,
-          order_id: order.order_id,
-          lifecycle_order_id: order.order_id,
-          bc_token: order.access_token,
-          ...packOrderMetadata(payload),
-        },
-        success_url: `${baseUrl}/inscription?order=${order.order_id}&token=${order.access_token}&step=4&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/inscription?order=${order.order_id}&token=${order.access_token}&step=3&cancelled=1`,
+      const sessionParams = createCheckoutSessionParams({
+        product,
+        order,
+        payload,
+        baseUrl,
+        packOrderMetadata,
+        billingPlan,
       });
+      const session = await stripe.checkout.sessions.create(sessionParams);
 
       savePendingOrder(session.id, payload);
-      res.json({ ok: true, mode: 'stripe', url: session.url, session_id: session.id });
+      res.json({
+        ok: true,
+        mode: billingPlan === 'cb' ? 'stripe_subscription' : 'stripe',
+        url: session.url,
+        session_id: session.id,
+      });
     } catch (err) {
       logError('Erreur pay order', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
