@@ -918,6 +918,9 @@ function createApp() {
 
       const product = findProduct(order.product_id) || order.product_snapshot;
       const full = { ...req.body };
+      if (!full.billing_plan && order.payment?.billing_plan) {
+        full.billing_plan = order.payment.billing_plan;
+      }
       if (!full.iban && order.payment?.iban) full.iban = order.payment.iban;
 
       const errors = validateFullForm(full, product);
