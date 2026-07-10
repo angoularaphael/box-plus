@@ -416,16 +416,24 @@
       <p class="sub">Montant à payer aujourd'hui : <strong>${priceLabel(p)}</strong></p>
       <form id="payForm">
         ${supportsChoice ? `
-        <div class="full">
-          <p class="info-box" style="margin-top:0"><strong>Comment payer vos échéances ?</strong></p>
-          <label class="billing-choice">
-            <input type="radio" name="billing_plan" value="rib" ${savedPlan !== 'cb' ? 'checked' : ''} />
-            Prélèvement bancaire (RIB) — classique
-          </label>
-          <label class="billing-choice">
-            <input type="radio" name="billing_plan" value="cb" ${savedPlan === 'cb' ? 'checked' : ''} />
-            Carte bancaire toutes les 4 semaines
-          </label>
+        <div class="full billing-plan-block">
+          <p class="info-box billing-plan-title"><strong>Comment payer vos échéances ?</strong></p>
+          <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement des échéances">
+            <label class="billing-choice">
+              <input type="radio" name="billing_plan" value="rib" ${savedPlan !== 'cb' ? 'checked' : ''} />
+              <span class="billing-choice-text">
+                <strong>Prélèvement (RIB)</strong>
+                <small>1ère CB aujourd'hui, puis SEPA</small>
+              </span>
+            </label>
+            <label class="billing-choice">
+              <input type="radio" name="billing_plan" value="cb" ${savedPlan === 'cb' ? 'checked' : ''} />
+              <span class="billing-choice-text">
+                <strong>Carte bancaire</strong>
+                <small>Débit toutes les 4 semaines</small>
+              </span>
+            </label>
+          </div>
           <p class="info-box" id="billingPlanHint">${formatPaymentChoiceLabel(savedPlan !== 'cb' ? 'rib' : 'cb')}</p>
         </div>` : ''}
         <div class="full" id="ibanBlock" ${supportsChoice && savedPlan === 'cb' ? 'style="display:none"' : ''}>

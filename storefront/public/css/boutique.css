@@ -383,6 +383,72 @@ input:focus, select:focus, textarea:focus {
   color: #7a6520;
 }
 
+/* Choix RIB / CB — étape paiement inscription */
+.billing-plan-block .billing-plan-title {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.billing-choice-row {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.billing-choice {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 14px 16px;
+  border: 2px solid var(--bc-border);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.billing-choice:has(input:checked) {
+  border-color: var(--bc-navy);
+  box-shadow: 0 0 0 1px var(--bc-navy);
+  background: rgba(32, 37, 75, 0.04);
+}
+
+.billing-choice input[type="radio"] {
+  width: auto;
+  margin: 3px 0 0;
+  flex-shrink: 0;
+  padding: 0;
+  accent-color: var(--bc-navy);
+}
+
+.billing-choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.billing-choice-text strong {
+  font-size: 14px;
+  color: var(--bc-text);
+}
+
+.billing-choice-text small {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--bc-muted);
+}
+
+@media (max-width: 560px) {
+  .billing-choice-row {
+    flex-direction: column;
+  }
+}
+
 .notice-important strong {
   display: block;
   margin-bottom: 6px;
