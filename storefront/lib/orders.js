@@ -4,6 +4,11 @@ const { ROOT, ensureDir } = require('../../lib/utils');
 const { normalizeOrder, validateOrder } = require('../../lib/normalize');
 const { enqueue } = require('../../lib/queue');
 const { isValidFrenchIban, normalizeIban } = require('../../lib/iban');
+const {
+  normalizeBillingPlan,
+  requiresIbanForPlan,
+  productSupportsBillingChoice,
+} = require('../../lib/billing-plan');
 
 const PENDING_DIR =
   process.env.BOXPLUS_PENDING_DIR ||
@@ -35,9 +40,10 @@ function removePendingOrder(sessionId) {
 }
 
 function buildOrderPayload(input, product) {
-  const iban = input.iban ? normalizeIban(input.iban) : null;
+  const billingPlan = normalizeBillingPlan(input.billing_plan, product);
+  const requiresIban = requiresIbanForPlan(product, billingPlan);
+  const iban = requiresIban && input.iban ? normalizeIban(input.iban) : null;
   const amount = product.price_cents / 100;
-  const requiresIban = product.requires_iban !== false && !/comptant/i.test(product.name || '');
 
   return {
     order_id: input.order_id || `STORE-${Date.now()}`,
@@ -49,6 +55,7 @@ function buildOrderPayload(input, product) {
     deciplus_product_search: product.deciplus_product_search || null,
     sale_type: product.sale_type || null,
     requires_iban: requiresIban,
+    billing_plan: billingPlan,
     gym: input.gym,
     customer: {
       first_name: input.first_name,
@@ -69,9 +76,12 @@ function buildOrderPayload(input, product) {
       method: input.payment_method || 'stripe',
       status: product.requires_payment ? 'paid' : 'free',
       date: new Date().toISOString(),
-      iban: requiresIban ? iban : null,
+      iban,
+      billing_plan: billingPlan,
+      recurring: billingPlan === 'cb' ? 'stripe_4_weeks' : billingPlan === 'rib' ? 'sepa_4_weeks' : null,
       stripe_session_id: input.stripe_session_id || null,
       stripe_payment_intent: input.stripe_payment_intent || null,
+      stripe_subscription_id: input.stripe_subscription_id || null,
     },
     utm: {
       source: input.utm_source || null,
@@ -100,7 +110,8 @@ function validateFullForm(input, product = {}) {
   const errors = [];
   if (!input.gender) errors.push('Sexe requis');
   if (!input.gym) errors.push('Salle principale requise');
-  if (product.requires_iban) {
+  const billingPlan = normalizeBillingPlan(input.billing_plan, product);
+  if (requiresIbanForPlan(product, billingPlan)) {
     if (!input.iban) errors.push('IBAN requis');
     else if (!isValidFrenchIban(input.iban)) errors.push('IBAN français invalide');
   }
@@ -109,7 +120,11 @@ function validateFullForm(input, product = {}) {
 
 function validatePaymentForm(input, product) {
   const errors = [];
-  if (product.requires_iban) {
+  const billingPlan = normalizeBillingPlan(input.billing_plan, product);
+  if (productSupportsBillingChoice(product) && !input.billing_plan) {
+    errors.push('Choisissez un mode de paiement (RIB ou carte)');
+  }
+  if (requiresIbanForPlan(product, billingPlan)) {
     if (!input.iban) errors.push('IBAN requis pour le prélèvement');
     else if (!isValidFrenchIban(input.iban)) errors.push('IBAN français invalide');
   }
@@ -133,8 +148,10 @@ function buildOrderFromLifecycle(order, product) {
       postal_code: full.postal_code,
       city: full.city,
       iban: full.iban || order.payment?.iban,
+      billing_plan: order.payment?.billing_plan,
       payment_method: order.payment?.method || 'stripe',
       stripe_session_id: order.payment?.stripe_session_id,
+      stripe_subscription_id: order.payment?.stripe_subscription_id,
       emergency_contact: full.emergency_contact,
       medical_info: full.medical_info,
     },

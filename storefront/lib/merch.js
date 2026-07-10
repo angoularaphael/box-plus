@@ -14,6 +14,7 @@ const {
   saveMaterielCatalog,
   addMaterielProduct,
 } = require('./merch-persistence');
+const { productSupportsBillingChoice } = require('../../lib/billing-plan');
 
 function loadMaterielCatalog() {
   return loadMaterielCatalogLocal();
@@ -139,7 +140,7 @@ function isPromoActive(merchEntry) {
 
 function enrichProduct(catalogProduct, merchEntry = {}) {
   const subsection = merchEntry.subsection || inferSubsection(catalogProduct);
-  return {
+  const enriched = {
     ...catalogProduct,
     tab: merchEntry.tab || 'abonnements',
     subsection,
@@ -154,6 +155,8 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
     marketing_price_label: merchEntry.marketing_price_label || null,
     image: merchEntry.image || null,
   };
+  enriched.supports_billing_choice = productSupportsBillingChoice(enriched);
+  return enriched;
 }
 
 function getEnrichedProducts(options = {}) {
