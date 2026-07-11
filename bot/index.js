@@ -6,7 +6,7 @@ require('dotenv').config();
 
 const { login, isMfaAuthError } = require('./auth');
 const { runWithSession, closeBrowser } = require('./browser-pool');
-const { findOrCreateMember } = require('./member');
+const { findOrCreateMember, resetMemberSearchContext } = require('./member');
 const { recordSale } = require('./sale');
 const { setMemberIban } = require('./wallet');
 const { isValidFrenchIban } = require('../lib/iban');
@@ -19,6 +19,7 @@ const {
   getProcessedRecord,
   STATUS,
   getQueueStats,
+  requeueInterruptedJobs,
 } = require('../lib/queue');
 const {
   normalizeOrder,
@@ -143,6 +144,10 @@ async function processSaleJob(page, order) {
   const finalStatus =
     saleResult.manual_review ? STATUS.MANUAL_REVIEW : STATUS.SUCCESS;
 
+  await resetMemberSearchContext(page).catch((err) => {
+    logWarn('Retour select.php après job ignoré', { order_id: order.order_id, error: err.message });
+  });
+
   return {
     status: finalStatus,
     action: 'sale',
@@ -264,6 +269,11 @@ async function runLoop(once = false) {
   const { startBotServer } = require('./server');
   startBotServer();
 
+  const recovered = requeueInterruptedJobs(Number(process.env.BOT_REQUEUE_MS || 0));
+  if (recovered) {
+    logInfo('Jobs interrompus remis en file', { count: recovered });
+  }
+
   logInfo('Bot Deciplus démarré', getQueueStats());
 
   const catalogDelay = Number(process.env.BOT_CATALOG_PUSH_DELAY_MS || 120000);
@@ -292,7 +302,12 @@ async function runLoop(once = false) {
 
     const job = pending[0];
     logInfo('Traitement job', { job_id: job.job_id, order_id: job.order_id, action: job.action || 'sale' });
-    await processOneJob(job);
+    try {
+      await processOneJob(job);
+    } catch (err) {
+      logError('Erreur fatale boucle bot', { error: err.message });
+      await closeBrowser();
+    }
   } while (!once);
 
   await closeBrowser();
