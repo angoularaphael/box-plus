@@ -114,11 +114,27 @@
     }
   }
 
+  function orderRequiresPayment(order) {
+    const p = order?.product_snapshot || state.product;
+    return p?.requires_payment !== false;
+  }
+
+  function paymentFailureMessage(reason) {
+    if (reason === 'cancelled') {
+      return 'Paiement annulé — vous n\'avez pas été débité. Vous pouvez réessayer ci-dessous.';
+    }
+    return 'Le paiement n\'a pas pu être finalisé — vous n\'avez pas été débité. Vous pouvez réessayer.';
+  }
+
   function stepFromOrder(order) {
     if (!order) return state.step;
-    if (order.step >= 6) return 6;
-    if (order.step >= 5) return 5;
-    if (order.step >= 4 || order.payment?.status === 'paid') return 4;
+    const paid = order.payment?.status === 'paid';
+    const needsPay = orderRequiresPayment(order);
+
+    if (order.step >= 6) return needsPay && !paid ? 3 : 6;
+    if (order.step >= 5) return needsPay && !paid ? 3 : 5;
+    if (order.step >= 4) return needsPay && !paid ? 3 : 4;
+    if (paid) return 4;
     if (order.order_id) return 3;
     return 2;
   }
@@ -216,6 +232,9 @@
 
   function orderErrorMessage(data) {
     if (data.message) return data.message;
+    if (data.error === 'payment_not_completed' || data.error === 'payment_required') {
+      return paymentFailureMessage();
+    }
     if (data.error === 'not_found') {
       return 'Dossier introuvable. Revenez à l\'étape identité et recommencez, ou contactez le club.';
     }
@@ -392,6 +411,14 @@
     refresh();
   }
 
+  function guardPaidStep() {
+    if (!orderRequiresPayment(state.order) || state.order?.payment?.status === 'paid') return false;
+    state.step = 3;
+    setMsg(paymentFailureMessage(), 'err');
+    persistAndRender();
+    return true;
+  }
+
   async function renderStep3() {
     if (state.order?.payment?.status === 'paid' || state.step >= 4) {
       state.step = 4;
@@ -480,6 +507,7 @@
   }
 
   function renderStep4() {
+    if (guardPaidStep()) return;
     const full = state.order?.customer_full || {};
     const paid = state.order?.payment?.status === 'paid';
     const backTarget = paid ? 2 : 3;
@@ -539,6 +567,7 @@
   };
 
   function renderStep5() {
+    if (guardPaidStep()) return;
     stepContent.innerHTML = `
       <h1>Signature et validation</h1>
       <p class="sub">Lisez les documents, cochez les cases puis validez — cela vaut signature électronique de votre contrat.</p>
@@ -596,6 +625,7 @@
   }
 
   function renderStep6() {
+    if (guardPaidStep()) return;
     const p = state.product;
     const emailNote = state.emailWarning
       ? `<div class="notice-important" style="margin-top:16px;text-align:left"><strong>Email non envoyé</strong><p>Votre inscription est bien enregistrée. L'email de confirmation n'a pas pu être envoyé (${state.emailWarning}). Téléchargez votre contrat ci-dessous ou contactez le club.</p></div>`
@@ -626,22 +656,31 @@
     if (!sessionId || stripeConfirmDone) return false;
     stripeConfirmDone = true;
     state.sessionId = sessionId;
+
+    let data = {};
     const res = await fetch('/api/checkout/confirm-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId }),
     });
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
     await loadOrder();
+
     if (state.order?.payment?.status === 'paid') {
       state.step = 4;
+      setMsg('');
       return true;
     }
-    if (res.ok) {
-      state.step = Math.max(state.step, 4);
-      await loadOrder();
-      if (state.order?.payment?.status === 'paid') state.step = 4;
-    }
-    return res.ok;
+
+    state.step = 3;
+    state.sessionId = null;
+    setMsg(paymentFailureMessage(), 'err');
+    syncUrl();
+    return false;
   }
 
   async function render() {
@@ -661,11 +700,21 @@
     restoreProgress();
     await loadConfig();
 
+    if (params.get('cancelled')) {
+      state.step = 3;
+      state.sessionId = null;
+      setMsg(paymentFailureMessage('cancelled'), 'err');
+      params.delete('cancelled');
+      syncUrl();
+    }
+
     if (state.orderId && state.token) {
       await confirmStripeReturn();
       const loaded = await loadOrder();
       if (state.order?.payment?.status === 'paid') {
         state.step = Math.max(state.step, 4);
+      } else if (orderRequiresPayment(state.order) && state.step > 3) {
+        state.step = 3;
       } else if (!loaded && state.step >= 3) {
         setMsg(
           'Impossible de recharger votre dossier — vous pouvez tout de même payer si vos coordonnées sont enregistrées ci-dessus.',

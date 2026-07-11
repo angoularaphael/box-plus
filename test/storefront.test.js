@@ -56,3 +56,11 @@ test('validateFullForm sans IBAN si billing_plan cb (4 semaines)', () => {
   );
   assert.ok(!errors.includes('IBAN requis'));
 });
+
+test('isStripeCheckoutPaid — uniquement si Stripe confirme le débit', () => {
+  const { isStripeCheckoutPaid } = require('../storefront/lib/stripe-checkout');
+  assert.equal(isStripeCheckoutPaid({ payment_status: 'paid' }), true);
+  assert.equal(isStripeCheckoutPaid({ payment_status: 'no_payment_required' }), true);
+  assert.equal(isStripeCheckoutPaid({ payment_status: 'unpaid' }), false);
+  assert.equal(isStripeCheckoutPaid(null), false);
+});

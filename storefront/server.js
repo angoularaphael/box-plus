@@ -8,7 +8,7 @@ const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
-const { logInfo, logError } = require('../lib/logger');
+const { logInfo, logError, logWarn } = require('../lib/logger');
 const { getStoreUrl, getCheckoutBaseUrl, getBridgeUrl, PRODUCTION_STORE_URL } = require('../lib/app-urls');
 const {
   buildOrderPayload,
@@ -26,7 +26,7 @@ const {
 } = require('./lib/orders');
 const { getStoreProducts, ingestCatalogPayload } = require('./lib/deciplus-sync');
 const { BADGE_FEE_NOTICE } = require('./lib/storefront-copy');
-const { createCheckoutSessionParams } = require('./lib/stripe-checkout');
+const { createCheckoutSessionParams, isStripeCheckoutPaid } = require('./lib/stripe-checkout');
 const { normalizeBillingPlan } = require('../lib/billing-plan');
 const {
   getEnrichedProducts,
@@ -75,6 +75,7 @@ const {
   verifyAccess,
   updateShortProfile,
   markPaymentPaid,
+  markPaymentFailed,
   updateFullProfile,
   recordSignature,
   markEmailSent,
@@ -188,6 +189,10 @@ async function sendMaterielEmailIfNeeded(order) {
 }
 
 async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
+  if (stripeSession && !isStripeCheckoutPaid(stripeSession)) {
+    return { ok: false, error: 'payment_not_completed', payment_status: stripeSession.payment_status };
+  }
+
   const pending = loadPendingCheckout(sessionId);
   const orderId = pending?.order_id || stripeSession?.metadata?.order_id;
 
@@ -242,6 +247,10 @@ async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
 }
 
 async function fulfillStripeSession(sessionId, stripeSession = null, lifecycleMode = false) {
+  if (stripeSession && !isStripeCheckoutPaid(stripeSession)) {
+    return { ok: false, error: 'payment_not_completed', payment_status: stripeSession.payment_status };
+  }
+
   const materielPending = loadPendingCheckout(sessionId);
   if (
     materielPending?.order_type === 'materiel' ||
@@ -331,23 +340,40 @@ function createApp() {
       try {
         if (event.type === 'checkout.session.completed') {
           const session = event.data.object;
-          const materielPending = loadPendingCheckout(session.id);
-          if (
-            materielPending?.order_type === 'materiel' ||
-            session.metadata?.order_type === 'materiel'
-          ) {
-            await fulfillMaterielCheckout(session.id, session);
+          if (!isStripeCheckoutPaid(session)) {
+            logInfo('Stripe checkout terminé sans paiement encaissé', {
+              session_id: session.id,
+              payment_status: session.payment_status,
+            });
           } else {
-            const pending =
-              loadPendingOrder(session.id) || unpackOrderMetadata(session.metadata);
-            const lifecycleMode = Boolean(
-              pending?.lifecycle_order_id || session.metadata?.lifecycle_order_id
-            );
-            if (!pending && !lifecycleMode) {
-              logError('Session Stripe sans commande pending', { session_id: session.id });
+            const materielPending = loadPendingCheckout(session.id);
+            if (
+              materielPending?.order_type === 'materiel' ||
+              session.metadata?.order_type === 'materiel'
+            ) {
+              await fulfillMaterielCheckout(session.id, session);
             } else {
-              await fulfillStripeSession(session.id, session, lifecycleMode);
+              const pending =
+                loadPendingOrder(session.id) || unpackOrderMetadata(session.metadata);
+              const lifecycleMode = Boolean(
+                pending?.lifecycle_order_id || session.metadata?.lifecycle_order_id
+              );
+              if (!pending && !lifecycleMode) {
+                logError('Session Stripe sans commande pending', { session_id: session.id });
+              } else {
+                await fulfillStripeSession(session.id, session, lifecycleMode);
+              }
             }
+          }
+        } else if (event.type === 'checkout.session.async_payment_failed') {
+          const session = event.data.object;
+          const orderId = session.metadata?.lifecycle_order_id || session.metadata?.order_id;
+          if (orderId) {
+            await markPaymentFailed(orderId, {
+              stripe_session_id: session.id,
+              failure_reason: 'async_payment_failed',
+            });
+            logWarn('Paiement Stripe échoué (async)', { order_id: orderId, session_id: session.id });
           }
         } else if (event.type === 'invoice.paid') {
           const invoice = event.data.object;
@@ -923,6 +949,15 @@ function createApp() {
       }
       if (!full.iban && order.payment?.iban) full.iban = order.payment.iban;
 
+      if (product?.requires_payment !== false && order.payment?.status !== 'paid') {
+        return res.status(402).json({
+          ok: false,
+          error: 'payment_required',
+          message:
+            'Le paiement n\'a pas été confirmé — vous n\'avez pas été débité. Revenez à l\'étape paiement.',
+        });
+      }
+
       const errors = validateFullForm(full, product);
       if (errors.length) return res.status(400).json({ ok: false, errors });
 
@@ -956,6 +991,16 @@ function createApp() {
           email_sent: Boolean(order.email_sent_at),
           client_synced: Boolean(order.gestion_client_id),
           status_url: `/mon-inscription?order=${order.order_id}&token=${order.access_token}`,
+        });
+      }
+
+      const product = findProduct(order.product_id) || order.product_snapshot;
+      if (product?.requires_payment !== false && order.payment?.status !== 'paid') {
+        return res.status(402).json({
+          ok: false,
+          error: 'payment_required',
+          message:
+            'Le paiement n\'a pas été confirmé — vous n\'avez pas été débité. Revenez à l\'étape paiement.',
         });
       }
 
@@ -1260,7 +1305,7 @@ function createApp() {
       if (!stripe) return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
 
       const session = await stripe.checkout.sessions.retrieve(sessionId);
-      if (session.payment_status !== 'paid') {
+      if (!isStripeCheckoutPaid(session)) {
         return res.status(402).json({ ok: false, error: 'payment_not_completed' });
       }
 
@@ -1270,7 +1315,9 @@ function createApp() {
         session.metadata?.order_type === 'materiel'
       ) {
         const out = await fulfillMaterielCheckout(sessionId, session);
-        if (!out.ok) return res.status(500).json(out);
+        if (!out.ok) {
+          return res.status(out.error === 'payment_not_completed' ? 402 : 500).json(out);
+        }
         return res.json({ ok: true, ...out });
       }
 
@@ -1280,9 +1327,21 @@ function createApp() {
       );
       const out = await fulfillStripeSession(sessionId, session, lifecycleMode);
       if (!out.ok && out.error === 'pending_not_found') {
-        return res.json({ ok: true, already_processed: true });
+        const lifecycleId = session.metadata?.lifecycle_order_id || session.metadata?.order_id;
+        if (lifecycleId) {
+          const existing = await loadOrderAsync(lifecycleId);
+          if (existing?.payment?.status === 'paid') {
+            return res.json({
+              ok: true,
+              already_processed: true,
+              order_id: existing.order_id,
+              lifecycle: true,
+            });
+          }
+        }
+        return res.status(404).json({ ok: false, error: 'order_not_found' });
       }
-      if (!out.ok) return res.status(500).json(out);
+      if (!out.ok) return res.status(out.error === 'payment_not_completed' ? 402 : 500).json(out);
       res.json({ ok: true, ...out });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });

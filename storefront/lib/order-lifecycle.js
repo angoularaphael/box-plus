@@ -128,6 +128,23 @@ async function markPaymentPaidAsync(orderId, paymentData) {
   return saveOrderAsync(order);
 }
 
+function markPaymentFailed(orderId, paymentData) {
+  return markPaymentFailedAsync(orderId, paymentData);
+}
+
+async function markPaymentFailedAsync(orderId, paymentData = {}) {
+  const order = await loadOrderAsync(orderId);
+  if (!order) return null;
+  order.payment = {
+    ...order.payment,
+    ...paymentData,
+    status: 'failed',
+    failed_at: new Date().toISOString(),
+  };
+  order.step = Math.min(order.step || 3, 3);
+  return saveOrderAsync(order);
+}
+
 function updateFullProfile(orderId, customer_full) {
   return updateFullProfileAsync(orderId, customer_full);
 }
@@ -277,6 +294,7 @@ module.exports = {
   verifyAccess,
   updateShortProfile,
   markPaymentPaid,
+  markPaymentFailed,
   updateFullProfile,
   recordSignature,
   markEmailSent,
