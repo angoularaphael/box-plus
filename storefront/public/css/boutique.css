@@ -515,6 +515,9 @@ input:focus, select:focus, textarea:focus {
 .success-page h1 { color: var(--bc-navy); margin: 20px 0 12px; }
 .success-page p { color: var(--bc-muted); margin-bottom: 24px; }
 
+.success-page.payment-failed .success-icon { display: none; }
+.success-page.payment-failed h1 { color: var(--bc-error); }
+
 .success-icon {
   width: 72px;
   height: 72px;

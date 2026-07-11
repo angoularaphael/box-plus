@@ -54,7 +54,7 @@ async function init() {
     return;
   }
 
-  if (qs('cancelled')) showMsg('Paiement non finalisé — vous pouvez réessayer.', false);
+  if (qs('cancelled')) showMsg('Paiement annulé — vous n\'avez pas été débité. Vous pouvez réessayer.', false);
 
   setPayButtons();
 

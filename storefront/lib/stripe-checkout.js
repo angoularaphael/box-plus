@@ -62,6 +62,15 @@ function createCheckoutSessionParams({ product, order, payload, baseUrl, packOrd
   return params;
 }
 
+/** Stripe Checkout — paiement réellement encaissé (pas seulement session ouverte). */
+function isStripeCheckoutPaid(session) {
+  if (!session) return false;
+  const status = String(session.payment_status || '').toLowerCase();
+  if (status === 'paid' || status === 'no_payment_required') return true;
+  return false;
+}
+
 module.exports = {
   createCheckoutSessionParams,
+  isStripeCheckoutPaid,
 };
