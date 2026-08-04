@@ -167,10 +167,12 @@
   function orderNeedsIban(order) {
     const p = order?.product_snapshot || state.product;
     const plan = order?.payment?.billing_plan || 'rib';
-    const badgeMethod = order?.payment?.badge_method || order?.badge_method || 'iban';
-    if (plan === 'cb' && badgeMethod === 'card') return false;
-    if (plan === 'cb' && badgeMethod === 'iban') return true;
-    return Boolean(p?.requires_iban || plan === 'rib');
+    // Badge ~72h toujours IBAN — IBAN requis pour abonnements / prélèvement
+    if (order?.payment?.iban) return false;
+    if (plan === 'rib' || p?.requires_iban) return true;
+    if (p?.sale_type === 'abonnement') return true;
+    if (/abonnement/i.test(String(p?.category || ''))) return true;
+    return false;
   }
 
   function paymentFailureMessage(reason) {
@@ -367,39 +369,83 @@
   }
 
   function bindBillingPlanForm() {
-    const payBtn = document.getElementById('payBtn');
-    const radios = document.querySelectorAll('input[name="billing_plan"]');
-    const syncBadge = () => {
-      const timing = document.querySelector('input[name="badge_timing"]:checked');
-      const method = document.querySelector('input[name="badge_method"]:checked');
-      // Carte badge = immédiat ; différé = IBAN (contrainte Stripe / Deciplus)
-      if (method?.value === 'card' && timing && timing.value !== 'immediate') {
-        const imm = document.querySelector('input[name="badge_timing"][value="immediate"]');
-        if (imm) imm.checked = true;
+    /* Choix badge / CB récurrente retirés — rien à synchroniser */
+  }
+
+  async function renderStep4() {
+    if (state.order?.payment?.status === 'paid') {
+      state.step = stepFromOrder(state.order);
+      if (state.step !== 4) {
+        persistAndRender();
+        return;
       }
-      if (timing?.value === 'deferred' && method && method.value !== 'iban') {
-        const iban = document.querySelector('input[name="badge_method"][value="iban"]');
-        if (iban) iban.checked = true;
-      }
-    };
-    document.querySelectorAll('input[name="badge_timing"], input[name="badge_method"]').forEach((r) => {
-      r.addEventListener('change', syncBadge);
-    });
-    if (!radios.length) {
-      syncBadge();
-      return;
     }
-
-    const refresh = () => {
-      const plan = document.querySelector('input[name="billing_plan"]:checked')?.value || 'rib';
-      if (payBtn) {
-        payBtn.textContent = plan === 'cb' ? 'Payer par carte' : 'Payer';
+    if (state.sessionId) {
+      await confirmStripeReturn();
+      if (state.order?.payment?.status === 'paid') {
+        persistAndRender();
+        return;
       }
-      syncBadge();
+    }
+    await ensureProductForPayment();
+    const p = state.product;
+    const isComptantLike =
+      /comptant/i.test(String(p?.name || '')) ||
+      /4\s*[x×]\s*sans\s*frais/i.test(String(p?.badge || p?.name || '')) ||
+      /sans\s*frais/i.test(String(p?.badge || ''));
+    const isPrelevement = Boolean(p?.requires_iban) && !isComptantLike;
+    stepContent.innerHTML = `
+      <h1>Paiement</h1>
+      <p class="sub">Montant : <strong>${priceLabel(p)}</strong></p>
+      <form id="payForm">
+        ${
+          isPrelevement
+            ? `
+        <div class="full billing-plan-block">
+          <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
+            <label class="billing-choice">
+              <input type="radio" name="billing_plan" value="rib" checked />
+              <span class="billing-choice-text">
+                <strong>Prélèvement (RIB)</strong>
+                <small>1ère CB, puis SEPA</small>
+              </span>
+            </label>
+          </div>
+        </div>`
+            : ''
+        }
+        <button type="submit" class="btn stripe block" id="payBtn">${
+          p?.requires_payment === false ? 'Continuer' : 'Payer'
+        }</button>
+        ${backButton('← Retour', 3)}
+      </form>`;
+    bindBillingPlanForm();
+    document.getElementById('payForm').onsubmit = async (e) => {
+      e.preventDefault();
+      setMsg('Redirection…');
+      saveProgress();
+      const body = payRequestBody();
+      if (isPrelevement) body.billing_plan = 'rib';
+      // Badge ~72h auto (IBAN) — plus de choix côté client
+      body.badge_timing = 'deferred';
+      body.badge_method = 'iban';
+      const res = await fetch(`/api/orders/${state.orderId}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setMsg(orderErrorMessage(data), 'err');
+        return;
+      }
+      if (data.redirect) {
+        window.location.href = data.redirect;
+        return;
+      }
+      if (data.url) window.location.href = data.url;
     };
-
-    radios.forEach((r) => r.addEventListener('change', refresh));
-    refresh();
+    bindBackButtons();
   }
 
   function guardPaidStep() {
