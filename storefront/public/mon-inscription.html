@@ -60,7 +60,7 @@
           <div class="status-row"><span>Avancement</span><strong>Étape ${step} / 6</strong></div>
           <div class="status-progress" role="progressbar" aria-valuenow="${step}" aria-valuemin="1" aria-valuemax="6"><i style="width:${Math.round((step / 6) * 100)}%"></i></div>
           <div class="status-row"><span>Paiement</span><span class="status-chip status-chip--${pay[1]}">${pay[0]}</span></div>
-          <div class="status-row"><span>Fiche membre Deciplus</span><span class="status-chip status-chip--${data.dispatched ? 'ok' : 'warn'}">${data.dispatched ? 'Transmise' : 'En cours'}</span></div>
+          <div class="status-row"><span>Fiche membre</span><span class="status-chip status-chip--${data.dispatched ? 'ok' : 'warn'}">${data.dispatched ? 'Transmise' : 'En cours'}</span></div>
           <button type="button" class="btn block" id="contractBtn" style="margin-top:20px">Télécharger le contrat</button>
         </div>`;
       document.getElementById('contractBtn').onclick = () => {

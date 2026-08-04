@@ -228,11 +228,69 @@ async function sendTestEmail(to) {
   }
 }
 
+async function sendUnpaidSubscriptionEmail(order, { portalUrl } = {}) {
+  const to = order.customer_short?.email;
+  if (!to) {
+    logWarn('Email impayé ignoré — pas d\'email client', { order_id: order.order_id });
+    return { sent: false, reason: 'no_email' };
+  }
+
+  const short = order.customer_short || {};
+  const product = order.product_snapshot || {};
+  const adminTo = process.env.ADMIN_EMAIL || process.env.SUPER_ADMIN_EMAIL || '';
+  const payLink = portalUrl
+    ? `<p><a href="${portalUrl}" style="display:inline-block;padding:12px 20px;background:#C8902F;color:#0B1F3A;text-decoration:none;font-weight:700;border-radius:6px">Mettre à jour mon moyen de paiement</a></p>`
+    : `<p>Connectez-vous à votre espace bancaire / Stripe pour mettre à jour votre carte, ou contactez le club.</p>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Paiement en échec — Boxing Center</title></head>
+<body style="font-family:Arial,sans-serif;color:#1A1A2E;max-width:600px;margin:0 auto;padding:24px">
+  <h1 style="color:#0B1F3A">Paiement d'abonnement en échec</h1>
+  <p>Bonjour ${short.first_name || ''},</p>
+  <p>Le renouvellement de votre abonnement <strong>${product.display_name || product.name || ''}</strong> n'a pas pu être débité.</p>
+  <p>Sans régularisation, l'accès au club pourra être suspendu.</p>
+  ${payLink}
+  <p>Référence : ${order.order_id}</p>
+  <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="${SITE_URL}" style="color:#2EC4C6">${SITE_URL.replace('https://', '')}</a></p>
+</body>
+</html>`;
+
+  if (!isConfigured()) {
+    logInfo('Email impayé (mode log)', { to, order_id: order.order_id });
+    return { sent: false, reason: 'brevo_not_configured', preview: html };
+  }
+
+  try {
+    const result = await sendEmailViaBrevo({
+      to,
+      subject: 'Action requise — échec de paiement Boxing Center',
+      html,
+      replyTo: defaultReplyTo(),
+    });
+    if (adminTo && adminTo !== to) {
+      await sendEmailViaBrevo({
+        to: adminTo,
+        subject: `[Impayé] ${short.email || order.order_id} — ${product.display_name || product.name || ''}`,
+        html: `<p>Échec renouvellement CB Stripe.</p><p>Client : ${short.first_name || ''} ${short.last_name || ''} — ${to}</p><p>Commande : ${order.order_id}</p>`,
+        replyTo: defaultReplyTo(),
+      }).catch(() => null);
+    }
+    if (!result) return { sent: false, reason: 'brevo_not_configured' };
+    logInfo('Email impayé envoyé', { to, order_id: order.order_id });
+    return { sent: true };
+  } catch (err) {
+    logWarn('Email impayé échoué', { to, order_id: order.order_id, error: err.message });
+    return { sent: false, reason: 'brevo_error', error: err.message };
+  }
+}
+
 module.exports = {
   sendConfirmationEmail,
   sendMaterielConfirmationEmail,
   sendGdprEraseRequest,
   sendTestEmail,
+  sendUnpaidSubscriptionEmail,
   buildConfirmationHtml,
   buildMaterielConfirmationHtml,
   getMailFrom,

@@ -24,7 +24,7 @@
   <div class="checkout-layout">
     <div class="form-panel">
       <h1 id="productTitle">Commande</h1>
-      <p class="sub" id="productSub">Remplissez vos informations — elles seront envoyées à Deciplus via BOXPLUS.</p>
+      <p class="sub" id="productSub">Remplissez vos informations pour finaliser votre inscription Boxing Center.</p>
 
       <form id="checkoutForm" novalidate>
         <input type="hidden" name="product_id" id="productId" />
@@ -85,14 +85,14 @@
           <div class="full" id="ibanBlock">
             <label for="iban">IBAN (prélèvement) *</label>
             <input id="iban" name="iban" placeholder="FR76 3000 6000 0112 3456 7890 189" autocomplete="off" />
-            <p class="info-box">Obligatoire pour toutes les offres payantes. Vérifié avant envoi à Deciplus.</p>
+            <p class="info-box">Obligatoire pour les offres en prélèvement. Vérifié avant validation.</p>
           </div>
           <div class="full" id="badgeFeeNotice" hidden></div>
         </div>
 
         <div class="stack">
           <button type="submit" class="btn stripe" id="payStripeBtn" hidden>Payer avec Stripe</button>
-          <button type="button" class="btn" id="payDemoBtn" hidden>Valider (mode démo → BOXPLUS)</button>
+          <button type="button" class="btn" id="payDemoBtn" hidden>Valider (mode démo)</button>
           <button type="submit" class="btn" id="payFreeBtn" hidden>Réserver gratuitement</button>
         </div>
         <p class="form-msg" id="formMsg"></p>
@@ -101,13 +101,13 @@
 
     <aside class="summary-panel">
       <h2>Récapitulatif</h2>
-      <div class="summary-line"><span>Produit Deciplus</span><span id="sumName">—</span></div>
+      <div class="summary-line"><span>Offre</span><span id="sumName">—</span></div>
       <div class="summary-line muted"><span id="sumDesc">—</span></div>
       <div class="summary-total"><span>À payer aujourd'hui</span><span id="sumPrice">—</span></div>
       <div class="summary-line muted" id="sumContract" hidden style="margin-top:12px"></div>
       <div class="summary-line muted" id="sumInstallments" hidden></div>
       <div class="info-box" style="margin-top:20px">
-        Après paiement, votre commande est transmise automatiquement à Deciplus (membre, RIB, vente).
+        Après paiement, votre inscription est enregistrée automatiquement.
       </div>
       <div class="notice-important" id="summaryBadgeNotice" hidden style="margin-top:16px"></div>
     </aside>

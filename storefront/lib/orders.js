@@ -71,6 +71,7 @@ function buildOrderPayload(input, product) {
       emergency_contact: input.emergency_contact || null,
       medical_info: input.medical_info || null,
     },
+    photo_path: input.photo_path || null,
     payment: {
       amount,
       method: input.payment_method || 'stripe',
@@ -110,11 +111,9 @@ function validateFullForm(input, product = {}) {
   const errors = [];
   if (!input.gender) errors.push('Sexe requis');
   if (!input.gym) errors.push('Salle principale requise');
-  const billingPlan = normalizeBillingPlan(input.billing_plan, product);
-  if (requiresIbanForPlan(product, billingPlan)) {
-    if (!input.iban) errors.push('IBAN requis');
-    else if (!isValidFrenchIban(input.iban)) errors.push('IBAN français invalide');
-  }
+  if (!input.address) errors.push('Adresse requise');
+  if (!input.postal_code) errors.push('Code postal requis');
+  if (!input.city) errors.push('Ville requise');
   return errors;
 }
 
@@ -124,6 +123,14 @@ function validatePaymentForm(input, product) {
   if (productSupportsBillingChoice(product) && !input.billing_plan) {
     errors.push('Choisissez un mode de paiement (RIB ou carte)');
   }
+  // IBAN collecté après Stripe — plus requis ici
+  void billingPlan;
+  return errors;
+}
+
+function validateIbanForm(input, product = {}) {
+  const errors = [];
+  const billingPlan = normalizeBillingPlan(input.billing_plan, product);
   if (requiresIbanForPlan(product, billingPlan)) {
     if (!input.iban) errors.push('IBAN requis pour le prélèvement');
     else if (!isValidFrenchIban(input.iban)) errors.push('IBAN français invalide');
@@ -154,6 +161,7 @@ function buildOrderFromLifecycle(order, product) {
       stripe_subscription_id: order.payment?.stripe_subscription_id,
       emergency_contact: full.emergency_contact,
       medical_info: full.medical_info,
+      photo_path: order.documents?.photo || full.photo_path || null,
     },
     product
   );
@@ -215,6 +223,7 @@ module.exports = {
   validateShortForm,
   validateFullForm,
   validatePaymentForm,
+  validateIbanForm,
   submitToBoxplus,
   dispatchOrder,
   packOrderMetadata,

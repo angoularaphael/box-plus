@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Boutique Boxing Center — Stripe → BOXPLUS, tunnel 6 étapes
+ * Boutique Boxing Center — Stripe → BOXPLUS, tunnel 8 étapes
  */
 require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
 const { logInfo, logError, logWarn } = require('../lib/logger');
@@ -17,6 +18,7 @@ const {
   validateShortForm,
   validateFullForm,
   validatePaymentForm,
+  validateIbanForm,
   dispatchOrder,
   packOrderMetadata,
   unpackOrderMetadata,
@@ -26,8 +28,12 @@ const {
 } = require('./lib/orders');
 const { getStoreProducts, ingestCatalogPayload } = require('./lib/deciplus-sync');
 const { BADGE_FEE_NOTICE } = require('./lib/storefront-copy');
-const { createCheckoutSessionParams, isStripeCheckoutPaid } = require('./lib/stripe-checkout');
-const { normalizeBillingPlan } = require('../lib/billing-plan');
+const {
+  createCheckoutSessionParams,
+  isStripeCheckoutPaid,
+  stripeClientForGym,
+} = require('./lib/stripe-checkout');
+const { normalizeBillingPlan, requiresIbanForPlan } = require('../lib/billing-plan');
 const {
   getEnrichedProducts,
   getFeaturedProducts,
@@ -66,19 +72,29 @@ const {
   loadOrderAsync: loadMaterielOrderAsync,
   saveOrderAsync: saveMaterielOrderRecordAsync,
 } = require('./lib/materiel-cart');
-const { sendMaterielConfirmationEmail } = require('./lib/mailer');
 const {
+  sendMaterielConfirmationEmail,
+  sendConfirmationEmail,
+  sendGdprEraseRequest,
+  sendUnpaidSubscriptionEmail,
+} = require('./lib/mailer');
+const {
+  STEPS,
   createDraft,
   createDraftAsync,
   loadOrder,
   loadOrderAsync,
   verifyAccess,
   updateShortProfile,
+  updateGymAsync,
+  updateIbanAsync,
   markPaymentPaid,
   markPaymentFailed,
   updateFullProfile,
   recordSignature,
   markEmailSent,
+  markSubscriptionPastDueAsync,
+  findOrderBySubscriptionId,
   getUploadDir,
   listAllOrders,
   listAllOrdersAsync,
@@ -87,7 +103,6 @@ const {
 } = require('./lib/order-lifecycle');
 const { generateContractPdf, streamContractPdf } = require('./lib/contract-pdf');
 const { generateMaterielInvoicePdf } = require('./lib/invoice-pdf');
-const { sendConfirmationEmail, sendGdprEraseRequest } = require('./lib/mailer');
 const { upsertClientFromInscription, upsertMaterielClient } = require('./lib/client-sync');
 
 async function syncInscriptionClient(order) {
@@ -126,18 +141,43 @@ const STORE_URL = getStoreUrl();
 const SYNC_SECRET = process.env.SYNC_SECRET || process.env.BRIDGE_SECRET || '';
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
 
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, getUploadDir('ribs'));
-    },
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname) || '.jpg';
-      cb(null, `${req.params.id || 'upload'}-${Date.now()}${ext}`);
-    },
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 },
-});
+function makeUploader(subdir) {
+  return multer({
+    storage: multer.diskStorage({
+      destination: (_req, _file, cb) => {
+        cb(null, getUploadDir(subdir));
+      },
+      filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname) || '.jpg';
+        cb(null, `${req.params.id || 'upload'}-${Date.now()}${ext}`);
+      },
+    }),
+    limits: { fileSize: 5 * 1024 * 1024 },
+  });
+}
+
+const upload = makeUploader('ribs');
+const uploadPhoto = makeUploader('photos');
+
+function stripeForGym(gym) {
+  try {
+    return stripeClientForGym(gym).stripe;
+  } catch {
+    return stripe;
+  }
+}
+
+function stripeForOrder(order) {
+  return stripeForGym(order?.customer_full?.gym || order?.payment?.gym);
+}
+
+function inscriptionRedirect(order, stepOverride) {
+  const step = stepOverride || order.step || STEPS.PAYMENT;
+  const sid = order.payment?.stripe_session_id
+    ? `&session_id=${encodeURIComponent(order.payment.stripe_session_id)}`
+    : '';
+  return `/inscription?order=${order.order_id}&token=${order.access_token}&step=${step}${sid}`;
+}
 
 function isAuthorizedSync(req) {
   if (!SYNC_SECRET) return false;
@@ -298,7 +338,7 @@ async function fulfillStripeSession(sessionId, stripeSession = null, lifecycleMo
         ok: true,
         order_id: order.order_id,
         lifecycle: true,
-        redirect: `/inscription?order=${order.order_id}&token=${order.access_token}&step=4`,
+        redirect: inscriptionRedirect(order),
       };
     }
   }
@@ -378,11 +418,78 @@ function createApp() {
         } else if (event.type === 'invoice.paid') {
           const invoice = event.data.object;
           if (invoice.subscription) {
+            const order = await findOrderBySubscriptionId(invoice.subscription);
+            if (order && order.payment?.status === 'past_due') {
+              order.payment = {
+                ...order.payment,
+                status: 'paid',
+                past_due_cleared_at: new Date().toISOString(),
+              };
+              order.access_blocked = false;
+              const { saveOrderAsync } = require('./lib/order-lifecycle');
+              await saveOrderAsync(order);
+            }
             logInfo('Abonnement CB renouvelé (Stripe)', {
               subscription: invoice.subscription,
               amount_cents: invoice.amount_paid,
+              order_id: order?.order_id,
               customer: invoice.customer_email || invoice.customer,
             });
+          }
+        } else if (event.type === 'invoice.payment_failed') {
+          const invoice = event.data.object;
+          const subId = invoice.subscription;
+          if (subId) {
+            let order = await findOrderBySubscriptionId(subId);
+            if (!order && invoice.metadata?.lifecycle_order_id) {
+              order = await loadOrderAsync(invoice.metadata.lifecycle_order_id);
+            }
+            if (order) {
+              const alreadyNotified = Boolean(order.payment?.unpaid_notified_at);
+              const failCount = Number(order.payment?.fail_count || 0) + 1;
+              const block = failCount >= Number(process.env.STRIPE_UNPAID_BLOCK_AFTER || 2);
+              await markSubscriptionPastDueAsync(order.order_id, {
+                stripe_subscription_id: subId,
+                stripe_invoice_id: invoice.id,
+                fail_count: failCount,
+                access_blocked: block,
+                failure_reason: 'invoice.payment_failed',
+              });
+              let portalUrl = null;
+              try {
+                if (stripe && invoice.customer) {
+                  const portal = await stripe.billingPortal.sessions.create({
+                    customer: invoice.customer,
+                    return_url: `${STORE_URL}/mon-inscription?order=${order.order_id}&token=${order.access_token}`,
+                  });
+                  portalUrl = portal.url;
+                }
+              } catch (portalErr) {
+                logWarn('Portal Stripe indisponible', { error: portalErr.message });
+              }
+              if (!alreadyNotified) {
+                const mail = await sendUnpaidSubscriptionEmail(order, { portalUrl });
+                if (mail.sent) {
+                  await markSubscriptionPastDueAsync(order.order_id, {
+                    stripe_subscription_id: subId,
+                    fail_count: failCount,
+                    access_blocked: block,
+                    unpaid_notified_at: new Date().toISOString(),
+                  });
+                }
+              }
+              logWarn('Impayé abonnement CB Stripe', {
+                order_id: order.order_id,
+                subscription: subId,
+                fail_count: failCount,
+                access_blocked: block,
+              });
+            } else {
+              logWarn('invoice.payment_failed sans commande liée', {
+                subscription: subId,
+                invoice: invoice.id,
+              });
+            }
           }
         }
         res.json({ received: true });
@@ -393,7 +500,7 @@ function createApp() {
     }
   );
 
-  app.use(express.json());
+  app.use(express.json({ limit: '2mb' }));
 
   app.post('/api/auth/login', async (req, res) => {
     try {
@@ -635,10 +742,11 @@ function createApp() {
     }
   });
 
-  // Stats admin — ventes matériel + abonnements par mois
+  // Stats admin — ventes + funnel + visites
   app.get('/api/admin/stats', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
+      const { summarizeVisits, summarizeFunnelFromOrders, summarizeFunnelEvents } = require('./lib/analytics');
       const { from, to } = req.query; // format: YYYY-MM
 
       function monthKey(dateStr) {
@@ -700,7 +808,38 @@ function createApp() {
         { materiel_orders: 0, materiel_revenue: 0, inscription_orders: 0, inscription_revenue: 0 }
       );
 
-      res.json({ ok: true, rows, totals });
+      const unpaid = allOrders
+        .filter((o) => o.payment?.status === 'past_due' || o.access_blocked)
+        .map(toAdminSummary);
+
+      res.json({
+        ok: true,
+        rows,
+        totals,
+        visits: summarizeVisits(30),
+        funnel: summarizeFunnelFromOrders(allOrders),
+        funnel_events: summarizeFunnelEvents(30),
+        unpaid,
+      });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/analytics/event', (req, res) => {
+    try {
+      const { trackPageview, trackEvent } = require('./lib/analytics');
+      const { type, name, path: pagePath, props, referrer } = req.body || {};
+      if (type === 'pageview') {
+        trackPageview({
+          path: pagePath || req.headers.referer || '/',
+          referrer,
+          ua: req.headers['user-agent'],
+        });
+      } else {
+        trackEvent({ name: name || 'event', props, path: pagePath });
+      }
+      res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
@@ -869,17 +1008,36 @@ function createApp() {
 
   app.post('/api/orders/draft', async (req, res) => {
     try {
-      const { product_id, ...customer_short } = req.body;
+      const { product_id, gym, ...rest } = req.body;
       const product = findProduct(product_id);
       if (!product) return res.status(404).json({ ok: false, error: 'Produit introuvable' });
 
-      const errors = validateShortForm(customer_short);
-      if (errors.length) return res.status(400).json({ ok: false, errors });
+      const hasShort =
+        rest.first_name && rest.last_name && rest.email && rest.phone && rest.birthdate;
+      let customer_short = null;
+      if (hasShort) {
+        const errors = validateShortForm(rest);
+        if (errors.length) return res.status(400).json({ ok: false, errors });
+        customer_short = {
+          first_name: rest.first_name,
+          last_name: rest.last_name,
+          email: rest.email,
+          phone: rest.phone,
+          birthdate: rest.birthdate,
+        };
+      }
 
-      const order = await createDraftAsync({ product_id, product, customer_short });
-      await syncInscriptionClient(order).catch((err) =>
-        logError('Sync client inscription (draft)', { order_id: order.order_id, error: err.message })
-      );
+      const order = await createDraftAsync({
+        product_id,
+        product,
+        customer_short,
+        gym: gym || undefined,
+      });
+      if (customer_short) {
+        await syncInscriptionClient(order).catch((err) =>
+          logError('Sync client inscription (draft)', { order_id: order.order_id, error: err.message })
+        );
+      }
       res.json({
         ok: true,
         order_id: order.order_id,
@@ -888,6 +1046,118 @@ function createApp() {
       });
     } catch (err) {
       logError('Erreur création brouillon', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.patch('/api/orders/:id/gym', async (req, res) => {
+    try {
+      const token = req.body.token || req.query.token;
+      const order = await loadOrderOrRecover(req.params.id, {
+        token,
+        sessionId: req.body.session_id || req.query.session_id,
+        stripe: stripeForGym(req.body.gym),
+        findProduct,
+      });
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      if (!verifyAccess(order, token)) {
+        return res.status(403).json({ ok: false, error: 'forbidden' });
+      }
+      const gym = String(req.body.gym || '').trim();
+      if (!gym) return res.status(400).json({ ok: false, errors: ['Salle principale requise'] });
+      const updated = await updateGymAsync(order.order_id, gym);
+      res.json({ ok: true, step: updated.step, gym });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.patch('/api/orders/:id/identity', async (req, res) => {
+    try {
+      const token = req.body.token || req.query.token;
+      const order = await loadOrderOrRecover(req.params.id, {
+        token,
+        sessionId: req.body.session_id || req.query.session_id,
+        stripe,
+        findProduct,
+      });
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      if (!verifyAccess(order, token)) {
+        return res.status(403).json({ ok: false, error: 'forbidden' });
+      }
+      const short = {
+        first_name: req.body.first_name,
+        last_name: req.body.last_name,
+        email: req.body.email,
+        phone: req.body.phone,
+        birthdate: req.body.birthdate,
+      };
+      const errors = validateShortForm(short);
+      if (errors.length) return res.status(400).json({ ok: false, errors });
+      if (!order.customer_full?.gym && !req.body.gym) {
+        return res.status(400).json({ ok: false, errors: ['Choisissez d\'abord votre salle'] });
+      }
+      if (req.body.gym) await updateGymAsync(order.order_id, req.body.gym);
+      const updated = await updateShortProfile(order.order_id, short);
+      await syncInscriptionClient(updated).catch((err) =>
+        logError('Sync client inscription (identity)', { order_id: order.order_id, error: err.message })
+      );
+      res.json({ ok: true, step: updated.step });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.patch('/api/orders/:id/iban', async (req, res) => {
+    try {
+      const token = req.body.token || req.query.token;
+      const order = await loadOrderOrRecover(req.params.id, {
+        token,
+        sessionId: req.body.session_id || req.query.session_id,
+        stripe,
+        findProduct,
+      });
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      if (!verifyAccess(order, token)) {
+        return res.status(403).json({ ok: false, error: 'forbidden' });
+      }
+      if (order.payment?.status !== 'paid' && order.product_snapshot?.requires_payment !== false) {
+        return res.status(402).json({
+          ok: false,
+          error: 'payment_required',
+          message: 'Finalisez d\'abord le paiement par carte.',
+        });
+      }
+      const product = findProduct(order.product_id) || order.product_snapshot;
+      const billingPlan =
+        order.payment?.billing_plan || normalizeBillingPlan(req.body.billing_plan, product);
+      const errors = validateIbanForm({ iban: req.body.iban, billing_plan: billingPlan }, product);
+      if (errors.length) return res.status(400).json({ ok: false, errors });
+      const updated = await updateIbanAsync(order.order_id, req.body.iban);
+      res.json({ ok: true, step: updated.step });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/orders/:id/photo', uploadPhoto.single('photo'), async (req, res) => {
+    try {
+      const token = req.body.token || req.query.token;
+      const order = await loadOrderOrRecover(req.params.id, {
+        token,
+        stripe,
+        findProduct,
+      });
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      if (!verifyAccess(order, token)) {
+        return res.status(403).json({ ok: false, error: 'forbidden' });
+      }
+      if (!req.file) return res.status(400).json({ ok: false, error: 'photo_required' });
+      order.documents = { ...(order.documents || {}), photo: req.file.path };
+      const { saveOrderAsync } = require('./lib/order-lifecycle');
+      await saveOrderAsync(order);
+      res.json({ ok: true, photo: true, path: req.file.filename });
+    } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
   });
@@ -948,6 +1218,7 @@ function createApp() {
         full.billing_plan = order.payment.billing_plan;
       }
       if (!full.iban && order.payment?.iban) full.iban = order.payment.iban;
+      if (!full.gym) full.gym = order.customer_full?.gym;
 
       if (product?.requires_payment !== false && order.payment?.status !== 'paid') {
         return res.status(402).json({
@@ -958,11 +1229,22 @@ function createApp() {
         });
       }
 
+      const plan = full.billing_plan || order.payment?.billing_plan;
+      if (requiresIbanForPlan(product, plan) && !full.iban && !order.payment?.iban) {
+        return res.status(400).json({
+          ok: false,
+          error: 'iban_required',
+          message: 'Indiquez d\'abord votre IBAN pour le prélèvement.',
+        });
+      }
+
       const errors = validateFullForm(full, product);
       if (errors.length) return res.status(400).json({ ok: false, errors });
 
+      if (order.documents?.photo) full.photo_path = order.documents.photo;
+
       await updateFullProfile(order.order_id, full);
-      res.json({ ok: true, step: 5 });
+      res.json({ ok: true, step: STEPS.SIGNATURE });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
@@ -981,11 +1263,11 @@ function createApp() {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
 
-      if (order.step >= 6 || order.signature?.signed_at) {
+      if (order.step >= STEPS.CONFIRMED || order.signature?.signed_at) {
         await syncInscriptionClient(order);
         return res.json({
           ok: true,
-          step: 6,
+          step: STEPS.CONFIRMED,
           already_signed: true,
           order_id: order.order_id,
           email_sent: Boolean(order.email_sent_at),
@@ -1004,19 +1286,38 @@ function createApp() {
         });
       }
 
-      const { consent_cgv, consent_reglement } = req.body;
+      const { consent_cgv, consent_reglement, signature_image } = req.body;
       if (!consent_cgv || !consent_reglement) {
         return res.status(400).json({ ok: false, error: 'Consentements requis' });
+      }
+      if (!signature_image || !String(signature_image).startsWith('data:image')) {
+        return res.status(400).json({ ok: false, error: 'Signature manuscrite requise' });
+      }
+
+      let image_path = null;
+      try {
+        const b64 = String(signature_image).split(',')[1];
+        const buf = Buffer.from(b64, 'base64');
+        if (buf.length < 200) {
+          return res.status(400).json({ ok: false, error: 'Signature trop courte — signez dans le cadre' });
+        }
+        const fname = `${order.order_id}-${Date.now()}.png`;
+        image_path = path.join(getUploadDir('signatures'), fname);
+        fs.writeFileSync(image_path, buf);
+      } catch (sigErr) {
+        return res.status(400).json({ ok: false, error: 'Impossible d\'enregistrer la signature' });
       }
 
       const signed = await recordSignature(order.order_id, {
         consent_cgv: Boolean(consent_cgv),
         consent_reglement: Boolean(consent_reglement),
         ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+        image_path,
+        method: 'canvas',
       });
 
       const { filepath, filename } = await generateContractPdf(signed);
-      signed.documents = { contract_pdf: filepath, contract_filename: filename };
+      signed.documents = { ...(signed.documents || {}), contract_pdf: filepath, contract_filename: filename };
       const { saveOrderAsync } = require('./lib/order-lifecycle');
       await saveOrderAsync(signed);
 
@@ -1040,7 +1341,7 @@ function createApp() {
 
       res.json({
         ok: true,
-        step: 6,
+        step: STEPS.CONFIRMED,
         order_id: signed.order_id,
         email_sent: emailResult.sent,
         client_synced: Boolean(clientResult.synced),
@@ -1077,7 +1378,7 @@ function createApp() {
   app.post('/api/orders/:id/pay', async (req, res) => {
     try {
       const token = req.body.token;
-      const order = await loadOrderOrRecover(req.params.id, {
+      let order = await loadOrderOrRecover(req.params.id, {
         token,
         sessionId: req.body.session_id,
         stripe,
@@ -1096,38 +1397,40 @@ function createApp() {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
 
+      if (req.body.gym) {
+        order = await updateGymAsync(order.order_id, req.body.gym);
+      }
+
+      const orderStripe = stripeForOrder(order) || stripe;
       const product = findProduct(order.product_id) || order.product_snapshot;
 
       if (order.payment?.status === 'paid') {
         return res.json({
           ok: true,
           mode: 'already_paid',
-          redirect: `/inscription?order=${order.order_id}&token=${order.access_token}&step=4${
-            order.payment.stripe_session_id
-              ? `&session_id=${encodeURIComponent(order.payment.stripe_session_id)}`
-              : ''
-          }`,
+          redirect: inscriptionRedirect(order),
         });
       }
 
-      if (stripe && req.body.session_id) {
+      if (orderStripe && req.body.session_id) {
         try {
-          const session = await stripe.checkout.sessions.retrieve(req.body.session_id);
+          const session = await orderStripe.checkout.sessions.retrieve(req.body.session_id);
           const lifecycleId =
             session.metadata?.lifecycle_order_id || session.metadata?.order_id;
           if (
             session.payment_status === 'paid' &&
             lifecycleId === order.order_id
           ) {
-            await markPaymentPaid(order.order_id, {
+            order = await markPaymentPaid(order.order_id, {
               method: 'stripe',
               stripe_session_id: session.id,
               iban: order.payment?.iban,
+              billing_plan: session.metadata?.billing_plan || order.payment?.billing_plan,
             });
             return res.json({
               ok: true,
               mode: 'already_paid',
-              redirect: `/inscription?order=${order.order_id}&token=${order.access_token}&step=4&session_id=${encodeURIComponent(session.id)}`,
+              redirect: inscriptionRedirect(order),
             });
           }
         } catch {
@@ -1161,47 +1464,49 @@ function createApp() {
       order.payment = {
         ...(order.payment || {}),
         billing_plan: billingPlan,
-        iban: req.body.iban || order.payment?.iban || null,
+        iban: order.payment?.iban || null,
       };
       const { saveOrderAsync } = require('./lib/order-lifecycle');
       await saveOrderAsync(order);
 
       if (!product.requires_payment) {
-        await markPaymentPaid(order.order_id, { method: 'free', status: 'paid', billing_plan: billingPlan });
+        order = await markPaymentPaid(order.order_id, {
+          method: 'free',
+          status: 'paid',
+          billing_plan: billingPlan,
+        });
         return res.json({
           ok: true,
           mode: 'free',
-          redirect: `/inscription?order=${order.order_id}&token=${order.access_token}&step=4`,
+          redirect: inscriptionRedirect(order),
         });
       }
 
-      if (!stripe) {
+      if (!orderStripe) {
         if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true') {
-          await markPaymentPaid(order.order_id, {
+          order = await markPaymentPaid(order.order_id, {
             method: 'demo',
-            iban: req.body.iban,
             billing_plan: billingPlan,
           });
           return res.json({
             ok: true,
             mode: 'demo',
-            redirect: `/inscription?order=${order.order_id}&token=${order.access_token}&step=4`,
+            redirect: inscriptionRedirect(order),
           });
         }
         return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
       }
 
+      const gym = order.customer_full?.gym || req.body.gym || 'minimes';
       const payload = buildOrderPayload(
         {
           ...form,
-          gym: req.body.gym || 'minimes',
+          gym,
           gender: req.body.gender || 'M',
-          iban: req.body.iban,
         },
         product
       );
       payload.lifecycle_order_id = order.order_id;
-      if (req.body.iban) payload.payment = { ...payload.payment, iban: req.body.iban };
 
       const baseUrl = getCheckoutBaseUrl(req);
       const sessionParams = createCheckoutSessionParams({
@@ -1212,7 +1517,7 @@ function createApp() {
         packOrderMetadata,
         billingPlan,
       });
-      const session = await stripe.checkout.sessions.create(sessionParams);
+      const session = await orderStripe.checkout.sessions.create(sessionParams);
 
       savePendingOrder(session.id, payload);
       res.json({
@@ -1302,9 +1607,26 @@ function createApp() {
     try {
       const { session_id: sessionId } = req.body;
       if (!sessionId) return res.status(400).json({ ok: false, error: 'session_id requis' });
-      if (!stripe) return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
 
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      let session = null;
+      let stripeClient = stripe;
+      if (!stripeClient) return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
+
+      try {
+        session = await stripeClient.checkout.sessions.retrieve(sessionId);
+      } catch (primaryErr) {
+        if (process.env.STRIPE_SECRET_KEY_PORTET && process.env.STRIPE_SECRET_KEY_PORTET !== STRIPE_SECRET) {
+          try {
+            stripeClient = stripeClientForGym('portet').stripe;
+            session = await stripeClient.checkout.sessions.retrieve(sessionId);
+          } catch {
+            throw primaryErr;
+          }
+        } else {
+          throw primaryErr;
+        }
+      }
+
       if (!isStripeCheckoutPaid(session)) {
         return res.status(402).json({ ok: false, error: 'payment_not_completed' });
       }
@@ -1336,6 +1658,7 @@ function createApp() {
               already_processed: true,
               order_id: existing.order_id,
               lifecycle: true,
+              redirect: inscriptionRedirect(existing),
             });
           }
         }

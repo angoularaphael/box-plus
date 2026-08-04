@@ -1,5 +1,5 @@
 /**
- * Tracking conversions — Plausible / GTM compatible
+ * Tracking conversions + analytics first-party BOXPLUS
  */
 (function () {
   function track(event, props) {
@@ -8,6 +8,48 @@
     }
     if (typeof window.gtag === 'function') {
       window.gtag('event', event, props || {});
+    }
+    try {
+      const body = JSON.stringify({
+        type: 'event',
+        name: event,
+        props: props || {},
+        path: location.pathname,
+      });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/analytics/event', new Blob([body], { type: 'application/json' }));
+      } else {
+        fetch('/api/analytics/event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function pageview() {
+    try {
+      const body = JSON.stringify({
+        type: 'pageview',
+        path: location.pathname + location.search,
+        referrer: document.referrer || '',
+      });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/analytics/event', new Blob([body], { type: 'application/json' }));
+      } else {
+        fetch('/api/analytics/event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body,
+          keepalive: true,
+        }).catch(() => {});
+      }
+    } catch {
+      /* ignore */
     }
   }
 
@@ -20,5 +62,7 @@
     el.addEventListener('click', () => track('select_offer', { href: el.getAttribute('href') }));
   });
 
-  window.BCTrack = { track };
+  pageview();
+
+  window.BCTrack = { track, pageview };
 })();

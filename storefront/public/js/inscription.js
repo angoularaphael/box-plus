@@ -36,6 +36,9 @@
     order: null,
     config: null,
     shortDraft: null,
+    gymDraft: null,
+    photoUploaded: false,
+    emailWarning: null,
   };
 
   const stepContent = document.getElementById('stepContent');
@@ -54,6 +57,8 @@
       sessionId: state.sessionId,
       step: state.step,
       shortDraft: state.shortDraft,
+      gymDraft: state.gymDraft,
+      photoUploaded: state.photoUploaded,
       customerShort: state.order?.customer_short || null,
       productSnapshot: state.product || state.order?.product_snapshot || null,
       savedAt: Date.now(),
@@ -76,6 +81,8 @@
       if (saved.token) state.token = state.token || saved.token;
       if (saved.sessionId) state.sessionId = state.sessionId || saved.sessionId;
       if (saved.shortDraft) state.shortDraft = saved.shortDraft;
+      if (saved.gymDraft) state.gymDraft = saved.gymDraft;
+      if (saved.photoUploaded) state.photoUploaded = true;
       if (saved.customerShort && !state.order?.customer_short) {
         state.order = state.order || {};
         state.order.customer_short = saved.customerShort;
@@ -119,6 +126,13 @@
     return p?.requires_payment !== false;
   }
 
+  function orderNeedsIban(order) {
+    const p = order?.product_snapshot || state.product;
+    const plan = order?.payment?.billing_plan || 'rib';
+    if (plan === 'cb') return false;
+    return Boolean(p?.requires_iban || plan === 'rib');
+  }
+
   function paymentFailureMessage(reason) {
     if (reason === 'cancelled') {
       return 'Paiement annulé — vous n\'avez pas été débité. Vous pouvez réessayer ci-dessous.';
@@ -130,13 +144,17 @@
     if (!order) return state.step;
     const paid = order.payment?.status === 'paid';
     const needsPay = orderRequiresPayment(order);
+    const needsIban = orderNeedsIban(order) && !order.payment?.iban;
 
-    if (order.step >= 6) return needsPay && !paid ? 3 : 6;
-    if (order.step >= 5) return needsPay && !paid ? 3 : 5;
-    if (order.step >= 4) return needsPay && !paid ? 3 : 4;
-    if (paid) return 4;
-    if (order.order_id) return 3;
-    return 2;
+    if (order.signature?.signed_at || order.step >= 8) return needsPay && !paid ? 4 : 8;
+    if (order.step >= 7) return needsPay && !paid ? 4 : 7;
+    if (order.step >= 6) return needsPay && !paid ? 4 : 6;
+    if (order.step >= 5) return needsPay && !paid ? 4 : needsIban ? 5 : 6;
+    if (paid) return needsIban ? 5 : 6;
+    if (order.customer_short) return 4;
+    if (order.customer_full?.gym) return 3;
+    if (order.order_id) return 2;
+    return 1;
   }
 
   function persistAndRender() {
@@ -148,6 +166,15 @@
   function goToStep(step) {
     setMsg('');
     state.step = step;
+    try {
+      window.BCTrack?.track('funnel_step', {
+        step,
+        order_id: state.orderId || undefined,
+        product_id: state.productId || undefined,
+      });
+    } catch {
+      /* ignore */
+    }
     persistAndRender();
   }
 
@@ -180,14 +207,23 @@
     });
   }
 
-  function gymsOptions() {
-    return `
-      <option value="">Choisir une salle</option>
-      <option value="minimes">Minimes</option>
-      <option value="ramonville">Ramonville</option>
-      <option value="etats-unis">États-Unis</option>
-      <option value="st-cyprien">Saint-Cyprien</option>
-      <option value="portet">Portet</option>`;
+  function gymsOptions(selected) {
+    const gyms = [
+      ['minimes', 'Minimes'],
+      ['ramonville', 'Ramonville'],
+      ['etats-unis', 'États-Unis'],
+      ['st-cyprien', 'Saint-Cyprien'],
+      ['portet', 'Portet'],
+    ];
+    return (
+      `<option value="">Choisir une salle</option>` +
+      gyms
+        .map(
+          ([v, l]) =>
+            `<option value="${v}" ${selected === v ? 'selected' : ''}>${l}</option>`
+        )
+        .join('')
+    );
   }
 
   async function loadConfig() {
@@ -200,9 +236,7 @@
     const pid = state.productId;
     const res = await fetch('/api/products');
     const data = await res.json();
-    state.product = (data.products || []).find(
-      (p) => p.id === pid || p.legacy_id === pid
-    );
+    state.product = (data.products || []).find((p) => p.id === pid || p.legacy_id === pid);
     if (!state.product) {
       const one = await fetch(`/api/products/${encodeURIComponent(pid)}`);
       if (one.ok) {
@@ -226,6 +260,7 @@
     state.order = data.order;
     state.product = state.order.product_snapshot;
     if (!state.productId && state.product?.id) state.productId = state.product.id;
+    if (state.order.documents?.photo) state.photoUploaded = true;
     state.step = stepFromOrder(state.order);
     return true;
   }
@@ -246,6 +281,7 @@
     return {
       token: state.token,
       product_id: state.productId,
+      gym: state.order?.customer_full?.gym || state.gymDraft || undefined,
       customer_short: short
         ? {
             first_name: short.first_name,
@@ -276,92 +312,6 @@
     });
   }
 
-  function renderStep1() {
-    const p = state.product;
-    if (!p) {
-      stepContent.innerHTML = `
-        <h1>Votre offre</h1>
-        <p class="sub">Cette offre est introuvable ou n'est plus disponible.</p>
-        <a href="/abonnements" class="btn block">Voir les offres disponibles</a>
-        ${state.orderId ? backButton('← Retour aux coordonnées', 2) : ''}`;
-      bindBackButtons();
-      return;
-    }
-    stepContent.innerHTML = `
-      <h1>Votre offre</h1>
-      <p class="sub">Vérifiez votre choix avant de continuer.</p>
-      <div class="offer-card" style="margin-bottom:24px">
-        <h3>${p.display_name || p.name}</h3>
-        <div class="offer-price">${p.stripe_price_label || p.price_label}</div>
-        ${p.installments_note ? `<p class="offer-price-sub">${p.installments_note}</p>` : ''}
-      </div>
-      <div class="info-box">Nos cours sont accessibles aux débutants. L'ambiance est bienveillante et motivante.</div>
-      <button type="button" class="btn block" id="toStep2">Commencer l'inscription</button>
-      <a href="/abonnements" class="btn secondary block step-back-link" style="margin-top:12px">← Choisir une autre offre</a>`;
-    document.getElementById('toStep2').onclick = () => {
-      state.step = 2;
-      persistAndRender();
-    };
-  }
-
-  function renderStep2() {
-    const short = state.order?.customer_short || state.shortDraft || {};
-    stepContent.innerHTML = `
-      <h1>Vos coordonnées</h1>
-      <p class="sub">Quelques informations pour préparer votre inscription — rien de plus pour l'instant.</p>
-      <form id="shortForm" class="form-grid">
-        <div><label for="first_name">Prénom *</label><input id="first_name" name="first_name" required value="${short.first_name || ''}" /></div>
-        <div><label for="last_name">Nom *</label><input id="last_name" name="last_name" required value="${short.last_name || ''}" /></div>
-        <div class="full"><label for="email">Email *</label><input id="email" name="email" type="email" required value="${short.email || ''}" /></div>
-        <div class="full"><label for="phone">Téléphone *</label><input id="phone" name="phone" type="tel" required value="${short.phone || ''}" /></div>
-        <div class="full"><label for="birthdate">Date de naissance *</label><input id="birthdate" name="birthdate" type="date" required value="${short.birthdate || ''}" /></div>
-        <div class="full"><button type="submit" class="btn block">Continuer vers le paiement</button></div>
-        <div class="full">${backButton('← Retour à l\'offre', 1)}</div>
-      </form>`;
-    const form = document.getElementById('shortForm');
-    bindShortDraftAutosave(form);
-    bindBackButtons();
-    form.onsubmit = async (e) => {
-      e.preventDefault();
-      setMsg('Envoi…');
-      const fd = new FormData(e.target);
-      const body = Object.fromEntries(fd.entries());
-      body.product_id = state.productId;
-      state.shortDraft = body;
-      saveProgress();
-      const res = await fetch('/api/orders/draft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        setMsg((data.errors || [data.error]).join(', '), 'err');
-        return;
-      }
-      state.orderId = data.order_id;
-      state.token = data.access_token;
-      state.step = 3;
-      state.shortDraft = null;
-      state.order = {
-        order_id: data.order_id,
-        customer_short: {
-          first_name: body.first_name,
-          last_name: body.last_name,
-          email: body.email,
-          phone: body.phone,
-          birthdate: body.birthdate,
-        },
-        product_snapshot: state.product,
-      };
-      setMsg('');
-      saveProgress();
-      syncUrl();
-      await loadOrder();
-      await render();
-    };
-  }
-
   function priceLabel(product) {
     return product?.stripe_price_label || product?.price_label || '—';
   }
@@ -373,20 +323,10 @@
     await loadProduct();
     if (!state.product) return;
     const snap = state.order?.product_snapshot;
-    if (snap) {
-      state.product = { ...snap, ...state.product };
-    }
-  }
-
-  function formatPaymentChoiceLabel(plan) {
-    if (plan === 'cb') {
-      return 'Carte bancaire — débit automatique toutes les 4 semaines (via Stripe). Pas de RIB demandé.';
-    }
-    return 'Prélèvement bancaire (RIB) — 1ère échéance par carte aujourd\'hui, puis prélèvement SEPA toutes les 4 semaines.';
+    if (snap) state.product = { ...snap, ...state.product };
   }
 
   function bindBillingPlanForm() {
-    const ribBlock = document.getElementById('ibanBlock');
     const badgeNotice = document.getElementById('badgeNotice');
     const payBtn = document.getElementById('payBtn');
     const radios = document.querySelectorAll('input[name="billing_plan"]');
@@ -394,17 +334,10 @@
 
     const refresh = () => {
       const plan = document.querySelector('input[name="billing_plan"]:checked')?.value || 'rib';
-      if (ribBlock) ribBlock.style.display = plan === 'rib' ? '' : 'none';
       if (badgeNotice) badgeNotice.style.display = plan === 'rib' ? '' : 'none';
-      const ibanInput = document.getElementById('iban');
-      if (ibanInput) ibanInput.required = plan === 'rib';
       if (payBtn) {
-        payBtn.textContent = plan === 'cb'
-          ? 'Payer par carte (abonnement 4 semaines)'
-          : 'Payer la 1ère échéance par carte';
+        payBtn.textContent = plan === 'cb' ? 'Payer par carte' : 'Payer';
       }
-      const hint = document.getElementById('billingPlanHint');
-      if (hint) hint.textContent = formatPaymentChoiceLabel(plan);
     };
 
     radios.forEach((r) => r.addEventListener('change', refresh));
@@ -413,22 +346,175 @@
 
   function guardPaidStep() {
     if (!orderRequiresPayment(state.order) || state.order?.payment?.status === 'paid') return false;
-    state.step = 3;
+    state.step = 4;
     setMsg(paymentFailureMessage(), 'err');
     persistAndRender();
     return true;
   }
 
-  async function renderStep3() {
-    if (state.order?.payment?.status === 'paid' || state.step >= 4) {
-      state.step = 4;
-      persistAndRender();
+  /* ——— Steps ——— */
+
+  function renderStep1() {
+    const p = state.product;
+    if (!p) {
+      stepContent.innerHTML = `
+        <h1>Votre offre</h1>
+        <p class="sub">Cette offre est introuvable ou n'est plus disponible.</p>
+        <a href="/abonnements" class="btn block">Voir les offres disponibles</a>`;
       return;
+    }
+    stepContent.innerHTML = `
+      <h1>Votre offre</h1>
+      <div class="offer-card" style="margin-bottom:24px">
+        <h3>${p.display_name || p.name}</h3>
+        <div class="offer-price">${p.stripe_price_label || p.price_label}</div>
+        ${p.installments_note ? `<p class="offer-price-sub">${p.installments_note}</p>` : ''}
+      </div>
+      <button type="button" class="btn block" id="toStep2">Continuer</button>
+      <a href="/abonnements" class="btn secondary block" style="margin-top:12px">← Choisir une autre offre</a>`;
+    document.getElementById('toStep2').onclick = () => goToStep(2);
+  }
+
+  function renderStep2() {
+    const selected = state.order?.customer_full?.gym || state.gymDraft || '';
+    stepContent.innerHTML = `
+      <h1>Votre salle</h1>
+      <form id="gymForm" class="form-grid">
+        <div class="full"><label for="gym">Salle principale *</label>
+          <select id="gym" name="gym" required>${gymsOptions(selected)}</select></div>
+        <div class="full"><button type="submit" class="btn block">Continuer</button></div>
+        <div class="full">${backButton('← Retour à l\'offre', 1)}</div>
+      </form>`;
+    bindBackButtons();
+    document.getElementById('gymForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const gym = document.getElementById('gym').value;
+      if (!gym) {
+        setMsg('Choisissez une salle', 'err');
+        return;
+      }
+      setMsg('Enregistrement…');
+      state.gymDraft = gym;
+      saveProgress();
+
+      if (!state.orderId) {
+        const res = await fetch('/api/orders/draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: state.productId, gym }),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          setMsg((data.errors || [data.error]).join(', '), 'err');
+          return;
+        }
+        state.orderId = data.order_id;
+        state.token = data.access_token;
+        state.order = {
+          order_id: data.order_id,
+          customer_full: { gym },
+          product_snapshot: state.product,
+        };
+      } else {
+        const res = await fetch(`/api/orders/${state.orderId}/gym`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: state.token, gym }),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          setMsg(orderErrorMessage(data), 'err');
+          return;
+        }
+        state.order = state.order || {};
+        state.order.customer_full = { ...(state.order.customer_full || {}), gym };
+      }
+      setMsg('');
+      goToStep(3);
+    };
+  }
+
+  function renderStep3() {
+    const short = state.order?.customer_short || state.shortDraft || {};
+    stepContent.innerHTML = `
+      <h1>Vos coordonnées</h1>
+      <form id="shortForm" class="form-grid">
+        <div><label for="first_name">Prénom *</label><input id="first_name" name="first_name" required value="${short.first_name || ''}" /></div>
+        <div><label for="last_name">Nom *</label><input id="last_name" name="last_name" required value="${short.last_name || ''}" /></div>
+        <div class="full"><label for="email">Email *</label><input id="email" name="email" type="email" required value="${short.email || ''}" /></div>
+        <div class="full"><label for="phone">Téléphone *</label><input id="phone" name="phone" type="tel" required value="${short.phone || ''}" /></div>
+        <div class="full"><label for="birthdate">Date de naissance *</label><input id="birthdate" name="birthdate" type="date" required value="${short.birthdate || ''}" /></div>
+        <div class="full"><button type="submit" class="btn block">Continuer</button></div>
+        <div class="full">${backButton('← Retour à la salle', 2)}</div>
+      </form>`;
+    const form = document.getElementById('shortForm');
+    bindShortDraftAutosave(form);
+    bindBackButtons();
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      setMsg('Envoi…');
+      const body = Object.fromEntries(new FormData(e.target).entries());
+      body.token = state.token;
+      body.gym = state.order?.customer_full?.gym || state.gymDraft;
+      state.shortDraft = body;
+      saveProgress();
+
+      if (!state.orderId) {
+        const res = await fetch('/api/orders/draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...body, product_id: state.productId }),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          setMsg((data.errors || [data.error]).join(', '), 'err');
+          return;
+        }
+        state.orderId = data.order_id;
+        state.token = data.access_token;
+      } else {
+        const res = await fetch(`/api/orders/${state.orderId}/identity`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          setMsg(orderErrorMessage(data), 'err');
+          return;
+        }
+      }
+
+      state.shortDraft = null;
+      state.order = {
+        ...(state.order || {}),
+        order_id: state.orderId,
+        customer_short: {
+          first_name: body.first_name,
+          last_name: body.last_name,
+          email: body.email,
+          phone: body.phone,
+          birthdate: body.birthdate,
+        },
+        product_snapshot: state.product,
+      };
+      setMsg('');
+      await loadOrder();
+      goToStep(4);
+    };
+  }
+
+  async function renderStep4() {
+    if (state.order?.payment?.status === 'paid') {
+      state.step = stepFromOrder(state.order);
+      if (state.step !== 4) {
+        persistAndRender();
+        return;
+      }
     }
     if (state.sessionId) {
       await confirmStripeReturn();
       if (state.order?.payment?.status === 'paid') {
-        state.step = 4;
         persistAndRender();
         return;
       }
@@ -437,42 +523,46 @@
     const p = state.product;
     const supportsChoice = p?.supports_billing_choice;
     const savedPlan = state.order?.payment?.billing_plan || 'rib';
-    const needsIban = supportsChoice ? savedPlan === 'rib' : p?.requires_iban;
     stepContent.innerHTML = `
       <h1>Paiement</h1>
-      <p class="sub">Montant à payer aujourd'hui : <strong>${priceLabel(p)}</strong></p>
+      <p class="sub">Montant : <strong>${priceLabel(p)}</strong></p>
       <form id="payForm">
-        ${supportsChoice ? `
+        ${
+          supportsChoice
+            ? `
         <div class="full billing-plan-block">
-          <p class="info-box billing-plan-title"><strong>Comment payer vos échéances ?</strong></p>
-          <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement des échéances">
+          <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
             <label class="billing-choice">
               <input type="radio" name="billing_plan" value="rib" ${savedPlan !== 'cb' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>Prélèvement (RIB)</strong>
-                <small>1ère CB aujourd'hui, puis SEPA</small>
+                <small>1ère CB, puis SEPA</small>
               </span>
             </label>
             <label class="billing-choice">
               <input type="radio" name="billing_plan" value="cb" ${savedPlan === 'cb' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>Carte bancaire</strong>
-                <small>Débit toutes les 4 semaines</small>
+                <small>Toutes les 4 semaines</small>
               </span>
             </label>
           </div>
-          <p class="info-box" id="billingPlanHint">${formatPaymentChoiceLabel(savedPlan !== 'cb' ? 'rib' : 'cb')}</p>
-        </div>` : ''}
-        <div class="full" id="ibanBlock" ${supportsChoice && savedPlan === 'cb' ? 'style="display:none"' : ''}>
-          ${needsIban || supportsChoice ? `
-          <label for="iban">IBAN (prélèvements suivants) *</label>
-          <input id="iban" name="iban" placeholder="FR76 3000 6000 0112 3456 7890 189" ${supportsChoice && savedPlan === 'cb' ? '' : 'required'} />
-          <p class="info-box">Votre IBAN sera enregistré pour les échéances suivantes dans Deciplus.</p>` : ''}
-        </div>
-        ${state.config?.badge_fee_notice && (needsIban || supportsChoice) ? `<div class="notice-important" id="badgeNotice" ${supportsChoice && savedPlan === 'cb' ? 'style="display:none"' : ''}><strong>Badge d'accès</strong><p>${state.config.badge_fee_notice}</p></div>` : ''}
-        ${supportsChoice && savedPlan === 'cb' ? `<div class="info-box">Le badge d'accès pourra être réglé en salle ou par carte selon la configuration Deciplus (phase 2).</div>` : ''}
-        <button type="submit" class="btn stripe block" id="payBtn">${p?.requires_payment === false ? 'Continuer gratuitement' : (supportsChoice && savedPlan === 'cb' ? 'Payer par carte (abonnement 4 semaines)' : 'Payer la 1ère échéance par carte')}</button>
-        ${backButton('← Retour aux coordonnées', 2)}
+        </div>`
+            : ''
+        }
+        ${
+          state.config?.badge_fee_notice
+            ? `<div class="notice-important" id="badgeNotice" ${supportsChoice && savedPlan === 'cb' ? 'style="display:none"' : ''}><strong>Badge d'accès</strong><p>${state.config.badge_fee_notice}</p></div>`
+            : ''
+        }
+        <button type="submit" class="btn stripe block" id="payBtn">${
+          p?.requires_payment === false
+            ? 'Continuer'
+            : supportsChoice && savedPlan === 'cb'
+              ? 'Payer par carte'
+              : 'Payer'
+        }</button>
+        ${backButton('← Retour', 3)}
       </form>`;
     bindBillingPlanForm();
     document.getElementById('payForm').onsubmit = async (e) => {
@@ -482,11 +572,7 @@
       const body = payRequestBody();
       const planInput = document.querySelector('input[name="billing_plan"]:checked');
       if (planInput) body.billing_plan = planInput.value;
-      const plan = body.billing_plan || 'rib';
       if (!supportsChoice && p?.requires_iban) body.billing_plan = 'rib';
-      if (plan === 'rib' || (!supportsChoice && p?.requires_iban)) {
-        body.iban = document.getElementById('iban')?.value;
-      }
       const res = await fetch(`/api/orders/${state.orderId}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -506,15 +592,62 @@
     bindBackButtons();
   }
 
-  function renderStep4() {
+  function renderStep5() {
     if (guardPaidStep()) return;
-    const full = state.order?.customer_full || {};
-    const paid = state.order?.payment?.status === 'paid';
-    const backTarget = paid ? 2 : 3;
-    const backLabel = paid ? '← Modifier mes coordonnées' : '← Retour au paiement';
+    if (!orderNeedsIban(state.order) || state.order?.payment?.iban) {
+      goToStep(6);
+      return;
+    }
     stepContent.innerHTML = `
-      <h1>Complétez votre dossier</h1>
-      <p class="sub">Ces informations complètent votre fiche membre Deciplus. Votre abonnement donne accès aux 5 centres.</p>
+      <h1>IBAN</h1>
+      <form id="ibanForm" class="form-grid">
+        <div class="full">
+          <label for="iban">IBAN *</label>
+          <input id="iban" name="iban" required placeholder="FR76 3000 6000 0112 3456 7890 189" value="${state.order?.payment?.iban || ''}" />
+        </div>
+        ${
+          state.config?.badge_fee_notice
+            ? `<div class="full notice-important"><strong>Badge d'accès</strong><p>${state.config.badge_fee_notice}</p></div>`
+            : ''
+        }
+        <div class="full"><button type="submit" class="btn block">Continuer</button></div>
+        <div class="full">${backButton('← Retour', 4)}</div>
+      </form>`;
+    bindBackButtons();
+    document.getElementById('ibanForm').onsubmit = async (e) => {
+      e.preventDefault();
+      setMsg('Enregistrement…');
+      const iban = document.getElementById('iban').value;
+      const res = await fetch(`/api/orders/${state.orderId}/iban`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: state.token,
+          session_id: state.sessionId || undefined,
+          iban,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setMsg(orderErrorMessage(data), 'err');
+        return;
+      }
+      setMsg('');
+      await loadOrder();
+      goToStep(6);
+    };
+  }
+
+  function renderStep6() {
+    if (guardPaidStep()) return;
+    if (orderNeedsIban(state.order) && !state.order?.payment?.iban) {
+      goToStep(5);
+      return;
+    }
+    const full = state.order?.customer_full || {};
+    const photoOk = state.photoUploaded || Boolean(state.order?.documents?.photo);
+    stepContent.innerHTML = `
+      <h1>Votre dossier</h1>
       <form id="fullForm" class="form-grid">
         <input type="hidden" name="token" value="${state.token}" />
         ${state.sessionId ? `<input type="hidden" name="session_id" value="${state.sessionId}" />` : ''}
@@ -524,39 +657,56 @@
             <option value="M" ${full.gender === 'M' ? 'selected' : ''}>Homme</option>
             <option value="F" ${full.gender === 'F' ? 'selected' : ''}>Femme</option>
           </select></div>
-        <div><label for="gym">Salle principale *</label>
-          <select id="gym" name="gym" required>${gymsOptions()}</select></div>
         <div class="full"><label for="address">Adresse *</label><input id="address" name="address" required value="${full.address || ''}" /></div>
         <div><label for="postal_code">Code postal *</label><input id="postal_code" name="postal_code" required value="${full.postal_code || ''}" /></div>
         <div><label for="city">Ville *</label><input id="city" name="city" required value="${full.city || ''}" /></div>
+        <div class="full"><label for="photo">Photo *</label>
+          <input id="photo" name="photo" type="file" accept="image/*" capture="user" ${photoOk ? '' : 'required'} />
+        </div>
         <div class="full"><label for="emergency_contact">Contact d'urgence (optionnel)</label><input id="emergency_contact" name="emergency_contact" placeholder="Nom + téléphone" value="${full.emergency_contact || ''}" /></div>
         <div class="full"><label for="medical_info">Informations médicales (optionnel)</label><textarea id="medical_info" name="medical_info" rows="2">${full.medical_info || ''}</textarea></div>
-        ${state.product?.requires_iban && state.order?.payment?.billing_plan !== 'cb' ? `<div class="full info-box" style="margin-top:0">Votre IBAN a déjà été enregistré à l'étape paiement pour les prélèvements suivants.</div>` : ''}
-        ${state.order?.payment?.billing_plan === 'cb' ? `<div class="full info-box" style="margin-top:0">Paiement des échéances par carte bancaire (toutes les 4 semaines) via Stripe.</div>` : ''}
-        <div class="full"><button type="submit" class="btn block">Continuer vers la signature</button></div>
-        <div class="full">${backButton(backLabel, backTarget)}</div>
+        <div class="full"><button type="submit" class="btn block">Continuer</button></div>
+        <div class="full">${backButton('← Retour', orderNeedsIban(state.order) ? 5 : 4)}</div>
       </form>`;
-    if (full.gym) document.getElementById('gym').value = full.gym;
     document.getElementById('fullForm').onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Enregistrement…');
+      const photoInput = document.getElementById('photo');
+      if (photoInput?.files?.[0]) {
+        const fd = new FormData();
+        fd.append('photo', photoInput.files[0]);
+        fd.append('token', state.token);
+        const photoRes = await fetch(`/api/orders/${state.orderId}/photo`, {
+          method: 'POST',
+          body: fd,
+        });
+        const photoData = await photoRes.json();
+        if (!photoData.ok) {
+          setMsg(orderErrorMessage(photoData) || 'Échec upload photo', 'err');
+          return;
+        }
+        state.photoUploaded = true;
+      } else if (!photoOk) {
+        setMsg('Ajoutez une photo de visage', 'err');
+        return;
+      }
+
       const fd = new FormData(e.target);
+      const body = Object.fromEntries(fd.entries());
+      delete body.photo;
       const res = await fetch(`/api/orders/${state.orderId}/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.fromEntries(fd.entries())),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!data.ok) {
         setMsg(orderErrorMessage(data), 'err');
         return;
       }
-      state.step = 5;
       setMsg('');
-      saveProgress();
-      syncUrl();
       await loadOrder();
-      await render();
+      goToStep(7);
     };
     bindBackButtons();
   }
@@ -566,14 +716,81 @@
     reglement: '/reglement-interieur',
   };
 
-  function renderStep5() {
+  function initSignaturePad(canvas) {
+    const ctx = canvas.getContext('2d');
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const cssW = canvas.clientWidth || 640;
+    const cssH = 180;
+    canvas.width = Math.floor(cssW * ratio);
+    canvas.height = Math.floor(cssH * ratio);
+    canvas.style.height = `${cssH}px`;
+    ctx.scale(ratio, ratio);
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#0B1F3A';
+
+    let drawing = false;
+    let strokes = 0;
+
+    function pos(ev) {
+      const rect = canvas.getBoundingClientRect();
+      const src = ev.touches ? ev.touches[0] : ev;
+      return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+    }
+
+    function start(ev) {
+      ev.preventDefault();
+      drawing = true;
+      const p = pos(ev);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+    }
+
+    function move(ev) {
+      if (!drawing) return;
+      ev.preventDefault();
+      const p = pos(ev);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      strokes += 1;
+    }
+
+    function end(ev) {
+      if (!drawing) return;
+      ev.preventDefault();
+      drawing = false;
+    }
+
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    canvas.addEventListener('mouseup', end);
+    canvas.addEventListener('mouseleave', end);
+    canvas.addEventListener('touchstart', start, { passive: false });
+    canvas.addEventListener('touchmove', move, { passive: false });
+    canvas.addEventListener('touchend', end);
+
+    return {
+      clear() {
+        ctx.clearRect(0, 0, cssW, cssH);
+        strokes = 0;
+      },
+      hasInk() {
+        return strokes > 8;
+      },
+      toDataURL() {
+        return canvas.toDataURL('image/png');
+      },
+    };
+  }
+
+  function renderStep7() {
     if (guardPaidStep()) return;
     stepContent.innerHTML = `
-      <h1>Signature et validation</h1>
-      <p class="sub">Lisez les documents, cochez les cases puis validez — cela vaut signature électronique de votre contrat.</p>
-      <div class="e-sign-panel">
-        <div class="e-sign-icon" aria-hidden="true">✍</div>
-        <p><strong>Comment ça marche ?</strong> Pas de paraphe à dessiner : en cliquant sur « Valider mon inscription », vous signez électroniquement votre contrat d'adhésion. Un PDF signé vous sera envoyé par email.</p>
+      <h1>Signature</h1>
+      <canvas id="sigPad" class="signature-pad" width="640" height="180" style="width:100%;display:block;cursor:crosshair"></canvas>
+      <div class="signature-actions">
+        <button type="button" class="btn secondary" id="clearSig">Effacer</button>
       </div>
       <div class="consent-box">
         <label><input type="checkbox" id="consent_cgv" required />
@@ -583,9 +800,12 @@
         <label><input type="checkbox" id="consent_reglement" required />
           J'accepte le <a class="legal-link" href="${LEGAL.reglement}" target="_blank" rel="noopener">règlement intérieur du club</a> *</label>
       </div>
-      <button type="button" class="btn block" id="signBtn">Valider mon inscription — signer électroniquement</button>
+      <button type="button" class="btn block" id="signBtn">Valider</button>
       <button type="button" class="btn secondary block" id="previewContractBtn" style="margin-top:12px">Prévisualiser le contrat</button>
-      ${backButton('← Retour au dossier', 4)}`;
+      ${backButton('← Retour', 6)}`;
+
+    const pad = initSignaturePad(document.getElementById('sigPad'));
+    document.getElementById('clearSig').onclick = () => pad.clear();
     document.getElementById('previewContractBtn').onclick = () => {
       window.BCContract.openView(state.orderId, {
         token: state.token,
@@ -597,6 +817,10 @@
         setMsg('Veuillez accepter les conditions.', 'err');
         return;
       }
+      if (!pad.hasInk()) {
+        setMsg('Signez dans le cadre avant de valider.', 'err');
+        return;
+      }
       setMsg('Finalisation…');
       const res = await fetch(`/api/orders/${state.orderId}/sign`, {
         method: 'POST',
@@ -606,6 +830,7 @@
           session_id: state.sessionId || undefined,
           consent_cgv: true,
           consent_reglement: true,
+          signature_image: pad.toDataURL(),
         }),
       });
       const data = await res.json();
@@ -613,18 +838,17 @@
         setMsg(data.error || 'Erreur', 'err');
         return;
       }
-      state.step = 6;
+      state.step = 8;
       state.emailWarning = data.email_warning || null;
       clearProgress();
       setMsg('');
-      saveProgress();
       syncUrl();
       await render();
     };
     bindBackButtons();
   }
 
-  function renderStep6() {
+  function renderStep8() {
     if (guardPaidStep()) return;
     const p = state.product;
     const emailNote = state.emailWarning
@@ -633,13 +857,11 @@
     stepContent.innerHTML = `
       <div class="success-page" style="margin:20px auto">
         <div class="success-icon" aria-hidden="true"></div>
-        <h1>Inscription confirmée !</h1>
-        <p>Bienvenue chez Boxing Center.${state.emailWarning ? '' : ' Un email de confirmation avec votre contrat vous a été envoyé.'}</p>
+        <h1>Inscription confirmée</h1>
         ${emailNote}
         <div class="info-box" style="text-align:left">
           <strong>Référence :</strong> ${state.orderId}<br />
-          <strong>Offre :</strong> ${p?.display_name || p?.name || '—'}<br />
-          <strong>Prochaine étape :</strong> présentez-vous 15 min avant votre premier cours.
+          <strong>Offre :</strong> ${p?.display_name || p?.name || '—'}
         </div>
         <a href="/" class="btn block" style="margin-top:24px">Retour à l'accueil</a>
         <button type="button" class="btn secondary block" id="downloadContractBtn" style="margin-top:12px">Télécharger mon contrat</button>
@@ -671,12 +893,12 @@
     await loadOrder();
 
     if (state.order?.payment?.status === 'paid') {
-      state.step = 4;
+      state.step = stepFromOrder(state.order);
       setMsg('');
       return true;
     }
 
-    state.step = 3;
+    state.step = 4;
     state.sessionId = null;
     setMsg(paymentFailureMessage(), 'err');
     syncUrl();
@@ -689,10 +911,12 @@
       await ensureProductLoaded();
       renderStep1();
     } else if (state.step === 2) renderStep2();
-    else if (state.step === 3) await renderStep3();
-    else if (state.step === 4) renderStep4();
+    else if (state.step === 3) renderStep3();
+    else if (state.step === 4) await renderStep4();
     else if (state.step === 5) renderStep5();
-    else renderStep6();
+    else if (state.step === 6) renderStep6();
+    else if (state.step === 7) renderStep7();
+    else renderStep8();
     saveProgress();
   }
 
@@ -701,7 +925,7 @@
     await loadConfig();
 
     if (params.get('cancelled')) {
-      state.step = 3;
+      state.step = 4;
       state.sessionId = null;
       setMsg(paymentFailureMessage('cancelled'), 'err');
       params.delete('cancelled');
@@ -712,12 +936,12 @@
       await confirmStripeReturn();
       const loaded = await loadOrder();
       if (state.order?.payment?.status === 'paid') {
-        state.step = Math.max(state.step, 4);
-      } else if (orderRequiresPayment(state.order) && state.step > 3) {
-        state.step = 3;
-      } else if (!loaded && state.step >= 3) {
+        state.step = Math.max(state.step, stepFromOrder(state.order));
+      } else if (orderRequiresPayment(state.order) && state.step > 4) {
+        state.step = 4;
+      } else if (!loaded && state.step >= 4) {
         setMsg(
-          'Impossible de recharger votre dossier — vous pouvez tout de même payer si vos coordonnées sont enregistrées ci-dessus.',
+          'Impossible de recharger votre dossier — vous pouvez tout de même payer si vos coordonnées sont enregistrées.',
           'err'
         );
       }
@@ -725,9 +949,7 @@
 
     await ensureProductLoaded();
 
-    if (!state.orderId && state.step > 1 && state.productId) {
-      /* étape restaurée localement (ex. formulaire identité) */
-    } else if (!state.productId && !state.product) {
+    if (!state.productId && !state.product) {
       state.step = 1;
     }
 

@@ -50,7 +50,7 @@
           <div class="admin-section-head">
             <div>
               <h2 class="admin-section-title">Ajouter une offre</h2>
-              <p class="admin-section-desc">Créez une offre manuelle (promo, coaching, essai…) sans passer par Deciplus.</p>
+              <p class="admin-section-desc">Créez une offre manuelle (promo, coaching, essai…).</p>
             </div>
           </div>
           <form id="addOfferForm" class="admin-add-offer-form">
@@ -199,6 +199,55 @@
             <div class="stats-kpi"><span class="stats-kpi-label">Commandes matériel</span><span class="stats-kpi-value" id="kpiMaterielOrders">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">CA Abonnements</span><span class="stats-kpi-value" id="kpiInscRev">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">Inscriptions</span><span class="stats-kpi-value" id="kpiInscOrders">—</span></div>
+            <div class="stats-kpi"><span class="stats-kpi-label">Visites (30 j)</span><span class="stats-kpi-value" id="kpiVisits">—</span></div>
+            <div class="stats-kpi"><span class="stats-kpi-label">Conversion tunnel</span><span class="stats-kpi-value" id="kpiFunnelConv">—</span></div>
+          </div>
+
+          <div id="funnelWrap" hidden style="margin-top:24px">
+            <h3 class="admin-catalog-block-title">Tunnel d'inscription — abandons</h3>
+            <p class="admin-section-desc">Combien de dossiers ont atteint chaque étape (et % de perte vs l'étape précédente).</p>
+            <div style="overflow-x:auto;margin-top:12px">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Étape</th>
+                    <th style="text-align:right">Atteints</th>
+                    <th style="text-align:right">Abandon vs préc.</th>
+                  </tr>
+                </thead>
+                <tbody id="funnelBody"></tbody>
+              </table>
+            </div>
+            <p class="admin-section-desc" id="funnelSummary" style="margin-top:10px"></p>
+          </div>
+
+          <div id="visitsWrap" hidden style="margin-top:24px">
+            <h3 class="admin-catalog-block-title">Pages les plus vues (30 j)</h3>
+            <div style="overflow-x:auto;margin-top:12px">
+              <table class="admin-table">
+                <thead><tr><th>Page</th><th style="text-align:right">Vues</th></tr></thead>
+                <tbody id="visitsBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="unpaidWrap" hidden style="margin-top:24px">
+            <h3 class="admin-catalog-block-title">Impayés abonnements CB (Stripe)</h3>
+            <div style="overflow-x:auto;margin-top:12px">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Référence</th>
+                    <th>Adhérent</th>
+                    <th>Email</th>
+                    <th>Offre</th>
+                    <th>Statut</th>
+                    <th>Bloqué</th>
+                  </tr>
+                </thead>
+                <tbody id="unpaidBody"></tbody>
+              </table>
+            </div>
           </div>
 
           <!-- Table par mois -->
@@ -234,6 +283,7 @@
             <option value="all">Toutes</option>
             <option value="signed">Signées</option>
             <option value="progress">En cours</option>
+            <option value="unpaid">Impayés CB</option>
           </select>
           <button type="button" class="btn sm" id="refreshOrdersBtn">Actualiser</button>
         </div>
@@ -260,6 +310,29 @@
         <p id="ordersCount" class="admin-section-foot"></p>
         </div>
       </section>
+    </div>
+
+    <div id="productEditModal" hidden style="display:none;position:fixed;inset:0;background:rgba(11,31,58,.55);z-index:80;place-items:center;padding:16px">
+      <form id="productEditForm" class="admin-section" style="max-width:560px;width:100%;max-height:90vh;overflow:auto;margin:0">
+        <h2 class="admin-section-title">Personnaliser l'offre</h2>
+        <input type="hidden" id="pe_id" />
+        <div class="form-grid" style="gap:12px">
+          <div class="full"><label>Nom affiché</label><input id="pe_display_name" required /></div>
+          <div><label>Durée (libellé)</label><input id="pe_duration" placeholder="4 semaines, 12 mois…" /></div>
+          <div><label>Public</label><input id="pe_audience" placeholder="Adultes, enfants…" /></div>
+          <div><label>Badge</label><input id="pe_badge" placeholder="Promo, Nouveau…" /></div>
+          <div><label>Prix marketing</label><input id="pe_marketing_price" placeholder="39 € / 4 sem." /></div>
+          <div class="full"><label>Sous-titre prix</label><input id="pe_price_subtitle" placeholder="Soit ~10 € / semaine" /></div>
+          <div class="full"><label>Note échéances / paiement</label><input id="pe_installments" placeholder="1ère CB puis prélèvement…" /></div>
+          <div class="full"><label>Bénéfices (1 ligne = 1 point)</label><textarea id="pe_benefits" rows="4" placeholder="Accès 5 salles&#10;Cours illimités"></textarea></div>
+          <div class="full"><label>Recherche produit Deciplus</label><input id="pe_search" placeholder="Nom exact ou fragment" /></div>
+          <div class="full" style="display:flex;gap:8px">
+            <button type="submit" class="btn sm">Enregistrer</button>
+            <button type="button" class="btn sm secondary" id="pe_close">Annuler</button>
+          </div>
+        </div>
+        <p class="form-msg" id="pe_msg"></p>
+      </form>
     </div>
   </div>
 

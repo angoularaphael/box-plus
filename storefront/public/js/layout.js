@@ -154,6 +154,14 @@
     }
   }
 
+  function ensureTracking() {
+    if (window.BCTrack) return;
+    const s = document.createElement('script');
+    s.src = (window.BCPaths?.asset('js/tracking.js') || 'js/tracking.js');
+    s.defer = true;
+    document.head.appendChild(s);
+  }
+
   function mountLayout() {
     const headerSlot = document.getElementById('site-header');
     const footerSlot = document.getElementById('site-footer');
@@ -163,6 +171,7 @@
     renderCartFab();
     updateCartBadge();
     window.addEventListener('bccart:change', updateCartBadge);
+    ensureTracking();
   }
 
   if (document.readyState === 'loading') {

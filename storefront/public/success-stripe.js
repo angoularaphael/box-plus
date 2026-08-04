@@ -60,7 +60,7 @@ async function confirmStripeSession(retryHref) {
         if (orderId) showInvoiceButton(orderId);
       } else if (successText) {
         successText.textContent =
-          "Paiement confirmé — votre abonnement est en cours d'enregistrement dans Deciplus.";
+          "Paiement confirmé — votre abonnement est en cours d'enregistrement.";
       }
       return;
     }
@@ -87,7 +87,7 @@ if (!successText) {
     successText.textContent = 'Commande matériel confirmée — retrait en salle.';
   }
 } else if (demo) {
-  successText.textContent = 'Commande enregistrée — traitement Deciplus automatique.';
+  successText.textContent = 'Commande enregistrée — traitement automatique en cours.';
 } else if (sessionId) {
   const retry =
     order && productId

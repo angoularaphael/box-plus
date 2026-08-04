@@ -145,7 +145,7 @@ async function handleEmailVerification(page) {
     }
   }
 
-  await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+  await page.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {});
   await randomDelay(process.env.BOT_MIN_DELAY_MS, process.env.BOT_MAX_DELAY_MS);
 }
 
@@ -217,7 +217,7 @@ async function gotoDeciplus(page, pathPart = '', options = {}) {
     logWarn('Navigation Deciplus lente, retry commit', { url: target, error: err.message });
     await page.goto(target, { waitUntil: 'commit', timeout: Math.min(timeout, 45000) });
   }
-  await page.waitForTimeout(Number(process.env.DECIPLUS_NAV_SETTLE_MS || 1500));
+  await page.waitForTimeout(Number(process.env.DECIPLUS_NAV_SETTLE_MS || 400));
 }
 
 async function submitLoginForm(page, user, pass) {
@@ -254,7 +254,7 @@ async function submitLoginForm(page, user, pass) {
     }
   }
 
-  await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+  await page.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {});
   await randomDelay(process.env.BOT_MIN_DELAY_MS, process.env.BOT_MAX_DELAY_MS);
 }
 

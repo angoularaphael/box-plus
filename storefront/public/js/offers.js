@@ -10,10 +10,14 @@
 
   function formatPaymentMode(product) {
     if (!product.requires_payment) return 'Gratuit';
-    if (product.supports_billing_choice) return 'RIB ou carte — toutes les 4 semaines';
-    if (/comptant/i.test(product.name || '')) return 'Paiement comptant CB';
-    if (product.requires_iban) return '1ère échéance CB · suite par prélèvement';
-    return 'Paiement CB';
+    if (/comptant/i.test(product.name || '') || product.subsection === 'comptant') {
+      return 'Paiement unique CB — pas de prélèvement';
+    }
+    if (product.supports_billing_choice) {
+      return 'Échéances 4 sem. — RIB ou carte au choix';
+    }
+    if (product.requires_iban) return 'Échéances — 1ère CB · suite prélèvement';
+    return 'Paiement par carte';
   }
 
   function formatDuration(product) {
