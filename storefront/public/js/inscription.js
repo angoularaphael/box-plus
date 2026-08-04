@@ -369,7 +369,15 @@
   }
 
   function bindBillingPlanForm() {
-    /* Choix badge / CB récurrente retirés — rien à synchroniser */
+    const payBtn = document.getElementById('payBtn');
+    const radios = document.querySelectorAll('input[name="billing_plan"]');
+    if (!radios.length || !payBtn) return;
+    const refresh = () => {
+      const plan = document.querySelector('input[name="billing_plan"]:checked')?.value || 'rib';
+      payBtn.textContent = plan === 'cb' ? 'Payer par carte' : 'Payer';
+    };
+    radios.forEach((r) => r.addEventListener('change', refresh));
+    refresh();
   }
 
   async function renderStep4() {
@@ -389,18 +397,40 @@
     }
     await ensureProductForPayment();
     const p = state.product;
+    const supportsChoice = Boolean(p?.supports_billing_choice);
     const isComptantLike =
       /comptant/i.test(String(p?.name || '')) ||
+      p?.subsection === 'comptant' ||
       /4\s*[x×]\s*sans\s*frais/i.test(String(p?.badge || p?.name || '')) ||
       /sans\s*frais/i.test(String(p?.badge || ''));
-    const isPrelevement = Boolean(p?.requires_iban) && !isComptantLike;
-    stepContent.innerHTML = `
-      <h1>Paiement</h1>
-      <p class="sub">Montant : <strong>${priceLabel(p)}</strong></p>
-      <form id="payForm">
-        ${
-          isPrelevement
-            ? `
+    const isPrelevementOnly = Boolean(p?.requires_iban) && !supportsChoice && !isComptantLike;
+    const savedPlan = state.order?.payment?.billing_plan || 'rib';
+
+    let billingHtml = '';
+    if (supportsChoice) {
+      // Les 2 modes : Prélèvement ou CB
+      billingHtml = `
+        <div class="full billing-plan-block">
+          <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
+            <label class="billing-choice">
+              <input type="radio" name="billing_plan" value="rib" ${savedPlan !== 'cb' ? 'checked' : ''} />
+              <span class="billing-choice-text">
+                <strong>Prélèvement (RIB)</strong>
+                <small>1ère CB, puis SEPA</small>
+              </span>
+            </label>
+            <label class="billing-choice">
+              <input type="radio" name="billing_plan" value="cb" ${savedPlan === 'cb' ? 'checked' : ''} />
+              <span class="billing-choice-text">
+                <strong>Carte bancaire</strong>
+                <small>Toutes les 4 semaines</small>
+              </span>
+            </label>
+          </div>
+        </div>`;
+    } else if (isPrelevementOnly) {
+      // Une seule option : prélèvement déjà coché
+      billingHtml = `
         <div class="full billing-plan-block">
           <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
             <label class="billing-choice">
@@ -411,9 +441,15 @@
               </span>
             </label>
           </div>
-        </div>`
-            : ''
-        }
+        </div>`;
+    }
+    // Comptant / 4× sans frais : pas de choix, juste Payer (CB)
+
+    stepContent.innerHTML = `
+      <h1>Paiement</h1>
+      <p class="sub">Montant : <strong>${priceLabel(p)}</strong></p>
+      <form id="payForm">
+        ${billingHtml}
         <button type="submit" class="btn stripe block" id="payBtn">${
           p?.requires_payment === false ? 'Continuer' : 'Payer'
         }</button>
@@ -425,8 +461,10 @@
       setMsg('Redirection…');
       saveProgress();
       const body = payRequestBody();
-      if (isPrelevement) body.billing_plan = 'rib';
-      // Badge ~72h auto (IBAN) — plus de choix côté client
+      const planInput = document.querySelector('input[name="billing_plan"]:checked');
+      if (planInput) body.billing_plan = planInput.value;
+      else if (isPrelevementOnly || (p?.requires_iban && !isComptantLike)) body.billing_plan = 'rib';
+      // Badge ~72h auto IBAN — jamais affiché / demandé
       body.badge_timing = 'deferred';
       body.badge_method = 'iban';
       const res = await fetch(`/api/orders/${state.orderId}/pay`, {
@@ -606,124 +644,6 @@
       await loadOrder();
       goToStep(4);
     };
-  }
-
-  async function renderStep4() {
-    if (state.order?.payment?.status === 'paid') {
-      state.step = stepFromOrder(state.order);
-      if (state.step !== 4) {
-        persistAndRender();
-        return;
-      }
-    }
-    if (state.sessionId) {
-      await confirmStripeReturn();
-      if (state.order?.payment?.status === 'paid') {
-        persistAndRender();
-        return;
-      }
-    }
-    await ensureProductForPayment();
-    const p = state.product;
-    const supportsChoice = p?.supports_billing_choice;
-    const savedPlan = state.order?.payment?.billing_plan || 'rib';
-    const showBadge =
-      Boolean(state.config?.badge_fee_notice) ||
-      Boolean(p?.requires_iban) ||
-      p?.sale_type === 'abonnement' ||
-      /abonnement/i.test(String(p?.category || ''));
-    const savedBadgeTiming = state.order?.payment?.badge_timing || 'deferred';
-    const savedBadgeMethod = state.order?.payment?.badge_method || 'iban';
-    stepContent.innerHTML = `
-      <h1>Paiement</h1>
-      <p class="sub">Montant : <strong>${priceLabel(p)}</strong></p>
-      <form id="payForm">
-        ${
-          supportsChoice
-            ? `
-        <div class="full billing-plan-block">
-          <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
-            <label class="billing-choice">
-              <input type="radio" name="billing_plan" value="rib" ${savedPlan !== 'cb' ? 'checked' : ''} />
-              <span class="billing-choice-text">
-                <strong>Prélèvement (RIB)</strong>
-                <small>1ère CB, puis SEPA</small>
-              </span>
-            </label>
-            <label class="billing-choice">
-              <input type="radio" name="billing_plan" value="cb" ${savedPlan === 'cb' ? 'checked' : ''} />
-              <span class="billing-choice-text">
-                <strong>Carte bancaire</strong>
-                <small>Toutes les 4 semaines</small>
-              </span>
-            </label>
-          </div>
-        </div>`
-            : ''
-        }
-        ${
-          showBadge
-            ? `
-        <div class="full billing-plan-block" id="badgeBlock">
-          <p style="font-weight:600;margin:12px 0 8px">Badge d'accès (34,99 €)</p>
-          <div class="billing-choice-row" role="radiogroup" aria-label="Moment badge">
-            <label class="billing-choice">
-              <input type="radio" name="badge_timing" value="immediate" ${savedBadgeTiming === 'immediate' ? 'checked' : ''} />
-              <span class="billing-choice-text"><strong>Maintenant</strong><small>Immédiat</small></span>
-            </label>
-            <label class="billing-choice">
-              <input type="radio" name="badge_timing" value="deferred" ${savedBadgeTiming !== 'immediate' ? 'checked' : ''} />
-              <span class="billing-choice-text"><strong>~72h</strong><small>Différé</small></span>
-            </label>
-          </div>
-          <div class="billing-choice-row" role="radiogroup" aria-label="Moyen badge" style="margin-top:8px">
-            <label class="billing-choice">
-              <input type="radio" name="badge_method" value="iban" ${savedBadgeMethod !== 'card' ? 'checked' : ''} />
-              <span class="billing-choice-text"><strong>IBAN</strong><small>Prélèvement</small></span>
-            </label>
-            <label class="billing-choice">
-              <input type="radio" name="badge_method" value="card" ${savedBadgeMethod === 'card' ? 'checked' : ''} />
-              <span class="billing-choice-text"><strong>Carte</strong><small>Stripe</small></span>
-            </label>
-          </div>
-        </div>`
-            : ''
-        }
-        <button type="submit" class="btn stripe block" id="payBtn">${
-          p?.requires_payment === false ? 'Continuer' : 'Payer'
-        }</button>
-        ${backButton('← Retour', 3)}
-      </form>`;
-    bindBillingPlanForm();
-    document.getElementById('payForm').onsubmit = async (e) => {
-      e.preventDefault();
-      setMsg('Redirection…');
-      saveProgress();
-      const body = payRequestBody();
-      const planInput = document.querySelector('input[name="billing_plan"]:checked');
-      if (planInput) body.billing_plan = planInput.value;
-      if (!supportsChoice && p?.requires_iban) body.billing_plan = 'rib';
-      const badgeTiming = document.querySelector('input[name="badge_timing"]:checked')?.value;
-      const badgeMethod = document.querySelector('input[name="badge_method"]:checked')?.value;
-      if (badgeTiming) body.badge_timing = badgeTiming;
-      if (badgeMethod) body.badge_method = badgeMethod;
-      const res = await fetch(`/api/orders/${state.orderId}/pay`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        setMsg(orderErrorMessage(data), 'err');
-        return;
-      }
-      if (data.redirect) {
-        window.location.href = data.redirect;
-        return;
-      }
-      if (data.url) window.location.href = data.url;
-    };
-    bindBackButtons();
   }
 
   function renderStep5() {

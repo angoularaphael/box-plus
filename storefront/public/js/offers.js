@@ -13,6 +13,9 @@
     if (/comptant/i.test(product.name || '') || product.subsection === 'comptant') {
       return 'Paiement unique CB — pas de prélèvement';
     }
+    if (product.supports_billing_choice) {
+      return 'Échéances 4 sem. — RIB ou carte au choix';
+    }
     if (/4\s*[x×]\s*sans\s*frais/i.test(product.badge || '') || /sans\s*frais/i.test(product.badge || '')) {
       return 'Paiement CB — 4× sans frais';
     }
