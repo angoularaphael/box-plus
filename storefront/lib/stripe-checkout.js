@@ -2,7 +2,22 @@
 
 /**
  * Sessions Stripe Checkout — paiement unique ou abonnement 4 semaines.
+ * Portet : clé dédiée (STRIPE_SECRET_KEY_PORTET) — même compte possible pour l'instant.
  */
+
+const Stripe = require('stripe');
+
+function stripeClientForGym(gym) {
+  const key =
+    String(gym || '').toLowerCase() === 'portet'
+      ? process.env.STRIPE_SECRET_KEY_PORTET || process.env.STRIPE_SECRET_KEY
+      : process.env.STRIPE_SECRET_KEY;
+  if (!key) throw new Error('STRIPE_SECRET_KEY manquante');
+  return {
+    stripe: new Stripe(key),
+    account: String(gym || '').toLowerCase() === 'portet' ? 'portet' : 'boxing_center',
+  };
+}
 
 function buildLineItem(product) {
   return {
@@ -26,12 +41,15 @@ function buildSubscriptionLineItem(product) {
 
 function createCheckoutSessionParams({ product, order, payload, baseUrl, packOrderMetadata, billingPlan }) {
   const isSubscription = billingPlan === 'cb';
+  const gym = order.customer_full?.gym || payload?.gym || '';
   const meta = {
     product_id: product.id,
     order_id: order.order_id,
     lifecycle_order_id: order.order_id,
     bc_token: order.access_token,
     billing_plan: billingPlan || 'rib',
+    gym: gym || '',
+    stripe_account: gym === 'portet' ? 'portet' : 'boxing_center',
     ...packOrderMetadata(payload),
   };
 
@@ -39,8 +57,8 @@ function createCheckoutSessionParams({ product, order, payload, baseUrl, packOrd
     payment_method_types: ['card'],
     customer_email: order.customer_short?.email || payload.customer?.email,
     metadata: meta,
-    success_url: `${baseUrl}/inscription?order=${order.order_id}&token=${order.access_token}&step=4&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${baseUrl}/inscription?order=${order.order_id}&token=${order.access_token}&step=3&cancelled=1`,
+    success_url: `${baseUrl}/inscription?order=${order.order_id}&token=${order.access_token}&step=5&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/inscription?order=${order.order_id}&token=${order.access_token}&step=4&cancelled=1`,
   };
 
   if (isSubscription) {
@@ -52,6 +70,7 @@ function createCheckoutSessionParams({ product, order, payload, baseUrl, packOrd
         lifecycle_order_id: order.order_id,
         billing_plan: 'cb',
         product_id: product.id,
+        gym: gym || '',
       },
     };
   } else {
@@ -62,7 +81,6 @@ function createCheckoutSessionParams({ product, order, payload, baseUrl, packOrd
   return params;
 }
 
-/** Stripe Checkout — paiement réellement encaissé (pas seulement session ouverte). */
 function isStripeCheckoutPaid(session) {
   if (!session) return false;
   const status = String(session.payment_status || '').toLowerCase();
@@ -73,4 +91,5 @@ function isStripeCheckoutPaid(session) {
 module.exports = {
   createCheckoutSessionParams,
   isStripeCheckoutPaid,
+  stripeClientForGym,
 };

@@ -7,11 +7,13 @@
 
   const STEP_LABELS = {
     1: 'Offre',
-    2: 'Identité',
-    3: 'Paiement',
-    4: 'Dossier',
-    5: 'Signature',
-    6: 'Confirmé',
+    2: 'Salle',
+    3: 'Identité',
+    4: 'Paiement',
+    5: 'IBAN',
+    6: 'Dossier',
+    7: 'Signature',
+    8: 'Confirmé',
   };
 
   const CATALOG_SECTIONS = [
@@ -145,10 +147,19 @@
     return orders.filter((o) => {
       if (filter === 'signed' && !o.signed) return false;
       if (filter === 'progress' && o.signed) return false;
+      if (filter === 'unpaid' && o.payment_status !== 'past_due' && !o.access_blocked) return false;
       if (!q) return true;
       const hay = `${o.order_id} ${o.name} ${o.email} ${o.product}`.toLowerCase();
       return hay.includes(q);
     });
+  }
+
+  function paymentBadge(o) {
+    if (o.payment_status === 'paid') return '<span class="badge ok">Payé</span>';
+    if (o.payment_status === 'past_due') {
+      return `<span class="badge pending">Impayé${o.access_blocked ? ' · bloqué' : ''}</span>`;
+    }
+    return '<span class="badge pending">En attente</span>';
   }
 
   function renderOrders() {
@@ -174,7 +185,7 @@
         <td><a href="mailto:${o.email}" style="color:var(--bc-cta)">${o.email}</a></td>
         <td>${o.product}</td>
         <td>${STEP_LABELS[o.step] || o.step}</td>
-        <td><span class="badge ${o.payment_status === 'paid' ? 'ok' : 'pending'}">${o.payment_status === 'paid' ? 'Payé' : 'En attente'}</span></td>
+        <td>${paymentBadge(o)}</td>
         <td>${o.signed ? `✓ ${formatDate(o.signed_at)}` : '—'}</td>
         <td style="font-size:12px">${formatDate(o.updated_at || o.created_at)}</td>
         <td>
@@ -313,7 +324,10 @@
         <td><input value="${escapeHtml(p.display_name || p.name)}" data-id="${escapeHtml(p.id)}" class="edit-name admin-input-inline" /></td>
         <td><span class="admin-tab-pill">${escapeHtml(p.tab || '—')}</span></td>
         <td><input type="number" value="${p.sort_order ?? 99}" data-id="${escapeHtml(p.id)}" class="edit-sort admin-input-sort" /></td>
-        <td><button type="button" class="btn sm save-row" data-id="${escapeHtml(p.id)}">Sauver</button></td>
+        <td style="white-space:nowrap">
+          <button type="button" class="btn sm save-row" data-id="${escapeHtml(p.id)}">Sauver</button>
+          <button type="button" class="btn sm secondary edit-full" data-id="${escapeHtml(p.id)}">Détails</button>
+        </td>
       </tr>`;
   }
 
@@ -355,6 +369,72 @@
         }
       };
     });
+    root.querySelectorAll('.edit-full').forEach((btn) => {
+      btn.onclick = () => openProductEditor(btn.dataset.id);
+    });
+  }
+
+  function openProductEditor(id) {
+    const p = products.find((x) => x.id === id);
+    if (!p) return;
+    const modal = document.getElementById('productEditModal');
+    if (!modal) return;
+    modal.hidden = false;
+    modal.style.display = 'grid';
+    document.getElementById('pe_id').value = p.id;
+    document.getElementById('pe_display_name').value = p.display_name || p.name || '';
+    document.getElementById('pe_duration').value = p.duration_label || '';
+    document.getElementById('pe_audience').value = p.audience || '';
+    document.getElementById('pe_badge').value = p.badge || '';
+    document.getElementById('pe_marketing_price').value = p.marketing_price_label || '';
+    document.getElementById('pe_price_subtitle').value = p.price_subtitle || '';
+    document.getElementById('pe_installments').value = p.installments_note || '';
+    document.getElementById('pe_benefits').value = Array.isArray(p.benefits) ? p.benefits.join('\n') : '';
+    document.getElementById('pe_search').value = p.deciplus_product_search || '';
+    document.getElementById('pe_msg').textContent = '';
+  }
+
+  function closeProductEditor() {
+    const modal = document.getElementById('productEditModal');
+    if (modal) {
+      modal.hidden = true;
+      modal.style.display = 'none';
+    }
+  }
+
+  async function saveProductEditor(e) {
+    e.preventDefault();
+    const id = document.getElementById('pe_id').value;
+    const benefitsRaw = document.getElementById('pe_benefits').value || '';
+    const benefits = benefitsRaw
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const body = {
+      display_name: document.getElementById('pe_display_name').value,
+      duration_label: document.getElementById('pe_duration').value || null,
+      audience: document.getElementById('pe_audience').value || null,
+      badge: document.getElementById('pe_badge').value || null,
+      marketing_price_label: document.getElementById('pe_marketing_price').value || null,
+      price_subtitle: document.getElementById('pe_price_subtitle').value || null,
+      installments_note: document.getElementById('pe_installments').value || null,
+      benefits,
+      deciplus_product_search: document.getElementById('pe_search').value || null,
+    };
+    const msg = document.getElementById('pe_msg');
+    msg.textContent = 'Enregistrement…';
+    msg.className = 'form-msg';
+    try {
+      await patch(id, body, { silent: true });
+      applyLocalProductPatch(id, body);
+      renderMerch();
+      msg.textContent = 'Offre mise à jour.';
+      msg.className = 'form-msg ok';
+      setTimeout(closeProductEditor, 600);
+    } catch (err) {
+      msg.textContent = err.message || 'Erreur';
+      msg.className = 'form-msg err';
+    }
   }
 
   function renderTable() {
@@ -859,6 +939,62 @@
         document.getElementById('kpiMaterielOrders').textContent = data.totals.materiel_orders;
         document.getElementById('kpiInscRev').textContent = fmtEur(data.totals.inscription_revenue);
         document.getElementById('kpiInscOrders').textContent = data.totals.inscription_orders;
+        const kpiVisits = document.getElementById('kpiVisits');
+        if (kpiVisits) kpiVisits.textContent = data.visits?.total ?? '—';
+        const kpiConv = document.getElementById('kpiFunnelConv');
+        if (kpiConv) kpiConv.textContent = `${data.funnel?.conversion_pct ?? 0} %`;
+      }
+
+      const funnelWrap = document.getElementById('funnelWrap');
+      const funnelBody = document.getElementById('funnelBody');
+      if (funnelBody && data.funnel?.funnel) {
+        funnelBody.innerHTML = data.funnel.funnel
+          .map(
+            (f) => `
+          <tr>
+            <td>${f.step}. ${f.label}</td>
+            <td style="text-align:right;font-weight:600">${f.reached}</td>
+            <td style="text-align:right">${f.drop_pct_from_prev ? `−${f.drop_pct_from_prev} %` : '—'}</td>
+          </tr>`
+          )
+          .join('');
+        const sum = document.getElementById('funnelSummary');
+        if (sum) {
+          sum.textContent = `${data.funnel.started} dossiers démarrés · ${data.funnel.confirmed} confirmés · ${data.funnel.abandoned} en cours / abandonnés`;
+        }
+        if (funnelWrap) funnelWrap.hidden = false;
+      }
+
+      const visitsWrap = document.getElementById('visitsWrap');
+      const visitsBody = document.getElementById('visitsBody');
+      if (visitsBody) {
+        const pages = data.visits?.top_pages || [];
+        visitsBody.innerHTML = pages.length
+          ? pages.map((p) => `<tr><td>${p.path}</td><td style="text-align:right">${p.count}</td></tr>`).join('')
+          : '<tr><td colspan="2" style="text-align:center;color:var(--bc-muted)">Pas encore de visites trackées</td></tr>';
+        if (visitsWrap) visitsWrap.hidden = false;
+      }
+
+      const unpaidWrap = document.getElementById('unpaidWrap');
+      const unpaidBody = document.getElementById('unpaidBody');
+      if (unpaidBody) {
+        const unpaid = data.unpaid || [];
+        unpaidBody.innerHTML = unpaid.length
+          ? unpaid
+              .map(
+                (o) => `
+            <tr>
+              <td><code style="font-size:11px">${o.order_id}</code></td>
+              <td>${o.name}</td>
+              <td>${o.email}</td>
+              <td>${o.product}</td>
+              <td>${o.payment_status}</td>
+              <td>${o.access_blocked ? 'Oui' : 'Non'}</td>
+            </tr>`
+              )
+              .join('')
+          : '<tr><td colspan="6" style="text-align:center;color:var(--bc-muted)">Aucun impayé CB</td></tr>';
+        if (unpaidWrap) unpaidWrap.hidden = false;
       }
 
       // Table
@@ -896,6 +1032,12 @@
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     location.replace('/admin/login');
   };
+
+  document.getElementById('productEditForm')?.addEventListener('submit', saveProductEditor);
+  document.getElementById('pe_close')?.addEventListener('click', closeProductEditor);
+  document.getElementById('productEditModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'productEditModal') closeProductEditor();
+  });
 
   document.getElementById('refreshOrdersBtn').onclick = loadOrders;
   document.getElementById('ordersSearch').oninput = renderOrders;

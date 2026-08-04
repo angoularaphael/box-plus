@@ -1,5 +1,6 @@
 /**
- * Cycle de vie commande — tunnel 6 étapes
+ * Cycle de vie commande — tunnel 8 étapes
+ * 1 Offre · 2 Salle · 3 Identité · 4 Paiement · 5 IBAN · 6 Dossier · 7 Signature · 8 Confirmé
  */
 const fs = require('fs');
 const path = require('path');
@@ -13,10 +14,23 @@ const UPLOADS_DIR =
   process.env.BOXPLUS_UPLOADS_DIR ||
   (process.env.VERCEL ? '/tmp/boxplus-uploads' : path.join(ROOT, 'data', 'storefront', 'uploads'));
 
+const STEPS = {
+  OFFER: 1,
+  GYM: 2,
+  IDENTITY: 3,
+  PAYMENT: 4,
+  IBAN: 5,
+  DOSSIER: 6,
+  SIGNATURE: 7,
+  CONFIRMED: 8,
+};
+
 function initDirs() {
   ensureDir(ORDERS_DIR);
   ensureDir(UPLOADS_DIR);
   ensureDir(path.join(UPLOADS_DIR, 'ribs'));
+  ensureDir(path.join(UPLOADS_DIR, 'photos'));
+  ensureDir(path.join(UPLOADS_DIR, 'signatures'));
 }
 
 function generateOrderId() {
@@ -44,18 +58,18 @@ function productSnapshot(product) {
   };
 }
 
-function createDraft({ product_id, product, customer_short }) {
+function createDraft({ product_id, product, customer_short, gym }) {
   initDirs();
   const order_id = generateOrderId();
   const access_token = generateAccessToken();
   const order = {
     order_id,
     access_token,
-    step: customer_short ? 3 : 2,
+    step: customer_short ? STEPS.PAYMENT : gym ? STEPS.IDENTITY : STEPS.GYM,
     product_id,
     product_snapshot: productSnapshot(product),
     customer_short: customer_short || null,
-    customer_full: null,
+    customer_full: gym ? { gym } : null,
     payment: { status: 'pending' },
     signature: null,
     documents: {},
@@ -67,8 +81,8 @@ function createDraft({ product_id, product, customer_short }) {
   return order;
 }
 
-async function createDraftAsync({ product_id, product, customer_short }) {
-  const order = createDraft({ product_id, product, customer_short });
+async function createDraftAsync({ product_id, product, customer_short, gym }) {
+  const order = createDraft({ product_id, product, customer_short, gym });
   await persistence.saveOrderAsync(order);
   return order;
 }
@@ -107,7 +121,15 @@ async function updateShortProfileAsync(orderId, customer_short) {
   const order = await loadOrderAsync(orderId);
   if (!order) return null;
   order.customer_short = customer_short;
-  order.step = Math.max(order.step, 3);
+  order.step = Math.max(order.step || 1, STEPS.PAYMENT);
+  return saveOrderAsync(order);
+}
+
+async function updateGymAsync(orderId, gym) {
+  const order = await loadOrderAsync(orderId);
+  if (!order) return null;
+  order.customer_full = { ...(order.customer_full || {}), gym };
+  order.step = Math.max(order.step || 1, STEPS.IDENTITY);
   return saveOrderAsync(order);
 }
 
@@ -124,7 +146,12 @@ async function markPaymentPaidAsync(orderId, paymentData) {
     status: 'paid',
     paid_at: new Date().toISOString(),
   };
-  order.step = 4;
+  const plan = order.payment?.billing_plan;
+  const needsIban =
+    plan !== 'cb' &&
+    (order.product_snapshot?.requires_iban || plan === 'rib') &&
+    !order.payment?.iban;
+  order.step = needsIban ? STEPS.IBAN : STEPS.DOSSIER;
   return saveOrderAsync(order);
 }
 
@@ -141,7 +168,16 @@ async function markPaymentFailedAsync(orderId, paymentData = {}) {
     status: 'failed',
     failed_at: new Date().toISOString(),
   };
-  order.step = Math.min(order.step || 3, 3);
+  order.step = Math.min(order.step || STEPS.PAYMENT, STEPS.PAYMENT);
+  return saveOrderAsync(order);
+}
+
+async function updateIbanAsync(orderId, iban) {
+  const order = await loadOrderAsync(orderId);
+  if (!order) return null;
+  order.payment = { ...(order.payment || {}), iban };
+  order.customer_full = { ...(order.customer_full || {}), iban };
+  order.step = Math.max(order.step || 1, STEPS.DOSSIER);
   return saveOrderAsync(order);
 }
 
@@ -152,8 +188,16 @@ function updateFullProfile(orderId, customer_full) {
 async function updateFullProfileAsync(orderId, customer_full) {
   const order = await loadOrderAsync(orderId);
   if (!order) return null;
-  order.customer_full = customer_full;
-  order.step = Math.max(order.step, 5);
+  order.customer_full = {
+    ...(order.customer_full || {}),
+    ...customer_full,
+    gym: customer_full.gym || order.customer_full?.gym,
+    iban: customer_full.iban || order.customer_full?.iban || order.payment?.iban,
+  };
+  if (customer_full.photo_path) {
+    order.documents = { ...(order.documents || {}), photo: customer_full.photo_path };
+  }
+  order.step = Math.max(order.step || 1, STEPS.SIGNATURE);
   return saveOrderAsync(order);
 }
 
@@ -168,13 +212,35 @@ async function recordSignatureAsync(orderId, signatureData) {
     ...signatureData,
     signed_at: new Date().toISOString(),
   };
-  order.step = 6;
+  order.step = STEPS.CONFIRMED;
   order.ready_for_dispatch = true;
   return saveOrderAsync(order);
 }
 
-function markEmailSent(orderId) {
-  return markEmailSentAsync(orderId);
+async function markSubscriptionPastDueAsync(orderId, data = {}) {
+  const order = await loadOrderAsync(orderId);
+  if (!order) return null;
+  order.payment = {
+    ...(order.payment || {}),
+    ...data,
+    status: 'past_due',
+    past_due_at: new Date().toISOString(),
+    unpaid_notified_at: data.unpaid_notified_at || order.payment?.unpaid_notified_at || null,
+  };
+  order.access_blocked = Boolean(data.access_blocked ?? order.access_blocked);
+  return saveOrderAsync(order);
+}
+
+async function findOrderBySubscriptionId(subscriptionId) {
+  if (!subscriptionId) return null;
+  const all = await listAllOrdersAsync();
+  return (
+    all.find(
+      (o) =>
+        o.payment?.stripe_subscription_id === subscriptionId ||
+        o.payment?.subscription_id === subscriptionId
+    ) || null
+  );
 }
 
 async function markEmailSentAsync(orderId) {
@@ -182,6 +248,10 @@ async function markEmailSentAsync(orderId) {
   if (!order) return null;
   order.email_sent_at = new Date().toISOString();
   return saveOrderAsync(order);
+}
+
+function markEmailSent(orderId) {
+  return markEmailSentAsync(orderId);
 }
 
 function getUploadDir(type) {
@@ -273,6 +343,7 @@ function toAdminSummary(order) {
     name: memberDisplayName(short),
     gym: full.gym || null,
     payment_status: order.payment?.status || 'pending',
+    access_blocked: Boolean(order.access_blocked),
     signed: Boolean(order.signature?.signed_at),
     signed_at: order.signature?.signed_at || null,
     dispatched: Boolean(order.dispatched_at),
@@ -283,6 +354,7 @@ function toAdminSummary(order) {
 }
 
 module.exports = {
+  STEPS,
   ORDERS_DIR,
   UPLOADS_DIR,
   createDraft,
@@ -293,11 +365,16 @@ module.exports = {
   saveOrderAsync,
   verifyAccess,
   updateShortProfile,
+  updateShortProfileAsync,
+  updateGymAsync,
   markPaymentPaid,
   markPaymentFailed,
+  updateIbanAsync,
   updateFullProfile,
   recordSignature,
   markEmailSent,
+  markSubscriptionPastDueAsync,
+  findOrderBySubscriptionId,
   getUploadDir,
   generateOrderId,
   listAllOrders,

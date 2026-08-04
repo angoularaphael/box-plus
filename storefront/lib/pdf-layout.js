@@ -250,11 +250,13 @@ function drawSignatureBlock(doc, order) {
   const left = doc.page.margins.left;
   const width = contentWidth(doc);
 
-  if (doc.y > doc.page.height - 110) doc.addPage();
+  if (doc.y > doc.page.height - 160) doc.addPage();
   drawSectionHeading(doc, 'Signature électronique');
 
   if (order.signature) {
-    const sigH = 82;
+    const imgPath = order.signature.image_path;
+    const hasImg = imgPath && fs.existsSync(imgPath);
+    const sigH = hasImg ? 120 : 82;
     doc.roundedRect(left, doc.y, width, sigH, 6).fill('#F0FAFB').stroke(TEAL);
     const sigY = doc.y + 12;
     doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(10).text('Document signé électroniquement', left + 14, sigY);
@@ -267,8 +269,19 @@ function drawSignatureBlock(doc, order) {
       left + 14,
       sigY + 54
     );
+    if (hasImg) {
+      try {
+        doc.image(imgPath, left + 14, sigY + 68, { height: 40, fit: [width - 40, 40] });
+      } catch {
+        /* ignore corrupt image */
+      }
+    }
     if (order.signature.ip) {
-      doc.fontSize(7).fillColor(MUTED).text(`Preuve horodatée — adresse IP : ${order.signature.ip}`, left + 14, sigY + 66);
+      doc.fontSize(7).fillColor(MUTED).text(
+        `Preuve horodatée — adresse IP : ${order.signature.ip}`,
+        left + 14,
+        hasImg ? sigY + 112 : sigY + 66
+      );
     }
     doc.y = sigY + sigH;
   } else {
@@ -353,7 +366,9 @@ function drawSignatureBlockCompact(doc, order) {
   doc.y += 14;
 
   if (order.signature) {
-    const sigH = 58;
+    const imgPath = order.signature.image_path;
+    const hasImg = imgPath && fs.existsSync(imgPath);
+    const sigH = hasImg ? 90 : 58;
     doc.roundedRect(left, doc.y, width, sigH, 4).fill('#F0FAFB').stroke(TEAL);
     const sigY = doc.y + 8;
     doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(8.5).text('Document signé électroniquement', left + 10, sigY);
@@ -363,8 +378,19 @@ function drawSignatureBlockCompact(doc, order) {
     const line2 = `Le ${new Date(order.signature.signed_at).toLocaleString('fr-FR')}  ·  CGV : ${order.signature.consent_cgv ? 'Oui' : 'Non'}  ·  Règlement : ${order.signature.consent_reglement ? 'Oui' : 'Non'}`;
     doc.text(line1, left + 10, sigY + 13, { width: width - 20 });
     doc.text(line2, left + 10, sigY + 26, { width: width - 20 });
+    if (hasImg) {
+      try {
+        doc.image(imgPath, left + 10, sigY + 40, { height: 36, fit: [width - 30, 36] });
+      } catch {
+        /* ignore */
+      }
+    }
     if (order.signature.ip) {
-      doc.fontSize(6.5).fillColor(MUTED).text(`IP : ${order.signature.ip}`, left + 10, sigY + 40);
+      doc.fontSize(6.5).fillColor(MUTED).text(
+        `IP : ${order.signature.ip}`,
+        left + 10,
+        hasImg ? sigY + 78 : sigY + 40
+      );
     }
     doc.y = doc.y + sigH;
   } else {

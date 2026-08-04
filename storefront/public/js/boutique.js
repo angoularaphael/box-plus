@@ -7,7 +7,7 @@ async function loadProducts() {
 
   if (data.synced_at) {
     const pill = document.getElementById('statusPill');
-    pill.textContent = `Sync Deciplus · ${new Date(data.synced_at).toLocaleString('fr-FR')}`;
+    pill.textContent = `Catalogue synchronisé · ${new Date(data.synced_at).toLocaleString('fr-FR')}`;
   }
 
   products.forEach((p) => {
@@ -32,7 +32,7 @@ async function loadConfig() {
     const cfg = await res.json();
     const pill = document.getElementById('statusPill');
     if (cfg.stripe_enabled) {
-      pill.textContent = 'Stripe + BOXPLUS';
+      pill.textContent = 'Paiement sécurisé Stripe';
     } else {
       pill.textContent = 'Mode démo (sans Stripe)';
       pill.classList.remove('live');
