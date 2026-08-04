@@ -249,9 +249,60 @@ async function fillMemberForm(page, customer, gymConfig, order) {
   await fillFirst(ctx, sel.info_compta || 'input[name="info_compta"]', `Commande ${order.order_id}`);
   await fillFirst(ctx, sel.info_admin || 'textarea[name="info_admin"]', internalNote);
 
-  if (gymConfig?.deciplus_zone_id) {
-    await fillFirst(ctx, sel.idz || 'select[name="idz"]', gymConfig.deciplus_zone_id);
+  await setMemberZone(ctx, gymConfig);
+}
+
+/**
+ * Force la zone Deciplus du formulaire membre selon la salle choisie en boutique.
+ * Ne force jamais une salle par défaut : utilise gymConfig de la commande.
+ */
+async function setMemberZone(ctx, gymConfig = {}) {
+  const selectSel = (getSelectors().member_form_selectors || {}).idz || 'select[name="idz"]';
+  const select = ctx.locator(selectSel).first();
+  if ((await select.count()) === 0) {
+    logWarn('Champ zone Deciplus (idz) introuvable sur formulaire membre');
+    return false;
   }
+
+  const label = gymConfig.deciplus_label || gymConfig.label;
+  const zoneId = gymConfig.deciplus_zone_id != null ? String(gymConfig.deciplus_zone_id) : null;
+
+  if (zoneId) {
+    const byValue = await select.selectOption(zoneId).then(() => true).catch(() => false);
+    if (byValue) {
+      logInfo('Zone membre Deciplus', { zone_id: zoneId, site: label });
+      return true;
+    }
+  }
+
+  if (label) {
+    const byLabel = await select.selectOption({ label }).then(() => true).catch(() => false);
+    if (byLabel) {
+      logInfo('Zone membre Deciplus', { site: label });
+      return true;
+    }
+
+    const options = select.locator('option');
+    const count = await options.count();
+    const pattern = new RegExp(String(label).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    for (let i = 0; i < count; i += 1) {
+      const opt = options.nth(i);
+      const text = ((await opt.textContent().catch(() => '')) || '').trim();
+      if (!pattern.test(text)) continue;
+      const value = await opt.getAttribute('value');
+      if (value == null || value === '') continue;
+      await select.selectOption(value);
+      logInfo('Zone membre Deciplus', { site: text, zone_id: value });
+      return true;
+    }
+  }
+
+  logWarn('Impossible de sélectionner la salle Deciplus sur le formulaire membre', {
+    gym: gymConfig.key || null,
+    site: label || null,
+    zone_id: zoneId,
+  });
+  return false;
 }
 
 async function isNewMemberForm(page, ctx) {
