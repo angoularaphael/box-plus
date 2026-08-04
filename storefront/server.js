@@ -1153,10 +1153,33 @@ function createApp() {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
       if (!req.file) return res.status(400).json({ ok: false, error: 'photo_required' });
-      order.documents = { ...(order.documents || {}), photo: req.file.path };
+
+      // Fichier + base64 (pour envoi bot / Vercel multi-instances)
+      let photo_base64 = null;
+      try {
+        const buf = fs.readFileSync(req.file.path);
+        if (buf.length > 1.8 * 1024 * 1024) {
+          return res.status(400).json({
+            ok: false,
+            error: 'photo_too_large',
+            message: 'Photo trop lourde (max ~1,5 Mo). Compressez ou choisissez une autre image.',
+          });
+        }
+        const mime = req.file.mimetype || 'image/jpeg';
+        photo_base64 = `data:${mime};base64,${buf.toString('base64')}`;
+      } catch (readErr) {
+        logWarn('Lecture photo pour base64', { error: readErr.message });
+      }
+
+      order.documents = {
+        ...(order.documents || {}),
+        photo: req.file.path,
+        photo_filename: req.file.filename,
+        photo_base64,
+      };
       const { saveOrderAsync } = require('./lib/order-lifecycle');
       await saveOrderAsync(order);
-      res.json({ ok: true, photo: true, path: req.file.filename });
+      res.json({ ok: true, photo: true, path: req.file.filename, stored: Boolean(photo_base64) });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
@@ -1173,7 +1196,19 @@ function createApp() {
     if (!verifyAccess(order, req.query.token)) {
       return res.status(403).json({ ok: false, error: 'forbidden' });
     }
-    const { access_token, ...safe } = order;
+    const { access_token, ...rest } = order;
+    // Ne pas renvoyer les gros base64 au navigateur (flag seul)
+    const safe = { ...rest };
+    if (safe.documents?.photo_base64) {
+      safe.documents = {
+        ...safe.documents,
+        photo_base64: true,
+        has_photo: true,
+      };
+    }
+    if (safe.signature?.image_base64) {
+      safe.signature = { ...safe.signature, image_base64: true };
+    }
     res.json({ ok: true, order: safe });
   });
 
@@ -1241,7 +1276,16 @@ function createApp() {
       const errors = validateFullForm(full, product);
       if (errors.length) return res.status(400).json({ ok: false, errors });
 
+      if (!order.documents?.photo && !order.documents?.photo_base64) {
+        return res.status(400).json({
+          ok: false,
+          error: 'photo_required',
+          message: 'Ajoutez une photo pour votre badge / fiche membre.',
+        });
+      }
+
       if (order.documents?.photo) full.photo_path = order.documents.photo;
+      if (order.documents?.photo_base64) full.photo_base64 = order.documents.photo_base64;
 
       await updateFullProfile(order.order_id, full);
       res.json({ ok: true, step: STEPS.SIGNATURE });
