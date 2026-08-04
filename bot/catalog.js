@@ -269,7 +269,7 @@ function resolveBadgeProductConfig(catalog) {
     ...defaults,
     sale_type: 'carte',
     paiement_comptant: false,
-    prelevement_delay_days: defaults.prelevement_delay_days || 7,
+    prelevement_delay_days: defaults.prelevement_delay_days || 3,
     requires_iban: false,
     skip_rib_prompt: true,
     auto_badge: false,
