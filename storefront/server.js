@@ -1502,12 +1502,9 @@ function createApp() {
 
       const short = order.customer_short;
       const billingPlan = normalizeBillingPlan(req.body.billing_plan, product);
-      const badgeTiming = String(req.body.badge_timing || 'deferred').toLowerCase() === 'immediate'
-        ? 'immediate'
-        : 'deferred';
-      const badgeMethod = ['card', 'cb'].includes(String(req.body.badge_method || '').toLowerCase())
-        ? 'card'
-        : 'iban';
+      // Badge toujours ~72h / IBAN — plus de choix client
+      const badgeTiming = 'deferred';
+      const badgeMethod = 'iban';
       const form = {
         ...short,
         ...req.body,

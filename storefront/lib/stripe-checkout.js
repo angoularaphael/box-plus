@@ -51,9 +51,7 @@ function createCheckoutSessionParams({
 }) {
   const isSubscription = billingPlan === 'cb';
   const gym = order.customer_full?.gym || payload?.gym || '';
-  const includeBadgeOnStripe =
-    String(badgeTiming || '').toLowerCase() === 'immediate' &&
-    ['card', 'cb'].includes(String(badgeMethod || '').toLowerCase());
+  const includeBadgeOnStripe = false; // Badge toujours ~72h IBAN — jamais sur Stripe
 
   const meta = {
     product_id: product.id,
@@ -63,8 +61,8 @@ function createCheckoutSessionParams({
     billing_plan: billingPlan || 'rib',
     gym: gym || '',
     stripe_account: gym === 'portet' ? 'portet' : 'boxing_center',
-    badge_timing: badgeTiming || '',
-    badge_method: badgeMethod || '',
+    badge_timing: 'deferred',
+    badge_method: 'iban',
     ...packOrderMetadata(payload),
   };
 

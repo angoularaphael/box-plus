@@ -147,12 +147,14 @@ async function markPaymentPaidAsync(orderId, paymentData) {
     paid_at: new Date().toISOString(),
   };
   const plan = order.payment?.billing_plan;
-  const badgeMethod = order.payment?.badge_method || order.badge_method;
-  const needsIbanForBadge = badgeMethod === 'iban';
+  const snap = order.product_snapshot || {};
+  const needsIbanForBadge =
+    snap.sale_type === 'abonnement' ||
+    Boolean(snap.requires_iban) ||
+    /abonnement/i.test(String(snap.category || ''));
+  // Badge ~72h toujours IBAN — étape IBAN pour prélèvement et abonnements (y compris comptant)
   const needsIban =
-    !order.payment?.iban &&
-    ((plan !== 'cb' && (order.product_snapshot?.requires_iban || plan === 'rib')) ||
-      (plan === 'cb' && needsIbanForBadge));
+    !order.payment?.iban && (plan === 'rib' || Boolean(snap.requires_iban) || needsIbanForBadge);
   order.step = needsIban ? STEPS.IBAN : STEPS.DOSSIER;
   return saveOrderAsync(order);
 }

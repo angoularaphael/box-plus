@@ -101,6 +101,9 @@ test('résolution automatique produit Deciplus', () => {
   const badgeCfg = resolveBadgeProductConfig(MOCK_CATALOG);
   assert.equal(badgeCfg.deciplus_product_name, 'Badge');
   assert.equal(badgeCfg.sale_type, 'carte');
+  assert.equal(badgeCfg.badge_timing, 'deferred');
+  assert.equal(badgeCfg.badge_method, 'iban');
+  assert.equal(badgeCfg.paiement_comptant, false);
   assert.equal(findBadgeProduct(MOCK_CATALOG).id, 10);
 
   const badgeOrder = normalizeOrder({
