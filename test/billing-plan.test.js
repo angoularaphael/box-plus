@@ -18,13 +18,13 @@ describe('billing-plan', () => {
     sale_type: 'abonnement',
   };
 
-  it('no longer offers RIB vs CB choice', () => {
-    assert.equal(productSupportsBillingChoice(fourWeeks), false);
+  it('4-week offers support RIB or CB choice', () => {
+    assert.equal(productSupportsBillingChoice(fourWeeks), true);
     assert.equal(productSupportsBillingChoice({ name: 'COMPTANT 12 MOIS', requires_iban: false }), false);
   });
 
-  it('forces rib even if client asks for cb on prelevement', () => {
-    assert.equal(normalizeBillingPlan('cb', fourWeeks), 'rib');
+  it('cb plan still needs iban for badge ~72h', () => {
+    assert.equal(normalizeBillingPlan('cb', fourWeeks), 'cb');
     assert.equal(requiresIbanForPlan(fourWeeks, 'cb'), true);
     assert.equal(requiresIbanForPlan(fourWeeks, 'rib'), true);
   });
@@ -32,17 +32,17 @@ describe('billing-plan', () => {
   it('comptant / 4x sans frais = style carte', () => {
     assert.equal(isComptantStyleProduct({ name: 'COMPTANT 12 MOIS' }), true);
     assert.equal(isComptantStyleProduct({ name: 'OFFRE PROMO', badge: '4× sans frais' }), true);
-    assert.equal(normalizeBillingPlan('rib', { name: 'COMPTANT 12 MOIS', requires_iban: false }), null);
+    assert.equal(productSupportsBillingChoice({ name: 'OFFRE PROMO', badge: '4× sans frais', requires_iban: true }), false);
   });
 
-  it('applyBillingPlanToProductConfig ignores legacy cb on prelevement', () => {
+  it('applyBillingPlanToProductConfig sets card mode', () => {
     const out = applyBillingPlanToProductConfig(
       { requires_iban: true, payment_mode: 'virement' },
       { payment: { billing_plan: 'cb' }, requires_iban: true, product_name: '44,99€/4 semaines' }
     );
-    // cb forcé en rib → config inchangée
-    assert.equal(out.payment_mode, 'virement');
-    assert.equal(out.requires_iban, true);
+    assert.equal(out.payment_mode, 'card');
+    assert.equal(out.skip_rib_prompt, true);
+    assert.equal(out.requires_iban, false);
   });
 
   it('defaults to rib for 4-week products', () => {
