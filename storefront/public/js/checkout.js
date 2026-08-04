@@ -3,7 +3,7 @@ let stripeMode = false;
 let catalogLoading = true;
 
 const BADGE_FEE_NOTICE =
-  "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé sur l'IBAN que vous indiquez dans un délai de 5 à 7 jours ouvrés après votre achat. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.";
+  "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé automatiquement sur l'IBAN que vous indiquez, 72 heures après votre souscription. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.";
 
 function shouldShowBadgeFeeNotice(product) {
   if (!product?.requires_iban) return false;
