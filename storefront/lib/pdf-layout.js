@@ -251,42 +251,43 @@ function drawSignatureBlock(doc, order) {
   const width = contentWidth(doc);
 
   if (doc.y > doc.page.height - 160) doc.addPage();
-  drawSectionHeading(doc, 'Signature électronique');
+  drawSectionHeading(doc, 'Signature');
 
   if (order.signature) {
     const imgPath = order.signature.image_path;
-    const hasImg = imgPath && fs.existsSync(imgPath);
-    const sigH = hasImg ? 120 : 82;
-    doc.roundedRect(left, doc.y, width, sigH, 6).fill('#F0FAFB').stroke(TEAL);
-    const sigY = doc.y + 12;
-    doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(10).text('Document signé électroniquement', left + 14, sigY);
+    const hasImg = (imgPath && fs.existsSync(imgPath)) || Boolean(order.signature.image_base64);
+    const sigH = hasImg ? 130 : 70;
+    doc.roundedRect(left, doc.y, width, sigH, 6).fill('#FFFFFF').stroke(BORDER);
+    const sigY = doc.y + 10;
     doc.font('Helvetica').fontSize(9).fillColor('#374151');
-    doc.text(`Par : ${memberDisplayName(short)}`, left + 14, sigY + 16);
-    if (short.email) doc.text(`Email : ${short.email}`, left + 14, sigY + 28);
-    doc.text(`Le ${new Date(order.signature.signed_at).toLocaleString('fr-FR')}`, left + 14, sigY + 42);
-    doc.text(
-      `Acceptation CGV : ${order.signature.consent_cgv ? 'Oui' : 'Non'}  ·  Règlement intérieur : ${order.signature.consent_reglement ? 'Oui' : 'Non'}`,
+    doc.text(`${memberDisplayName(short)}${short.email ? ` — ${short.email}` : ''}`, left + 14, sigY);
+    doc.text(`Le ${new Date(order.signature.signed_at).toLocaleString('fr-FR')}`, left + 14, sigY + 14);
+    doc.fontSize(8).fillColor(MUTED).text(
+      `CGV : ${order.signature.consent_cgv ? 'Oui' : 'Non'}  ·  Règlement : ${order.signature.consent_reglement ? 'Oui' : 'Non'}`,
       left + 14,
-      sigY + 54
+      sigY + 28
     );
     if (hasImg) {
       try {
-        doc.image(imgPath, left + 14, sigY + 68, { height: 40, fit: [width - 40, 40] });
+        if (imgPath && fs.existsSync(imgPath)) {
+          doc.image(imgPath, left + 14, sigY + 44, { height: 56, fit: [width - 40, 56] });
+        } else if (order.signature.image_base64) {
+          const b64 = String(order.signature.image_base64).split(',').pop();
+          doc.image(Buffer.from(b64, 'base64'), left + 14, sigY + 44, {
+            height: 56,
+            fit: [width - 40, 56],
+          });
+        }
       } catch {
-        /* ignore corrupt image */
+        doc.fontSize(9).fillColor(MUTED).text('(Signature manuscrite manquante)', left + 14, sigY + 48);
       }
-    }
-    if (order.signature.ip) {
-      doc.fontSize(7).fillColor(MUTED).text(
-        `Preuve horodatée — adresse IP : ${order.signature.ip}`,
-        left + 14,
-        hasImg ? sigY + 112 : sigY + 66
-      );
+    } else {
+      doc.fontSize(9).fillColor(MUTED).text('(Signature manuscrite manquante)', left + 14, sigY + 48);
     }
     doc.y = sigY + sigH;
   } else {
     doc.fontSize(8.5).fillColor(MUTED).font('Helvetica').text(
-      'Prévisualisation — la signature électronique sera apposée à la validation finale de l\'inscription en ligne.',
+      'Prévisualisation — signature à apposer à la validation.',
       { width, lineGap: 2 }
     );
   }
@@ -362,40 +363,48 @@ function drawSignatureBlockCompact(doc, order) {
   const left = doc.page.margins.left;
   const width = contentWidth(doc);
 
-  doc.fontSize(10).fillColor(NAVY).font('Helvetica-Bold').text('Signature électronique', left, doc.y);
-  doc.y += 14;
+  doc.fontSize(10).fillColor(NAVY).font('Helvetica-Bold').text('Signature', left, doc.y);
+  doc.y += 12;
 
   if (order.signature) {
     const imgPath = order.signature.image_path;
-    const hasImg = imgPath && fs.existsSync(imgPath);
-    const sigH = hasImg ? 90 : 58;
-    doc.roundedRect(left, doc.y, width, sigH, 4).fill('#F0FAFB').stroke(TEAL);
+    const hasImg = (imgPath && fs.existsSync(imgPath)) || Boolean(order.signature.image_base64);
+    const sigH = hasImg ? 100 : 48;
+    doc.roundedRect(left, doc.y, width, sigH, 4).fill('#FFFFFF').stroke(BORDER);
     const sigY = doc.y + 8;
-    doc.fillColor(NAVY).font('Helvetica-Bold').fontSize(8.5).text('Document signé électroniquement', left + 10, sigY);
-    doc.font('Helvetica').fontSize(7.5).fillColor('#374151');
+    doc.font('Helvetica').fontSize(8).fillColor('#374151');
     const name = memberDisplayName(short);
-    const line1 = `Par : ${name}${short.email ? ` — ${short.email}` : ''}`;
-    const line2 = `Le ${new Date(order.signature.signed_at).toLocaleString('fr-FR')}  ·  CGV : ${order.signature.consent_cgv ? 'Oui' : 'Non'}  ·  Règlement : ${order.signature.consent_reglement ? 'Oui' : 'Non'}`;
-    doc.text(line1, left + 10, sigY + 13, { width: width - 20 });
-    doc.text(line2, left + 10, sigY + 26, { width: width - 20 });
+    doc.text(
+      `${name}${short.email ? ` — ${short.email}` : ''}  ·  ${new Date(order.signature.signed_at).toLocaleString('fr-FR')}`,
+      left + 10,
+      sigY,
+      { width: width - 20 }
+    );
+    doc.fontSize(7).fillColor(MUTED).text(
+      `CGV : ${order.signature.consent_cgv ? 'Oui' : 'Non'}  ·  Règlement : ${order.signature.consent_reglement ? 'Oui' : 'Non'}`,
+      left + 10,
+      sigY + 14,
+      { width: width - 20 }
+    );
     if (hasImg) {
       try {
-        doc.image(imgPath, left + 10, sigY + 40, { height: 36, fit: [width - 30, 36] });
+        if (imgPath && fs.existsSync(imgPath)) {
+          doc.image(imgPath, left + 10, sigY + 28, { height: 52, fit: [width - 30, 52] });
+        } else if (order.signature.image_base64) {
+          const b64 = String(order.signature.image_base64).split(',').pop();
+          doc.image(Buffer.from(b64, 'base64'), left + 10, sigY + 28, {
+            height: 52,
+            fit: [width - 30, 52],
+          });
+        }
       } catch {
         /* ignore */
       }
     }
-    if (order.signature.ip) {
-      doc.fontSize(6.5).fillColor(MUTED).text(
-        `IP : ${order.signature.ip}`,
-        left + 10,
-        hasImg ? sigY + 78 : sigY + 40
-      );
-    }
     doc.y = doc.y + sigH;
   } else {
     doc.fontSize(7.5).fillColor(MUTED).font('Helvetica').text(
-      'Prévisualisation — signature à la validation finale.',
+      'Prévisualisation — signature à la validation.',
       { width }
     );
   }

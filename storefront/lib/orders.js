@@ -72,6 +72,8 @@ function buildOrderPayload(input, product) {
       medical_info: input.medical_info || null,
     },
     photo_path: input.photo_path || null,
+    badge_timing: input.badge_timing || null,
+    badge_method: input.badge_method || null,
     payment: {
       amount,
       method: input.payment_method || 'stripe',
@@ -83,6 +85,8 @@ function buildOrderPayload(input, product) {
       stripe_session_id: input.stripe_session_id || null,
       stripe_payment_intent: input.stripe_payment_intent || null,
       stripe_subscription_id: input.stripe_subscription_id || null,
+      badge_timing: input.badge_timing || null,
+      badge_method: input.badge_method || null,
     },
     utm: {
       source: input.utm_source || null,
@@ -162,6 +166,8 @@ function buildOrderFromLifecycle(order, product) {
       emergency_contact: full.emergency_contact,
       medical_info: full.medical_info,
       photo_path: order.documents?.photo || full.photo_path || null,
+      badge_timing: order.badge_timing || order.payment?.badge_timing || null,
+      badge_method: order.badge_method || order.payment?.badge_method || null,
     },
     product
   );

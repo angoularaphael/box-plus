@@ -252,13 +252,17 @@ function findBadgeProduct(catalog) {
   );
 }
 
-function resolveBadgeProductConfig(catalog) {
+function resolveBadgeProductConfig(catalog, overrides = {}) {
   const matched = findBadgeProduct(catalog);
   if (!matched) {
     throw new Error('Produit Badge introuvable dans le catalogue Deciplus');
   }
 
   const defaults = loadJson('config/sale-defaults.json').carte;
+  const timing = String(overrides.badge_timing || overrides.timing || 'deferred').toLowerCase();
+  const method = String(overrides.badge_method || overrides.method || 'iban').toLowerCase();
+  const immediate = timing === 'immediate';
+
   return {
     key: String(matched.id),
     label: matched.title,
@@ -268,8 +272,14 @@ function resolveBadgeProductConfig(catalog) {
     amount: Number(matched.price) || 34.99,
     ...defaults,
     sale_type: 'carte',
-    paiement_comptant: false,
-    prelevement_delay_days: defaults.prelevement_delay_days || 3,
+    // Immédiat : Comptant ON (CB Stripe déjà prise ou prélèvement J0)
+    // Différé : Comptant OFF + Date de paiement J+3
+    paiement_comptant: immediate,
+    badge_timing: immediate ? 'immediate' : 'deferred',
+    badge_method: method === 'card' || method === 'cb' ? 'card' : 'iban',
+    prelevement_delay_days: immediate
+      ? 0
+      : Number(overrides.prelevement_delay_days || defaults.prelevement_delay_days || 3),
     requires_iban: false,
     skip_rib_prompt: true,
     auto_badge: false,

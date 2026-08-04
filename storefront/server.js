@@ -1295,6 +1295,7 @@ function createApp() {
       }
 
       let image_path = null;
+      let image_base64 = null;
       try {
         const b64 = String(signature_image).split(',')[1];
         const buf = Buffer.from(b64, 'base64');
@@ -1304,6 +1305,8 @@ function createApp() {
         const fname = `${order.order_id}-${Date.now()}.png`;
         image_path = path.join(getUploadDir('signatures'), fname);
         fs.writeFileSync(image_path, buf);
+        // Conservé dans la commande (PDF / multi-instances Vercel)
+        image_base64 = `data:image/png;base64,${b64}`;
       } catch (sigErr) {
         return res.status(400).json({ ok: false, error: 'Impossible d\'enregistrer la signature' });
       }
@@ -1313,6 +1316,7 @@ function createApp() {
         consent_reglement: Boolean(consent_reglement),
         ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
         image_path,
+        image_base64,
         method: 'canvas',
       });
 
@@ -1454,18 +1458,30 @@ function createApp() {
 
       const short = order.customer_short;
       const billingPlan = normalizeBillingPlan(req.body.billing_plan, product);
+      const badgeTiming = String(req.body.badge_timing || 'deferred').toLowerCase() === 'immediate'
+        ? 'immediate'
+        : 'deferred';
+      const badgeMethod = ['card', 'cb'].includes(String(req.body.badge_method || '').toLowerCase())
+        ? 'card'
+        : 'iban';
       const form = {
         ...short,
         ...req.body,
         order_id: order.order_id,
         billing_plan: billingPlan,
+        badge_timing: badgeTiming,
+        badge_method: badgeMethod,
       };
 
       order.payment = {
         ...(order.payment || {}),
         billing_plan: billingPlan,
         iban: order.payment?.iban || null,
+        badge_timing: badgeTiming,
+        badge_method: badgeMethod,
       };
+      order.badge_timing = badgeTiming;
+      order.badge_method = badgeMethod;
       const { saveOrderAsync } = require('./lib/order-lifecycle');
       await saveOrderAsync(order);
 
@@ -1516,6 +1532,8 @@ function createApp() {
         baseUrl,
         packOrderMetadata,
         billingPlan,
+        badgeTiming,
+        badgeMethod,
       });
       const session = await orderStripe.checkout.sessions.create(sessionParams);
 

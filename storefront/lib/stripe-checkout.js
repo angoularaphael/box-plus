@@ -39,9 +39,22 @@ function buildSubscriptionLineItem(product) {
   return item;
 }
 
-function createCheckoutSessionParams({ product, order, payload, baseUrl, packOrderMetadata, billingPlan }) {
+function createCheckoutSessionParams({
+  product,
+  order,
+  payload,
+  baseUrl,
+  packOrderMetadata,
+  billingPlan,
+  badgeTiming,
+  badgeMethod,
+}) {
   const isSubscription = billingPlan === 'cb';
   const gym = order.customer_full?.gym || payload?.gym || '';
+  const includeBadgeOnStripe =
+    String(badgeTiming || '').toLowerCase() === 'immediate' &&
+    ['card', 'cb'].includes(String(badgeMethod || '').toLowerCase());
+
   const meta = {
     product_id: product.id,
     order_id: order.order_id,
@@ -50,7 +63,21 @@ function createCheckoutSessionParams({ product, order, payload, baseUrl, packOrd
     billing_plan: billingPlan || 'rib',
     gym: gym || '',
     stripe_account: gym === 'portet' ? 'portet' : 'boxing_center',
+    badge_timing: badgeTiming || '',
+    badge_method: badgeMethod || '',
     ...packOrderMetadata(payload),
+  };
+
+  const badgeLine = {
+    price_data: {
+      currency: 'eur',
+      unit_amount: 3499,
+      product_data: {
+        name: "Badge d'accès Boxing Center",
+        description: 'Paiement immédiat du badge',
+      },
+    },
+    quantity: 1,
   };
 
   const params = {
@@ -73,9 +100,15 @@ function createCheckoutSessionParams({ product, order, payload, baseUrl, packOrd
         gym: gym || '',
       },
     };
+    if (includeBadgeOnStripe) {
+      params.subscription_data.add_invoice_items = [badgeLine];
+    }
   } else {
     params.mode = 'payment';
     params.line_items = [buildLineItem(product)];
+    if (includeBadgeOnStripe) {
+      params.line_items.push(badgeLine);
+    }
   }
 
   return params;
