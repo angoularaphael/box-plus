@@ -72,6 +72,7 @@ function buildOrderPayload(input, product) {
       medical_info: input.medical_info || null,
     },
     photo_path: input.photo_path || null,
+    photo_base64: input.photo_base64 || null,
     badge_timing: input.badge_timing || null,
     badge_method: input.badge_method || null,
     payment: {
@@ -166,6 +167,7 @@ function buildOrderFromLifecycle(order, product) {
       emergency_contact: full.emergency_contact,
       medical_info: full.medical_info,
       photo_path: order.documents?.photo || full.photo_path || null,
+      photo_base64: order.documents?.photo_base64 || full.photo_base64 || null,
       badge_timing: order.badge_timing || order.payment?.badge_timing || null,
       badge_method: order.badge_method || order.payment?.badge_method || null,
     },

@@ -45,7 +45,7 @@ describe('lifecycle tunnel', () => {
       },
     });
     orderId = order.order_id;
-    assert.equal(order.step, 3);
+    assert.equal(order.step, 4); // PAYMENT
 
     const shortErrors = validateShortForm(order.customer_short);
     assert.equal(shortErrors.length, 0);
@@ -53,7 +53,7 @@ describe('lifecycle tunnel', () => {
     await markPaymentPaid(orderId, { method: 'demo', iban: null });
     const paid = loadOrder(orderId);
     assert.equal(paid.payment.status, 'paid');
-    assert.equal(paid.step, 4);
+    assert.equal(paid.step, 6); // DOSSIER (pas d'IBAN pour séance essai)
 
     await updateFullProfile(orderId, {
       gender: 'M',
@@ -65,13 +65,14 @@ describe('lifecycle tunnel', () => {
     });
     const full = loadOrder(orderId);
     assert.equal(full.customer_full.gym, 'minimes');
+    assert.equal(full.step, 7); // SIGNATURE
 
     const signed = await recordSignature(orderId, {
       consent_cgv: true,
       consent_reglement: true,
       ip: '127.0.0.1',
     });
-    assert.equal(signed.step, 6);
+    assert.equal(signed.step, 8); // CONFIRMED
     assert.equal(signed.ready_for_dispatch, true);
 
     const payload = buildOrderFromLifecycle(signed, product);

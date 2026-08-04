@@ -49,6 +49,44 @@
     formMsg.className = 'form-msg' + (type ? ` ${type}` : '');
   }
 
+  /** Redimensionne la photo (min 200px Deciplus, max ~900px pour le job bot). */
+  async function prepareMemberPhoto(file) {
+    if (!file || !file.type?.startsWith('image/')) return file;
+    try {
+      const bitmap = await createImageBitmap(file);
+      const min = 200;
+      const max = 900;
+      let w = bitmap.width;
+      let h = bitmap.height;
+      if (!w || !h) return file;
+      if (w < min || h < min) {
+        const scale = Math.max(min / w, min / h);
+        w = Math.max(min, Math.round(w * scale));
+        h = Math.max(min, Math.round(h * scale));
+      } else if (w > max || h > max) {
+        const scale = Math.min(max / w, max / h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      } else if (file.type === 'image/jpeg' && file.size < 900 * 1024) {
+        bitmap.close?.();
+        return file;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(bitmap, 0, 0, w, h);
+      bitmap.close?.();
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+      if (!blob) return file;
+      return new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+    } catch {
+      return file;
+    }
+  }
+
   function saveProgress() {
     writeStoredProgress({
       productId: state.productId,
@@ -695,6 +733,7 @@
       return;
     }
     const full = state.order?.customer_full || {};
+    const photoOk = state.photoUploaded || Boolean(state.order?.documents?.photo) || Boolean(state.order?.documents?.photo_base64);
     stepContent.innerHTML = `
       <h1>Votre dossier</h1>
       <form id="fullForm" class="form-grid">
@@ -709,6 +748,9 @@
         <div class="full"><label for="address">Adresse *</label><input id="address" name="address" required value="${full.address || ''}" /></div>
         <div><label for="postal_code">Code postal *</label><input id="postal_code" name="postal_code" required value="${full.postal_code || ''}" /></div>
         <div><label for="city">Ville *</label><input id="city" name="city" required value="${full.city || ''}" /></div>
+        <div class="full"><label for="photo">Photo *</label>
+          <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="user" ${photoOk ? '' : 'required'} />
+        </div>
         <div class="full"><label for="emergency_contact">Contact d'urgence (optionnel)</label><input id="emergency_contact" name="emergency_contact" placeholder="Nom + téléphone" value="${full.emergency_contact || ''}" /></div>
         <div class="full"><label for="medical_info">Informations médicales (optionnel)</label><textarea id="medical_info" name="medical_info" rows="2">${full.medical_info || ''}</textarea></div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
@@ -717,8 +759,30 @@
     document.getElementById('fullForm').onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Enregistrement…');
+      const photoInput = document.getElementById('photo');
+      if (photoInput?.files?.[0]) {
+        const prepared = await prepareMemberPhoto(photoInput.files[0]);
+        const fd = new FormData();
+        fd.append('photo', prepared);
+        fd.append('token', state.token);
+        const photoRes = await fetch(`/api/orders/${state.orderId}/photo`, {
+          method: 'POST',
+          body: fd,
+        });
+        const photoData = await photoRes.json();
+        if (!photoData.ok) {
+          setMsg(orderErrorMessage(photoData) || 'Échec upload photo', 'err');
+          return;
+        }
+        state.photoUploaded = true;
+      } else if (!photoOk) {
+        setMsg('Ajoutez une photo', 'err');
+        return;
+      }
+
       const fd = new FormData(e.target);
       const body = Object.fromEntries(fd.entries());
+      delete body.photo;
       const res = await fetch(`/api/orders/${state.orderId}/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
