@@ -129,7 +129,9 @@
   function orderNeedsIban(order) {
     const p = order?.product_snapshot || state.product;
     const plan = order?.payment?.billing_plan || 'rib';
-    if (plan === 'cb') return false;
+    const badgeMethod = order?.payment?.badge_method || order?.badge_method || 'iban';
+    if (plan === 'cb' && badgeMethod === 'card') return false;
+    if (plan === 'cb' && badgeMethod === 'iban') return true;
     return Boolean(p?.requires_iban || plan === 'rib');
   }
 
@@ -327,17 +329,35 @@
   }
 
   function bindBillingPlanForm() {
-    const badgeNotice = document.getElementById('badgeNotice');
     const payBtn = document.getElementById('payBtn');
     const radios = document.querySelectorAll('input[name="billing_plan"]');
-    if (!radios.length) return;
+    const syncBadge = () => {
+      const timing = document.querySelector('input[name="badge_timing"]:checked');
+      const method = document.querySelector('input[name="badge_method"]:checked');
+      // Carte badge = immédiat ; différé = IBAN (contrainte Stripe / Deciplus)
+      if (method?.value === 'card' && timing && timing.value !== 'immediate') {
+        const imm = document.querySelector('input[name="badge_timing"][value="immediate"]');
+        if (imm) imm.checked = true;
+      }
+      if (timing?.value === 'deferred' && method && method.value !== 'iban') {
+        const iban = document.querySelector('input[name="badge_method"][value="iban"]');
+        if (iban) iban.checked = true;
+      }
+    };
+    document.querySelectorAll('input[name="badge_timing"], input[name="badge_method"]').forEach((r) => {
+      r.addEventListener('change', syncBadge);
+    });
+    if (!radios.length) {
+      syncBadge();
+      return;
+    }
 
     const refresh = () => {
       const plan = document.querySelector('input[name="billing_plan"]:checked')?.value || 'rib';
-      if (badgeNotice) badgeNotice.style.display = plan === 'rib' ? '' : 'none';
       if (payBtn) {
         payBtn.textContent = plan === 'cb' ? 'Payer par carte' : 'Payer';
       }
+      syncBadge();
     };
 
     radios.forEach((r) => r.addEventListener('change', refresh));
@@ -523,6 +543,13 @@
     const p = state.product;
     const supportsChoice = p?.supports_billing_choice;
     const savedPlan = state.order?.payment?.billing_plan || 'rib';
+    const showBadge =
+      Boolean(state.config?.badge_fee_notice) ||
+      Boolean(p?.requires_iban) ||
+      p?.sale_type === 'abonnement' ||
+      /abonnement/i.test(String(p?.category || ''));
+    const savedBadgeTiming = state.order?.payment?.badge_timing || 'deferred';
+    const savedBadgeMethod = state.order?.payment?.badge_method || 'iban';
     stepContent.innerHTML = `
       <h1>Paiement</h1>
       <p class="sub">Montant : <strong>${priceLabel(p)}</strong></p>
@@ -551,16 +578,35 @@
             : ''
         }
         ${
-          state.config?.badge_fee_notice
-            ? `<div class="notice-important" id="badgeNotice" ${supportsChoice && savedPlan === 'cb' ? 'style="display:none"' : ''}><strong>Badge d'accès</strong><p>${state.config.badge_fee_notice}</p></div>`
+          showBadge
+            ? `
+        <div class="full billing-plan-block" id="badgeBlock">
+          <p style="font-weight:600;margin:12px 0 8px">Badge d'accès (34,99 €)</p>
+          <div class="billing-choice-row" role="radiogroup" aria-label="Moment badge">
+            <label class="billing-choice">
+              <input type="radio" name="badge_timing" value="immediate" ${savedBadgeTiming === 'immediate' ? 'checked' : ''} />
+              <span class="billing-choice-text"><strong>Maintenant</strong><small>Immédiat</small></span>
+            </label>
+            <label class="billing-choice">
+              <input type="radio" name="badge_timing" value="deferred" ${savedBadgeTiming !== 'immediate' ? 'checked' : ''} />
+              <span class="billing-choice-text"><strong>~72h</strong><small>Différé</small></span>
+            </label>
+          </div>
+          <div class="billing-choice-row" role="radiogroup" aria-label="Moyen badge" style="margin-top:8px">
+            <label class="billing-choice">
+              <input type="radio" name="badge_method" value="iban" ${savedBadgeMethod !== 'card' ? 'checked' : ''} />
+              <span class="billing-choice-text"><strong>IBAN</strong><small>Prélèvement</small></span>
+            </label>
+            <label class="billing-choice">
+              <input type="radio" name="badge_method" value="card" ${savedBadgeMethod === 'card' ? 'checked' : ''} />
+              <span class="billing-choice-text"><strong>Carte</strong><small>Stripe</small></span>
+            </label>
+          </div>
+        </div>`
             : ''
         }
         <button type="submit" class="btn stripe block" id="payBtn">${
-          p?.requires_payment === false
-            ? 'Continuer'
-            : supportsChoice && savedPlan === 'cb'
-              ? 'Payer par carte'
-              : 'Payer'
+          p?.requires_payment === false ? 'Continuer' : 'Payer'
         }</button>
         ${backButton('← Retour', 3)}
       </form>`;
@@ -573,6 +619,10 @@
       const planInput = document.querySelector('input[name="billing_plan"]:checked');
       if (planInput) body.billing_plan = planInput.value;
       if (!supportsChoice && p?.requires_iban) body.billing_plan = 'rib';
+      const badgeTiming = document.querySelector('input[name="badge_timing"]:checked')?.value;
+      const badgeMethod = document.querySelector('input[name="badge_method"]:checked')?.value;
+      if (badgeTiming) body.badge_timing = badgeTiming;
+      if (badgeMethod) body.badge_method = badgeMethod;
       const res = await fetch(`/api/orders/${state.orderId}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -607,7 +657,7 @@
         </div>
         ${
           state.config?.badge_fee_notice
-            ? `<div class="full notice-important"><strong>Badge d'accès</strong><p>${state.config.badge_fee_notice}</p></div>`
+            ? ''
             : ''
         }
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
@@ -645,7 +695,6 @@
       return;
     }
     const full = state.order?.customer_full || {};
-    const photoOk = state.photoUploaded || Boolean(state.order?.documents?.photo);
     stepContent.innerHTML = `
       <h1>Votre dossier</h1>
       <form id="fullForm" class="form-grid">
@@ -660,9 +709,6 @@
         <div class="full"><label for="address">Adresse *</label><input id="address" name="address" required value="${full.address || ''}" /></div>
         <div><label for="postal_code">Code postal *</label><input id="postal_code" name="postal_code" required value="${full.postal_code || ''}" /></div>
         <div><label for="city">Ville *</label><input id="city" name="city" required value="${full.city || ''}" /></div>
-        <div class="full"><label for="photo">Photo *</label>
-          <input id="photo" name="photo" type="file" accept="image/*" capture="user" ${photoOk ? '' : 'required'} />
-        </div>
         <div class="full"><label for="emergency_contact">Contact d'urgence (optionnel)</label><input id="emergency_contact" name="emergency_contact" placeholder="Nom + téléphone" value="${full.emergency_contact || ''}" /></div>
         <div class="full"><label for="medical_info">Informations médicales (optionnel)</label><textarea id="medical_info" name="medical_info" rows="2">${full.medical_info || ''}</textarea></div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
@@ -671,29 +717,8 @@
     document.getElementById('fullForm').onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Enregistrement…');
-      const photoInput = document.getElementById('photo');
-      if (photoInput?.files?.[0]) {
-        const fd = new FormData();
-        fd.append('photo', photoInput.files[0]);
-        fd.append('token', state.token);
-        const photoRes = await fetch(`/api/orders/${state.orderId}/photo`, {
-          method: 'POST',
-          body: fd,
-        });
-        const photoData = await photoRes.json();
-        if (!photoData.ok) {
-          setMsg(orderErrorMessage(photoData) || 'Échec upload photo', 'err');
-          return;
-        }
-        state.photoUploaded = true;
-      } else if (!photoOk) {
-        setMsg('Ajoutez une photo de visage', 'err');
-        return;
-      }
-
       const fd = new FormData(e.target);
       const body = Object.fromEntries(fd.entries());
-      delete body.photo;
       const res = await fetch(`/api/orders/${state.orderId}/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

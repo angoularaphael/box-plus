@@ -15,12 +15,26 @@ const {
   drawConditions,
   drawPageFooter,
 } = require('./pdf-layout');
+const { paymentModeLabel } = require('../../lib/billing-plan');
+const { BADGE_FEE_AMOUNT } = require('./storefront-copy');
 
 const DOCS_DIR =
   process.env.BOXPLUS_DOCS_DIR ||
   (process.env.VERCEL ? '/tmp/boxplus-documents' : path.join(__dirname, '../../data/storefront/documents'));
 
-function paymentLabel(method) {
+const GYM_LABELS = {
+  minimes: 'Minimes',
+  ramonville: 'Ramonville',
+  portet: 'Portet',
+  'etats-unis': 'États-Unis',
+  'st-cyprien': 'Saint-Cyprien',
+};
+
+function paymentLabel(order) {
+  const method = order.payment?.method;
+  const plan = order.payment?.billing_plan;
+  const product = order.product_snapshot || {};
+  if (plan) return paymentModeLabel(product, plan);
   if (method === 'stripe') return 'Carte bancaire (Stripe)';
   if (method === 'demo') return 'Paiement démo';
   return method || 'Carte bancaire';
@@ -33,6 +47,7 @@ function ensureDocsDir() {
 function invoiceRecipientRows(customer = {}) {
   const rows = [{ label: 'Nom', value: memberDisplayName(customer) }];
   if (customer.email) rows.push({ label: 'Email', value: customer.email });
+  if (customer.phone) rows.push({ label: 'Téléphone', value: customer.phone });
   if (customer.address) {
     rows.push({
       label: 'Adresse',
@@ -49,7 +64,17 @@ function renderInscriptionInvoice(doc, order) {
   const invoiceDate = order.signature?.signed_at || order.payment?.paid_at || order.updated_at;
   const invoiceNo = `FAC-${order.order_id}`;
   const priceCents = product.price_cents || 0;
-  const priceHt = priceCents / 1.2;
+  const priceHt = Math.round(priceCents / 1.2);
+  const vatCents = priceCents - priceHt;
+
+  const badgeTiming = order.payment?.badge_timing || order.badge_timing;
+  const badgeMethod = order.payment?.badge_method || order.badge_method;
+  const badgeOnStripe = badgeTiming === 'immediate' && (badgeMethod === 'card' || badgeMethod === 'cb');
+  const badgeCents = badgeOnStripe ? 3499 : 0;
+  const badgeHt = Math.round(badgeCents / 1.2);
+  const totalTtc = priceCents + badgeCents;
+  const totalHt = priceHt + badgeHt;
+  const totalVat = totalTtc - totalHt;
 
   drawProHeader(doc, {
     title: `Facture ${invoiceNo}`,
@@ -59,43 +84,87 @@ function renderInscriptionInvoice(doc, order) {
 
   drawTwoParties(doc, clubEmitterRows(), invoiceRecipientRows({ ...short, ...full }));
 
-  drawSectionHeading(doc, 'Détail');
+  drawSectionHeading(doc, 'Détail des prestations');
+
+  const rows = [
+    {
+      type: 'Abo',
+      description: [
+        product.display_name || product.name || 'Abonnement Boxing Center',
+        product.duration_label ? `Durée : ${product.duration_label}` : null,
+        full.gym ? `Salle : ${GYM_LABELS[full.gym] || full.gym}` : null,
+        `Réf. commande ${order.order_id}`,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      unit: formatEuros(priceHt),
+      qty: '1',
+      vat: '20 %',
+      total: formatEuros(priceHt),
+      height: 52,
+    },
+  ];
+
+  if (badgeCents > 0) {
+    rows.push({
+      type: 'Badge',
+      description: `Badge d'accès — payé immédiatement par carte\n${BADGE_FEE_AMOUNT} TTC`,
+      unit: formatEuros(badgeHt),
+      qty: '1',
+      vat: '20 %',
+      total: formatEuros(badgeHt),
+      height: 36,
+    });
+  } else if (badgeTiming === 'deferred' || (!badgeTiming && product.requires_iban)) {
+    rows.push({
+      type: 'Info',
+      description: `Badge d'accès (${BADGE_FEE_AMOUNT}) — non inclus sur cette facture\nPrélèvement prévu ~72h après inscription (${badgeMethod === 'card' ? 'carte' : 'IBAN'})`,
+      unit: '—',
+      qty: '—',
+      vat: '—',
+      total: '—',
+      height: 40,
+    });
+  }
+
   drawDetailTable(doc, {
     columns: [
-      { key: 'type', label: 'Type', width: 0.12 },
-      { key: 'description', label: 'Description', width: 0.4 },
-      { key: 'unit', label: 'Prix unitaire HT', width: 0.16, align: 'right' },
+      { key: 'type', label: 'Type', width: 0.1 },
+      { key: 'description', label: 'Description', width: 0.42 },
+      { key: 'unit', label: 'PU HT', width: 0.16, align: 'right' },
       { key: 'qty', label: 'Qté', width: 0.08, align: 'center' },
       { key: 'vat', label: 'TVA', width: 0.08, align: 'center' },
       { key: 'total', label: 'Total HT', width: 0.16, align: 'right' },
     ],
-    rows: [
-      {
-        type: 'Service',
-        description: `${product.display_name || product.name || 'Abonnement Boxing Center'}\nRéf. ${order.order_id}`,
-        unit: formatEuros(Math.round(priceHt)),
-        qty: '1',
-        vat: '20 %',
-        total: formatEuros(Math.round(priceHt)),
-        height: 36,
-      },
-    ],
+    rows,
     subtotalRows: [
-      { label: 'Total HT', value: formatEuros(Math.round(priceHt)) },
-      { label: 'TVA (20 %)', value: formatEuros(priceCents - Math.round(priceHt)) },
+      { label: 'Total HT', value: formatEuros(totalHt) },
+      { label: 'TVA (20 %)', value: formatEuros(totalVat) },
     ],
     totalLabel: 'Total TTC',
-    totalValue: formatEuros(priceCents),
+    totalValue: formatEuros(totalTtc),
   });
 
-  drawConditions(doc, [
+  const conditions = [
     { label: 'Conditions de règlement', value: 'À réception' },
-    { label: 'Mode de règlement', value: paymentLabel(order.payment?.method) },
-    { label: 'Statut', value: 'Paiement acquitté' },
-  ]);
+    { label: 'Mode de règlement', value: paymentLabel(order) },
+    { label: 'Statut', value: order.payment?.status === 'paid' ? 'Acquitté' : order.payment?.status || '—' },
+  ];
+  if (order.payment?.stripe_session_id) {
+    conditions.push({ label: 'Réf. Stripe', value: order.payment.stripe_session_id });
+  }
+  if (order.payment?.iban) {
+    const iban = String(order.payment.iban).replace(/\s/g, '');
+    conditions.push({ label: 'IBAN', value: `•••• ${iban.slice(-4)}` });
+  }
+  if (full.gym) {
+    conditions.push({ label: 'Salle principale', value: GYM_LABELS[full.gym] || full.gym });
+  }
+  drawConditions(doc, conditions);
 
+  doc.moveDown(0.4);
   doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text(
-    'TVA non applicable selon régime applicable aux prestations sportives, ou taux en vigueur selon nature de l\'offre.',
+    'Détail établi suite à l\'inscription en ligne Boxing Center. TVA au taux en vigueur selon la nature de l\'offre.',
     { align: 'justify', lineGap: 2 }
   );
 
@@ -106,8 +175,8 @@ function renderMaterielInvoice(doc, order) {
   const customer = order.customer || {};
   const invoiceDate = order.payment?.paid_at || order.paid_at || order.created_at;
   const invoiceNo = `FAC-${order.order_id}`;
+  const lines = order.lines || order.items || [];
   const totalCents = order.total_cents || 0;
-  const totalHt = Math.round(totalCents / 1.2);
 
   drawProHeader(doc, {
     title: `Facture ${invoiceNo}`,
@@ -117,25 +186,41 @@ function renderMaterielInvoice(doc, order) {
 
   drawTwoParties(doc, clubEmitterRows(), invoiceRecipientRows(customer));
 
-  drawSectionHeading(doc, 'Détail');
-  const rows = (order.items || []).map((item) => {
-    const lineHt = Math.round((item.line_total_cents || 0) / 1.2);
-    return {
-      type: 'Produit',
-      description: `${item.name}${item.variant_label ? ` (${item.variant_label})` : ''}`,
-      unit: formatEuros(Math.round(lineHt / (item.qty || 1))),
-      qty: String(item.qty || 1),
-      vat: '20 %',
-      total: formatEuros(lineHt),
-      height: 32,
-    };
-  });
+  drawSectionHeading(doc, 'Détail des articles');
 
+  const rows =
+    lines.length > 0
+      ? lines.map((line) => {
+          const lineTtc = line.total_cents || line.price_cents * (line.qty || line.quantity || 1) || 0;
+          const lineHt = Math.round(lineTtc / 1.2);
+          return {
+            type: 'Art.',
+            description: `${line.name || line.title || 'Article'}${line.sku ? `\nRéf. ${line.sku}` : ''}`,
+            unit: formatEuros(Math.round((line.price_cents || lineTtc) / 1.2)),
+            qty: String(line.qty || line.quantity || 1),
+            vat: '20 %',
+            total: formatEuros(lineHt),
+            height: 32,
+          };
+        })
+      : [
+          {
+            type: 'Art.',
+            description: `Commande matériel\nRéf. ${order.order_id}`,
+            unit: formatEuros(Math.round(totalCents / 1.2)),
+            qty: '1',
+            vat: '20 %',
+            total: formatEuros(Math.round(totalCents / 1.2)),
+            height: 32,
+          },
+        ];
+
+  const totalHt = Math.round(totalCents / 1.2);
   drawDetailTable(doc, {
     columns: [
-      { key: 'type', label: 'Type', width: 0.12 },
-      { key: 'description', label: 'Description', width: 0.4 },
-      { key: 'unit', label: 'Prix unitaire HT', width: 0.16, align: 'right' },
+      { key: 'type', label: 'Type', width: 0.1 },
+      { key: 'description', label: 'Description', width: 0.42 },
+      { key: 'unit', label: 'PU HT', width: 0.16, align: 'right' },
       { key: 'qty', label: 'Qté', width: 0.08, align: 'center' },
       { key: 'vat', label: 'TVA', width: 0.08, align: 'center' },
       { key: 'total', label: 'Total HT', width: 0.16, align: 'right' },
@@ -151,41 +236,39 @@ function renderMaterielInvoice(doc, order) {
 
   drawConditions(doc, [
     { label: 'Conditions de règlement', value: 'À réception' },
-    { label: 'Mode de règlement', value: paymentLabel(order.payment?.method) },
-    { label: 'Retrait', value: order.pickup_gym || customer.pickup_gym || 'En salle' },
+    { label: 'Mode de règlement', value: paymentLabel(order) },
+    { label: 'Statut', value: 'Paiement acquitté' },
   ]);
 
   drawPageFooter(doc);
 }
 
-function writeInvoicePdf(renderFn, order, suffix) {
+async function writePdf(renderFn, order, suffix) {
   ensureDocsDir();
   const filename = `facture-${suffix}.pdf`;
   const filepath = path.join(DOCS_DIR, filename);
-
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
-    const stream = fs.createWriteStream(filepath);
-    doc.pipe(stream);
-    renderFn(doc, order);
-    doc.end();
-    stream.on('finish', () => resolve({ filepath, filename }));
+  const doc = new PDFDocument({ margin: 48, size: 'A4' });
+  const stream = fs.createWriteStream(filepath);
+  doc.pipe(stream);
+  renderFn(doc, order);
+  doc.end();
+  await new Promise((resolve, reject) => {
+    stream.on('finish', resolve);
     stream.on('error', reject);
   });
+  return { filepath, filename };
 }
 
 async function generateInscriptionInvoicePdf(order) {
-  const product = order.product_snapshot || {};
-  if (order.payment?.status !== 'paid' || !(product.price_cents > 0)) return null;
-  return writeInvoicePdf(renderInscriptionInvoice, order, order.order_id);
+  return writePdf(renderInscriptionInvoice, order, order.order_id);
 }
 
 async function generateMaterielInvoicePdf(order) {
-  if (order.payment?.status !== 'paid') return null;
-  return writeInvoicePdf(renderMaterielInvoice, order, order.order_id);
+  return writePdf(renderMaterielInvoice, order, order.order_id);
 }
 
 module.exports = {
   generateInscriptionInvoicePdf,
   generateMaterielInvoicePdf,
+  DOCS_DIR,
 };

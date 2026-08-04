@@ -147,10 +147,12 @@ async function markPaymentPaidAsync(orderId, paymentData) {
     paid_at: new Date().toISOString(),
   };
   const plan = order.payment?.billing_plan;
+  const badgeMethod = order.payment?.badge_method || order.badge_method;
+  const needsIbanForBadge = badgeMethod === 'iban';
   const needsIban =
-    plan !== 'cb' &&
-    (order.product_snapshot?.requires_iban || plan === 'rib') &&
-    !order.payment?.iban;
+    !order.payment?.iban &&
+    ((plan !== 'cb' && (order.product_snapshot?.requires_iban || plan === 'rib')) ||
+      (plan === 'cb' && needsIbanForBadge));
   order.step = needsIban ? STEPS.IBAN : STEPS.DOSSIER;
   return saveOrderAsync(order);
 }
