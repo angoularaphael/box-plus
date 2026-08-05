@@ -163,13 +163,38 @@ async function launchBrowser() {
 
   const context = await browser.newContext(contextOptions);
   const page = await context.newPage();
-  return { browser, context, page };
+  return { browser, context, page, loadedStorageMtimeMs: getStorageMtimeMs() };
 }
 
-async function saveSession(context) {
+function getStorageMtimeMs() {
+  try {
+    if (!fs.existsSync(STORAGE_FILE)) return 0;
+    return fs.statSync(STORAGE_FILE).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Ne pas écraser un storage-state.json fraîchement uploadé (changement de session).
+ */
+async function saveSession(context, opts = {}) {
   ensureDir(SESSION_DIR);
+  const loadedMtimeMs = opts.loadedMtimeMs;
+  const diskMtime = getStorageMtimeMs();
+  if (loadedMtimeMs != null && diskMtime > Number(loadedMtimeMs) + 50) {
+    logWarn('Session disque plus récente — pas d\'écrasement (export / changement session)');
+    return { skipped: true, reason: 'newer_on_disk', mtimeMs: diskMtime };
+  }
   await context.storageState({ path: STORAGE_FILE });
   logInfo('Session Deciplus sauvegardée');
+  return { skipped: false, mtimeMs: getStorageMtimeMs() };
+}
+
+function isSessionRecoverableError(message = '') {
+  return /session expir|token.*introuvable|relancer login|not logged|login\.php|Unauthorized|\b401\b|storage-state|connexion.*échou|Déconnexion|session Deciplus|déjà pas connect|auth.*expir|cookie/i.test(
+    String(message || '')
+  );
 }
 
 async function isLoggedIn(page) {
@@ -367,4 +392,6 @@ module.exports = {
   login,
   isAuthBlocked,
   isMfaAuthError,
+  isSessionRecoverableError,
+  getStorageMtimeMs,
 };
