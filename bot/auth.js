@@ -175,8 +175,39 @@ function getStorageMtimeMs() {
   }
 }
 
+function hashStorageState(state) {
+  try {
+    const crypto = require('crypto');
+    const cookies = (state.cookies || [])
+      .map((c) => `${c.name}=${c.value}@${c.domain}`)
+      .sort()
+      .join('|');
+    const origins = (state.origins || [])
+      .map((o) => {
+        const auth = (o.localStorage || []).find((x) => x.name === 'auth');
+        return `${o.origin}:${auth?.value || ''}`;
+      })
+      .sort()
+      .join('|');
+    return crypto.createHash('sha256').update(`${cookies}::${origins}`).digest('hex');
+  } catch {
+    return null;
+  }
+}
+
+function readDiskStorageHash() {
+  try {
+    if (!fs.existsSync(STORAGE_FILE)) return null;
+    return hashStorageState(JSON.parse(fs.readFileSync(STORAGE_FILE, 'utf8')));
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Ne pas écraser un storage-state.json fraîchement uploadé (changement de session).
+ * Ne réécrit pas si le contenu auth est inchangé (évite boucle mtime / reload).
+ * Ne persiste pas une session morte (sans token) par-dessus un fichier valide.
  */
 async function saveSession(context, opts = {}) {
   ensureDir(SESSION_DIR);
@@ -186,9 +217,45 @@ async function saveSession(context, opts = {}) {
     logWarn('Session disque plus récente — pas d\'écrasement (export / changement session)');
     return { skipped: true, reason: 'newer_on_disk', mtimeMs: diskMtime };
   }
-  await context.storageState({ path: STORAGE_FILE });
+
+  const nextState = await context.storageState();
+  const nextHash = hashStorageState(nextState);
+  const diskHash = readDiskStorageHash();
+
+  const hasAuthToken = (state) => {
+    try {
+      for (const o of state.origins || []) {
+        const auth = (o.localStorage || []).find((x) => x.name === 'auth');
+        if (!auth?.value) continue;
+        const parsed = JSON.parse(auth.value);
+        if (parsed?.token) return true;
+      }
+    } catch {
+      /* ignore */
+    }
+    return false;
+  };
+
+  let diskHasToken = false;
+  try {
+    if (fs.existsSync(STORAGE_FILE)) {
+      diskHasToken = hasAuthToken(JSON.parse(fs.readFileSync(STORAGE_FILE, 'utf8')));
+    }
+  } catch {
+    diskHasToken = false;
+  }
+  if (opts.requireAuth !== false && diskHasToken && !hasAuthToken(nextState)) {
+    logWarn('Session navigateur sans token — conservation du storage-state disque');
+    return { skipped: true, reason: 'dead_session', mtimeMs: diskMtime };
+  }
+
+  if (nextHash && diskHash && nextHash === diskHash) {
+    return { skipped: true, reason: 'unchanged', mtimeMs: diskMtime || getStorageMtimeMs() };
+  }
+
+  fs.writeFileSync(STORAGE_FILE, JSON.stringify(nextState, null, 2), 'utf8');
   logInfo('Session Deciplus sauvegardée');
-  return { skipped: false, mtimeMs: getStorageMtimeMs() };
+  return { skipped: false, mtimeMs: getStorageMtimeMs(), hash: nextHash };
 }
 
 function isSessionRecoverableError(message = '') {

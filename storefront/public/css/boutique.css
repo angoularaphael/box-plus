@@ -437,6 +437,20 @@ input:focus, select:focus, textarea:focus {
   color: var(--bc-text);
 }
 
+.pay-logos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.pay-logos img {
+  height: 22px;
+  width: auto;
+  object-fit: contain;
+}
+
 .billing-choice-text small {
   font-size: 12px;
   font-weight: 400;
@@ -592,3 +606,46 @@ input:focus, select:focus, textarea:focus {
 .legal-page a { color: var(--bc-cta); text-decoration: underline; }
 .legal-update { color: var(--bc-muted); font-size: 13px; margin-bottom: 32px; font-style: italic; }
 .legal-footer { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--bc-border); color: var(--bc-muted); font-size: 14px; }
+
+.manage-block {
+  max-width: 760px;
+  margin: 0 auto 48px;
+}
+
+.manage-block h2 {
+  color: var(--bc-navy);
+  margin-bottom: 12px;
+}
+
+.manage-gyms {
+  padding-left: 1.2em;
+  margin: 16px 0;
+}
+
+.counselor-panel {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--bc-border);
+  border-radius: 10px;
+  background: #fafbfd;
+}
+
+.counselor-bubble {
+  background: #fff;
+  border-left: 4px solid var(--bc-navy);
+  padding: 12px 14px;
+  line-height: 1.5;
+}
+
+.photo-capture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.field-hint {
+  font-size: 13px;
+  color: #5c6370;
+  margin: 4px 0 10px;
+}

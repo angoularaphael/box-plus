@@ -15,7 +15,7 @@ const {
   drawConditions,
   drawPageFooter,
 } = require('./pdf-layout');
-const { paymentModeLabel } = require('../../lib/billing-plan');
+const { paymentModeLabel, invoiceTypeLabel, isComptantStyleProduct } = require('../../lib/billing-plan');
 const { BADGE_FEE_AMOUNT } = require('./storefront-copy');
 
 const DOCS_DIR =
@@ -86,22 +86,30 @@ function renderInscriptionInvoice(doc, order) {
 
   drawSectionHeading(doc, 'Détail des prestations');
 
+  const durationMatch = String(product.name || product.display_name || product.duration_label || '').match(
+    /(\d+)\s*mois|4\s*semaines/i
+  );
+  const durationBit = durationMatch
+    ? /semaine/i.test(durationMatch[0])
+      ? '4 semaines'
+      : `${durationMatch[1]} mois`
+    : product.duration_label || '';
+  const invoiceDesc = [
+    `Abonnement cours collectifs + accès libre 5 salles Boxing Center${durationBit ? ` ${durationBit}` : ''}`,
+    full.gym ? `Salle : ${GYM_LABELS[full.gym] || full.gym}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
   const rows = [
     {
-      type: 'Abo',
-      description: [
-        product.display_name || product.name || 'Abonnement Boxing Center',
-        product.duration_label ? `Durée : ${product.duration_label}` : null,
-        full.gym ? `Salle : ${GYM_LABELS[full.gym] || full.gym}` : null,
-        `Réf. commande ${order.order_id}`,
-      ]
-        .filter(Boolean)
-        .join('\n'),
+      type: invoiceTypeLabel(product, order.payment?.billing_plan),
+      description: invoiceDesc,
       unit: formatEuros(priceHt),
       qty: '1',
       vat: '20 %',
       total: formatEuros(priceHt),
-      height: 52,
+      height: 48,
     },
   ];
 
@@ -115,7 +123,10 @@ function renderInscriptionInvoice(doc, order) {
       total: formatEuros(badgeHt),
       height: 36,
     });
-  } else if (badgeTiming === 'deferred' || (!badgeTiming && product.requires_iban)) {
+  } else if (
+    !isComptantStyleProduct(product) &&
+    (badgeTiming === 'deferred' || (!badgeTiming && product.requires_iban))
+  ) {
     rows.push({
       type: 'Info',
       description: `Badge d'accès (${BADGE_FEE_AMOUNT}) — non inclus sur cette facture\nPrélèvement prévu ~72h après inscription (${badgeMethod === 'card' ? 'carte' : 'IBAN'})`,

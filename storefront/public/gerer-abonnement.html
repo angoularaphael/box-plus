@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gérer mon abonnement | Boxing Center</title>
+  <meta name="description" content="Présentation des offres, changer d'abonnement prélèvement vers comptant, résilier avec le conseiller virtuel David." />
+  <script src="js/boot.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/boutique.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <div class="breadcrumb"><a href="/">Accueil</a> / Gérer mon abonnement</div>
+      <h1>Gérer mon abonnement</h1>
+      <p>Vos droits, changer de formule, ou résilier avec notre conseiller virtuel.</p>
+    </div>
+  </div>
+
+  <main class="section">
+    <section class="manage-block" id="presentation">
+      <h2>Présentation et description des offres</h2>
+      <p>
+        Que vous soyez en prélèvement sans engagement ou en paiement comptant, votre abonnement adulte vous donne accès
+        aux <strong>5 salles Boxing Center</strong>, à tous les cours et disciplines, et à l'accès libre
+        <strong>6 jours sur 7 de 10h à 21h</strong> (musculation, cardio, boxe).
+      </p>
+      <ul class="manage-gyms" id="gymList"></ul>
+      <p>
+        Avec votre abonnement, vous pouvez aussi participer aux événements Boxing Center :
+        <strong>Boxing Center Trophy</strong>, <strong>Anglaise</strong>, <strong>Pieds-Poing</strong>, stages, etc.
+        — à condition d'être à jour au niveau médical
+        <em>(voir plus de détails avec votre manager de salle)</em>.
+      </p>
+    </section>
+
+    <section class="manage-block" id="changer">
+      <h2>Changer d'abonnement</h2>
+      <p>
+        Vous êtes parti sur un abonnement sans engagement pour tester et découvrir nos cours.
+        Vous êtes convaincu et souhaitez vous engager sur une durée plus importante ?
+        Résiliez votre prélèvement et basculez sur un paiement comptant 3, 6 ou 12 mois.
+      </p>
+      <form id="changeForm" class="form-grid">
+        <div><label for="c_first">Prénom *</label><input id="c_first" name="first_name" required /></div>
+        <div><label for="c_last">Nom *</label><input id="c_last" name="last_name" required /></div>
+        <div><label for="c_birth">Date de naissance *</label><input id="c_birth" name="birthdate" type="date" required min="1900-01-01" /></div>
+        <div><label for="c_email">Email *</label><input id="c_email" name="email" type="email" required /></div>
+        <div><label for="c_phone">Téléphone *</label><input id="c_phone" name="phone" type="tel" required /></div>
+        <div><label for="c_gym">Salle *</label><select id="c_gym" name="gym" required></select></div>
+        <div class="full"><label for="c_current">Abonnement actuel *</label><select id="c_current" name="current_plan" required></select></div>
+        <div class="full"><label for="c_target">Nouvel abonnement comptant *</label><select id="c_target" name="target_product_id" required></select></div>
+        <div class="full"><button type="submit" class="btn block">Payer et basculer en comptant</button></div>
+      </form>
+      <p class="form-msg" id="changeMsg" hidden></p>
+    </section>
+
+    <section class="manage-block" id="resilier">
+      <h2>Résilier mon abonnement</h2>
+      <p>Vous souhaitez résilier votre abonnement. Prenez contact avec notre conseiller virtuel.</p>
+      <button type="button" class="btn" id="openCounselor">Je souhaite résilier — parler à David</button>
+      <div id="counselorRoot" class="counselor-panel" hidden></div>
+    </section>
+  </main>
+
+  <div id="site-footer"></div>
+  <script src="js/layout.js"></script>
+  <script src="js/counselor-david.js"></script>
+  <script src="js/gerer-abonnement.js"></script>
+</body>
+</html>
