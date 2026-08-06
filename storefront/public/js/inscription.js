@@ -185,13 +185,12 @@
   function paymentLogosHtml(kind) {
     if (kind === 'paypal') {
       return `<span class="pay-logos" aria-hidden="true">
-        <img src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg" alt="PayPal" height="22" />
+        <img src="https://up.yimg.com/ib/th/id/OIP.h_nvZo9_TUEbrpVqSdXsGAHaHa?pid=Api&rs=1&c=1&qlt=95&w=122&h=122" alt="PayPal" height="28" />
       </span>`;
     }
     return `<span class="pay-logos" aria-hidden="true">
-      <img src="https://js.stripe.com/v3/fingerprinted/img/visa-365725566f9578a9589553beb0e47f63.svg" alt="Visa" height="20" />
-      <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130711885b5e41b28c9848f.svg" alt="Mastercard" height="20" />
-      <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd6a96a6e418a6ca1717c.svg" alt="Amex" height="20" />
+      <img src="https://tse1.mm.bing.net/th/id/OIP.i6EmD8Ol2FWxjgKeOSjh1wHaDo?r=0&pid=Api&h=220&P=0" alt="CB Visa Mastercard" height="28" />
+      <img src="https://tse2.mm.bing.net/th/id/OIP.aejxZDH8dT3Q7pQ8GBLV_AHaHa?r=0&pid=Api&h=220&P=0" alt="American Express" height="28" />
     </span>`;
   }
 
@@ -276,10 +275,15 @@
   }
 
   function updateStepper(step) {
+    const hideIban = !orderNeedsIban(state.order || { product_snapshot: state.product });
     document.querySelectorAll('.stepper-step').forEach((el) => {
       const s = Number(el.dataset.step);
+      if (s === 5) {
+        el.hidden = hideIban;
+        el.classList.toggle('stepper-skipped', hideIban);
+      }
       el.classList.toggle('active', s === step);
-      el.classList.toggle('done', s < step);
+      el.classList.toggle('done', s < step && !(hideIban && s === 5));
     });
   }
 
@@ -822,7 +826,7 @@
         await video.play();
         video.hidden = false;
         document.getElementById('webcamCaptureBtn').hidden = false;
-        document.getElementById('webcamStopBtn').hidden = false;
+        document.getElementById('webcamStopBtn').hidden = true;
         setMsg('');
       } catch (err) {
         setMsg('Caméra inaccessible — utilisez « Choisir un fichier ».', 'err');
@@ -836,13 +840,14 @@
       canvas.height = h;
       canvas.getContext('2d').drawImage(video, 0, 0, w, h);
       canvas.toBlob(
-        (blob) => {
+        async (blob) => {
           if (!blob) return;
           webcamBlob = blob;
           snap.src = URL.createObjectURL(blob);
           snap.hidden = false;
           photoInput.removeAttribute('required');
           photoInput.value = '';
+          await stopWebcam();
           setMsg('Photo capturée — vous pouvez continuer.');
         },
         'image/jpeg',
@@ -851,6 +856,8 @@
     };
 
     document.getElementById('webcamStopBtn').onclick = () => stopWebcam();
+    // Bouton stop masqué — la caméra s'arrête automatiquement après capture
+    document.getElementById('webcamStopBtn').hidden = true;
 
     document.getElementById('fullForm').onsubmit = async (e) => {
       e.preventDefault();
@@ -982,17 +989,15 @@
       </div>
       <div class="consent-box">
         <label><input type="checkbox" id="consent_cgv" required />
-          J'accepte les <a class="legal-link" href="${LEGAL.cgv}" target="_blank" rel="noopener">conditions générales de vente</a> *</label>
+          <span class="consent-text">J'accepte les <a class="legal-link" href="${LEGAL.cgv}" target="_blank" rel="noopener">conditions générales de vente</a> *</span></label>
       </div>
       <div class="consent-box">
         <label><input type="checkbox" id="consent_reglement" required />
-          J'accepte le <a class="legal-link" href="${LEGAL.reglement}" target="_blank" rel="noopener">règlement intérieur du club</a> *</label>
+          <span class="consent-text">J'accepte le <a class="legal-link" href="${LEGAL.reglement}" target="_blank" rel="noopener">règlement intérieur du club</a> *</span></label>
       </div>
       <div class="consent-box">
         <label><input type="checkbox" id="consent_medical" required />
-          J'atteste sur l'honneur l'absence de contre-indication à la pratique sportive et prends connaissance qu'un
-          <a class="legal-link" href="${LEGAL.medical}" target="_blank" rel="noopener">certificat médical de non contre-indication</a>
-          me sera demandé *</label>
+          <span class="consent-text">J'atteste sur l'honneur l'absence de contre-indication à la pratique sportive et prends connaissance qu'un <a class="legal-link" href="${LEGAL.medical}" target="_blank" rel="noopener">certificat médical de non contre-indication</a> me sera demandé *</span></label>
       </div>
       <button type="button" class="btn block" id="signBtn">Valider</button>
       <button type="button" class="btn secondary block" id="previewContractBtn" style="margin-top:12px">Prévisualiser le contrat</button>

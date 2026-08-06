@@ -31,7 +31,7 @@ function buildConfirmationHtml(order) {
     <li>Pas besoin d'expérience — nos coachs vous accueillent</li>
     <li>Votre abonnement donne accès à nos 5 salles</li>
   </ul>
-  <p>Vous trouverez en pièces jointes votre contrat signé, votre facture, le règlement intérieur et les CGV.</p>
+  <p>Vous trouverez en pièces jointes votre <strong>contrat d'adhésion Boxing Center</strong> au nom de ${short.first_name || ''} ${short.last_name || ''}, votre facture, le règlement intérieur et les CGV.</p>
   <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="${SITE_URL}" style="color:#2EC4C6">${SITE_URL.replace('https://', '')}</a></p>
 </body>
 </html>`;
