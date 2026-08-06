@@ -1634,11 +1634,20 @@ function createApp() {
   app.post('/api/membership/cancel', async (req, res) => {
     try {
       const body = req.body || {};
-      if (!body.first_name || !body.last_name || !body.birthdate || !body.phone) {
+      if (
+        !body.first_name ||
+        !body.last_name ||
+        !body.birthdate ||
+        !body.phone ||
+        !body.email ||
+        !body.address ||
+        !body.postal_code ||
+        !body.city
+      ) {
         return res.status(400).json({
           ok: false,
           error:
-            "Je suis désolé, mais nous n'avons pas pu trouver d'abonnement correspondant à ces informations.",
+            'Merci de renseigner toutes les informations (y compris adresse, code postal et ville) telles qu’enregistrées sur votre fiche adhérent.',
         });
       }
       const { enqueueCancelRequest } = require('./lib/membership');
@@ -1647,6 +1656,27 @@ function createApp() {
     } catch (err) {
       logError('Erreur résiliation', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/membership/counsel', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const { guideRetention } = require('./lib/counselor-ai');
+      const result = await guideRetention({
+        reasonId: body.reason_id || body.reason || 'other',
+        reasonLabel: body.reason_label || '',
+        freeText: body.free_text || body.message || '',
+      });
+      res.json({ ok: true, reply: result.reply, source: result.source });
+    } catch (err) {
+      logError('Erreur counsel IA', { error: err.message });
+      res.status(500).json({
+        ok: false,
+        error: err.message,
+        reply:
+          'Merci pour ces précisions. Avant de décider, un échange avec votre manager de salle peut souvent aider. Que souhaitez-vous faire ?',
+      });
     }
   });
 
@@ -1733,6 +1763,19 @@ function createApp() {
     }
     try {
       const mail = await sendNewMemberAdminEmail(req.body || {});
+      res.json({ ok: true, mail });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/internal/cancel-mismatch', async (req, res) => {
+    if (!isAuthorizedSync(req)) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    try {
+      const { sendCancelMismatchEmail } = require('./lib/membership');
+      const mail = await sendCancelMismatchEmail(req.body || {});
       res.json({ ok: true, mail });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
