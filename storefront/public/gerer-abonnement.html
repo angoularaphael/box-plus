@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gérer mon abonnement | Boxing Center</title>
-  <meta name="description" content="Présentation des offres, changer d'abonnement prélèvement vers comptant, résilier avec le conseiller virtuel David." />
+  <meta name="description" content="Vos droits Boxing Center, changer d'abonnement, résilier avec le conseiller virtuel David." />
   <script src="js/boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,39 +15,46 @@
 <body>
   <div id="site-header"></div>
 
-  <div class="page-hero">
+  <div class="page-hero manage-hero">
     <div class="page-hero-inner">
       <div class="breadcrumb"><a href="/">Accueil</a> / Gérer mon abonnement</div>
+      <span class="eyebrow" style="color:var(--bc-gold);display:block;margin-bottom:10px">Espace adhérent</span>
       <h1>Gérer mon abonnement</h1>
-      <p>Vos droits, changer de formule, ou résilier avec notre conseiller virtuel.</p>
+      <p>Tout ce que votre abonnement vous offre — et les options pour évoluer ou résilier.</p>
     </div>
   </div>
 
-  <main class="section">
-    <section class="manage-block" id="presentation">
-      <h2>Présentation et description des offres</h2>
-      <p>
-        Que vous soyez en prélèvement sans engagement ou en paiement comptant, votre abonnement adulte vous donne accès
-        aux <strong>5 salles Boxing Center</strong>, à tous les cours et disciplines, et à l'accès libre
-        <strong>6 jours sur 7 de 10h à 21h</strong> (musculation, cardio, boxe).
+  <main class="section manage-page">
+    <section class="manage-card" id="presentation">
+      <div class="manage-card-head">
+        <span class="manage-card-kicker">Vos avantages</span>
+        <h2>Présentation des offres</h2>
+      </div>
+      <p class="manage-lead">
+        Prélèvement ou comptant : accès aux <strong>5 salles</strong>, tous les cours, et accès libre
+        <strong>6 jours / 7 · 10h–21h</strong>.
       </p>
-      <ul class="manage-gyms" id="gymList"></ul>
-      <p>
-        Avec votre abonnement, vous pouvez aussi participer aux événements Boxing Center :
-        <strong>Boxing Center Trophy</strong>, <strong>Anglaise</strong>, <strong>Pieds-Poing</strong>, stages, etc.
-        — à condition d'être à jour au niveau médical
-        <em>(voir plus de détails avec votre manager de salle)</em>.
-      </p>
+      <ul class="manage-gym-grid" id="gymList"></ul>
+      <div class="manage-events">
+        <h3>Événements inclus</h3>
+        <p>
+          Boxing Center Trophy, Anglaise, Pieds-Poing, stages…
+          <em>à condition d'être à jour médicalement</em>
+          — voir plus de détails avec votre manager de salle.
+        </p>
+      </div>
     </section>
 
-    <section class="manage-block" id="changer">
-      <h2>Changer d'abonnement</h2>
-      <p>
-        Vous êtes parti sur un abonnement sans engagement pour tester et découvrir nos cours.
-        Vous êtes convaincu et souhaitez vous engager sur une durée plus importante ?
-        Résiliez votre prélèvement et basculez sur un paiement comptant 3, 6 ou 12 mois.
+    <section class="manage-card" id="changer">
+      <div class="manage-card-head">
+        <span class="manage-card-kicker">Évolution</span>
+        <h2>Changer d'abonnement</h2>
+      </div>
+      <p class="manage-lead">
+        Vous avez testé en prélèvement sans engagement ? Passez en comptant 3, 6 ou 12 mois :
+        on coupe le prélèvement et on active la nouvelle formule après paiement.
       </p>
-      <form id="changeForm" class="form-grid">
+      <form id="changeForm" class="form-grid manage-form">
         <div><label for="c_first">Prénom *</label><input id="c_first" name="first_name" required /></div>
         <div><label for="c_last">Nom *</label><input id="c_last" name="last_name" required /></div>
         <div><label for="c_birth">Date de naissance *</label><input id="c_birth" name="birthdate" type="date" required min="1900-01-01" /></div>
@@ -61,13 +68,37 @@
       <p class="form-msg" id="changeMsg" hidden></p>
     </section>
 
-    <section class="manage-block" id="resilier">
-      <h2>Résilier mon abonnement</h2>
-      <p>Vous souhaitez résilier votre abonnement. Prenez contact avec notre conseiller virtuel.</p>
-      <button type="button" class="btn" id="openCounselor">Je souhaite résilier — parler à David</button>
-      <div id="counselorRoot" class="counselor-panel" hidden></div>
+    <section class="manage-card" id="resilier">
+      <div class="manage-card-head">
+        <span class="manage-card-kicker">Résiliation</span>
+        <h2>Résilier mon abonnement</h2>
+      </div>
+      <p class="manage-lead">
+        Avant toute décision, échangez avec <strong>David</strong>, notre conseiller virtuel.
+        Il répond en direct dans la fenêtre de discussion.
+      </p>
+      <button type="button" class="btn" id="openCounselor">Ouvrir la discussion avec David</button>
     </section>
   </main>
+
+  <!-- Chat flottant style messagerie -->
+  <div id="chatWidget" class="chat-widget" hidden>
+    <div class="chat-widget-panel">
+      <header class="chat-widget-header">
+        <div class="chat-avatar" aria-hidden="true">D</div>
+        <div>
+          <strong>David</strong>
+          <span class="chat-status">Conseiller Boxing Center · en ligne</span>
+        </div>
+        <button type="button" class="chat-close" id="closeCounselor" aria-label="Fermer">×</button>
+      </header>
+      <div class="chat-messages" id="counselorRoot" role="log" aria-live="polite"></div>
+    </div>
+  </div>
+  <button type="button" class="chat-fab" id="chatFab" aria-label="Discuter avec David">
+    <span class="chat-fab-dot" aria-hidden="true"></span>
+    <span class="chat-fab-label">David</span>
+  </button>
 
   <div id="site-footer"></div>
   <script src="js/layout.js"></script>

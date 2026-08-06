@@ -926,9 +926,17 @@
   cursor: pointer;
 }
 
+.consent-box .consent-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.5;
+  white-space: normal;
+}
+
 .consent-box input[type="checkbox"] {
   width: auto;
   margin-top: 3px;
+  flex-shrink: 0;
 }
 
 .consent-box a.legal-link {
@@ -936,6 +944,7 @@
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
+  display: inline;
 }
 
 .consent-box a.legal-link:hover {
