@@ -143,9 +143,13 @@ function memberRecipientRows(short = {}, full = {}) {
 }
 
 function drawSectionHeading(doc, title) {
+  const left = doc.page.margins.left;
+  const width = contentWidth(doc);
   if (doc.y > doc.page.height - 100) doc.addPage();
+  doc.x = left;
   doc.moveDown(0.2);
-  doc.fontSize(12).fillColor(NAVY).font('Helvetica-Bold').text(title);
+  doc.fontSize(12).fillColor(NAVY).font('Helvetica-Bold').text(title, left, doc.y, { width });
+  doc.x = left;
   doc.moveDown(0.35);
 }
 
@@ -203,6 +207,7 @@ function drawDetailTable(doc, { columns, rows, totalLabel, totalValue, subtotalR
     ty += 22;
   }
 
+  doc.x = left;
   doc.y = ty + 8;
 }
 
