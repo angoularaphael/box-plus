@@ -750,13 +750,32 @@ input:focus, select:focus, textarea:focus {
   50% { box-shadow: 0 14px 34px rgba(11, 31, 58, 0.38), 0 0 0 6px rgba(201, 162, 39, 0.18); }
 }
 
-.chat-fab-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #3ddc97;
-  box-shadow: 0 0 0 4px rgba(61, 220, 151, 0.25);
+.chat-fab-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.chat-fab-pulse {
   animation: chat-online-pulse 1.6s ease-in-out infinite;
+}
+
+.chat-compose-col {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.chat-compose-col textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 72px;
+  margin: 0;
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--bc-border);
+  border-radius: 10px;
 }
 
 .chat-widget {

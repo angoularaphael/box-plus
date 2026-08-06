@@ -46,7 +46,7 @@
           return;
         }
         msgEl.textContent =
-          'Demande envoyée. La résiliation est traitée dans Deciplus par notre bot. Vous recevrez une confirmation.';
+          'Demande bien reçue. Notre équipe traite votre résiliation et vous enverra une confirmation par e-mail.';
         msgEl.className = 'form-msg';
       });
     }

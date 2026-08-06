@@ -29,9 +29,13 @@
     if (/6\s*mois/i.test(n)) return '6 mois';
     if (/3\s*mois/i.test(n)) return '3 mois';
     if (/4\s*semaines/i.test(n)) return '4 semaines (renouvelable)';
+    if (/baby\s*boxe/i.test(n)) return 'Saison';
+    if (/boxe\s*educative|éducative/i.test(n)) return 'Saison';
+    if (/association/i.test(n)) return 'Saison associative';
     if (product.tab === 'seance-essai') return '1 séance';
     if (product.tab === 'coachings') return 'Selon pack';
-    return product.duration_label || '—';
+    if (product.subsection === 'enfants') return 'Saison';
+    return product.duration_label || 'Selon formule';
   }
 
   function isFeaturedOffer(product, opts = {}) {

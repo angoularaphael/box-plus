@@ -30,26 +30,32 @@ function listCurrentPlans() {
 
 async function enqueueCancelRequest(body = {}) {
   const orderId = `CANCEL-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
-  const payload = {
-    order_id: orderId,
-    action: 'cancel',
-    cancel_reason: body.reason || body.cancel_reason || 'resiliation_web',
+  const customer = {
     first_name: body.first_name,
     last_name: body.last_name,
     birthdate: body.birthdate,
     phone: body.phone,
     email: body.email,
     address: body.address,
+    postal_code: body.postal_code,
+    city: body.city,
+  };
+  const payload = {
+    order_id: orderId,
+    action: 'cancel',
+    cancel_reason: body.reason || body.cancel_reason || 'resiliation_web',
+    cancel_reason_detail: body.reason_detail || body.free_text || null,
+    first_name: body.first_name,
+    last_name: body.last_name,
+    birthdate: body.birthdate,
+    phone: body.phone,
+    email: body.email,
+    address: body.address,
+    postal_code: body.postal_code,
+    city: body.city,
     gym: body.gym || 'minimes',
     cancel_date: body.cancel_date,
-    customer: {
-      first_name: body.first_name,
-      last_name: body.last_name,
-      birthdate: body.birthdate,
-      phone: body.phone,
-      email: body.email,
-      address: body.address,
-    },
+    customer,
     product_name: 'Résiliation abonnement',
     requires_payment: false,
     requires_iban: false,
@@ -57,6 +63,29 @@ async function enqueueCancelRequest(body = {}) {
   };
   const result = await dispatchOrder(payload);
   return { order_id: orderId, ...result };
+}
+
+async function sendCancelMismatchEmail(identity = {}) {
+  if (!identity?.email || !isConfigured()) return { sent: false };
+  const prenom = identity.first_name || '';
+  const html = `<p>Bonjour ${prenom},</p>
+    <p>Nous avons bien reçu votre demande de résiliation, mais <strong>les informations renseignées ne correspondent pas</strong> à celles enregistrées sur votre fiche adhérent Boxing Center.</p>
+    <p>Pour des raisons de sécurité, une seule information incorrecte (nom, prénom, date de naissance, téléphone, adresse, code postal ou ville) empêche le traitement automatique.</p>
+    <p>Si vous souhaitez vraiment résilier, merci de <strong>vérifier que toutes les informations sont exactes</strong> — telles qu’elles figurent sur votre contrat / fiche adhérent — puis de renouveler la demande depuis <a href="https://box-plus.vercel.app/gerer-abonnement">Gérer mon abonnement</a>.</p>
+    <p>En cas de doute, contactez votre manager de salle ou écrivez-nous à boxingcenter31@gmail.com.</p>
+    <p>Sportivement,<br/>Boxing Center</p>`;
+  try {
+    await sendEmailViaBrevo({
+      to: identity.email,
+      subject: 'Résiliation — informations à vérifier — Boxing Center',
+      html,
+    });
+    logInfo('Email mismatch résiliation envoyé', { email: identity.email });
+    return { sent: true };
+  } catch (err) {
+    logWarn('Email mismatch résiliation échoué', { error: err.message });
+    return { sent: false };
+  }
 }
 
 async function enqueueChangeAfterPayment({ identity, targetProductId, stripeSessionId }) {
@@ -136,4 +165,5 @@ module.exports = {
   listCurrentPlans,
   enqueueCancelRequest,
   enqueueChangeAfterPayment,
+  sendCancelMismatchEmail,
 };
