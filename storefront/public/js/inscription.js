@@ -164,15 +164,49 @@
     return p?.requires_payment !== false;
   }
 
+  function isComptantLikeProduct(p) {
+    return (
+      /comptant/i.test(String(p?.name || '')) ||
+      p?.subsection === 'comptant' ||
+      /4\s*[x×]\s*sans\s*frais/i.test(String(p?.badge || p?.name || '')) ||
+      /sans\s*frais/i.test(String(p?.badge || ''))
+    );
+  }
+
   function orderNeedsIban(order) {
     const p = order?.product_snapshot || state.product;
-    const plan = order?.payment?.billing_plan || 'rib';
-    // Badge ~72h toujours IBAN — IBAN requis pour abonnements / prélèvement
     if (order?.payment?.iban) return false;
-    if (plan === 'rib' || p?.requires_iban) return true;
-    if (p?.sale_type === 'abonnement') return true;
-    if (/abonnement/i.test(String(p?.category || ''))) return true;
+    if (isComptantLikeProduct(p) || p?.requires_iban === false) return false;
+    const plan = order?.payment?.billing_plan;
+    if (plan === 'rib' || plan === 'paypal' || p?.requires_iban) return true;
     return false;
+  }
+
+  function paymentLogosHtml(kind) {
+    if (kind === 'paypal') {
+      return `<span class="pay-logos" aria-hidden="true">
+        <img src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg" alt="PayPal" height="22" />
+      </span>`;
+    }
+    return `<span class="pay-logos" aria-hidden="true">
+      <img src="https://js.stripe.com/v3/fingerprinted/img/visa-365725566f9578a9589553beb0e47f63.svg" alt="Visa" height="20" />
+      <img src="https://js.stripe.com/v3/fingerprinted/img/mastercard-4d8844094130711885b5e41b28c9848f.svg" alt="Mastercard" height="20" />
+      <img src="https://js.stripe.com/v3/fingerprinted/img/amex-a49b82f46c5cd6a96a6e418a6ca1717c.svg" alt="Amex" height="20" />
+    </span>`;
+  }
+
+  function firstPaymentCaption(product) {
+    const amount = priceLabel(product);
+    if (isComptantLikeProduct(product)) {
+      return `Paiement de : <strong>${amount}</strong>`;
+    }
+    if (product?.requires_iban || /4\s*semaines/i.test(String(product?.name || product?.duration_label || ''))) {
+      const period = /4\s*semaines/i.test(String(product?.name || '') + String(product?.duration_label || ''))
+        ? '4 semaines'
+        : String(product?.duration_label || 'période').replace(/^\//, '').trim() || 'période';
+      return `Paiement de la première échéance de : <strong>${amount}/(${period})</strong>`;
+    }
+    return `Montant : <strong>${amount}</strong>`;
   }
 
   function paymentFailureMessage(reason) {
@@ -397,57 +431,61 @@
     }
     await ensureProductForPayment();
     const p = state.product;
-    const supportsChoice = Boolean(p?.supports_billing_choice);
-    const isComptantLike =
-      /comptant/i.test(String(p?.name || '')) ||
-      p?.subsection === 'comptant' ||
-      /4\s*[x×]\s*sans\s*frais/i.test(String(p?.badge || p?.name || '')) ||
-      /sans\s*frais/i.test(String(p?.badge || ''));
-    const isPrelevementOnly = Boolean(p?.requires_iban) && !supportsChoice && !isComptantLike;
-    const savedPlan = state.order?.payment?.billing_plan || 'rib';
+    const isComptantLike = isComptantLikeProduct(p);
+    const isPrelevement =
+      !isComptantLike && (Boolean(p?.requires_iban) || Boolean(p?.supports_billing_choice));
+    const savedPlan = state.order?.payment?.billing_plan === 'paypal' ? 'paypal' : 'rib';
 
     let billingHtml = '';
-    if (supportsChoice) {
-      // Les 2 modes : Prélèvement ou CB
+    if (isPrelevement) {
       billingHtml = `
         <div class="full billing-plan-block">
           <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
             <label class="billing-choice">
-              <input type="radio" name="billing_plan" value="rib" ${savedPlan !== 'cb' ? 'checked' : ''} />
+              <input type="radio" name="billing_plan" value="rib" ${savedPlan !== 'paypal' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>Prélèvement (RIB)</strong>
                 <small>1ère CB, puis SEPA</small>
+                ${paymentLogosHtml('card')}
               </span>
             </label>
             <label class="billing-choice">
-              <input type="radio" name="billing_plan" value="cb" ${savedPlan === 'cb' ? 'checked' : ''} />
+              <input type="radio" name="billing_plan" value="paypal" ${savedPlan === 'paypal' ? 'checked' : ''} />
               <span class="billing-choice-text">
-                <strong>Carte bancaire</strong>
-                <small>Toutes les 4 semaines</small>
+                <strong>PayPal</strong>
+                <small>1ère échéance PayPal, puis SEPA</small>
+                ${paymentLogosHtml('paypal')}
               </span>
             </label>
           </div>
         </div>`;
-    } else if (isPrelevementOnly) {
-      // Une seule option : prélèvement déjà coché
+    } else if (isComptantLike) {
       billingHtml = `
         <div class="full billing-plan-block">
           <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
             <label class="billing-choice">
-              <input type="radio" name="billing_plan" value="rib" checked />
+              <input type="radio" name="billing_plan" value="card" checked />
               <span class="billing-choice-text">
-                <strong>Prélèvement (RIB)</strong>
-                <small>1ère CB, puis SEPA</small>
+                <strong>Carte bancaire</strong>
+                <small>Paiement comptant</small>
+                ${paymentLogosHtml('card')}
+              </span>
+            </label>
+            <label class="billing-choice">
+              <input type="radio" name="billing_plan" value="paypal" />
+              <span class="billing-choice-text">
+                <strong>PayPal</strong>
+                <small>Paiement comptant</small>
+                ${paymentLogosHtml('paypal')}
               </span>
             </label>
           </div>
         </div>`;
     }
-    // Comptant / 4× sans frais : pas de choix, juste Payer (CB)
 
     stepContent.innerHTML = `
       <h1>Paiement</h1>
-      <p class="sub">Montant : <strong>${priceLabel(p)}</strong></p>
+      <p class="sub">${firstPaymentCaption(p)}</p>
       <form id="payForm">
         ${billingHtml}
         <button type="submit" class="btn stripe block" id="payBtn">${
@@ -462,9 +500,13 @@
       saveProgress();
       const body = payRequestBody();
       const planInput = document.querySelector('input[name="billing_plan"]:checked');
-      if (planInput) body.billing_plan = planInput.value;
-      else if (isPrelevementOnly || (p?.requires_iban && !isComptantLike)) body.billing_plan = 'rib';
-      // Badge ~72h auto IBAN — jamais affiché / demandé
+      if (isComptantLike) {
+        body.billing_plan = planInput?.value === 'paypal' ? 'paypal' : null;
+      } else if (planInput) {
+        body.billing_plan = planInput.value;
+      } else if (isPrelevement) {
+        body.billing_plan = 'rib';
+      }
       body.badge_timing = 'deferred';
       body.badge_method = 'iban';
       const res = await fetch(`/api/orders/${state.orderId}/pay`, {
@@ -589,7 +631,10 @@
         <div><label for="last_name">Nom *</label><input id="last_name" name="last_name" required value="${short.last_name || ''}" /></div>
         <div class="full"><label for="email">Email *</label><input id="email" name="email" type="email" required value="${short.email || ''}" /></div>
         <div class="full"><label for="phone">Téléphone *</label><input id="phone" name="phone" type="tel" required value="${short.phone || ''}" /></div>
-        <div class="full"><label for="birthdate">Date de naissance *</label><input id="birthdate" name="birthdate" type="date" required value="${short.birthdate || ''}" /></div>
+        <div class="full"><label for="birthdate">Date de naissance *</label>
+          <input id="birthdate" name="birthdate" type="date" required
+            min="1900-01-01" max="${new Date(new Date().getFullYear() - 5, 11, 31).toISOString().slice(0, 10)}"
+            value="${short.birthdate || ''}" /></div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
         <div class="full">${backButton('← Retour à la salle', 2)}</div>
       </form>`;
@@ -598,8 +643,13 @@
     bindBackButtons();
     form.onsubmit = async (e) => {
       e.preventDefault();
-      setMsg('Envoi…');
       const body = Object.fromEntries(new FormData(e.target).entries());
+      const birthErr = validateBirthdateClient(body.birthdate);
+      if (birthErr) {
+        setMsg(birthErr, 'err');
+        return;
+      }
+      setMsg('Envoi…');
       body.token = state.token;
       body.gym = state.order?.customer_full?.gym || state.gymDraft;
       state.shortDraft = body;
@@ -650,6 +700,22 @@
     };
   }
 
+  function validateBirthdateClient(value) {
+    if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+      return 'Date de naissance invalide';
+    }
+    const [y, m, d] = String(value).split('-').map(Number);
+    if (y < 1900 || y > new Date().getFullYear() - 5) {
+      return 'Année de naissance invalide';
+    }
+    const dt = new Date(y, m - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
+      return 'Date de naissance invalide';
+    }
+    if (dt > new Date()) return 'Date de naissance invalide';
+    return null;
+  }
+
   function renderStep5() {
     if (guardPaidStep()) return;
     if (!orderNeedsIban(state.order) || state.order?.payment?.iban) {
@@ -658,20 +724,14 @@
     }
     stepContent.innerHTML = `
       <h1>IBAN</h1>
+      <p class="sub">Veuillez entrer votre IBAN dans le texte ci-dessous pour le paiement des autres échéances.</p>
       <form id="ibanForm" class="form-grid">
         <div class="full">
           <label for="iban">IBAN *</label>
           <input id="iban" name="iban" required placeholder="FR76 3000 6000 0112 3456 7890 189" value="${state.order?.payment?.iban || ''}" />
         </div>
-        ${
-          state.config?.badge_fee_notice
-            ? ''
-            : ''
-        }
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
-        <div class="full">${backButton('← Retour', 4)}</div>
       </form>`;
-    bindBackButtons();
     document.getElementById('ibanForm').onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Enregistrement…');
@@ -718,20 +778,87 @@
         <div class="full"><label for="address">Adresse *</label><input id="address" name="address" required value="${full.address || ''}" /></div>
         <div><label for="postal_code">Code postal *</label><input id="postal_code" name="postal_code" required value="${full.postal_code || ''}" /></div>
         <div><label for="city">Ville *</label><input id="city" name="city" required value="${full.city || ''}" /></div>
-        <div class="full"><label for="photo">Photo *</label>
-          <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="user" ${photoOk ? '' : 'required'} />
+        <div class="full photo-capture-block">
+          <label>Photo *</label>
+          <p class="field-hint">Ajoutez une photo d'identité ou filmez-vous avec la webcam.</p>
+          <div class="photo-capture-actions">
+            <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="user" ${photoOk ? '' : 'required'} />
+            <button type="button" class="btn secondary" id="webcamBtn">Se filmer / Prendre une photo</button>
+          </div>
+          <video id="webcamPreview" playsinline muted hidden style="width:100%;max-width:320px;border-radius:8px;margin-top:10px;background:#111"></video>
+          <canvas id="webcamCanvas" hidden></canvas>
+          <img id="webcamSnap" alt="Aperçu photo" hidden style="width:100%;max-width:320px;border-radius:8px;margin-top:10px" />
+          <button type="button" class="btn secondary" id="webcamCaptureBtn" hidden style="margin-top:8px">Capturer</button>
+          <button type="button" class="btn secondary" id="webcamStopBtn" hidden style="margin-top:8px">Arrêter la caméra</button>
         </div>
-        <div class="full"><label for="emergency_contact">Contact d'urgence (optionnel)</label><input id="emergency_contact" name="emergency_contact" placeholder="Nom + téléphone" value="${full.emergency_contact || ''}" /></div>
-        <div class="full"><label for="medical_info">Informations médicales (optionnel)</label><textarea id="medical_info" name="medical_info" rows="2">${full.medical_info || ''}</textarea></div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
         <div class="full">${backButton('← Retour', orderNeedsIban(state.order) ? 5 : 4)}</div>
       </form>`;
+
+    let webcamStream = null;
+    let webcamBlob = null;
+    const video = document.getElementById('webcamPreview');
+    const canvas = document.getElementById('webcamCanvas');
+    const snap = document.getElementById('webcamSnap');
+    const photoInput = document.getElementById('photo');
+
+    async function stopWebcam() {
+      if (webcamStream) {
+        webcamStream.getTracks().forEach((t) => t.stop());
+        webcamStream = null;
+      }
+      video.hidden = true;
+      document.getElementById('webcamCaptureBtn').hidden = true;
+      document.getElementById('webcamStopBtn').hidden = true;
+    }
+
+    document.getElementById('webcamBtn').onclick = async () => {
+      try {
+        webcamStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 720 } },
+          audio: false,
+        });
+        video.srcObject = webcamStream;
+        await video.play();
+        video.hidden = false;
+        document.getElementById('webcamCaptureBtn').hidden = false;
+        document.getElementById('webcamStopBtn').hidden = false;
+        setMsg('');
+      } catch (err) {
+        setMsg('Caméra inaccessible — utilisez « Choisir un fichier ».', 'err');
+      }
+    };
+
+    document.getElementById('webcamCaptureBtn').onclick = () => {
+      const w = video.videoWidth || 640;
+      const h = video.videoHeight || 480;
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return;
+          webcamBlob = blob;
+          snap.src = URL.createObjectURL(blob);
+          snap.hidden = false;
+          photoInput.removeAttribute('required');
+          photoInput.value = '';
+          setMsg('Photo capturée — vous pouvez continuer.');
+        },
+        'image/jpeg',
+        0.92
+      );
+    };
+
+    document.getElementById('webcamStopBtn').onclick = () => stopWebcam();
+
     document.getElementById('fullForm').onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Enregistrement…');
-      const photoInput = document.getElementById('photo');
-      if (photoInput?.files?.[0]) {
-        const prepared = await prepareMemberPhoto(photoInput.files[0]);
+      const file = photoInput?.files?.[0] || null;
+      const source = file || webcamBlob;
+      if (source) {
+        const prepared = await prepareMemberPhoto(source);
         const fd = new FormData();
         fd.append('photo', prepared);
         fd.append('token', state.token);
@@ -746,10 +873,11 @@
         }
         state.photoUploaded = true;
       } else if (!photoOk) {
-        setMsg('Ajoutez une photo', 'err');
+        setMsg('Ajoutez une photo ou filmez-vous', 'err');
         return;
       }
 
+      await stopWebcam();
       const fd = new FormData(e.target);
       const body = Object.fromEntries(fd.entries());
       delete body.photo;
@@ -773,6 +901,7 @@
   const LEGAL = {
     cgv: '/cgv',
     reglement: '/reglement-interieur',
+    medical: '/attestation-medicale',
   };
 
   function initSignaturePad(canvas) {
@@ -859,6 +988,12 @@
         <label><input type="checkbox" id="consent_reglement" required />
           J'accepte le <a class="legal-link" href="${LEGAL.reglement}" target="_blank" rel="noopener">règlement intérieur du club</a> *</label>
       </div>
+      <div class="consent-box">
+        <label><input type="checkbox" id="consent_medical" required />
+          J'atteste sur l'honneur l'absence de contre-indication à la pratique sportive et prends connaissance qu'un
+          <a class="legal-link" href="${LEGAL.medical}" target="_blank" rel="noopener">certificat médical de non contre-indication</a>
+          me sera demandé *</label>
+      </div>
       <button type="button" class="btn block" id="signBtn">Valider</button>
       <button type="button" class="btn secondary block" id="previewContractBtn" style="margin-top:12px">Prévisualiser le contrat</button>
       ${backButton('← Retour', 6)}`;
@@ -869,11 +1004,16 @@
       window.BCContract.openView(state.orderId, {
         token: state.token,
         sessionId: state.sessionId,
+        returnStep: 7,
       });
     };
     document.getElementById('signBtn').onclick = async () => {
-      if (!document.getElementById('consent_cgv').checked || !document.getElementById('consent_reglement').checked) {
-        setMsg('Veuillez accepter les conditions.', 'err');
+      if (
+        !document.getElementById('consent_cgv').checked ||
+        !document.getElementById('consent_reglement').checked ||
+        !document.getElementById('consent_medical').checked
+      ) {
+        setMsg('Veuillez accepter les conditions et l\'attestation médicale.', 'err');
         return;
       }
       if (!pad.hasInk()) {
@@ -889,6 +1029,7 @@
           session_id: state.sessionId || undefined,
           consent_cgv: true,
           consent_reglement: true,
+          consent_medical: true,
           signature_image: pad.toDataURL(),
         }),
       });

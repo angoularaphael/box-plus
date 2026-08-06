@@ -4,8 +4,27 @@
   const token = params.get('token');
   const sessionId = params.get('session_id');
   const isAdmin = params.get('admin') === '1';
+  const returnUrl = params.get('return');
+  const returnStep = params.get('return_step') || '7';
   const errEl = document.getElementById('contractErr');
   const frame = document.getElementById('pdfFrame');
+  const backBtn = document.getElementById('contractBackBtn');
+
+  if (backBtn) {
+    const fallback =
+      orderId && token
+        ? `/inscription?order=${encodeURIComponent(orderId)}&token=${encodeURIComponent(token)}${
+            sessionId ? `&session_id=${encodeURIComponent(sessionId)}` : ''
+          }&step=${encodeURIComponent(returnStep)}`
+        : '/';
+    backBtn.href = returnUrl || fallback;
+    backBtn.addEventListener('click', (e) => {
+      if (window.history.length > 1 && document.referrer.includes('/inscription')) {
+        e.preventDefault();
+        window.history.back();
+      }
+    });
+  }
 
   if (!orderId || (!isAdmin && !token)) {
     errEl.hidden = false;

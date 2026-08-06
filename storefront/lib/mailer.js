@@ -228,7 +228,10 @@ async function sendTestEmail(to) {
   }
 }
 
-async function sendUnpaidSubscriptionEmail(order, { portalUrl } = {}) {
+async function sendUnpaidSubscriptionEmail(
+  order,
+  { portalUrl, failCount = 1, accessBlocked = false, adminAlert = false } = {}
+) {
   const to = order.customer_short?.email;
   if (!to) {
     logWarn('Email impayé ignoré — pas d\'email client', { order_id: order.order_id });
@@ -237,10 +240,15 @@ async function sendUnpaidSubscriptionEmail(order, { portalUrl } = {}) {
 
   const short = order.customer_short || {};
   const product = order.product_snapshot || {};
-  const adminTo = process.env.ADMIN_EMAIL || process.env.SUPER_ADMIN_EMAIL || '';
+  const adminTo =
+    process.env.ADMIN_EMAIL || process.env.SUPER_ADMIN_EMAIL || process.env.ALERT_EMAIL || '';
   const payLink = portalUrl
     ? `<p><a href="${portalUrl}" style="display:inline-block;padding:12px 20px;background:#C8902F;color:#0B1F3A;text-decoration:none;font-weight:700;border-radius:6px">Mettre à jour mon moyen de paiement</a></p>`
     : `<p>Connectez-vous à votre espace bancaire / Stripe pour mettre à jour votre carte, ou contactez le club.</p>`;
+
+  const blockNote = accessBlocked
+    ? `<p style="color:#b00020"><strong>Votre accès est suspendu</strong> après ${failCount} tentative(s) de recouvrement en échec.</p>`
+    : '';
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -248,7 +256,8 @@ async function sendUnpaidSubscriptionEmail(order, { portalUrl } = {}) {
 <body style="font-family:Arial,sans-serif;color:#1A1A2E;max-width:600px;margin:0 auto;padding:24px">
   <h1 style="color:#0B1F3A">Paiement d'abonnement en échec</h1>
   <p>Bonjour ${short.first_name || ''},</p>
-  <p>Le renouvellement de votre abonnement <strong>${product.display_name || product.name || ''}</strong> n'a pas pu être débité.</p>
+  <p>Le renouvellement de votre abonnement <strong>${product.display_name || product.name || ''}</strong> n'a pas pu être débité (tentative ${failCount}).</p>
+  ${blockNote}
   <p>Sans régularisation, l'accès au club pourra être suspendu.</p>
   ${payLink}
   <p>Référence : ${order.order_id}</p>
@@ -264,23 +273,60 @@ async function sendUnpaidSubscriptionEmail(order, { portalUrl } = {}) {
   try {
     const result = await sendEmailViaBrevo({
       to,
-      subject: 'Action requise — échec de paiement Boxing Center',
+      subject: accessBlocked
+        ? 'Accès suspendu — échec de paiement Boxing Center'
+        : 'Action requise — échec de paiement Boxing Center',
       html,
       replyTo: defaultReplyTo(),
     });
-    if (adminTo && adminTo !== to) {
+    if (adminTo && adminTo !== to && (adminAlert || failCount >= 3 || accessBlocked)) {
       await sendEmailViaBrevo({
         to: adminTo,
-        subject: `[Impayé] ${short.email || order.order_id} — ${product.display_name || product.name || ''}`,
-        html: `<p>Échec renouvellement CB Stripe.</p><p>Client : ${short.first_name || ''} ${short.last_name || ''} — ${to}</p><p>Commande : ${order.order_id}</p>`,
+        subject: `[CB refusée / bloquée] ${short.email || order.order_id} — ${failCount} échec(s)`,
+        html: `<p>Échec recouvrement Stripe après ${failCount} tentative(s).</p>
+          <p>Accès bloqué : ${accessBlocked ? 'oui' : 'non'}</p>
+          <p>Client : ${short.first_name || ''} ${short.last_name || ''} — ${to}</p>
+          <p>Commande : ${order.order_id}</p>
+          <p>Offre : ${product.display_name || product.name || ''}</p>`,
         replyTo: defaultReplyTo(),
       }).catch(() => null);
     }
     if (!result) return { sent: false, reason: 'brevo_not_configured' };
-    logInfo('Email impayé envoyé', { to, order_id: order.order_id });
+    logInfo('Email impayé envoyé', { to, order_id: order.order_id, failCount, accessBlocked });
     return { sent: true };
   } catch (err) {
     logWarn('Email impayé échoué', { to, order_id: order.order_id, error: err.message });
+    return { sent: false, reason: 'brevo_error', error: err.message };
+  }
+}
+
+async function sendNewMemberAdminEmail(payload = {}) {
+  const adminTo =
+    process.env.ADMIN_EMAIL || process.env.SUPER_ADMIN_EMAIL || process.env.ALERT_EMAIL || '';
+  if (!adminTo) return { sent: false, reason: 'no_admin_email' };
+  const html = `<!DOCTYPE html><html lang="fr"><body style="font-family:Arial,sans-serif;padding:24px">
+    <h2>Nouveau membre créé dans Deciplus</h2>
+    <p><strong>Commande :</strong> ${payload.order_id || '—'}</p>
+    <p><strong>Membre Deciplus :</strong> ${payload.member_id || '—'}</p>
+    <p><strong>Nom :</strong> ${payload.first_name || ''} ${payload.last_name || ''}</p>
+    <p><strong>Email :</strong> ${payload.email || '—'}</p>
+    <p><strong>Salle :</strong> ${payload.gym || '—'}</p>
+    <p><strong>Offre :</strong> ${payload.product_name || '—'}</p>
+  </body></html>`;
+  if (!isConfigured()) {
+    logInfo('Email nouveau membre (mode log)', { adminTo, order_id: payload.order_id });
+    return { sent: false, reason: 'brevo_not_configured' };
+  }
+  try {
+    await sendEmailViaBrevo({
+      to: adminTo,
+      subject: `[Nouveau membre] ${payload.first_name || ''} ${payload.last_name || ''} — ${payload.order_id || ''}`.trim(),
+      html,
+      replyTo: defaultReplyTo(),
+    });
+    return { sent: true };
+  } catch (err) {
+    logWarn('Email nouveau membre échoué', { error: err.message });
     return { sent: false, reason: 'brevo_error', error: err.message };
   }
 }
@@ -291,6 +337,7 @@ module.exports = {
   sendGdprEraseRequest,
   sendTestEmail,
   sendUnpaidSubscriptionEmail,
+  sendNewMemberAdminEmail,
   buildConfirmationHtml,
   buildMaterielConfirmationHtml,
   getMailFrom,

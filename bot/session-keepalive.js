@@ -7,7 +7,8 @@ const { listPending } = require('../lib/queue');
 const { logInfo, logWarn } = require('../lib/logger');
 
 const API_BASE = 'https://api.deciplus.pro/staff/v1';
-const KEEPALIVE_MS = Number(process.env.BOT_SESSION_KEEPALIVE_MS || 2.5 * 60 * 60 * 1000);
+// Token Deciplus ~4h — ping avant expiration (défaut 90 min)
+const KEEPALIVE_MS = Number(process.env.BOT_SESSION_KEEPALIVE_MS || 90 * 60 * 1000);
 const KEEPALIVE_RETRY_MS = Number(process.env.BOT_SESSION_KEEPALIVE_RETRY_MS || 15 * 60 * 1000);
 
 let lastKeepAliveSuccessAt = Date.now();

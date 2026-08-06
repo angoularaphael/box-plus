@@ -1,11 +1,11 @@
 'use strict';
 
 /**
- * Sessions Stripe Checkout — paiement unique ou abonnement 4 semaines.
- * Portet : clé dédiée (STRIPE_SECRET_KEY_PORTET) — même compte possible pour l'instant.
+ * Sessions Stripe Checkout — carte + PayPal (compte club lié au Dashboard Stripe).
  */
 
 const Stripe = require('stripe');
+const { requiresIbanForPlan, isComptantStyleProduct } = require('../../lib/billing-plan');
 
 function stripeClientForGym(gym) {
   const key =
@@ -33,12 +33,6 @@ function buildLineItem(product) {
   };
 }
 
-function buildSubscriptionLineItem(product) {
-  const item = buildLineItem(product);
-  item.price_data.recurring = { interval: 'week', interval_count: 4 };
-  return item;
-}
-
 function createCheckoutSessionParams({
   product,
   order,
@@ -46,19 +40,24 @@ function createCheckoutSessionParams({
   baseUrl,
   packOrderMetadata,
   billingPlan,
-  badgeTiming,
-  badgeMethod,
 }) {
-  const isSubscription = billingPlan === 'cb';
   const gym = order.customer_full?.gym || payload?.gym || '';
-  const includeBadgeOnStripe = false; // Badge toujours ~72h IBAN — jamais sur Stripe
+  const plan = billingPlan || order.payment?.billing_plan || null;
+  const needsIban = requiresIbanForPlan(product, plan);
+  const successStep = needsIban ? 5 : 6;
+
+  const customerEmail =
+    order.customer_short?.email ||
+    payload?.customer?.email ||
+    payload?.email ||
+    null;
 
   const meta = {
     product_id: product.id,
     order_id: order.order_id,
     lifecycle_order_id: order.order_id,
     bc_token: order.access_token,
-    billing_plan: billingPlan || 'rib',
+    billing_plan: plan || (isComptantStyleProduct(product) ? 'comptant' : 'rib'),
     gym: gym || '',
     stripe_account: gym === 'portet' ? 'portet' : 'boxing_center',
     badge_timing: 'deferred',
@@ -66,47 +65,18 @@ function createCheckoutSessionParams({
     ...packOrderMetadata(payload),
   };
 
-  const badgeLine = {
-    price_data: {
-      currency: 'eur',
-      unit_amount: 3499,
-      product_data: {
-        name: "Badge d'accès Boxing Center",
-        description: 'Paiement immédiat du badge',
-      },
-    },
-    quantity: 1,
-  };
-
   const params = {
-    payment_method_types: ['card'],
-    customer_email: order.customer_short?.email || payload.customer?.email,
+    // PayPal doit être activé dans le Dashboard Stripe (compte Business du club).
+    payment_method_types: ['card', 'paypal'],
     metadata: meta,
-    success_url: `${baseUrl}/inscription?order=${order.order_id}&token=${order.access_token}&step=5&session_id={CHECKOUT_SESSION_ID}`,
+    success_url: `${baseUrl}/inscription?order=${order.order_id}&token=${order.access_token}&step=${successStep}&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${baseUrl}/inscription?order=${order.order_id}&token=${order.access_token}&step=4&cancelled=1`,
+    mode: 'payment',
+    line_items: [buildLineItem(product)],
   };
 
-  if (isSubscription) {
-    params.mode = 'subscription';
-    params.line_items = [buildSubscriptionLineItem(product)];
-    params.subscription_data = {
-      metadata: {
-        order_id: order.order_id,
-        lifecycle_order_id: order.order_id,
-        billing_plan: 'cb',
-        product_id: product.id,
-        gym: gym || '',
-      },
-    };
-    if (includeBadgeOnStripe) {
-      params.subscription_data.add_invoice_items = [badgeLine];
-    }
-  } else {
-    params.mode = 'payment';
-    params.line_items = [buildLineItem(product)];
-    if (includeBadgeOnStripe) {
-      params.line_items.push(badgeLine);
-    }
+  if (customerEmail) {
+    params.customer_email = customerEmail;
   }
 
   return params;

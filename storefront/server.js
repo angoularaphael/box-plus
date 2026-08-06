@@ -77,6 +77,7 @@ const {
   sendConfirmationEmail,
   sendGdprEraseRequest,
   sendUnpaidSubscriptionEmail,
+  sendNewMemberAdminEmail,
 } = require('./lib/mailer');
 const {
   STEPS,
@@ -447,7 +448,8 @@ function createApp() {
             if (order) {
               const alreadyNotified = Boolean(order.payment?.unpaid_notified_at);
               const failCount = Number(order.payment?.fail_count || 0) + 1;
-              const block = failCount >= Number(process.env.STRIPE_UNPAID_BLOCK_AFTER || 2);
+              const blockAfter = Number(process.env.STRIPE_UNPAID_BLOCK_AFTER || 3);
+              const block = failCount >= blockAfter;
               await markSubscriptionPastDueAsync(order.order_id, {
                 stripe_subscription_id: subId,
                 stripe_invoice_id: invoice.id,
@@ -467,9 +469,15 @@ function createApp() {
               } catch (portalErr) {
                 logWarn('Portal Stripe indisponible', { error: portalErr.message });
               }
-              if (!alreadyNotified) {
-                const mail = await sendUnpaidSubscriptionEmail(order, { portalUrl });
-                if (mail.sent) {
+              // Alerte client dès le 1er échec ; alerte admin renforcée dès 3 tentatives / blocage
+              if (!alreadyNotified || block) {
+                const mail = await sendUnpaidSubscriptionEmail(order, {
+                  portalUrl,
+                  failCount,
+                  accessBlocked: block,
+                  adminAlert: block,
+                });
+                if (mail.sent && !alreadyNotified) {
                   await markSubscriptionPastDueAsync(order.order_id, {
                     stripe_subscription_id: subId,
                     fail_count: failCount,
@@ -646,7 +654,7 @@ function createApp() {
 
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
-        payment_method_types: ['card'],
+        payment_method_types: ['card', 'paypal'],
         line_items: buildStripeLineItems(items),
         customer_email: customer.email,
         metadata: {
@@ -1330,9 +1338,9 @@ function createApp() {
         });
       }
 
-      const { consent_cgv, consent_reglement, signature_image } = req.body;
-      if (!consent_cgv || !consent_reglement) {
-        return res.status(400).json({ ok: false, error: 'Consentements requis' });
+      const { consent_cgv, consent_reglement, consent_medical, signature_image } = req.body;
+      if (!consent_cgv || !consent_reglement || !consent_medical) {
+        return res.status(400).json({ ok: false, error: 'Consentements requis (CGV, règlement, médical)' });
       }
       if (!signature_image || !String(signature_image).startsWith('data:image')) {
         return res.status(400).json({ ok: false, error: 'Signature manuscrite requise' });
@@ -1358,6 +1366,7 @@ function createApp() {
       const signed = await recordSignature(order.order_id, {
         consent_cgv: Boolean(consent_cgv),
         consent_reglement: Boolean(consent_reglement),
+        consent_medical: Boolean(consent_medical),
         ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
         image_path,
         image_base64,
@@ -1501,7 +1510,10 @@ function createApp() {
       );
 
       const short = order.customer_short;
-      const billingPlan = normalizeBillingPlan(req.body.billing_plan, product);
+      const rawBilling = String(req.body.billing_plan || '').trim().toLowerCase();
+      const billingPlan = normalizeBillingPlan(rawBilling, product);
+      const preferredCheckout =
+        rawBilling === 'paypal' ? 'paypal' : billingPlan === 'paypal' ? 'paypal' : 'card';
       // Badge toujours ~72h / IBAN — plus de choix client
       const badgeTiming = 'deferred';
       const badgeMethod = 'iban';
@@ -1516,7 +1528,8 @@ function createApp() {
 
       order.payment = {
         ...(order.payment || {}),
-        billing_plan: billingPlan,
+        billing_plan: billingPlan || (preferredCheckout === 'paypal' ? 'paypal' : billingPlan),
+        preferred_checkout: preferredCheckout,
         iban: order.payment?.iban || null,
         badge_timing: badgeTiming,
         badge_method: badgeMethod,
@@ -1602,6 +1615,130 @@ function createApp() {
     }
   });
 
+  app.get('/api/membership/options', (_req, res) => {
+    try {
+      const {
+        listComptantTargets,
+        listCurrentPlans,
+      } = require('./lib/membership');
+      res.json({
+        ok: true,
+        current_plans: listCurrentPlans(),
+        comptant_targets: listComptantTargets(),
+      });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/membership/cancel', async (req, res) => {
+    try {
+      const body = req.body || {};
+      if (!body.first_name || !body.last_name || !body.birthdate || !body.phone) {
+        return res.status(400).json({
+          ok: false,
+          error:
+            "Je suis désolé, mais nous n'avons pas pu trouver d'abonnement correspondant à ces informations.",
+        });
+      }
+      const { enqueueCancelRequest } = require('./lib/membership');
+      const result = await enqueueCancelRequest(body);
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      logError('Erreur résiliation', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/membership/change/checkout', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const product = findProduct(body.target_product_id);
+      if (!product) return res.status(404).json({ ok: false, error: 'Offre introuvable' });
+      if (!stripe) return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
+      const baseUrl = getCheckoutBaseUrl(req);
+      const meta = {
+        order_type: 'membership_change',
+        target_product_id: product.id,
+        first_name: body.first_name || '',
+        last_name: body.last_name || '',
+        birthdate: body.birthdate || '',
+        email: body.email || '',
+        phone: body.phone || '',
+        gym: body.gym || 'minimes',
+        current_plan: body.current_plan || '',
+      };
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card', 'paypal'],
+        customer_email: body.email || undefined,
+        line_items: [
+          {
+            price_data: {
+              currency: 'eur',
+              unit_amount: product.price_cents,
+              product_data: {
+                name: product.display_name || product.name,
+                description: 'Changement prélèvement → comptant',
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        metadata: meta,
+        success_url: `${baseUrl}/gerer-abonnement?change=1&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/gerer-abonnement?change=cancelled`,
+      });
+      res.json({ ok: true, url: session.url, session_id: session.id });
+    } catch (err) {
+      logError('Erreur change checkout', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/membership/change/confirm', async (req, res) => {
+    try {
+      const sessionId = req.body?.session_id;
+      if (!sessionId || !stripe) {
+        return res.status(400).json({ ok: false, error: 'session_id requis' });
+      }
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      if (!isStripeCheckoutPaid(session)) {
+        return res.status(402).json({ ok: false, error: 'paiement non confirmé' });
+      }
+      const meta = session.metadata || {};
+      const { enqueueChangeAfterPayment } = require('./lib/membership');
+      const result = await enqueueChangeAfterPayment({
+        identity: {
+          first_name: meta.first_name,
+          last_name: meta.last_name,
+          birthdate: meta.birthdate,
+          email: meta.email || session.customer_details?.email,
+          phone: meta.phone,
+          gym: meta.gym || 'minimes',
+        },
+        targetProductId: meta.target_product_id,
+        stripeSessionId: sessionId,
+      });
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      logError('Erreur change confirm', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/internal/new-member-alert', async (req, res) => {
+    if (!isAuthorizedSync(req)) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    try {
+      const mail = await sendNewMemberAdminEmail(req.body || {});
+      res.json({ ok: true, mail });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   app.post('/api/checkout/create-session', async (req, res) => {
     try {
       const { product_id: productId, ...form } = req.body;
@@ -1632,7 +1769,7 @@ function createApp() {
       const baseUrl = getCheckoutBaseUrl(req);
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
-        payment_method_types: ['card'],
+        payment_method_types: ['card', 'paypal'],
         line_items: [
           {
             price_data: {
@@ -1770,7 +1907,9 @@ function createApp() {
     '/politique-confidentialite': 'legal/confidentialite.html',
     '/cgv': 'cgv.html',
     '/reglement-interieur': 'reglement-interieur.html',
+    '/attestation-medicale': 'attestation-medicale.html',
     '/mon-inscription': 'mon-inscription.html',
+    '/gerer-abonnement': 'gerer-abonnement.html',
     '/checkout.html': 'checkout.html',
     '/admin': 'admin/index.html',
     '/admin/': 'admin/index.html',

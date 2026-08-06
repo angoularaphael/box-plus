@@ -263,7 +263,7 @@ function drawSignatureBlock(doc, order) {
     doc.text(`${memberDisplayName(short)}${short.email ? ` — ${short.email}` : ''}`, left + 14, sigY);
     doc.text(`Le ${new Date(order.signature.signed_at).toLocaleString('fr-FR')}`, left + 14, sigY + 14);
     doc.fontSize(8).fillColor(MUTED).text(
-      `CGV : ${order.signature.consent_cgv ? 'Oui' : 'Non'}  ·  Règlement : ${order.signature.consent_reglement ? 'Oui' : 'Non'}`,
+      `CGV : ${order.signature.consent_cgv ? 'Oui' : 'Non'}  ·  Règlement : ${order.signature.consent_reglement ? 'Oui' : 'Non'}  ·  Médical : ${order.signature.consent_medical ? 'Oui' : 'Non'}`,
       left + 14,
       sigY + 28
     );
@@ -381,7 +381,7 @@ function drawSignatureBlockCompact(doc, order) {
       { width: width - 20 }
     );
     doc.fontSize(7).fillColor(MUTED).text(
-      `CGV : ${order.signature.consent_cgv ? 'Oui' : 'Non'}  ·  Règlement : ${order.signature.consent_reglement ? 'Oui' : 'Non'}`,
+      `CGV : ${order.signature.consent_cgv ? 'Oui' : 'Non'}  ·  Règlement : ${order.signature.consent_reglement ? 'Oui' : 'Non'}  ·  Médical : ${order.signature.consent_medical ? 'Oui' : 'Non'}`,
       left + 10,
       sigY + 14,
       { width: width - 20 }

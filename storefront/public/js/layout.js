@@ -5,6 +5,11 @@
   const NAV_ITEMS = [
     { href: '/', label: 'Accueil', match: (p) => p === '/' || p.endsWith('index.html') },
     { href: '/abonnements', label: 'Abonnements', match: (p) => p.includes('abonnements') },
+    {
+      href: '/gerer-abonnement',
+      label: 'Gérer mon abo',
+      match: (p) => p.includes('gerer-abonnement'),
+    },
     { href: '/seance-essai', label: "Séance d'essai", match: (p) => p.includes('seance-essai') },
     { href: '/coachings', label: 'Coachings', match: (p) => p.includes('coachings') },
     { href: '/materiel', label: 'Matériel', match: (p) => p.includes('materiel') },
@@ -35,6 +40,7 @@
         'cgv.html': '/cgv',
         'reglement-interieur.html': '/reglement-interieur',
         'mon-inscription.html': '/mon-inscription',
+        'gerer-abonnement.html': '/gerer-abonnement',
       };
       if (map[file]) return map[file];
       if (location.pathname.includes('/admin/')) return '/admin';
