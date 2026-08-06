@@ -577,7 +577,11 @@
   }
 
   function renderStep3() {
-    const short = state.order?.customer_short || state.shortDraft || {};
+    // coordonnées déjà données à l'assistant d'un site du club → préremplies ;
+    // ce que l'utilisateur a saisi ICI (brouillon/commande) garde la priorité.
+    let bcpPrefill = {};
+    try { bcpPrefill = JSON.parse(sessionStorage.getItem('bcp_prefill') || '{}'); } catch (e) { /* vide */ }
+    const short = { ...bcpPrefill, ...(state.order?.customer_short || state.shortDraft || {}) };
     stepContent.innerHTML = `
       <h1>Vos coordonnées</h1>
       <form id="shortForm" class="form-grid">
