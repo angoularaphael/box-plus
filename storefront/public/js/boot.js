@@ -2,6 +2,21 @@
  * Base URL + liens compatibles file:// et serveur Express
  */
 (function () {
+  // Préremplissage inter-sites (assistant des sites Boxing Center) : les
+  // coordonnées arrivent en FRAGMENT (#bcp=..., jamais envoyé au serveur ni
+  // aux logs), sont rangées en sessionStorage puis effacées de l'URL — le
+  // reste du hash (#promo...) est préservé pour les onglets.
+  try {
+    const m = location.hash.match(/[#&]bcp=([A-Za-z0-9\-_]+)/);
+    if (m) {
+      const json = decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/'))));
+      const p = JSON.parse(json);
+      if (p && typeof p === 'object') sessionStorage.setItem('bcp_prefill', JSON.stringify(p));
+      const rest = location.hash.replace(/[#&]bcp=[A-Za-z0-9\-_]+/, '').replace(/^&/, '#');
+      history.replaceState(null, '', location.pathname + location.search + (rest && rest !== '#' ? rest : ''));
+    }
+  } catch (e) { /* fragment invalide : ignoré */ }
+
   if (location.protocol !== 'file:') {
     const qs = location.search;
     if (qs) {
