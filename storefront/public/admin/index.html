@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/boutique.css" />
   <link rel="stylesheet" href="../css/components.css" />
+  <link rel="stylesheet" href="/admin/admin.css?v=4" />
 </head>
 <body>
   <div id="adminPanel" hidden>
@@ -367,5 +368,8 @@
 
   <script src="../js/contract-open.js"></script>
   <script src="../js/admin.js"></script>
+  <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
+       reecrit pas une ligne (un autre developpeur y travaille). -->
+  <script src="/js/admin-shell.js?v=4"></script>
 </body>
 </html>
