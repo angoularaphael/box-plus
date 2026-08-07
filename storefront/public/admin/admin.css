@@ -1,0 +1,655 @@
+/* =====================================================================
+   LE PANNEAU — la feuille de la refonte.
+
+   POURQUOI UN FICHIER À PART. Tout ce qui suit aurait pu s'entasser dans
+   components.css, où vivent déjà 54 règles `.admin-*`. Deux raisons de ne
+   pas le faire : un autre développeur travaille sur ce dépôt en ce moment
+   (une feuille séparée, ce sont zéro conflit de fusion), et surtout la
+   refonte doit pouvoir être retirée d'une ligne si elle déplaît. Rien
+   n'est écrasé ici — on ajoute une couche, on ne réécrit pas l'ancienne.
+
+   CE QUE CETTE FEUILLE CORRIGE, ET QUI SE MESURE :
+   · le panneau s'ouvrait sur « Offres » — un catalogue. On n'ouvre pas son
+     backoffice le matin pour regarder un catalogue : on l'ouvre pour savoir
+     ce qui demande une action. D'où l'écran « Aujourd'hui » ;
+   · quatre-vingt-quatre inscriptions tombaient dans un seul tableau, sans
+     tri ni pagination. Au-delà de vingt lignes, un tableau sans tri n'est
+     plus un outil, c'est une archive ;
+   · aucun retour après une action. On cliquait, il ne se passait rien de
+     visible, on recliquait ;
+   · sur téléphone, des tableaux à dix colonnes dans 375 px de large.
+
+   La palette, les polices et les ombres viennent de boutique.css : le
+   panneau doit ressembler à la boutique, pas à un outil greffé dessus.
+   ===================================================================== */
+
+:root {
+  --pan-rail: 232px;
+  --pan-gap: clamp(14px, 2vw, 22px);
+  --pan-r: 14px;
+  --pan-r-sm: 10px;
+  --pan-line: var(--bc-border, #e4e7ed);
+  --pan-ink: var(--bc-text, #161a2e);
+  --pan-mute: var(--bc-muted, #5c6370);
+  --pan-card: var(--bc-card, #fff);
+  --pan-bg: var(--bc-bg, #f4f5f7);
+  --pan-navy: var(--bc-navy, #20254b);
+  --pan-gold: var(--bc-gold, #c8902f);
+  --pan-red: var(--bc-red, #e8001c);
+  --pan-ok: var(--bc-success, #16a34a);
+  --pan-warn: var(--bc-warning, #b45309);
+  --pan-shadow: 0 1px 2px rgba(22, 26, 46, .06), 0 8px 24px -12px rgba(22, 26, 46, .18);
+}
+
+/* ---------------------------------------------------------------------
+   L'OSSATURE — un rail à gauche sur grand écran, une barre en bas au doigt.
+
+   Le rail tient les quatre sections toujours visibles : on voit d'un coup
+   d'œil où l'on est et ce qui existe. Les onglets d'avant se lisaient de
+   gauche à droite et poussaient la page vers le bas — quatre lignes de
+   chrome avant la première donnée utile.
+   --------------------------------------------------------------------- */
+body.pan {
+  background: var(--pan-bg);
+  color: var(--pan-ink);
+}
+
+.pan-shell {
+  display: grid;
+  grid-template-columns: var(--pan-rail) minmax(0, 1fr);
+  gap: var(--pan-gap);
+  align-items: start;
+  max-width: 1420px;
+  margin: 0 auto;
+  padding: var(--pan-gap);
+}
+
+.pan-rail {
+  position: sticky;
+  top: var(--pan-gap);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 12px;
+  border-radius: var(--pan-r);
+  background: var(--pan-card);
+  border: 1px solid var(--pan-line);
+  box-shadow: var(--pan-shadow);
+}
+
+.pan-rail__brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 8px 14px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--pan-line);
+}
+
+.pan-rail__mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background: var(--pan-navy);
+  color: #fff;
+  font: 700 12px/1 var(--font-display, "Barlow Condensed", sans-serif);
+  letter-spacing: .04em;
+}
+
+.pan-rail__name {
+  min-width: 0;
+  font: 700 13px/1.25 var(--font-body, Montserrat, sans-serif);
+}
+
+.pan-rail__name small {
+  display: block;
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--pan-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pan-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 11px;
+  border: 0;
+  border-radius: var(--pan-r-sm);
+  background: none;
+  color: var(--pan-ink);
+  font: 600 13.5px/1 var(--font-body, Montserrat, sans-serif);
+  text-align: left;
+  cursor: pointer;
+  transition: background .18s, color .18s;
+}
+
+.pan-nav:hover { background: rgba(32, 37, 75, .06); }
+
+.pan-nav.is-on {
+  background: var(--pan-navy);
+  color: #fff;
+}
+
+.pan-nav__ico {
+  flex: 0 0 auto;
+  width: 17px;
+  height: 17px;
+  opacity: .85;
+}
+
+/* Le compteur d'alerte : il ne s'affiche QUE s'il y a vraiment quelque
+   chose à faire. Une pastille « 0 » est du bruit, pas une information. */
+.pan-nav__n {
+  /* `inline` par defaut : min-width et padding vertical ne s'appliquent
+     pas a un element en ligne, la pastille restait un simple chiffre. */
+  display: inline-block;
+  margin-left: auto;
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--pan-red);
+  color: #fff;
+  font: 700 11px/1.5 var(--font-body, Montserrat, sans-serif);
+  text-align: center;
+}
+
+.pan-nav.is-on .pan-nav__n { background: rgba(255, 255, 255, .22); }
+/* On repose la regle apres avoir impose un display : sans elle,
+   l'attribut `hidden` ne masquerait plus rien. */
+.pan-nav__n[hidden] { display: none; }
+
+.pan-rail__foot {
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pan-line);
+}
+
+/* ---------------------------------------------------------------------
+   LES ÉCRANS
+   --------------------------------------------------------------------- */
+.pan-main { min-width: 0; }
+
+.pan-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: var(--pan-gap);
+}
+
+.pan-head h1 {
+  margin: 0;
+  font: 700 clamp(24px, 3vw, 33px)/1.05 var(--font-display, "Barlow Condensed", sans-serif);
+  letter-spacing: -.01em;
+  color: var(--pan-navy);
+  text-transform: uppercase;
+}
+
+.pan-head p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--pan-mute);
+}
+
+.pan-screen[hidden] { display: none !important; }
+
+/* ---------------------------------------------------------------------
+   LES CHIFFRES DU MATIN.
+
+   Chaque tuile porte UN nombre et ce qu'il faut en faire. Une tuile qui
+   n'appelle aucune décision n'a rien à faire sur le premier écran.
+   --------------------------------------------------------------------- */
+.pan-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
+  gap: 12px;
+  margin-bottom: var(--pan-gap);
+}
+
+.pan-kpi {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 15px 16px 14px;
+  border-radius: var(--pan-r);
+  background: var(--pan-card);
+  border: 1px solid var(--pan-line);
+  box-shadow: var(--pan-shadow);
+  text-align: left;
+  cursor: default;
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+}
+
+button.pan-kpi { cursor: pointer; font: inherit; color: inherit; }
+
+button.pan-kpi:hover {
+  transform: translateY(-2px);
+  border-color: rgba(32, 37, 75, .28);
+  box-shadow: 0 2px 4px rgba(22, 26, 46, .07), 0 14px 30px -14px rgba(22, 26, 46, .3);
+}
+
+.pan-kpi__l {
+  display: block;
+  font: 600 10.5px/1 var(--font-body, Montserrat, sans-serif);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--pan-mute);
+}
+
+.pan-kpi__v {
+  display: block;
+  margin-top: 9px;
+  font: 700 clamp(25px, 3.4vw, 33px)/1 var(--font-display, "Barlow Condensed", sans-serif);
+  color: var(--pan-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.pan-kpi__s {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--pan-mute);
+}
+
+.pan-kpi--alerte { border-color: rgba(232, 0, 28, .35); }
+.pan-kpi--alerte .pan-kpi__v { color: var(--pan-red); }
+.pan-kpi--ok .pan-kpi__v { color: var(--pan-ok); }
+
+/* ---------------------------------------------------------------------
+   LES BLOCS
+   --------------------------------------------------------------------- */
+.pan-bloc {
+  margin-bottom: var(--pan-gap);
+  border-radius: var(--pan-r);
+  background: var(--pan-card);
+  border: 1px solid var(--pan-line);
+  box-shadow: var(--pan-shadow);
+  overflow: hidden;
+}
+
+.pan-bloc__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--pan-line);
+}
+
+.pan-bloc__title {
+  margin: 0;
+  font: 700 15px/1.2 var(--font-body, Montserrat, sans-serif);
+  color: var(--pan-navy);
+}
+
+.pan-bloc__desc {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--pan-mute);
+}
+
+.pan-bloc__tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pan-bloc__body { padding: 0; }
+.pan-bloc__body--pad { padding: 16px; }
+
+/* ---------------------------------------------------------------------
+   LA RECHERCHE ET LES FILTRES — sur CHAQUE tableau, sans exception.
+
+   Un tableau de quatre-vingts lignes sans champ de recherche oblige à
+   faire Ctrl+F dans le navigateur : l'outil renonce et laisse le
+   navigateur faire son travail.
+   --------------------------------------------------------------------- */
+.pan-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 190px;
+}
+
+.pan-search svg {
+  position: absolute;
+  left: 10px;
+  width: 14px;
+  height: 14px;
+  color: var(--pan-mute);
+  pointer-events: none;
+}
+
+.pan-search input {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px 0 30px;
+  border: 1px solid var(--pan-line);
+  border-radius: 999px;
+  background: var(--pan-bg);
+  font: 500 13px/1 var(--font-body, Montserrat, sans-serif);
+  color: var(--pan-ink);
+}
+
+.pan-search input:focus-visible {
+  outline: 2px solid var(--pan-navy);
+  outline-offset: 1px;
+  background: #fff;
+}
+
+.pan-filtres { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.pan-filtre {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--pan-line);
+  border-radius: 999px;
+  background: var(--pan-bg);
+  color: var(--pan-mute);
+  font: 600 12px/1 var(--font-body, Montserrat, sans-serif);
+  cursor: pointer;
+  transition: background .16s, color .16s, border-color .16s;
+}
+
+.pan-filtre:hover { border-color: rgba(32, 37, 75, .3); color: var(--pan-ink); }
+
+.pan-filtre.is-on {
+  background: var(--pan-navy);
+  border-color: var(--pan-navy);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------------
+   LES TABLEAUX — triables, lisibles, et qui tiennent sur un téléphone.
+   --------------------------------------------------------------------- */
+.pan-tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.pan-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.pan-table th,
+.pan-table td {
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--pan-line);
+  white-space: nowrap;
+}
+
+.pan-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--pan-bg);
+  font: 600 10.5px/1 var(--font-body, Montserrat, sans-serif);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--pan-mute);
+}
+
+/* L'en-tête cliquable est un VRAI bouton : il s'atteint au clavier et il
+   annonce son sens de tri à un lecteur d'écran (aria-sort). Une colonne
+   qui se trie à la souris seulement n'est pas triable. */
+.pan-th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.pan-th-sort::after {
+  content: "↕";
+  font-size: 10px;
+  opacity: .35;
+}
+
+.pan-table th[aria-sort="ascending"] .pan-th-sort::after { content: "↑"; opacity: 1; }
+.pan-table th[aria-sort="descending"] .pan-th-sort::after { content: "↓"; opacity: 1; }
+.pan-table th[aria-sort] .pan-th-sort { color: var(--pan-navy); }
+
+.pan-table tbody tr { transition: background .14s; }
+.pan-table tbody tr:hover { background: rgba(32, 37, 75, .035); }
+.pan-table tbody tr:last-child td { border-bottom: 0; }
+
+.pan-table td.pan-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------------
+   LES ÉTATS — vide, en cours, en panne. Chacun DIT quoi faire.
+
+   « Aucun résultat » ne suffit pas : il faut dire pourquoi et comment en
+   sortir, sinon l'utilisateur croit que l'outil est cassé.
+   --------------------------------------------------------------------- */
+.pan-vide {
+  padding: 38px 22px;
+  text-align: center;
+  color: var(--pan-mute);
+}
+
+.pan-vide__t {
+  margin: 0 0 5px;
+  font: 700 14.5px/1.3 var(--font-body, Montserrat, sans-serif);
+  color: var(--pan-ink);
+}
+
+.pan-vide__d { margin: 0; font-size: 13px; line-height: 1.5; }
+
+/* L'attente a une FORME : des barres grises à la taille du contenu qui
+   arrive. Un écran blanc pendant deux secondes se lit comme une panne. */
+.pan-squelette { padding: 6px 0; }
+
+.pan-squelette span {
+  display: block;
+  height: 13px;
+  margin: 13px 14px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, rgba(32, 37, 75, .06) 25%, rgba(32, 37, 75, .12) 37%, rgba(32, 37, 75, .06) 63%);
+  background-size: 400% 100%;
+  animation: pan-glisse 1.3s ease-in-out infinite;
+}
+
+.pan-squelette span:nth-child(2) { width: 82%; }
+.pan-squelette span:nth-child(3) { width: 64%; }
+.pan-squelette span:nth-child(4) { width: 74%; }
+
+@keyframes pan-glisse {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* ---------------------------------------------------------------------
+   LES RETOURS D'ACTION — on ne clique plus dans le vide.
+
+   Avant, supprimer une inscription ne disait RIEN : ni succès, ni échec.
+   On recliquait, on doutait. Toute action porte désormais sa réponse.
+   --------------------------------------------------------------------- */
+.pan-toasts {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.pan-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 12px 14px;
+  border-radius: var(--pan-r-sm);
+  background: var(--pan-navy);
+  color: #fff;
+  font: 500 13px/1.45 var(--font-body, Montserrat, sans-serif);
+  box-shadow: 0 16px 40px -12px rgba(22, 26, 46, .5);
+  pointer-events: auto;
+  animation: pan-toast-in .32s cubic-bezier(.16, 1, .3, 1);
+}
+
+.pan-toast--ok { background: #10592f; }
+.pan-toast--err { background: #8c0f1c; }
+.pan-toast__x {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: inherit;
+  opacity: .65;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+.pan-toast__x:hover { opacity: 1; }
+
+@keyframes pan-toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------------------------------------------------------------------
+   LES PASTILLES D'ÉTAT
+   --------------------------------------------------------------------- */
+.pan-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font: 600 11px/1.5 var(--font-body, Montserrat, sans-serif);
+  white-space: nowrap;
+}
+
+.pan-tag--ok { background: rgba(22, 163, 74, .12); color: #10592f; }
+.pan-tag--att { background: rgba(180, 83, 9, .12); color: #8a4009; }
+.pan-tag--ko { background: rgba(232, 0, 28, .1); color: #a20014; }
+.pan-tag--neutre { background: rgba(32, 37, 75, .08); color: var(--pan-navy); }
+
+/* ---------------------------------------------------------------------
+   AU DOIGT — le rail devient une barre en bas, les tableaux des cartes.
+
+   Le panneau se consulte au comptoir, sur un téléphone, entre deux
+   cours. Un tableau à dix colonnes dans 375 px ne se consulte pas : il
+   se subit. Chaque ligne devient une carte, et l'en-tête de colonne
+   passe devant la valeur (`data-l`) pour qu'on sache ce qu'on lit.
+   --------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .pan-shell {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px 12px calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pan-rail {
+    position: fixed;
+    inset: auto 0 0 0;
+    top: auto;
+    z-index: 60;
+    flex-direction: row;
+    gap: 0;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+    border-radius: 0;
+    border-width: 1px 0 0;
+    box-shadow: 0 -6px 24px -10px rgba(22, 26, 46, .28);
+  }
+
+  .pan-rail__brand,
+  .pan-rail__foot { display: none; }
+
+  .pan-nav {
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 56px;   /* cible tactile confortable, au-delà des 44 px */
+    padding: 7px 4px;
+    justify-content: center;
+    font-size: 10.5px;
+    text-align: center;
+  }
+
+  .pan-nav__ico { width: 19px; height: 19px; }
+
+  .pan-nav__n {
+    position: absolute;
+    top: 4px;
+    right: calc(50% - 22px);
+    margin: 0;
+  }
+  .pan-nav { position: relative; }
+
+  .pan-toasts { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+
+  /* Les tableaux deviennent des cartes */
+  .pan-table--cartes thead { display: none; }
+
+  .pan-table--cartes tbody tr {
+    display: block;
+    margin: 10px;
+    padding: 4px 0;
+    border: 1px solid var(--pan-line);
+    border-radius: var(--pan-r-sm);
+    background: var(--pan-card);
+  }
+
+  .pan-table--cartes tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 8px 13px;
+    border: 0;
+    white-space: normal;
+    text-align: right;
+  }
+
+  .pan-table--cartes tbody td::before {
+    content: attr(data-l);
+    flex: 0 0 auto;
+    font: 600 10.5px/1.3 var(--font-body, Montserrat, sans-serif);
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--pan-mute);
+    text-align: left;
+  }
+
+  /* Une cellule vide de libellé (les boutons d'action) prend toute la
+     largeur au lieu de laisser un blanc qui ne dit rien. */
+  .pan-table--cartes tbody td[data-l=""] { justify-content: flex-end; }
+  .pan-table--cartes tbody td[data-l=""]::before { content: none; }
+}
+
+/* ---------------------------------------------------------------------
+   CE QUE LE CLAVIER DOIT VOIR.
+   Un contour de focus visible partout — le panneau se pilote aussi sans
+   souris, et un contour supprimé est une porte fermée.
+   --------------------------------------------------------------------- */
+.pan-shell :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--pan-navy);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pan-squelette span { animation: none; }
+  .pan-toast { animation: none; }
+  button.pan-kpi:hover { transform: none; }
+}
