@@ -391,6 +391,14 @@
     document.getElementById('pe_installments').value = p.installments_note || '';
     document.getElementById('pe_benefits').value = Array.isArray(p.benefits) ? p.benefits.join('\n') : '';
     document.getElementById('pe_search').value = p.deciplus_product_search || '';
+    /* Le prix se saisit en EUROS et se stocke en centimes : demander des
+       centimes a un humain, c'est fabriquer l'erreur de facteur cent. */
+    document.getElementById('pe_price_eur').value =
+      p.price_cents != null ? (Number(p.price_cents) / 100).toFixed(2).replace(/\.00$/, '') : '';
+    document.getElementById('pe_iban').value = p.requires_iban ? '1' : '';
+    document.getElementById('pe_promo_start').value = (p.promo_start || '').slice(0, 10);
+    document.getElementById('pe_promo_end').value = (p.promo_end || '').slice(0, 10);
+    document.getElementById('pe_image').value = p.image || '';
     document.getElementById('pe_msg').textContent = '';
   }
 
@@ -421,6 +429,16 @@
       benefits,
       deciplus_product_search: document.getElementById('pe_search').value || null,
     };
+    /* Un champ laisse VIDE ne doit rien ecraser : on ne l'envoie pas.
+       Envoyer `null` effacerait le prix au premier enregistrement d'une
+       modification de libelle. */
+    const eur = document.getElementById('pe_price_eur').value.trim();
+    if (eur !== '') body.price_cents = Math.round(parseFloat(eur.replace(',', '.')) * 100);
+    body.requires_iban = document.getElementById('pe_iban').value === '1';
+    body.promo_start = document.getElementById('pe_promo_start').value || null;
+    body.promo_end = document.getElementById('pe_promo_end').value || null;
+    const img = document.getElementById('pe_image').value.trim();
+    if (img !== '') body.image = img;
     const msg = document.getElementById('pe_msg');
     msg.textContent = 'Enregistrement…';
     msg.className = 'form-msg';
