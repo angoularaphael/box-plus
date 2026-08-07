@@ -538,6 +538,63 @@
     chercheur?.addEventListener("input", () => setTimeout(verifier, 0));
   }
 
+  /* ------------------------------------------------------------------
+     LA PAGINATION.
+     On MASQUE, on ne retire pas : le tri et la recherche de admin.js
+     travaillent sur la liste complete, la pagination choisit seulement la
+     fenetre visible. Une pagination qui amputerait les donnees casserait
+     le tri de la colonne suivante.
+     ------------------------------------------------------------------ */
+  const PAR_PAGE = 25;
+
+  function paginer(table) {
+    const corps = $("tbody", table);
+    if (!corps || table.dataset.panPage) return;
+    table.dataset.panPage = "1";
+    let page = 1;
+
+    const barre = document.createElement("div");
+    barre.className = "pan-pagination";
+    barre.innerHTML =
+      `<span class="pan-pagination__n" aria-live="polite"></span>
+       <span class="pan-pagination__b">
+         <button type="button" class="btn sm secondary" data-p="prec">Précédent</button>
+         <button type="button" class="btn sm secondary" data-p="suiv">Suivant</button>
+       </span>`;
+    (table.closest(".admin-table-wrap") || table).after(barre);
+
+    const bPrec = $('[data-p="prec"]', barre);
+    const bSuiv = $('[data-p="suiv"]', barre);
+
+    const peindre = () => {
+      const lignes = [...corps.rows].filter((r) => !r.dataset.panVide);
+      const total = lignes.length;
+      const pages = Math.max(1, Math.ceil(total / PAR_PAGE));
+      if (page > pages) page = pages;
+      const debut = (page - 1) * PAR_PAGE;
+      lignes.forEach((r, i) => { r.hidden = i < debut || i >= debut + PAR_PAGE; });
+      /* Sous le seuil, la barre disparait : trois boutons pour douze lignes,
+         c'est du chrome qui ne sert personne. */
+      barre.hidden = total <= PAR_PAGE;
+      $(".pan-pagination__n", barre).textContent =
+        total ? `${debut + 1}–${Math.min(debut + PAR_PAGE, total)} sur ${total}` : "";
+      bPrec.disabled = page <= 1;
+      bSuiv.disabled = page >= pages;
+    };
+
+    bPrec.onclick = () => { page--; peindre(); table.scrollIntoView({ block: "start", behavior: "smooth" }); };
+    bSuiv.onclick = () => { page++; peindre(); table.scrollIntoView({ block: "start", behavior: "smooth" }); };
+
+    /* Toute reecriture du tableau (recherche, filtre, rechargement) remet
+       a la premiere page : rester page 4 apres une recherche qui ne rend
+       que dix resultats afficherait un tableau vide sans raison. */
+    new MutationObserver(() => { page = 1; peindre(); }).observe(corps, { childList: true });
+    /* Le tri reordonne SANS changer le nombre de lignes : l'observateur ne
+       se declenche pas. On repeint donc aussi apres chaque tri. */
+    $$(".pan-th-sort", table).forEach((b) => b.addEventListener("click", () => setTimeout(peindre, 0)));
+    peindre();
+  }
+
   /* ==================================================================
      6. DÉMARRAGE
      ================================================================== */
@@ -560,7 +617,7 @@
       const t = document.getElementById(idT);
       const s = document.getElementById(idS);
       habillerRecherche(s);
-      if (t) { enrichirTableau(t); surveillerVide(t, s); }
+      if (t) { enrichirTableau(t); surveillerVide(t, s); paginer(t); }
     });
 
     /* La route d'arrivée : on respecte le fragment s'il en porte un
