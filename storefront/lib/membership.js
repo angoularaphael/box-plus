@@ -62,15 +62,67 @@ async function enqueueCancelRequest(body = {}) {
     sale_type: 'none',
   };
   const result = await dispatchOrder(payload);
+  // Enregistrement statut pour le suivi front (spinner + mismatch en direct)
+  try {
+    const { saveOrderAsync } = require('./order-persistence');
+    await saveOrderAsync({
+      order_id: orderId,
+      action: 'cancel',
+      cancel_status: 'pending',
+      customer,
+      created_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    logWarn('Statut résiliation non persisté', { order_id: orderId, error: err.message });
+  }
   return { order_id: orderId, ...result };
 }
 
-async function sendCancelMismatchEmail(identity = {}) {
+const CANCEL_FIELD_LABELS = {
+  last_name: 'Nom',
+  first_name: 'Prénom',
+  phone: 'Téléphone',
+  birthdate: 'Date de naissance',
+};
+
+async function updateCancelStatus(orderId, { status, mismatch_fields, reason, cancelled_count } = {}) {
+  const { loadOrder, saveOrderAsync } = require('./order-persistence');
+  const record = (await loadOrder(orderId)) || { order_id: orderId, action: 'cancel' };
+  record.cancel_status = status || record.cancel_status || 'pending';
+  record.mismatch_fields = Array.isArray(mismatch_fields) ? mismatch_fields : record.mismatch_fields || [];
+  record.cancel_status_reason = reason || record.cancel_status_reason || null;
+  if (cancelled_count != null) record.cancelled_count = cancelled_count;
+  record.cancel_status_at = new Date().toISOString();
+  await saveOrderAsync(record);
+  return record;
+}
+
+async function getCancelStatus(orderId) {
+  const { loadOrder } = require('./order-persistence');
+  const record = await loadOrder(orderId);
+  if (!record) return null;
+  return {
+    order_id: orderId,
+    status: record.cancel_status || 'pending',
+    mismatch_fields: record.mismatch_fields || [],
+    reason: record.cancel_status_reason || null,
+    customer: record.customer || null,
+  };
+}
+
+async function sendCancelMismatchEmail(identity = {}, mismatchFields = []) {
   if (!identity?.email || !isConfigured()) return { sent: false };
   const prenom = identity.first_name || '';
+  const fields = (mismatchFields || [])
+    .map((f) => CANCEL_FIELD_LABELS[f])
+    .filter(Boolean);
+  const fieldsHtml = fields.length
+    ? `<p>Champ(s) en cause : <strong>${fields.join(', ')}</strong>.</p>`
+    : '';
   const html = `<p>Bonjour ${prenom},</p>
     <p>Nous avons bien reçu votre demande de résiliation, mais <strong>les informations renseignées ne correspondent pas</strong> à celles enregistrées sur votre fiche adhérent Boxing Center.</p>
-    <p>Pour des raisons de sécurité, une seule information incorrecte (nom, prénom, date de naissance, téléphone, adresse, code postal ou ville) empêche le traitement automatique.</p>
+    <p>Pour des raisons de sécurité, une seule information incorrecte (nom, prénom, téléphone ou date de naissance) empêche le traitement automatique.</p>
+    ${fieldsHtml}
     <p>Si vous souhaitez vraiment résilier, merci de <strong>vérifier que toutes les informations sont exactes</strong> — telles qu’elles figurent sur votre contrat / fiche adhérent — puis de renouveler la demande depuis <a href="https://box-plus.vercel.app/gerer-abonnement">Gérer mon abonnement</a>.</p>
     <p>En cas de doute, contactez votre manager de salle ou écrivez-nous à boxingcenter31@gmail.com.</p>
     <p>Sportivement,<br/>Boxing Center</p>`;
@@ -166,4 +218,7 @@ module.exports = {
   enqueueCancelRequest,
   enqueueChangeAfterPayment,
   sendCancelMismatchEmail,
+  updateCancelStatus,
+  getCancelStatus,
+  CANCEL_FIELD_LABELS,
 };

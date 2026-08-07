@@ -38,6 +38,25 @@
     return product.duration_label || 'Selon formule';
   }
 
+  function offerDescription(product) {
+    if (product.description) return product.description;
+    const n = String(product.name || '');
+    if (/comptant/i.test(n) || product.subsection === 'comptant') {
+      const dur = formatDuration(product);
+      return `Réglez une seule fois et entraînez-vous pendant ${dur} : accès illimité aux salles et à toutes les disciplines, sans aucun prélèvement mensuel.`;
+    }
+    if (/4\s*semaines/i.test(n) || product.requires_iban) {
+      return 'Formule flexible sans engagement : prélèvement toutes les 4 semaines, résiliable à tout moment. Accès illimité aux salles et disciplines.';
+    }
+    if (/baby\s*boxe/i.test(n)) {
+      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison.';
+    }
+    if (/educative|éducative/i.test(n)) {
+      return 'Boxe éducative pour enfants et ados : technique, respect et confiance en soi, tout au long de la saison.';
+    }
+    return '';
+  }
+
   function isFeaturedOffer(product, opts = {}) {
     if (product.featured_home) return true;
     const ids = opts.featuredIds || [];
@@ -64,6 +83,7 @@
         <div class="offer-price">${esc(price)}</div>
         ${product.price_subtitle ? `<div class="offer-price-sub">${esc(product.price_subtitle)}</div>` : ''}
         ${product.installments_note ? `<div class="offer-price-sub">${esc(product.installments_note)}</div>` : ''}
+        ${offerDescription(product) ? `<p class="offer-desc">${esc(offerDescription(product))}</p>` : ''}
         <ul class="offer-benefits">
           ${list.map((b) => `<li>${esc(b)}</li>`).join('')}
         </ul>

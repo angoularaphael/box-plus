@@ -146,11 +146,16 @@ function attachLegacyIds(products) {
   } catch {
     return products;
   }
-  const byName = new Map(staticProducts.map((p) => [normalizeText(p.name), p.id]));
+  const byName = new Map(staticProducts.map((p) => [normalizeText(p.name), p]));
+  const inheritedKeys = ['description', 'tagline', 'audience', 'benefits', 'duration_label', 'badge'];
   for (const product of products) {
-    const legacy = byName.get(normalizeText(product.name));
-    if (legacy && legacy !== product.id) {
-      product.legacy_id = legacy;
+    const staticP = byName.get(normalizeText(product.name));
+    if (!staticP) continue;
+    if (staticP.id && staticP.id !== product.id) {
+      product.legacy_id = staticP.id;
+    }
+    for (const key of inheritedKeys) {
+      if (product[key] == null && staticP[key] != null) product[key] = staticP[key];
     }
   }
   return products;

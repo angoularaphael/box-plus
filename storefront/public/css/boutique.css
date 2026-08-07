@@ -1001,6 +1001,36 @@ input:focus, select:focus, textarea:focus {
 .chat-chip:hover { border-color: var(--bc-navy); }
 .chat-chip.danger { border-color: #c62828; color: #c62828; }
 
+.chat-form input.field-error,
+.chat-form select.field-error {
+  border-color: #d33 !important;
+  background: #fff5f5;
+  box-shadow: 0 0 0 2px rgba(221, 51, 51, 0.15);
+  animation: field-error-shake 0.35s ease;
+}
+
+@keyframes field-error-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.cancel-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(32, 37, 75, 0.25);
+  border-top-color: var(--bc-navy, #20254b);
+  border-radius: 50%;
+  vertical-align: -2px;
+  margin-right: 6px;
+  animation: cancel-spin 0.8s linear infinite;
+}
+
+@keyframes cancel-spin {
+  to { transform: rotate(360deg); }
+}
+
 .chat-form {
   padding: 12px;
   background: #fff;

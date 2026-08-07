@@ -60,6 +60,10 @@ window.BCCounselor = (function () {
           </form>`;
       } else if (step === 'retain') {
         footer = `
+          <form id="counselorMore" class="chat-compose">
+            <input id="counselorMoreMsg" placeholder="Répondre à David…" autocomplete="off" ${busy ? 'disabled' : ''} />
+            <button type="submit" class="btn sm" ${busy ? 'disabled' : ''}>Envoyer</button>
+          </form>
           <div class="chat-quick">
             <button type="button" class="chat-chip" id="keepAbo" ${busy ? 'disabled' : ''}>Je reste — merci pour les infos</button>
             <button type="button" class="chat-chip danger" id="stillCancel" ${busy ? 'disabled' : ''}>Continuer vers la résiliation</button>
@@ -163,7 +167,7 @@ window.BCCounselor = (function () {
             );
           } else {
             replySoon(
-              'Je suis désolé, je traite uniquement les demandes de résiliation. Pour le reste : <a href="https://boxingcenter.fr" target="_blank" rel="noopener">boxingcenter.fr</a> ou le standard du club.',
+              'Je suis désolé, je traite uniquement les demandes de résiliation. Pour le reste : <a href="https://boxingcenter.fr" target="_blank" rel="noopener">boxingcenter.fr</a> ou le standard du club au <a href="tel:+33562244682">05 62 24 46 82</a>.',
               'done'
             );
           }
@@ -201,6 +205,18 @@ window.BCCounselor = (function () {
       }
 
       if (step === 'retain') {
+        const more = root.querySelector('#counselorMore');
+        if (more) {
+          more.onsubmit = (e) => {
+            e.preventDefault();
+            if (busy) return;
+            const msg = root.querySelector('#counselorMoreMsg').value.trim();
+            if (!msg) return;
+            freeText = `${freeText}\n${msg}`.trim();
+            push('user', esc(msg));
+            askAiGuide();
+          };
+        }
         const keep = root.querySelector('#keepAbo');
         const still = root.querySelector('#stillCancel');
         if (keep) {
@@ -240,7 +256,7 @@ window.BCCounselor = (function () {
             if (busy) return;
             push('user', 'Oui, je confirme');
             replySoon(
-              'Très bien. Merci de renseigner les informations ci-dessous — elles doivent correspondre exactement à votre fiche adhérent (nom, prénom, naissance, téléphone, adresse).',
+              'Très bien. Merci de renseigner les informations ci-dessous — le nom, le prénom, le téléphone et la date de naissance doivent correspondre exactement à votre fiche adhérent.',
               'form'
             );
           };

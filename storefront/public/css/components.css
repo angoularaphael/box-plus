@@ -160,6 +160,20 @@
   margin-bottom: 12px;
 }
 
+.offer-desc {
+  font-size: 13.5px;
+  color: var(--bc-muted);
+  line-height: 1.5;
+  margin: 6px 0 4px;
+}
+
+.offer-desc {
+  font-size: 13.5px;
+  color: var(--bc-muted);
+  line-height: 1.5;
+  margin: 4px 0 10px;
+}
+
 .offer-benefits {
   list-style: none;
   flex: 1;

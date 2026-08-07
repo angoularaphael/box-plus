@@ -172,6 +172,37 @@ function stripeForOrder(order) {
   return stripeForGym(order?.customer_full?.gym || order?.payment?.gym);
 }
 
+/**
+ * Le webhook Stripe peut arriver après le retour navigateur : avant de refuser
+ * avec payment_required, on revérifie la session Stripe en direct et on marque
+ * la commande payée si le paiement est bien encaissé.
+ */
+async function refreshPaymentFromStripe(order, sessionIdHint) {
+  if (!order || order.payment?.status === 'paid') return order;
+  const sessionId = sessionIdHint || order.payment?.stripe_session_id;
+  if (!sessionId) return order;
+  try {
+    const client = stripeForOrder(order) || stripe;
+    if (!client) return order;
+    const session = await client.checkout.sessions.retrieve(sessionId);
+    const lifecycleId = session.metadata?.lifecycle_order_id || session.metadata?.order_id;
+    if (isStripeCheckoutPaid(session) && (!lifecycleId || lifecycleId === order.order_id)) {
+      const updated = await markPaymentPaid(order.order_id, {
+        method: 'stripe',
+        stripe_session_id: session.id,
+        stripe_subscription_id: session.subscription || order.payment?.stripe_subscription_id || null,
+        iban: order.payment?.iban,
+        billing_plan: session.metadata?.billing_plan || order.payment?.billing_plan,
+      });
+      logInfo('Paiement confirmé via revérification Stripe', { order_id: order.order_id });
+      return updated || order;
+    }
+  } catch (err) {
+    logWarn('Revérification Stripe échouée', { order_id: order.order_id, error: err.message });
+  }
+  return order;
+}
+
 function inscriptionRedirect(order, stepOverride) {
   const step = stepOverride || order.step || STEPS.PAYMENT;
   const sid = order.payment?.stripe_session_id
@@ -208,6 +239,9 @@ function findProduct(productId) {
 async function dispatchLifecycleOrder(order) {
   const product = findProduct(order.product_id) || order.product_snapshot;
   const payload = buildOrderFromLifecycle(order, product);
+  if (!payload.photo_base64 && !payload.photo_path) {
+    logWarn('Dispatch bot sans photo membre', { order_id: order.order_id });
+  }
   const result = await dispatchOrder(payload);
   order.dispatched_at = new Date().toISOString();
   order.dispatch_result = { queued: result.queued, forwarded: result.forwarded };
@@ -1129,7 +1163,11 @@ function createApp() {
       if (!verifyAccess(order, token)) {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
+      let orderRef = order;
       if (order.payment?.status !== 'paid' && order.product_snapshot?.requires_payment !== false) {
+        orderRef = await refreshPaymentFromStripe(order, req.body.session_id || req.query.session_id);
+      }
+      if (orderRef.payment?.status !== 'paid' && orderRef.product_snapshot?.requires_payment !== false) {
         return res.status(402).json({
           ok: false,
           error: 'payment_required',
@@ -1264,12 +1302,17 @@ function createApp() {
       if (!full.gym) full.gym = order.customer_full?.gym;
 
       if (product?.requires_payment !== false && order.payment?.status !== 'paid') {
-        return res.status(402).json({
-          ok: false,
-          error: 'payment_required',
-          message:
-            'Le paiement n\'a pas été confirmé — vous n\'avez pas été débité. Revenez à l\'étape paiement.',
-        });
+        const refreshed = await refreshPaymentFromStripe(order, req.body.session_id || req.query.session_id);
+        if (refreshed?.payment?.status === 'paid') {
+          order.payment = refreshed.payment;
+        } else {
+          return res.status(402).json({
+            ok: false,
+            error: 'payment_required',
+            message:
+              'Le paiement n\'a pas été confirmé — vous n\'avez pas été débité. Revenez à l\'étape paiement.',
+          });
+        }
       }
 
       const plan = full.billing_plan || order.payment?.billing_plan;
@@ -1330,12 +1373,17 @@ function createApp() {
 
       const product = findProduct(order.product_id) || order.product_snapshot;
       if (product?.requires_payment !== false && order.payment?.status !== 'paid') {
-        return res.status(402).json({
-          ok: false,
-          error: 'payment_required',
-          message:
-            'Le paiement n\'a pas été confirmé — vous n\'avez pas été débité. Revenez à l\'étape paiement.',
-        });
+        const refreshed = await refreshPaymentFromStripe(order, req.body.session_id);
+        if (refreshed?.payment?.status === 'paid') {
+          order.payment = refreshed.payment;
+        } else {
+          return res.status(402).json({
+            ok: false,
+            error: 'payment_required',
+            message:
+              'Le paiement n\'a pas été confirmé — vous n\'avez pas été débité. Revenez à l\'étape paiement.',
+          });
+        }
       }
 
       const { consent_cgv, consent_reglement, consent_medical, signature_image } = req.body;
@@ -1774,9 +1822,63 @@ function createApp() {
       return res.status(401).json({ ok: false, error: 'unauthorized' });
     }
     try {
-      const { sendCancelMismatchEmail } = require('./lib/membership');
-      const mail = await sendCancelMismatchEmail(req.body || {});
+      const { sendCancelMismatchEmail, updateCancelStatus } = require('./lib/membership');
+      const body = req.body || {};
+      const mail = await sendCancelMismatchEmail(body, body.mismatch_fields || []);
+      if (body.order_id) {
+        await updateCancelStatus(body.order_id, {
+          status: 'mismatch',
+          mismatch_fields: body.mismatch_fields || [],
+          reason: body.reason || 'identity_mismatch',
+        }).catch(() => {});
+      }
       res.json({ ok: true, mail });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Statut résiliation poussé par le bot (mismatch / done / error)
+  app.post('/api/internal/cancel-status', async (req, res) => {
+    if (!isAuthorizedSync(req)) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    try {
+      const body = req.body || {};
+      if (!body.order_id) return res.status(400).json({ ok: false, error: 'order_id requis' });
+      const { updateCancelStatus, sendCancelMismatchEmail, getCancelStatus } = require('./lib/membership');
+      const record = await updateCancelStatus(body.order_id, {
+        status: body.status || 'pending',
+        mismatch_fields: body.mismatch_fields || [],
+        reason: body.reason || null,
+        cancelled_count: body.cancelled_count,
+      });
+      if (body.status === 'mismatch') {
+        const identity = body.customer || record.customer || {};
+        await sendCancelMismatchEmail(identity, body.mismatch_fields || []).catch(() => {});
+      }
+      res.json({ ok: true, status: (await getCancelStatus(body.order_id))?.status });
+    } catch (err) {
+      logError('Erreur cancel-status interne', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Suivi front (spinner résiliation) — pas de données sensibles renvoyées
+  app.get('/api/membership/cancel-status', async (req, res) => {
+    try {
+      const orderId = String(req.query.order || '').trim();
+      if (!orderId || !/^CANCEL-/.test(orderId)) {
+        return res.status(400).json({ ok: false, error: 'order invalide' });
+      }
+      const { getCancelStatus } = require('./lib/membership');
+      const status = await getCancelStatus(orderId);
+      if (!status) return res.json({ ok: true, status: 'pending', mismatch_fields: [] });
+      res.json({
+        ok: true,
+        status: status.status,
+        mismatch_fields: status.mismatch_fields || [],
+      });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
