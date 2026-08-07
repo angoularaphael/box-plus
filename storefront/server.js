@@ -640,9 +640,16 @@ function createApp() {
       const fin = process.env.OFFRE_RENTREE_FIN || null;   // AAAA-MM-JJ, ou null si sans date de fin
       const ids = ['offre-duo', 'offre-saison'];
       const orders = await listAllOrdersAsync();
+      /* L'identifiant de l'offre ne vit pas toujours au même endroit selon
+         l'ancienneté de la commande : `product_snapshot.id` pour les récentes,
+         `legacy_id` pour celles importées de PrestaShop, `product_id` à plat
+         pour les plus anciennes. On regarde les trois — un compteur qui
+         interroge le mauvais champ affiche « 60 places » pour l'éternité et
+         personne ne s'en aperçoit. */
       const vendues = orders.filter((o) => {
-        const id = o.product_snapshot?.id || o.product_id;
-        return ids.includes(id) && o.payment?.status === 'paid';
+        if (o.payment?.status !== 'paid') return false;
+        const s = o.product_snapshot || {};
+        return ids.includes(s.id) || ids.includes(s.legacy_id) || ids.includes(o.product_id);
       }).length;
       /* Jamais en dessous de zéro, et jamais au-dessus du quota : le nombre
          affiché reste lisible même si le quota est rabaissé en cours de route. */
