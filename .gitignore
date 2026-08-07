@@ -32,3 +32,12 @@ Thumbs.db
 # Playwright
 playwright-report/
 test-results/
+
+# Les secrets, sous toutes leurs orthographes.
+# .env etait couvert, « env » (sans point) ne l'etait pas — et un fichier de
+# 51 variables reelles (Stripe, Supabase, mot de passe admin, cles API) a
+# failli entrer dans un commit. On couvre desormais les deux, et les variantes.
+env
+env.*
+*.env
+!.env.example

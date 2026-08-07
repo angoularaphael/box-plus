@@ -54,7 +54,14 @@ const SALLES = [
   { name: 'Ramonville', street: '33 rue des Ormes', postal: '31520', city: 'Ramonville-Saint-Agne', image: '/img/bc/gym/gym-06.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/' },
   { name: 'États-Unis', street: '388 avenue des États-Unis', postal: '31200', city: 'Toulouse', image: '/img/bc/gym/gym-11.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/' },
   { name: 'Saint-Cyprien', street: '11 rue Sainte-Lucie', postal: '31300', city: 'Toulouse', image: '/img/bc/gym/gym-16.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/' },
-  { name: 'Portet', street: '', postal: '31120', city: 'Portet-sur-Garonne', image: '/img/bc/gym/portet-exterior.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/' },
+  /* Portet : la rue manquait (AMÉLIORATIONS.md § 3, « demander au club »).
+     Le club l'a écrite lui-même sur son site — src/content.json, clé
+     site.address — et Portet est la seule salle à publier SON PROPRE
+     numéro, différent de celui du réseau. Google recoupe ces informations
+     d'une source à l'autre : une adresse absente et un téléphone qui ne
+     correspond pas à ce qu'affiche le site de la salle affaiblissent la
+     fiche locale au lieu de la nourrir. */
+  { name: 'Portet', street: '61 route d’Espagne', postal: '31120', city: 'Portet-sur-Garonne', telephone: '+33687900216', image: '/img/bc/gym/portet-exterior.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/' },
 ];
 
 const DISCIPLINES = [
@@ -104,7 +111,10 @@ function gymsJsonLd() {
     name: `Boxing Center — ${s.name}`,
     url: s.url || `${SITE_URL}/`,
     image: `${SITE_URL}${s.image}`,
-    telephone: BUSINESS.telephone,
+    /* Le numéro de la salle quand elle en publie un ; celui du réseau
+       sinon. On ne fait pas dire à Google ce que le site de la salle
+       contredit. */
+    telephone: s.telephone || BUSINESS.telephone,
     openingHours: BUSINESS.openingHours,
     parentOrganization: { '@id': `${SITE_URL}/#org` },
     address: {

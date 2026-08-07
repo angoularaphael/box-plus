@@ -613,6 +613,49 @@ function createApp() {
     }
   });
 
+  /* ==================================================================
+     LES PLACES QUI RESTENT SUR L'OFFRE DE RENTRÉE — le compte VRAI.
+
+     Les sites du club affichent « plus que N places ». Ce nombre doit
+     descendre pour de bon, sinon c'est un compteur de vitrine : en France,
+     annoncer une disponibilité limitée qui n'existe pas est une pratique
+     commerciale trompeuse (code de la consommation, art. L.121-2 et
+     L.121-4), et le fabriquer expose le club à bien plus que ce qu'il
+     rapporte. On le branche donc sur la seule source qui ne ment pas :
+     les inscriptions RÉELLEMENT payées sur cette offre.
+
+     Le quota est une décision commerciale du patron (OFFRE_RENTREE_QUOTA) :
+     c'est lui qui choisit combien de places il ouvre. Le reste est de
+     l'arithmétique.
+
+     Publique et anonyme : trois nombres et une date, aucune donnée
+     personnelle, rien qui identifie un adhérent. CORS ouvert parce que
+     les quatre sites du club l'appellent depuis leurs propres domaines.
+     ================================================================== */
+  app.get('/api/offre-rentree/places', async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Cache-Control', 'public, max-age=120');   // 2 min : assez frais, sans marteler le stockage
+    try {
+      const quota = Number(process.env.OFFRE_RENTREE_QUOTA || 60);
+      const fin = process.env.OFFRE_RENTREE_FIN || null;   // AAAA-MM-JJ, ou null si sans date de fin
+      const ids = ['offre-duo', 'offre-saison'];
+      const orders = await listAllOrdersAsync();
+      const vendues = orders.filter((o) => {
+        const id = o.product_snapshot?.id || o.product_id;
+        return ids.includes(id) && o.payment?.status === 'paid';
+      }).length;
+      /* Jamais en dessous de zéro, et jamais au-dessus du quota : le nombre
+         affiché reste lisible même si le quota est rabaissé en cours de route. */
+      const restantes = Math.max(0, Math.min(quota, quota - vendues));
+      res.json({ ok: true, quota, vendues, restantes, fin });
+    } catch (err) {
+      /* En cas de panne, on ne devine pas un nombre : on dit qu'on ne sait
+         pas, et les sites n'affichent alors aucun compteur. Mieux vaut pas
+         de compteur qu'un compteur inventé. */
+      res.json({ ok: false, error: err.message });
+    }
+  });
+
   app.get('/api/materiel', (req, res) => {
     try {
       const catalog = loadMaterielCatalog();
