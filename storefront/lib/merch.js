@@ -257,6 +257,63 @@ async function setFeaturedHomeAsync(ids) {
   return saveMerchAsync(merch);
 }
 
+/* ====================================================================
+   L'OFFRE DE RENTRÉE — les places, pilotées par le patron.
+
+   Le compteur « plus que N places » affiché sur les quatre sites du club
+   vient d'ICI. Ce n'est pas un nombre calculé dans le vide : c'est une
+   décision commerciale, celle du patron, qui décide combien de places il
+   ouvre à ce prix et où en est le compte. Il le règle depuis le panneau
+   d'administration ; les sites ne font que l'afficher.
+
+   `restantes` est ce qu'il a saisi la dernière fois. `ancre_ventes`
+   mémorise combien d'inscriptions en ligne étaient déjà payées à cet
+   instant : les ventes qui arrivent ENSUITE décrémentent le compteur
+   toutes seules, sans qu'il ait à y revenir. Il peut réajuster à tout
+   moment — une place vendue au comptoir n'existe nulle part ailleurs.
+
+   Rangé dans le magasin `merch` parce que celui-ci sait déjà écrire dans
+   un fichier en local ET dans Supabase sur Vercel. Un fichier JSON posé
+   à côté serait effacé à chaque déploiement.
+   ==================================================================== */
+const OFFRE_DEFAUT = { quota: 0, restantes: 0, fin: '', ancre_ventes: 0, maj: null };
+
+function getOffreRentree() {
+  const merch = loadMerch();
+  return { ...OFFRE_DEFAUT, ...(merch.offre_rentree || {}) };
+}
+
+async function setOffreRentreeAsync(patch, ventesEnLigne = 0) {
+  const merch = loadMerch();
+  const actuel = { ...OFFRE_DEFAUT, ...(merch.offre_rentree || {}) };
+  const entier = (v, repli) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : repli;
+  };
+  const neuf = {
+    quota: entier(patch.quota, actuel.quota),
+    restantes: entier(patch.restantes, actuel.restantes),
+    /* Une date vide efface l'échéance : c'est la façon d'éteindre le
+       compte à rebours sans avoir à toucher au reste. */
+    fin: patch.fin === undefined ? actuel.fin : String(patch.fin || '').slice(0, 10),
+    /* On repose l'ancre à chaque réglage : le patron vient de dire ce qui
+       reste AUJOURD'HUI, les ventes d'hier sont déjà dans son chiffre. */
+    ancre_ventes: entier(ventesEnLigne, 0),
+    maj: new Date().toISOString(),
+  };
+  if (neuf.restantes > neuf.quota && neuf.quota > 0) neuf.restantes = neuf.quota;
+  merch.offre_rentree = neuf;
+  await saveMerchAsync(merch);
+  return neuf;
+}
+
+/** Ce que les sites doivent afficher, ventes en ligne déduites. */
+function placesRestantes(ventesEnLigne = 0) {
+  const o = getOffreRentree();
+  const depuisLeReglage = Math.max(0, ventesEnLigne - (o.ancre_ventes || 0));
+  return { ...o, restantes: Math.max(0, o.restantes - depuisLeReglage) };
+}
+
 function slugifyOfferId(text) {
   return String(text || '')
     .toLowerCase()
@@ -348,6 +405,9 @@ module.exports = {
   updateMaterielProduct,
   setFeaturedHome,
   setFeaturedHomeAsync,
+  getOffreRentree,
+  setOffreRentreeAsync,
+  placesRestantes,
   normalizeFeaturedIds,
   createManualOffer,
   loadMerchFresh,

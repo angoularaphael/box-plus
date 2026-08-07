@@ -511,6 +511,86 @@
     renderTable();
   }
 
+  /* ================================================================
+     LES PLACES DE L'OFFRE DE RENTREE.
+
+     Ce que le patron pose ici est ce que les quatre sites du club
+     affichent. On lui montre aussi l'ecart : combien d'inscriptions
+     payees en ligne sont deja tombees depuis son dernier reglage, et
+     donc quel nombre les visiteurs voient VRAIMENT en ce moment. Sans
+     cet ecart, il reglerait a l'aveugle.
+     ================================================================ */
+  function setPlacesMsg(text, type) {
+    const el = document.getElementById('placesMsg');
+    if (!el) return;
+    el.textContent = text || '';
+    el.className = 'form-msg' + (type ? ` ${type}` : '');
+  }
+
+  function peindrePlaces(d) {
+    const badge = document.getElementById('placesBadge');
+    const etat = document.getElementById('placesEtat');
+    if (!d || !d.ok) {
+      if (badge) badge.textContent = '—';
+      if (etat) etat.textContent = '';
+      return;
+    }
+    const r = d.reglage || {};
+    document.getElementById('placesQuota').value = r.quota || '';
+    document.getElementById('placesRestantes').value = r.restantes || '';
+    document.getElementById('placesFin').value = r.fin || '';
+    if (badge) badge.textContent = `${d.affiche} affichée${d.affiche > 1 ? 's' : ''}`;
+    if (etat) {
+      const ecart = (r.restantes || 0) - d.affiche;
+      etat.textContent = r.maj
+        ? `Réglé le ${formatDate(r.maj)} · ${d.ventes_en_ligne} inscription(s) payée(s) en ligne au total`
+          + (ecart > 0 ? ` · ${ecart} vendue(s) depuis votre réglage, déjà déduite(s)` : '')
+          + (d.affiche === 0 ? ' · les sites n’affichent plus rien (complet)' : '')
+        : 'Jamais réglé : les sites n’affichent aucun compteur.';
+    }
+  }
+
+  async function loadPlaces() {
+    try {
+      const res = await fetch('/api/admin/offre-rentree', { credentials: 'include', headers: headers(false) });
+      peindrePlaces(await res.json());
+    } catch { /* le panneau reste vide, ce qui est la bonne reponse */ }
+  }
+
+  const btnPlaces = document.getElementById('savePlaces');
+  if (btnPlaces) {
+    btnPlaces.onclick = async () => {
+      btnPlaces.disabled = true;
+      setPlacesMsg('Enregistrement…');
+      try {
+        const res = await fetch('/api/admin/offre-rentree', {
+          method: 'PUT',
+          credentials: 'include',
+          headers: headers(true),
+          body: JSON.stringify({
+            quota: document.getElementById('placesQuota').value,
+            restantes: document.getElementById('placesRestantes').value,
+            fin: document.getElementById('placesFin').value,
+          }),
+        });
+        const d = await res.json();
+        if (!res.ok || !d.ok) throw new Error(d.error || 'Enregistrement refusé');
+        peindrePlaces(d);
+        setPlacesMsg(
+          d.affiche > 0
+            ? `Enregistré — les sites affichent « plus que ${d.affiche} places ».`
+            : 'Enregistré — à zéro, les sites n’affichent aucun compteur.',
+          'ok'
+        );
+      } catch (err) {
+        setPlacesMsg(err.message || 'Enregistrement impossible', 'error');
+      } finally {
+        btnPlaces.disabled = false;
+      }
+    };
+    loadPlaces();
+  }
+
   document.getElementById('saveFeatured').onclick = async () => {
     const msg = document.getElementById('featuredMsg');
     msg.textContent = 'Enregistrement…';
