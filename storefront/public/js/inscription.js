@@ -200,10 +200,15 @@
       return `Paiement de : <strong>${amount}</strong>`;
     }
     if (product?.requires_iban || /4\s*semaines/i.test(String(product?.name || product?.duration_label || ''))) {
-      const period = /4\s*semaines/i.test(String(product?.name || '') + String(product?.duration_label || ''))
+      const haystack =
+        String(product?.name || '') +
+        String(product?.duration_label || '') +
+        String(product?.tagline || '') +
+        String(product?.id || '');
+      const period = /4[\s-]*sem/i.test(haystack)
         ? '4 semaines'
-        : String(product?.duration_label || 'période').replace(/^\//, '').trim() || 'période';
-      return `Paiement de la première échéance de : <strong>${amount}/(${period})</strong>`;
+        : String(product?.duration_label || '').replace(/^\//, '').trim() || 'mois';
+      return `Paiement de la première échéance de : <strong>${amount} / ${period}</strong>`;
     }
     return `Montant : <strong>${amount}</strong>`;
   }
@@ -448,8 +453,8 @@
             <label class="billing-choice">
               <input type="radio" name="billing_plan" value="rib" ${savedPlan !== 'paypal' ? 'checked' : ''} />
               <span class="billing-choice-text">
-                <strong>Prélèvement (RIB)</strong>
-                <small>1ère CB, puis SEPA</small>
+                <strong>Carte Bancaire</strong>
+                <small>1ère CB, puis prélèvement RIB</small>
                 ${paymentLogosHtml('card')}
               </span>
             </label>
@@ -457,7 +462,7 @@
               <input type="radio" name="billing_plan" value="paypal" ${savedPlan === 'paypal' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>PayPal</strong>
-                <small>1ère échéance PayPal, puis SEPA</small>
+                <small>1ère échéance PayPal, puis prélèvement RIB</small>
                 ${paymentLogosHtml('paypal')}
               </span>
             </label>
@@ -1026,21 +1031,39 @@
         return;
       }
       setMsg('Finalisation…');
-      const res = await fetch(`/api/orders/${state.orderId}/sign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: state.token,
-          session_id: state.sessionId || undefined,
-          consent_cgv: true,
-          consent_reglement: true,
-          consent_medical: true,
-          signature_image: pad.toDataURL(),
-        }),
+      const signBody = JSON.stringify({
+        token: state.token,
+        session_id: state.sessionId || undefined,
+        consent_cgv: true,
+        consent_reglement: true,
+        consent_medical: true,
+        signature_image: pad.toDataURL(),
       });
-      const data = await res.json();
+      const doSign = async () => {
+        const res = await fetch(`/api/orders/${state.orderId}/sign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: signBody,
+        });
+        return res.json();
+      };
+      let data = await doSign();
+      if (!data.ok && data.error === 'payment_required') {
+        // Le paiement peut être confirmé côté Stripe mais pas encore synchronisé :
+        // on resynchronise puis on retente automatiquement une fois.
+        setMsg('Vérification du paiement…');
+        if (state.sessionId) {
+          await fetch('/api/checkout/confirm-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: state.sessionId }),
+          }).catch(() => {});
+        }
+        await loadOrder();
+        data = await doSign();
+      }
       if (!data.ok) {
-        setMsg(data.error || 'Erreur', 'err');
+        setMsg(orderErrorMessage(data) || 'Erreur', 'err');
         return;
       }
       state.step = 8;

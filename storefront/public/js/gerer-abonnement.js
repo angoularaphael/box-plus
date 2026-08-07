@@ -29,25 +29,93 @@
     if (!root.dataset.ready) {
       root.dataset.ready = '1';
       window.BCCounselor.render(root, async (formData, msgEl) => {
-        msgEl.hidden = false;
-        msgEl.textContent = 'Envoi de la demande…';
-        msgEl.className = 'form-msg';
-        const res = await fetch('/api/membership/cancel', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
-        });
-        const data = await res.json();
+        const form = root.querySelector('#cancelForm');
+        const submitBtn = form?.querySelector('button[type="submit"]');
+        const FIELD_LABELS = {
+          last_name: 'Nom',
+          first_name: 'Prénom',
+          phone: 'Téléphone',
+          birthdate: 'Date de naissance',
+        };
+
+        const clearErrors = () => {
+          form?.querySelectorAll('.field-error').forEach((el) => el.classList.remove('field-error'));
+        };
+        const markErrors = (fields) => {
+          (fields || []).forEach((name) => {
+            const input = form?.querySelector(`[name="${name}"]`);
+            if (input) input.classList.add('field-error');
+          });
+        };
+        const setWaiting = (text) => {
+          msgEl.hidden = false;
+          msgEl.className = 'form-msg';
+          msgEl.innerHTML = `<span class="cancel-spinner" aria-hidden="true"></span> ${text}`;
+        };
+
+        clearErrors();
+        if (submitBtn) submitBtn.disabled = true;
+        setWaiting('Envoi de la demande…');
+
+        let data = {};
+        try {
+          const res = await fetch('/api/membership/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData),
+          });
+          data = await res.json();
+        } catch {
+          data = {};
+        }
         if (!data.ok) {
+          if (submitBtn) submitBtn.disabled = false;
           msgEl.textContent =
             data.error ||
             "Je suis désolé, mais nous n'avons pas pu trouver d'abonnement correspondant à ces informations.";
           msgEl.className = 'form-msg err';
           return;
         }
-        msgEl.textContent =
-          'Demande bien reçue. Notre équipe traite votre résiliation et vous enverra une confirmation par e-mail.';
-        msgEl.className = 'form-msg';
+
+        // Vérification en direct : le bot compare les infos à la fiche Deciplus
+        setWaiting('Vérification de vos informations sur votre fiche adhérent… Merci de patienter.');
+        const orderId = data.order_id;
+        const startedAt = Date.now();
+        const MAX_WAIT_MS = 3 * 60 * 1000;
+
+        const poll = async () => {
+          try {
+            const r = await fetch(`/api/membership/cancel-status?order=${encodeURIComponent(orderId)}`);
+            const s = await r.json();
+            if (s.ok && s.status === 'mismatch') {
+              const fields = s.mismatch_fields || [];
+              markErrors(fields);
+              const labels = fields.map((f) => FIELD_LABELS[f]).filter(Boolean);
+              msgEl.textContent = labels.length
+                ? `Ces informations ne correspondent pas à votre fiche adhérent : ${labels.join(', ')}. Corrigez les champs en rouge puis renvoyez la demande.`
+                : 'Vos informations ne correspondent pas à votre fiche adhérent. Vérifiez-les puis renvoyez la demande.';
+              msgEl.className = 'form-msg err';
+              if (submitBtn) submitBtn.disabled = false;
+              return;
+            }
+            if (s.ok && s.status === 'done') {
+              msgEl.textContent =
+                'Votre résiliation a bien été traitée. Une confirmation vous sera envoyée par e-mail.';
+              msgEl.className = 'form-msg';
+              return;
+            }
+          } catch {
+            /* réessayer */
+          }
+          if (Date.now() - startedAt < MAX_WAIT_MS) {
+            window.setTimeout(poll, 4000);
+          } else {
+            msgEl.textContent =
+              'Demande bien reçue. Notre équipe traite votre résiliation et vous enverra une confirmation par e-mail.';
+            msgEl.className = 'form-msg';
+          }
+        };
+        window.setTimeout(poll, 4000);
       });
     }
   }

@@ -158,9 +158,26 @@ function validateIbanForm(input, product = {}) {
   return errors;
 }
 
+function readPhotoBase64FromDisk(photoPath) {
+  try {
+    if (!photoPath) return null;
+    const fs = require('fs');
+    if (!fs.existsSync(photoPath)) return null;
+    const buf = fs.readFileSync(photoPath);
+    const ext = String(photoPath).split('.').pop().toLowerCase();
+    const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+    return `data:${mime};base64,${buf.toString('base64')}`;
+  } catch {
+    return null;
+  }
+}
+
 function buildOrderFromLifecycle(order, product) {
   const short = order.customer_short || {};
   const full = order.customer_full || {};
+  const photoPath = order.documents?.photo || full.photo_path || null;
+  let photoBase64 = order.documents?.photo_base64 || full.photo_base64 || null;
+  if (!photoBase64) photoBase64 = readPhotoBase64FromDisk(photoPath);
   return buildOrderPayload(
     {
       order_id: order.order_id,
@@ -181,8 +198,8 @@ function buildOrderFromLifecycle(order, product) {
       stripe_subscription_id: order.payment?.stripe_subscription_id,
       emergency_contact: full.emergency_contact,
       medical_info: full.medical_info,
-      photo_path: order.documents?.photo || full.photo_path || null,
-      photo_base64: order.documents?.photo_base64 || full.photo_base64 || null,
+      photo_path: photoPath,
+      photo_base64: photoBase64,
       badge_timing: order.badge_timing || order.payment?.badge_timing || null,
       badge_method: order.badge_method || order.payment?.badge_method || null,
     },

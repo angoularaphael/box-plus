@@ -9,6 +9,6 @@ Procédure humaine vs traces machine pour la session enregistrée.
 
 ### login-success
 - URL: https://manager.deciplus.pro/
-- Horodatage: 2026-06-30T22:16:00.965Z
+- Horodatage: 2026-08-07T14:46:12.469Z
 
 ## Champs formulaire détectés (change events)
