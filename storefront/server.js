@@ -56,6 +56,9 @@ const {
   hydrateMerchOnce,
   saveMerchAsync,
   normalizeFeaturedIds,
+  getOffreRentree,
+  setOffreRentreeAsync,
+  placesRestantes,
 } = require('./lib/merch');
 const {
   validateCartLines,
@@ -614,52 +617,78 @@ function createApp() {
   });
 
   /* ==================================================================
-     LES PLACES QUI RESTENT SUR L'OFFRE DE RENTRÉE — le compte VRAI.
+     LES PLACES DE L'OFFRE DE RENTRÉE — pilotées par le patron.
 
-     Les sites du club affichent « plus que N places ». Ce nombre doit
-     descendre pour de bon, sinon c'est un compteur de vitrine : en France,
-     annoncer une disponibilité limitée qui n'existe pas est une pratique
-     commerciale trompeuse (code de la consommation, art. L.121-2 et
-     L.121-4), et le fabriquer expose le club à bien plus que ce qu'il
-     rapporte. On le branche donc sur la seule source qui ne ment pas :
-     les inscriptions RÉELLEMENT payées sur cette offre.
+     Les quatre sites du club affichent « plus que N places ». Ce N est une
+     DÉCISION COMMERCIALE, pas un calcul : c'est le patron qui ouvre un
+     nombre de places à ce prix et qui dit où en est le compte. Il le règle
+     dans l'onglet « Offres » du panneau ; les sites ne font que l'afficher.
 
-     Le quota est une décision commerciale du patron (OFFRE_RENTREE_QUOTA) :
-     c'est lui qui choisit combien de places il ouvre. Le reste est de
-     l'arithmétique.
+     Le compte descend ensuite tout seul à chaque inscription payée en
+     ligne — mais une place vendue au comptoir n'existe nulle part ailleurs,
+     donc il peut réajuster quand il veut. C'est lui qui a le dernier mot,
+     et lui seul voit le chiffre exact dans la boutique.
 
-     Publique et anonyme : trois nombres et une date, aucune donnée
-     personnelle, rien qui identifie un adhérent. CORS ouvert parce que
-     les quatre sites du club l'appellent depuis leurs propres domaines.
+     La lecture est publique et anonyme : deux nombres et une date, aucune
+     donnée personnelle. CORS ouvert parce que les quatre sites du club
+     l'appellent depuis leurs propres domaines.
      ================================================================== */
+  const IDS_OFFRE = ['offre-duo', 'offre-saison'];
+
+  /** Inscriptions payées en ligne sur les offres concernées. */
+  async function ventesOffreEnLigne() {
+    const orders = await listAllOrdersAsync();
+    /* L'identifiant de l'offre ne vit pas toujours au même endroit selon
+       l'ancienneté de la commande : `product_snapshot.id` pour les récentes,
+       `legacy_id` pour celles importées de PrestaShop, `product_id` à plat
+       pour les plus anciennes. On regarde les trois — un compteur qui
+       interroge le mauvais champ ne bouge jamais et personne ne le remarque. */
+    return orders.filter((o) => {
+      if (o.payment?.status !== 'paid') return false;
+      const s = o.product_snapshot || {};
+      return IDS_OFFRE.includes(s.id) || IDS_OFFRE.includes(s.legacy_id) || IDS_OFFRE.includes(o.product_id);
+    }).length;
+  }
+
   app.get('/api/offre-rentree/places', async (req, res) => {
     res.set('Access-Control-Allow-Origin', '*');
-    res.set('Cache-Control', 'public, max-age=120');   // 2 min : assez frais, sans marteler le stockage
+    res.set('Cache-Control', 'public, max-age=60');
     try {
-      const quota = Number(process.env.OFFRE_RENTREE_QUOTA || 60);
-      const fin = process.env.OFFRE_RENTREE_FIN || null;   // AAAA-MM-JJ, ou null si sans date de fin
-      const ids = ['offre-duo', 'offre-saison'];
-      const orders = await listAllOrdersAsync();
-      /* L'identifiant de l'offre ne vit pas toujours au même endroit selon
-         l'ancienneté de la commande : `product_snapshot.id` pour les récentes,
-         `legacy_id` pour celles importées de PrestaShop, `product_id` à plat
-         pour les plus anciennes. On regarde les trois — un compteur qui
-         interroge le mauvais champ affiche « 60 places » pour l'éternité et
-         personne ne s'en aperçoit. */
-      const vendues = orders.filter((o) => {
-        if (o.payment?.status !== 'paid') return false;
-        const s = o.product_snapshot || {};
-        return ids.includes(s.id) || ids.includes(s.legacy_id) || ids.includes(o.product_id);
-      }).length;
-      /* Jamais en dessous de zéro, et jamais au-dessus du quota : le nombre
-         affiché reste lisible même si le quota est rabaissé en cours de route. */
-      const restantes = Math.max(0, Math.min(quota, quota - vendues));
-      res.json({ ok: true, quota, vendues, restantes, fin });
+      await loadMerchFresh();
+      const ventes = await ventesOffreEnLigne();
+      const o = placesRestantes(ventes);
+      res.json({ ok: true, quota: o.quota, restantes: o.restantes, fin: o.fin || null });
     } catch (err) {
-      /* En cas de panne, on ne devine pas un nombre : on dit qu'on ne sait
-         pas, et les sites n'affichent alors aucun compteur. Mieux vaut pas
-         de compteur qu'un compteur inventé. */
+      /* En panne, on ne devine pas un nombre : on dit qu'on ne sait pas, et
+         les sites n'affichent alors aucun compteur. */
       res.json({ ok: false, error: err.message });
+    }
+  });
+
+  /** Le réglage, réservé au patron : il voit le compte exact et le pose. */
+  app.get('/api/admin/offre-rentree', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      await loadMerchFresh();
+      const ventes = await ventesOffreEnLigne();
+      const brut = getOffreRentree();
+      const vu = placesRestantes(ventes);
+      res.json({ ok: true, reglage: brut, ventes_en_ligne: ventes, affiche: vu.restantes });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.put('/api/admin/offre-rentree', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      await loadMerchFresh();
+      const ventes = await ventesOffreEnLigne();
+      const neuf = await setOffreRentreeAsync(req.body || {}, ventes);
+      logInfo('Offre de rentrée réglée', { quota: neuf.quota, restantes: neuf.restantes, fin: neuf.fin });
+      res.json({ ok: true, reglage: neuf, ventes_en_ligne: ventes, affiche: neuf.restantes });
+    } catch (err) {
+      res.status(400).json({ ok: false, error: err.message });
     }
   });
 

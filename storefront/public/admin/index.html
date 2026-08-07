@@ -31,6 +31,35 @@
       <section id="tabOffers">
         <p class="admin-lead">Modifiez le catalogue ci-dessous (nom, actif, tri) — sauvegarde ligne par ligne. La section « à la une » est optionnelle pour l'accueil.</p>
 
+        <!-- ================================================================
+             LES PLACES DE L'OFFRE DE RENTRÉE.
+             Le compteur « plus que N places » qui s'affiche sur les quatre
+             sites du club vient d'ici, et de nulle part ailleurs. C'est une
+             décision commerciale : le patron ouvre un nombre de places à ce
+             prix et dit où en est le compte. Les inscriptions payées en
+             ligne le font descendre toutes seules ensuite ; une place vendue
+             au comptoir, elle, n'existe nulle part — d'où le réglage manuel.
+             ================================================================ -->
+        <div class="admin-section">
+          <div class="admin-section-head">
+            <div>
+              <h2 class="admin-section-title">Offre de rentrée — les places</h2>
+              <p class="admin-section-desc">Ce que les quatre sites du club affichent. Les inscriptions payées en ligne décomptent toutes seules ; réajustez après une vente au comptoir.</p>
+            </div>
+            <span class="admin-section-badge" id="placesBadge">—</span>
+          </div>
+          <div class="form-grid" style="gap:12px">
+            <div><label for="placesQuota">Places ouvertes au total</label><input type="number" min="0" step="1" id="placesQuota" placeholder="60" /></div>
+            <div><label for="placesRestantes">Places encore libres</label><input type="number" min="0" step="1" id="placesRestantes" placeholder="12" /></div>
+            <div><label for="placesFin">Fin de l'offre (facultatif)</label><input type="date" id="placesFin" /></div>
+          </div>
+          <p class="admin-section-desc" id="placesEtat"></p>
+          <div class="admin-section-actions">
+            <button type="button" class="btn sm" id="savePlaces">Enregistrer les places</button>
+          </div>
+          <p class="form-msg" id="placesMsg"></p>
+        </div>
+
         <div class="admin-section">
           <div class="admin-section-head">
             <div>
