@@ -1677,9 +1677,17 @@ body:has(#adminPanel:not([hidden])) {
     font-size: 12px;
     padding: 8px 6px;
   }
-  .admin-table th:nth-child(2),
-  .admin-table td:nth-child(2) {
-    display: none; /* Masquer colonne Photo sur mobile */
+  /* La colonne « Photo » du catalogue matériel ne sert à rien sur un petit
+     écran : on la masque. Mais la règle visait `.admin-table`, portée par
+     TOUS les tableaux du panneau — elle emportait donc aussi « Adhérent »
+     dans les inscriptions, « Vues » dans les pages consultées, « Atteints »
+     dans le tunnel et « Cmd matériel » dans le récapitulatif mensuel.
+     Le patron perdait le NOM de ses adhérents sur son propre téléphone,
+     c'est-à-dire l'information pour laquelle il ouvrait la page.
+     On ne masque plus que la colonne visée, dans le seul tableau visé. */
+  #materielTable th:nth-child(2),
+  #materielTable td:nth-child(2) {
+    display: none;
   }
   .stats-kpi-grid {
     grid-template-columns: 1fr 1fr;
