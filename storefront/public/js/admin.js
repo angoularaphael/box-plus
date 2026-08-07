@@ -180,19 +180,19 @@
       .map(
         (o) => `
       <tr>
-        <td><code style="font-size:11px">${o.order_id}</code></td>
-        <td>${o.name}</td>
-        <td><a href="mailto:${o.email}" style="color:var(--bc-cta)">${o.email}</a></td>
-        <td>${o.product}</td>
-        <td>${STEP_LABELS[o.step] || o.step}</td>
+        <td><code style="font-size:11px">${escapeHtml(o.order_id)}</code></td>
+        <td>${escapeHtml(o.name)}</td>
+        <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>
+        <td>${escapeHtml(o.product)}</td>
+        <td>${escapeHtml(STEP_LABELS[o.step] || o.step)}</td>
         <td>${paymentBadge(o)}</td>
         <td>${o.signed ? `✓ ${formatDate(o.signed_at)}` : '—'}</td>
         <td style="font-size:12px">${formatDate(o.updated_at || o.created_at)}</td>
         <td>
-          <button type="button" class="btn sm dl-contract" data-id="${o.order_id}">PDF</button>
+          <button type="button" class="btn sm dl-contract" data-id="${escapeHtml(o.order_id)}">PDF</button>
         </td>
         <td>
-          <button type="button" class="btn sm secondary del-order" data-id="${o.order_id}" title="Supprimer">✕</button>
+          <button type="button" class="btn sm secondary del-order" data-id="${escapeHtml(o.order_id)}" title="Supprimer">✕</button>
         </td>
       </tr>`
       )
@@ -952,7 +952,7 @@
           .map(
             (f) => `
           <tr>
-            <td>${f.step}. ${f.label}</td>
+            <td>${escapeHtml(f.step)}. ${escapeHtml(f.label)}</td>
             <td style="text-align:right;font-weight:600">${f.reached}</td>
             <td style="text-align:right">${f.drop_pct_from_prev ? `−${f.drop_pct_from_prev} %` : '—'}</td>
           </tr>`
@@ -970,7 +970,7 @@
       if (visitsBody) {
         const pages = data.visits?.top_pages || [];
         visitsBody.innerHTML = pages.length
-          ? pages.map((p) => `<tr><td>${p.path}</td><td style="text-align:right">${p.count}</td></tr>`).join('')
+          ? pages.map((p) => `<tr><td>${escapeHtml(p.path)}</td><td style="text-align:right">${escapeHtml(p.count)}</td></tr>`).join('')
           : '<tr><td colspan="2" style="text-align:center;color:var(--bc-muted)">Pas encore de visites trackées</td></tr>';
         if (visitsWrap) visitsWrap.hidden = false;
       }
@@ -984,11 +984,11 @@
               .map(
                 (o) => `
             <tr>
-              <td><code style="font-size:11px">${o.order_id}</code></td>
-              <td>${o.name}</td>
-              <td>${o.email}</td>
-              <td>${o.product}</td>
-              <td>${o.payment_status}</td>
+              <td><code style="font-size:11px">${escapeHtml(o.order_id)}</code></td>
+              <td>${escapeHtml(o.name)}</td>
+              <td>${escapeHtml(o.email)}</td>
+              <td>${escapeHtml(o.product)}</td>
+              <td>${escapeHtml(o.payment_status)}</td>
               <td>${o.access_blocked ? 'Oui' : 'Non'}</td>
             </tr>`
               )
