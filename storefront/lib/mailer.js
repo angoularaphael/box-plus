@@ -75,7 +75,12 @@ async function sendConfirmationEmail(order, attachments = []) {
 
   if (!isConfigured()) {
     logInfo('Email confirmation (mode log)', { to, order_id: order.order_id });
-    return { sent: false, reason: 'brevo_not_configured', preview: html };
+    return {
+      sent: false,
+      reason: 'brevo_not_configured',
+      error: 'Service email non configuré (BREVO_API_KEY manquant sur Vercel)',
+      preview: html,
+    };
   }
 
   try {
@@ -87,7 +92,11 @@ async function sendConfirmationEmail(order, attachments = []) {
       attachments: mailAttachments,
     });
     if (!result) {
-      return { sent: false, reason: 'brevo_not_configured' };
+      return {
+        sent: false,
+        reason: 'brevo_not_configured',
+        error: 'Envoi email impossible — BREVO_API_KEY requis en production',
+      };
     }
     logInfo('Email confirmation envoyé', { to, order_id: order.order_id, via: result.via });
     return { sent: true, via: result.via };
