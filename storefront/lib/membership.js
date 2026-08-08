@@ -150,7 +150,10 @@ const CANCEL_FIELD_LABELS = {
   birthdate: 'Date de naissance',
 };
 
-async function updateCancelStatus(orderId, { status, mismatch_fields, reason, cancelled_count } = {}) {
+async function updateCancelStatus(
+  orderId,
+  { status, mismatch_fields, reason, cancelled_count, deciplus_member_id } = {}
+) {
   const { loadOrder, saveOrderAsync } = require('./order-persistence');
   const record = (await loadOrder(orderId)) || {
     order_id: orderId,
@@ -163,6 +166,7 @@ async function updateCancelStatus(orderId, { status, mismatch_fields, reason, ca
   record.mismatch_fields = Array.isArray(mismatch_fields) ? mismatch_fields : record.mismatch_fields || [];
   record.cancel_status_reason = reason || record.cancel_status_reason || null;
   if (cancelled_count != null) record.cancelled_count = cancelled_count;
+  if (deciplus_member_id) record.deciplus_member_id = String(deciplus_member_id);
   record.cancel_status_at = new Date().toISOString();
   await saveOrderAsync(record);
   return record;
@@ -211,13 +215,20 @@ async function sendCancelMismatchEmail(identity = {}, mismatchFields = []) {
   }
 }
 
-async function enqueueChangeAfterPayment({ identity, targetProductId, stripeSessionId }) {
+async function enqueueChangeAfterPayment({
+  identity,
+  targetProductId,
+  stripeSessionId,
+  deciplusMemberId = null,
+}) {
   const product = findEnrichedProduct(targetProductId);
   if (!product || !isComptantStyleProduct(product)) {
     throw new Error('Offre comptant cible invalide');
   }
   const baseId = `CHANGE-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
   const today = new Date().toISOString().slice(0, 10);
+  const memberId = deciplusMemberId || identity.deciplus_member_id || null;
+  // member_id déjà vérifié → le bot saute la re-recherche identité (beaucoup plus rapide)
   const cancel = await dispatchOrder({
     order_id: `${baseId}-cancel`,
     action: 'cancel',
@@ -229,6 +240,7 @@ async function enqueueChangeAfterPayment({ identity, targetProductId, stripeSess
     email: identity.email,
     gym: identity.gym || 'minimes',
     customer: identity,
+    deciplus_member_id: memberId || undefined,
     cancel_date: today,
     effective_date: today,
     product_name: 'Résiliation prélèvement (changement)',
@@ -250,6 +262,7 @@ async function enqueueChangeAfterPayment({ identity, targetProductId, stripeSess
     postal_code: identity.postal_code || '31000',
     city: identity.city || 'Toulouse',
     customer: identity,
+    deciplus_member_id: memberId || undefined,
     product_id: product.id,
     product_name: product.name,
     deciplus_id: product.deciplus_id,
