@@ -182,7 +182,7 @@
       const vRes = await fetch('/api/membership/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, verify_mode: 'change' }),
       });
       verify = await vRes.json();
     } catch {

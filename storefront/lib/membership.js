@@ -60,6 +60,8 @@ async function enqueueVerifyIdentity(body = {}) {
   const payload = {
     order_id: orderId,
     action: 'verify_identity',
+    // Par défaut = changement d’abo : nom + prénom + naissance
+    verify_mode: body.verify_mode || 'change',
     first_name: body.first_name,
     last_name: body.last_name,
     birthdate: body.birthdate,
