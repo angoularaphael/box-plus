@@ -10,6 +10,13 @@
 
   function formatPaymentMode(product) {
     if (!product.requires_payment) return 'Gratuit';
+    if (
+      product.supports_installment_choice ||
+      product.id === 'offre-saison' ||
+      /1\s*[x×]\s*ou\s*4\s*[x×]/i.test(product.badge || '')
+    ) {
+      return 'Comptant (Stripe/PayPal) ou 4× (PayPlug/PayPal)';
+    }
     if (/comptant/i.test(product.name || '') || product.subsection === 'comptant') {
       return 'Paiement unique CB — pas de prélèvement';
     }
@@ -108,5 +115,13 @@
     if (opts.animate && window.BCMotion?.refresh) window.BCMotion.refresh();
   }
 
-  window.BCOffers = { renderOfferCard, renderOfferGrid, esc, isFeaturedOffer };
+  window.BCOffers = {
+    renderOfferCard,
+    renderOfferGrid,
+    esc,
+    isFeaturedOffer,
+    offerDescription,
+    formatPaymentMode,
+    formatDuration,
+  };
 })();

@@ -115,13 +115,19 @@
     },
     "offre-saison": {
       "tab": "abonnements",
-      "subsection": "promo",
-      "display_name": "Promo 12 mois",
-      "benefits": ["12 mois d'accès", "Campagne rentrée"],
+      "subsection": "comptant",
+      "display_name": "Promo 12 mois — 259 €",
+      "description": "Offre promo saison : 259 € pour 12 mois d'accès illimité aux 5 salles et à toutes les disciplines. Paiement comptant (une fois) ou 4× sans frais — aucun IBAN, vente enregistrée en comptant sur Deciplus.",
+      "benefits": [
+        "12 mois d'accès illimité",
+        "1× Stripe/PayPal ou 4× PayPlug/PayPal",
+        "Pas d'IBAN — vente comptant Deciplus"
+      ],
       "audience": "Adultes",
       "sort_order": 5,
       "active": true,
-      "badge": "Promo"
+      "badge": "1× ou 4× sans frais",
+      "supports_installment_choice": true
     },
     "offre-ete": {
       "tab": "abonnements",

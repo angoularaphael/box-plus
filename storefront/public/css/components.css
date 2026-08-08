@@ -164,14 +164,30 @@
   font-size: 13.5px;
   color: var(--bc-muted);
   line-height: 1.5;
-  margin: 6px 0 4px;
+  margin: 4px 0 10px;
 }
 
-.offer-desc {
-  font-size: 13.5px;
+.offer-selection-description {
+  margin-top: 22px;
+  padding: 18px 20px;
+  border-left: 4px solid var(--bc-red);
+  border-radius: 10px;
+  background: #f6f7fa;
+  color: var(--bc-navy);
+}
+
+.offer-selection-description strong {
+  display: block;
+  margin-bottom: 7px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+.offer-selection-description p {
+  margin: 0;
   color: var(--bc-muted);
-  line-height: 1.5;
-  margin: 4px 0 10px;
+  line-height: 1.55;
 }
 
 .offer-benefits {

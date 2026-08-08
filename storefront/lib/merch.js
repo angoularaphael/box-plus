@@ -14,7 +14,10 @@ const {
   saveMaterielCatalog,
   addMaterielProduct,
 } = require('./merch-persistence');
-const { productSupportsBillingChoice } = require('../../lib/billing-plan');
+const {
+  productSupportsBillingChoice,
+  productSupportsInstallmentChoice,
+} = require('../../lib/billing-plan');
 
 function loadMaterielCatalog() {
   return loadMaterielCatalogLocal();
@@ -138,24 +141,64 @@ function isPromoActive(merchEntry) {
   return true;
 }
 
+let _staticProductMaps = null;
+function loadStaticProductsByKey() {
+  if (_staticProductMaps) return _staticProductMaps;
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const file = path.join(__dirname, '..', 'products.json');
+    const list = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const byId = new Map();
+    const byName = new Map();
+    for (const p of list) {
+      if (p.id) byId.set(p.id, p);
+      if (p.name) byName.set(String(p.name).toLowerCase().replace(/\s+/g, ' ').trim(), p);
+    }
+    _staticProductMaps = { byId, byName };
+  } catch {
+    _staticProductMaps = { byId: new Map(), byName: new Map() };
+  }
+  return _staticProductMaps;
+}
+
 function enrichProduct(catalogProduct, merchEntry = {}) {
+  const staticMaps = loadStaticProductsByKey();
+  const staticP =
+    staticMaps.byId.get(catalogProduct.legacy_id) ||
+    staticMaps.byId.get(catalogProduct.id) ||
+    staticMaps.byName.get(String(catalogProduct.name || '').toLowerCase().replace(/\s+/g, ' ').trim()) ||
+    {};
   const subsection = merchEntry.subsection || inferSubsection(catalogProduct);
   const enriched = {
+    ...staticP,
     ...catalogProduct,
+    description: catalogProduct.description || staticP.description || merchEntry.description || null,
+    tagline: catalogProduct.tagline || staticP.tagline || null,
     tab: merchEntry.tab || 'abonnements',
     subsection,
     display_name: merchEntry.display_name || catalogProduct.name,
-    benefits: merchEntry.benefits || [],
-    audience: merchEntry.audience || null,
-    duration_label: merchEntry.duration_label || null,
-    badge: merchEntry.badge || catalogProduct.badge || null,
+    benefits: merchEntry.benefits || staticP.benefits || [],
+    audience: merchEntry.audience || staticP.audience || null,
+    duration_label: merchEntry.duration_label || staticP.duration_label || null,
+    badge: merchEntry.badge || catalogProduct.badge || staticP.badge || null,
     featured: merchEntry.featured || false,
     sort_order: merchEntry.sort_order ?? 99,
     active: merchEntry.active !== false,
     marketing_price_label: merchEntry.marketing_price_label || null,
     image: merchEntry.image || null,
+    installments_note:
+      catalogProduct.installments_note || staticP.installments_note || merchEntry.installments_note || null,
+    supports_installment_choice:
+      catalogProduct.supports_installment_choice === true ||
+      staticP.supports_installment_choice === true ||
+      merchEntry.supports_installment_choice === true,
   };
   enriched.supports_billing_choice = productSupportsBillingChoice(enriched);
+  enriched.supports_installment_choice = productSupportsInstallmentChoice(enriched);
+  if (enriched.supports_installment_choice) {
+    enriched.requires_iban = false;
+  }
   return enriched;
 }
 
@@ -218,6 +261,14 @@ function findEnrichedProduct(productId) {
   const all = getEnrichedProducts({ activeOnly: false });
   const match = all.find((p) => p.id === productId || p.legacy_id === productId);
   if (match) return match;
+  // Repli catalogue statique (ids legacy type offre-saison / comptant-3-mois)
+  const staticMaps = loadStaticProductsByKey();
+  const staticP = staticMaps.byId.get(productId);
+  if (staticP) {
+    const merch = loadMerch();
+    const entry = merch.products?.[productId] || {};
+    return enrichProduct(staticP, entry);
+  }
   return findMaterielProduct(productId);
 }
 
