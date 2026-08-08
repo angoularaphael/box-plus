@@ -40,6 +40,8 @@
     photoUploaded: false,
     emailWarning: null,
     dispatchError: null,
+    /** Après signature : plus aucun cache / saveProgress */
+    tunnelComplete: false,
   };
 
   const stepContent = document.getElementById('stepContent');
@@ -89,6 +91,8 @@
   }
 
   function saveProgress() {
+    // Inscription terminée → ne jamais réécrire le cache (sinon « Retour » relance le tunnel)
+    if (state.tunnelComplete || state.step >= 8) return;
     writeStoredProgress({
       productId: state.productId,
       orderId: state.orderId,
@@ -109,6 +113,11 @@
       const saved = readStoredProgress();
       if (!saved) return;
       if (!saved.savedAt || Date.now() - saved.savedAt > STORAGE_TTL_MS) {
+        clearProgress();
+        return;
+      }
+      // Ancien dossier déjà confirmé resté en cache → jeter
+      if (Number(saved.step) >= 8 || saved.tunnelComplete) {
         clearProgress();
         return;
       }
@@ -162,8 +171,31 @@
   }
 
   function clearProgress() {
-    localStorage.removeItem(STORAGE_KEY);
-    sessionStorage.removeItem(STORAGE_KEY);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+    try {
+      sessionStorage.removeItem(STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /** Après validation + signature : vide tout le cache tunnel et coupe les réécritures. */
+  function clearCacheAfterConfirm() {
+    state.tunnelComplete = true;
+    state.shortDraft = null;
+    state.gymDraft = null;
+    state.photoUploaded = false;
+    clearProgress();
+    try {
+      sessionStorage.removeItem('bcp_prefill');
+    } catch {
+      /* ignore */
+    }
+    window.removeEventListener('beforeunload', saveProgress);
   }
 
   /** Quitter le tunnel pour choisir une autre offre — sans réinjecter l'ancien paiement. */
@@ -1302,7 +1334,7 @@
       state.step = 8;
       state.emailWarning = data.email_warning || null;
       state.dispatchError = data.dispatch_error || null;
-      clearProgress();
+      clearCacheAfterConfirm();
       setMsg('');
       syncUrl();
       await render();
@@ -1312,6 +1344,8 @@
 
   function renderStep8() {
     if (guardPaidStep()) return;
+    // Garantit le cache vide même si on arrive ici via refresh / already_signed
+    clearCacheAfterConfirm();
     const p = state.product;
     const emailNote = state.emailWarning
       ? `<div class="notice-important" style="margin-top:16px;text-align:left"><strong>Email non envoyé</strong><p>Votre inscription est bien enregistrée. L'email de confirmation n'a pas pu être envoyé (${esc(state.emailWarning)}). Téléchargez votre contrat ci-dessous ou contactez le club.</p></div>`
@@ -1319,6 +1353,10 @@
     const dispatchNote = state.dispatchError
       ? `<div class="notice-important" style="margin-top:12px;text-align:left"><strong>Traitement club en attente</strong><p>Votre paiement est OK. L'enregistrement automatique au club a échoué (${esc(state.dispatchError)}). Le club va finaliser votre dossier — gardez votre référence.</p></div>`
       : '';
+    const homeHref =
+      (window.BCPaths && typeof window.BCPaths.link === 'function'
+        ? window.BCPaths.link('/')
+        : null) || '/';
     stepContent.innerHTML = `
       <div class="success-page" style="margin:20px auto">
         <div class="success-icon" aria-hidden="true"></div>
@@ -1329,9 +1367,12 @@
           <strong>Référence :</strong> ${state.orderId}<br />
           <strong>Offre :</strong> ${p?.display_name || p?.name || '—'}
         </div>
-        <a href="/" class="btn block" style="margin-top:24px">Retour à l'accueil</a>
+        <a href="${homeHref}" class="btn block" id="confirmHomeBtn" style="margin-top:24px">Retour à l'accueil</a>
         <button type="button" class="btn secondary block" id="downloadContractBtn" style="margin-top:12px">Télécharger mon contrat</button>
       </div>`;
+    document.getElementById('confirmHomeBtn')?.addEventListener('click', () => {
+      clearCacheAfterConfirm();
+    });
     document.getElementById('downloadContractBtn').onclick = () => {
       window.BCContract.openView(state.orderId, { token: state.token });
     };
@@ -1490,6 +1531,11 @@
       state.step = 1;
     } else if (state.step === 1 && state.orderId && state.order && !explicitStep1) {
       state.step = stepFromOrder(state.order);
+    }
+
+    if (state.step >= 8 || state.order?.signature?.signed_at) {
+      state.step = 8;
+      clearCacheAfterConfirm();
     }
 
     syncUrl();
