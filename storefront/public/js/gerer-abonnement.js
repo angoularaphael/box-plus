@@ -4,6 +4,7 @@
   const targetSelect = document.getElementById('c_target');
   const gymList = document.getElementById('gymList');
   const changeMsg = document.getElementById('changeMsg');
+  const changeForm = document.getElementById('changeForm');
   const chatWidget = document.getElementById('chatWidget');
   const chatFab = document.getElementById('chatFab');
 
@@ -15,12 +16,50 @@
     { id: 'st-cyprien', label: 'St-Cyprien', address: '11 Rue Sainte-Lucie, 31300 Toulouse' },
   ];
 
+  const FIELD_LABELS = {
+    last_name: 'Nom',
+    first_name: 'Prénom',
+    phone: 'Téléphone',
+    birthdate: 'Date de naissance',
+  };
+
   gymList.innerHTML = GYMS.map(
     (g) =>
       `<li class="manage-gym-item"><strong>${g.label}</strong><span>${g.address}</span></li>`
   ).join('');
 
   gymSelect.innerHTML = GYMS.map((g) => `<option value="${g.id}">${g.label}</option>`).join('');
+
+  function clearFormErrors(form) {
+    form?.querySelectorAll('.field-error').forEach((el) => el.classList.remove('field-error'));
+  }
+
+  function markFormErrors(form, fields) {
+    (fields || []).forEach((name) => {
+      const input = form?.querySelector(`[name="${name}"]`);
+      if (input) input.classList.add('field-error');
+    });
+  }
+
+  async function pollIdentityStatus(orderId, { maxWaitMs = 90000 } = {}) {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < maxWaitMs) {
+      await new Promise((r) => setTimeout(r, 3500));
+      try {
+        const r = await fetch(`/api/membership/cancel-status?order=${encodeURIComponent(orderId)}`);
+        const s = await r.json();
+        if (s.ok && (s.status === 'mismatch' || s.status === 'verified' || s.status === 'done')) {
+          return s;
+        }
+        if (s.ok && (s.status === 'error' || s.status === 'manual_review')) {
+          return s;
+        }
+      } catch {
+        /* retry */
+      }
+    }
+    return { ok: false, status: 'timeout', mismatch_fields: [] };
+  }
 
   function openChat() {
     chatWidget.hidden = false;
@@ -31,22 +70,9 @@
       window.BCCounselor.render(root, async (formData, msgEl) => {
         const form = root.querySelector('#cancelForm');
         const submitBtn = form?.querySelector('button[type="submit"]');
-        const FIELD_LABELS = {
-          last_name: 'Nom',
-          first_name: 'Prénom',
-          phone: 'Téléphone',
-          birthdate: 'Date de naissance',
-        };
 
-        const clearErrors = () => {
-          form?.querySelectorAll('.field-error').forEach((el) => el.classList.remove('field-error'));
-        };
-        const markErrors = (fields) => {
-          (fields || []).forEach((name) => {
-            const input = form?.querySelector(`[name="${name}"]`);
-            if (input) input.classList.add('field-error');
-          });
-        };
+        const clearErrors = () => clearFormErrors(form);
+        const markErrors = (fields) => markFormErrors(form, fields);
         const setWaiting = (text) => {
           msgEl.hidden = false;
           msgEl.className = 'form-msg';
@@ -77,56 +103,38 @@
           return;
         }
 
-        // Vérification en direct : le bot compare les infos à la fiche Deciplus
         setWaiting('Vérification de vos informations sur votre fiche adhérent… Merci de patienter.');
-        const orderId = data.order_id;
-        const startedAt = Date.now();
-        const MAX_WAIT_MS = 90 * 1000;
-
-        const poll = async () => {
-          try {
-            const r = await fetch(`/api/membership/cancel-status?order=${encodeURIComponent(orderId)}`);
-            const s = await r.json();
-            if (s.ok && s.status === 'mismatch') {
-              clearErrors();
-              const fields = Array.isArray(s.mismatch_fields) ? s.mismatch_fields : [];
-              // Uniquement les champs signalés comme faux (jamais l’inverse)
-              markErrors(fields);
-              const labels = fields.map((f) => FIELD_LABELS[f]).filter(Boolean);
-              msgEl.textContent = labels.length
-                ? `Ces informations ne correspondent pas à votre fiche adhérent : ${labels.join(', ')}. Corrigez les champs en rouge puis renvoyez la demande.`
-                : 'Nous n’avons pas trouvé de fiche adhérent correspondant à ces informations. Vérifiez téléphone, nom, prénom et date de naissance, puis renvoyez la demande.';
-              msgEl.className = 'form-msg err';
-              if (submitBtn) submitBtn.disabled = false;
-              return;
-            }
-            if (s.ok && s.status === 'done') {
-              msgEl.textContent =
-                'Votre résiliation a bien été enregistrée. Elle sera effective sous 72 heures. Une confirmation vous sera envoyée par e-mail.';
-              msgEl.className = 'form-msg';
-              if (submitBtn) submitBtn.disabled = false;
-              return;
-            }
-            if (s.ok && (s.status === 'error' || s.status === 'manual_review')) {
-              msgEl.textContent =
-                'La vérification automatique n’a pas pu aboutir. Votre demande est enregistrée ; un responsable va la contrôler.';
-              msgEl.className = 'form-msg err';
-              if (submitBtn) submitBtn.disabled = false;
-              return;
-            }
-          } catch {
-            /* réessayer */
-          }
-          if (Date.now() - startedAt < MAX_WAIT_MS) {
-            window.setTimeout(poll, 4000);
-          } else {
-            msgEl.textContent =
-              'Demande bien reçue. Notre équipe traite votre résiliation et vous enverra une confirmation par e-mail.';
-            msgEl.className = 'form-msg';
-            if (submitBtn) submitBtn.disabled = false;
-          }
-        };
-        window.setTimeout(poll, 4000);
+        const s = await pollIdentityStatus(data.order_id);
+        if (s.ok && s.status === 'mismatch') {
+          clearErrors();
+          const fields = Array.isArray(s.mismatch_fields) ? s.mismatch_fields : [];
+          markErrors(fields);
+          const labels = fields.map((f) => FIELD_LABELS[f]).filter(Boolean);
+          msgEl.textContent = labels.length
+            ? `Ces informations ne correspondent pas à votre fiche adhérent : ${labels.join(', ')}. Corrigez les champs en rouge puis renvoyez la demande.`
+            : 'Nous n’avons pas trouvé de fiche adhérent correspondant à ces informations. Vérifiez téléphone, nom, prénom et date de naissance, puis renvoyez la demande.';
+          msgEl.className = 'form-msg err';
+          if (submitBtn) submitBtn.disabled = false;
+          return;
+        }
+        if (s.ok && s.status === 'done') {
+          msgEl.textContent =
+            'Votre résiliation a bien été enregistrée. Elle sera effective sous 72 heures. Une confirmation vous sera envoyée par e-mail.';
+          msgEl.className = 'form-msg';
+          if (submitBtn) submitBtn.disabled = false;
+          return;
+        }
+        if (s.ok && (s.status === 'error' || s.status === 'manual_review')) {
+          msgEl.textContent =
+            'La vérification automatique n’a pas pu aboutir. Votre demande est enregistrée ; un responsable va la contrôler.';
+          msgEl.className = 'form-msg err';
+          if (submitBtn) submitBtn.disabled = false;
+          return;
+        }
+        msgEl.textContent =
+          'Demande bien reçue. Notre équipe traite votre résiliation et vous enverra une confirmation par e-mail.';
+        msgEl.className = 'form-msg';
+        if (submitBtn) submitBtn.disabled = false;
       });
     }
   }
@@ -156,24 +164,76 @@
       .join('');
   }
 
-  document.getElementById('changeForm').onsubmit = async (e) => {
+  changeForm.onsubmit = async (e) => {
     e.preventDefault();
-    changeMsg.hidden = false;
-    changeMsg.textContent = 'Redirection vers le paiement…';
-    changeMsg.className = 'form-msg';
     const body = Object.fromEntries(new FormData(e.target).entries());
-    const res = await fetch('/api/membership/change/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    if (!data.ok) {
-      changeMsg.textContent = data.error || 'Erreur';
+    const submitBtn = changeForm.querySelector('button[type="submit"]');
+    clearFormErrors(changeForm);
+    if (submitBtn) submitBtn.disabled = true;
+    changeMsg.hidden = false;
+    changeMsg.className = 'form-msg';
+    changeMsg.innerHTML =
+      '<span class="cancel-spinner" aria-hidden="true"></span> Vérification de votre fiche adhérent…';
+
+    let verify = {};
+    try {
+      const vRes = await fetch('/api/membership/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      verify = await vRes.json();
+    } catch {
+      verify = {};
+    }
+    if (!verify.ok || !verify.order_id) {
+      changeMsg.textContent = verify.error || 'Vérification impossible';
       changeMsg.className = 'form-msg err';
+      if (submitBtn) submitBtn.disabled = false;
       return;
     }
-    if (data.url) window.location.href = data.url;
+
+    const status = await pollIdentityStatus(verify.order_id);
+    if (status.ok && status.status === 'mismatch') {
+      const fields = Array.isArray(status.mismatch_fields) ? status.mismatch_fields : [];
+      markFormErrors(changeForm, fields);
+      const labels = fields.map((f) => FIELD_LABELS[f]).filter(Boolean);
+      changeMsg.textContent = labels.length
+        ? `Ces informations ne correspondent pas à votre fiche adhérent : ${labels.join(', ')}. Corrigez les champs en rouge.`
+        : 'Nous n’avons pas trouvé de fiche adhérent correspondant à ces informations.';
+      changeMsg.className = 'form-msg err';
+      if (submitBtn) submitBtn.disabled = false;
+      return;
+    }
+    if (!(status.ok && status.status === 'verified')) {
+      changeMsg.textContent =
+        'La vérification n’a pas pu aboutir. Réessayez ou contactez votre salle.';
+      changeMsg.className = 'form-msg err';
+      if (submitBtn) submitBtn.disabled = false;
+      return;
+    }
+
+    changeMsg.textContent = 'Identité confirmée — redirection vers le paiement…';
+    changeMsg.className = 'form-msg';
+    try {
+      const res = await fetch('/api/membership/change/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        changeMsg.textContent = data.error || 'Erreur';
+        changeMsg.className = 'form-msg err';
+        if (submitBtn) submitBtn.disabled = false;
+        return;
+      }
+      if (data.url) window.location.href = data.url;
+    } catch {
+      changeMsg.textContent = 'Erreur de connexion au paiement';
+      changeMsg.className = 'form-msg err';
+      if (submitBtn) submitBtn.disabled = false;
+    }
   };
 
   const params = new URLSearchParams(location.search);

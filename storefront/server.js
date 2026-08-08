@@ -2000,6 +2000,24 @@ function createApp() {
     }
   });
 
+  app.post('/api/membership/verify', async (req, res) => {
+    try {
+      const body = req.body || {};
+      if (!body.first_name || !body.last_name || !body.birthdate || !body.phone) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Merci de renseigner le nom, le prénom, le téléphone et la date de naissance.',
+        });
+      }
+      const { enqueueVerifyIdentity } = require('./lib/membership');
+      const result = await enqueueVerifyIdentity(body);
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      logError('Erreur verify identité', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   app.post('/api/membership/change/checkout', async (req, res) => {
     try {
       const body = req.body || {};
@@ -2153,11 +2171,11 @@ function createApp() {
     }
   });
 
-  // Suivi front (spinner résiliation) — pas de données sensibles renvoyées
+  // Suivi front (spinner résiliation / verify) — pas de données sensibles renvoyées
   app.get('/api/membership/cancel-status', async (req, res) => {
     try {
       const orderId = String(req.query.order || '').trim();
-      if (!orderId || !/^CANCEL-/.test(orderId)) {
+      if (!orderId || !/^(CANCEL|VERIFY)-/.test(orderId)) {
         return res.status(400).json({ ok: false, error: 'order invalide' });
       }
       const { getCancelStatus } = require('./lib/membership');
