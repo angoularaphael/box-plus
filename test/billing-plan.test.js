@@ -52,7 +52,7 @@ describe('billing-plan', () => {
     assert.equal(normalizeBillingPlan(null, fourWeeks), 'rib');
   });
 
-  it('offre 259 supports 1x Stripe or 4x PayPlug and stays comptant-style', () => {
+  it('offre 259 supports 1x or 4x and stays comptant-style', () => {
     const promo = {
       id: 'offre-saison',
       name: 'OFFRE PROMO 12 MOIS',
@@ -65,7 +65,7 @@ describe('billing-plan', () => {
     assert.equal(normalizePaymentPlan('once', promo), 'once');
     assert.equal(normalizePaymentPlan('4x', promo), '4x');
     assert.equal(normalizePaymentPlan(null, promo), null);
-    assert.match(paymentModeLabel(promo, null, '4x'), /PayPlug/i);
-    assert.match(paymentModeLabel(promo, null, 'once'), /Stripe/i);
+    assert.match(paymentModeLabel(promo, null, '4x'), /4× sans frais/i);
+    assert.match(paymentModeLabel(promo, null, 'once'), /une fois/i);
   });
 });

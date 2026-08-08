@@ -168,6 +168,23 @@
     document.head.appendChild(s);
   }
 
+  function ensureGiftPromo() {
+    const p = currentPath();
+    if (/inscription|checkout|panier|success|contrat|mon-inscription|gerer-abonnement|attestation|admin|confidentialite|cgv|reglement/i.test(p)) {
+      return;
+    }
+    if (document.querySelector('script[data-gift-promo]')) return;
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = A('/css/gift-promo.css');
+    document.head.appendChild(css);
+    const s = document.createElement('script');
+    s.src = A('/js/gift-promo.js');
+    s.defer = true;
+    s.dataset.giftPromo = '1';
+    document.body.appendChild(s);
+  }
+
   function mountLayout() {
     const headerSlot = document.getElementById('site-header');
     const footerSlot = document.getElementById('site-footer');
@@ -178,6 +195,7 @@
     updateCartBadge();
     window.addEventListener('bccart:change', updateCartBadge);
     ensureTracking();
+    ensureGiftPromo();
   }
 
   if (document.readyState === 'loading') {

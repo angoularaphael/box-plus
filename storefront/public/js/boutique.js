@@ -32,9 +32,9 @@ async function loadConfig() {
     const cfg = await res.json();
     const pill = document.getElementById('statusPill');
     if (cfg.stripe_enabled) {
-      pill.textContent = 'Paiement sécurisé Stripe';
+      pill.textContent = 'Paiement 100 % sécurisé';
     } else {
-      pill.textContent = 'Mode démo (sans Stripe)';
+      pill.textContent = 'Mode démonstration';
       pill.classList.remove('live');
     }
     if (cfg.badge_fee_notice) {
