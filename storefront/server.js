@@ -1111,6 +1111,16 @@ function createApp() {
     res.json({ ok: true, orders, count: orders.length });
   });
 
+  app.get('/api/admin/coachings', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const raw = await listAllOrdersAsync();
+    const orders = raw
+      .filter((o) => o.action === 'coaching_booking' || String(o.order_id || '').startsWith('COACH-'))
+      .map(toAdminSummary)
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    res.json({ ok: true, orders, count: orders.length });
+  });
+
   app.get('/api/admin/orders/:id', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const order = await loadOrderAsync(req.params.id);

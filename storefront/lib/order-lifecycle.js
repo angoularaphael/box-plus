@@ -337,17 +337,77 @@ async function listAllOrdersAsync() {
   return valid;
 }
 
+function actionProductLabel(order) {
+  if (order.action === 'cancel') return order.product_name || 'Résiliation abonnement';
+  if (order.action === 'verify_identity') return order.product_name || 'Vérification identité';
+  if (order.action === 'coaching_booking') {
+    return (
+      order.product_snapshot?.display_name ||
+      order.product_name ||
+      `Coaching · ${order.activity_label || order.activity || ''}`
+    );
+  }
+  if (String(order.order_id || '').startsWith('CHANGE-')) {
+    return order.product_snapshot?.display_name || order.product_name || 'Changement d’abonnement';
+  }
+  return null;
+}
+
+function actionStepLabel(order) {
+  if (order.action === 'cancel') {
+    if (order.cancel_status === 'done' || order.cancel_status === 'completed') return 'Confirmé';
+    if (order.cancel_status === 'mismatch') return 'Identité';
+    return 'En cours';
+  }
+  if (order.action === 'verify_identity') {
+    if (order.cancel_status === 'done' || order.cancel_status === 'ok') return 'Confirmé';
+    if (order.cancel_status === 'mismatch') return 'Identité';
+    return 'En cours';
+  }
+  if (order.action === 'coaching_booking') {
+    if (order.booking_status === 'sent' || order.email_sent_at) return 'Envoyé';
+    return 'Reçu';
+  }
+  return null;
+}
+
 function toAdminSummary(order) {
   const short = order.customer_short || {};
   const full = order.customer_full || {};
+  const customer = order.customer || {};
+  const nameFromCustomer =
+    memberDisplayName(short) !== '—'
+      ? memberDisplayName(short)
+      : memberDisplayName(customer) !== '—'
+        ? memberDisplayName(customer)
+        : String(customer.name || '').trim() || '—';
+  const email = short.email || customer.email || full.email || '—';
+  const product =
+    order.product_snapshot?.display_name ||
+    order.product_snapshot?.name ||
+    actionProductLabel(order) ||
+    order.product_name ||
+    '—';
+  const isAction = Boolean(order.action);
+  const payRaw = order.payment?.status;
+  let payment_status = payRaw || (isAction ? null : 'pending');
+  if (payment_status === 'n/a') payment_status = null;
+
   return {
     order_id: order.order_id,
+    action: order.action || null,
     step: order.step || 1,
-    product: order.product_snapshot?.display_name || order.product_snapshot?.name || '—',
-    email: short.email || '—',
-    name: memberDisplayName(short),
-    gym: full.gym || null,
-    payment_status: order.payment?.status || 'pending',
+    step_label: actionStepLabel(order),
+    product,
+    email,
+    phone: short.phone || customer.phone || null,
+    name: nameFromCustomer,
+    gym: full.gym || order.gym || customer.gym || null,
+    activity: order.activity_label || order.activity || null,
+    booking_date: order.booking_date || null,
+    slot: order.slot_label || order.slot || null,
+    booking_status: order.booking_status || null,
+    payment_status,
     access_blocked: Boolean(order.access_blocked),
     signed: Boolean(order.signature?.signed_at),
     signed_at: order.signature?.signed_at || null,

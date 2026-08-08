@@ -26,6 +26,7 @@
         <button type="button" class="admin-tab active" data-tab="offers">Offres</button>
         <button type="button" class="admin-tab" data-tab="materiel">Matériel</button>
         <button type="button" class="admin-tab" data-tab="contracts">Contrats & inscriptions</button>
+        <button type="button" class="admin-tab" data-tab="coachings">Réservations coaching</button>
         <button type="button" class="admin-tab" data-tab="stats">Stats</button>
       </nav>
 
@@ -340,6 +341,42 @@
         <p id="ordersCount" class="admin-section-foot"></p>
         </div>
       </section>
+
+      <section id="tabCoachings" hidden>
+        <div class="admin-section">
+          <div class="admin-section-head">
+            <div>
+              <h2 class="admin-section-title">Réservations coaching</h2>
+              <p class="admin-section-desc">Demandes envoyées depuis la page Coachings — le mail part au responsable de la salle choisie.</p>
+            </div>
+          </div>
+          <div class="admin-toolbar">
+            <input type="search" id="coachingsSearch" placeholder="Rechercher nom, email, salle, activité…" class="admin-search" />
+            <button type="button" class="btn sm" id="refreshCoachingsBtn">Actualiser</button>
+          </div>
+          <p class="form-msg" id="coachingsMsg"></p>
+          <div style="overflow-x:auto;margin-top:12px">
+            <table class="admin-table" id="coachingsTable">
+              <thead>
+                <tr>
+                  <th>Référence</th>
+                  <th>Nom</th>
+                  <th>Email</th>
+                  <th>Téléphone</th>
+                  <th>Salle</th>
+                  <th>Activité</th>
+                  <th>Date</th>
+                  <th>Créneau</th>
+                  <th>Statut</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="coachingsBody"></tbody>
+            </table>
+          </div>
+          <p id="coachingsCount" class="admin-section-foot"></p>
+        </div>
+      </section>
     </div>
 
     <div id="productEditModal" hidden style="display:none;position:fixed;inset:0;background:rgba(11,31,58,.55);z-index:80;place-items:center;padding:16px">
@@ -385,10 +422,10 @@
     </div>
   </div>
 
-  <script src="../js/contract-open.js?v=7"></script>
-  <script src="../js/admin.js?v=7"></script>
+  <script src="../js/contract-open.js?v=8"></script>
+  <script src="../js/admin.js?v=8"></script>
   <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
        reecrit pas une ligne (un autre developpeur y travaille). -->
-  <script src="/js/admin-shell.js?v=7"></script>
+  <script src="/js/admin-shell.js?v=8"></script>
 </body>
 </html>

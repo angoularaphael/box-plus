@@ -35,7 +35,8 @@
           .slice(0, 2)
           .map((w) => w[0].toUpperCase())
           .join('');
-      testimonialsEl.innerHTML = `<div class="testimonials-grid" data-reveal-group>${items
+      testimonialsEl.setAttribute('data-reveal-group', '');
+      testimonialsEl.innerHTML = items
         .map((t) => {
           const n = Math.max(1, Math.min(5, t.rating || 5));
           return `
@@ -51,7 +52,7 @@
           <p class="testimonial-text">« ${t.text} »</p>
         </div>`;
         })
-        .join('')}</div>`;
+        .join('');
     }
   } catch {
     /* optional */

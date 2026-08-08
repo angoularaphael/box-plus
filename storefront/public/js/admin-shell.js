@@ -62,6 +62,7 @@
   const SECTIONS = [
     { id: "aujourdhui", label: "Aujourd’hui", ico: "M3 12h4l3 8 4-16 3 8h4" },
     { id: "inscriptions", label: "Inscriptions", ico: "M4 5h16M4 12h16M4 19h10", onglet: "contracts" },
+    { id: "coachings", label: "Coachings", ico: "M12 6v6l4 2M12 22a10 10 0 110-20 10 10 0 010 20z", onglet: "coachings" },
     { id: "ventes", label: "Ventes", ico: "M4 19V9m5 10V5m5 14v-7m5 7V8", onglet: "stats" },
     { id: "catalogue", label: "Catalogue", ico: "M4 6h16v12H4zM4 10h16", onglet: "offers" },
     { id: "reglages", label: "Réglages", ico: "M12 15a3 3 0 100-6 3 3 0 000 6zM4 12h2m12 0h2M12 4v2m0 12v2" },
@@ -139,7 +140,7 @@
       const vieux = $(`.admin-tab[data-tab="${sec.onglet}"]`);
       if (vieux) vieux.click();
     } else {
-      ["tabOffers", "tabMateriel", "tabContracts", "tabStats"].forEach((x) => {
+      ["tabOffers", "tabMateriel", "tabContracts", "tabCoachings", "tabStats"].forEach((x) => {
         const el = document.getElementById(x);
         if (el) el.hidden = true;
       });
@@ -249,23 +250,37 @@
     } catch { /* le compteur est optionnel : on continue sans */ }
 
     /* Ce qui demande une action, dans cet ordre : l'argent qui n'est pas
-       rentré, l'accès bloqué, puis les dossiers signés non transmis. */
-    const impayes = commandes.filter((o) => o.payment_status && o.payment_status !== "paid");
-    const bloques = commandes.filter((o) => o.access_blocked);
-    const aTransmettre = commandes.filter((o) => o.signed && !o.dispatched);
+       rentré, l'accès bloqué, puis les dossiers signés non transmis.
+       Les VERIFY / CANCEL / COACH n'ont pas de vrai paiement : exclus. */
+    const inscriptions = commandes.filter(
+      (o) => o.action !== "coaching_booking" && !String(o.order_id || "").startsWith("COACH-")
+    );
+    const coachings = commandes.filter(
+      (o) => o.action === "coaching_booking" || String(o.order_id || "").startsWith("COACH-")
+    );
+    const impayes = inscriptions.filter((o) => o.payment_status && o.payment_status !== "paid");
+    const bloques = inscriptions.filter((o) => o.access_blocked);
+    const aTransmettre = inscriptions.filter((o) => o.signed && !o.dispatched);
     const aFaire = [...new Map([...impayes, ...bloques, ...aTransmettre].map((o) => [o.order_id, o])).values()];
 
     const semaine = Date.now() - 7 * 864e5;
-    const recentes = commandes.filter((o) => new Date(o.created_at).getTime() >= semaine).length;
+    const recentes = inscriptions.filter((o) => new Date(o.created_at).getTime() >= semaine).length;
+    const coachSemaine = coachings.filter((o) => new Date(o.created_at).getTime() >= semaine).length;
 
     peindreKpis(aFaire.length, impayes.length, recentes, places);
     peindreAFaire(zoneA, aFaire);
-    peindreDernieres(zoneD, commandes);
+    peindreDernieres(zoneD, inscriptions);
+    peindreCoachingsRecents(coachings);
 
     const pastille = $('.pan-nav__n[data-n="inscriptions"]');
     if (pastille) {
       pastille.textContent = String(aFaire.length);
       pastille.hidden = aFaire.length === 0;   // « 0 » est du bruit, pas une information
+    }
+    const pastilleCoach = $('.pan-nav__n[data-n="coachings"]');
+    if (pastilleCoach) {
+      pastilleCoach.textContent = String(coachSemaine);
+      pastilleCoach.hidden = coachSemaine === 0;
     }
   }
 
@@ -345,11 +360,52 @@
       <tbody>${tri.map((o) => `<tr>
         <td data-l="Adhérent"><strong>${esc(o.name)}</strong></td>
         <td data-l="Offre">${esc(o.product)}</td>
-        <td data-l="Étape"><span class="pan-tag pan-tag--neutre">${esc(LIB_ETAPE[o.step] || o.step)}</span></td>
+        <td data-l="Étape"><span class="pan-tag pan-tag--neutre">${esc(o.step_label || LIB_ETAPE[o.step] || o.step)}</span></td>
         <td data-l="Paiement">${o.payment_status === "paid"
           ? '<span class="pan-tag pan-tag--ok">Payé</span>'
+          : !o.payment_status
+            ? '<span class="pan-tag pan-tag--neutre">—</span>'
           : `<span class="pan-tag pan-tag--att">${esc(o.payment_status || "en attente")}</span>`}</td>
         <td data-l="Ouvert le">${esc(dateCourte(o.created_at))}</td>
+      </tr>`).join("")}</tbody></table></div>`;
+  }
+
+  function peindreCoachingsRecents(liste) {
+    let zone = $("#panCoachings");
+    if (!zone) {
+      const host = $("#panDernieres")?.closest(".pan-bloc");
+      if (!host || !host.parentNode) return;
+      const bloc = document.createElement("div");
+      bloc.className = "pan-bloc";
+      bloc.innerHTML = `
+        <div class="pan-bloc__head">
+          <div>
+            <h2 class="pan-bloc__title">Réservations coaching</h2>
+            <p class="pan-bloc__desc">Les dernières demandes reçues depuis la page Coachings.</p>
+          </div>
+          <div class="pan-bloc__tools">
+            <button type="button" class="btn secondary sm" data-va="coachings">Voir tout</button>
+          </div>
+        </div>
+        <div class="pan-bloc__body" id="panCoachings"></div>`;
+      host.after(bloc);
+      bloc.querySelector("[data-va]")?.addEventListener("click", () => aller("coachings"));
+      zone = $("#panCoachings");
+    }
+    if (!zone) return;
+    const tri = [...liste].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 6);
+    if (!tri.length) {
+      zone.innerHTML = `<div class="pan-vide"><p class="pan-vide__t">Aucune réservation</p><p class="pan-vide__d">Les demandes de coaching apparaîtront ici dès qu’un client envoie le formulaire.</p></div>`;
+      return;
+    }
+    zone.innerHTML = `<div class="pan-tablewrap"><table class="pan-table pan-table--cartes">
+      <thead><tr><th>Nom</th><th>Salle</th><th>Activité</th><th>Créneau</th><th>Reçu le</th></tr></thead>
+      <tbody>${tri.map((o) => `<tr>
+        <td data-l="Nom"><strong>${esc(o.name)}</strong><br><span style="color:var(--pan-mute);font-size:12px">${esc(o.email)}</span></td>
+        <td data-l="Salle">${esc(o.gym || "—")}</td>
+        <td data-l="Activité">${esc(o.activity || "—")}</td>
+        <td data-l="Créneau">${esc(o.booking_date || "—")} · ${esc(o.slot || "—")}</td>
+        <td data-l="Reçu le">${esc(dateCourte(o.created_at))}</td>
       </tr>`).join("")}</tbody></table></div>`;
   }
 
@@ -613,7 +669,7 @@
 
     $("#panRefresh").onclick = () => { oublierCommandes(); chargerAujourdhui(); toast("Liste actualisée", "ok"); };
 
-    [["ordersTable", "ordersSearch"], ["materielTable", "materielSearch"]].forEach(([idT, idS]) => {
+    [["ordersTable", "ordersSearch"], ["materielTable", "materielSearch"], ["coachingsTable", "coachingsSearch"]].forEach(([idT, idS]) => {
       const t = document.getElementById(idT);
       const s = document.getElementById(idS);
       habillerRecherche(s);
@@ -623,7 +679,7 @@
     /* La route d'arrivée : on respecte le fragment s'il en porte un
        (les anciens liens /admin/#contracts doivent continuer de marcher). */
     const frag = (location.hash || "").replace("#", "");
-    const vieuxVersNeuf = { contracts: "inscriptions", stats: "ventes", offers: "catalogue", materiel: "catalogue" };
+    const vieuxVersNeuf = { contracts: "inscriptions", stats: "ventes", offers: "catalogue", materiel: "catalogue", coachings: "coachings" };
     const destination = SECTIONS.some((s) => s.id === frag) ? frag : (vieuxVersNeuf[frag] || "aujourdhui");
     aller(destination);
     /* La pastille d'alerte ne doit pas dependre de la page d'arrivee : on

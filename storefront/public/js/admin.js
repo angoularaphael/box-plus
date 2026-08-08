@@ -3,6 +3,7 @@
   let products = [];
   let featuredHome = [];
   let orders = [];
+  let coachings = [];
   let currentUser = null;
 
   const STEP_LABELS = {
@@ -49,7 +50,7 @@
   }
 
   function showTab(name) {
-    ['tabOffers','tabMateriel','tabContracts','tabStats'].forEach((id) => {
+    ['tabOffers', 'tabMateriel', 'tabContracts', 'tabCoachings', 'tabStats'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.hidden = id !== `tab${name.charAt(0).toUpperCase()}${name.slice(1)}`;
     });
@@ -57,6 +58,7 @@
       btn.classList.toggle('active', btn.dataset.tab === name);
     });
     if (name === 'contracts') loadOrders();
+    if (name === 'coachings') loadCoachings();
     if (name === 'materiel') loadMateriel();
     if (name === 'stats') initStats();
     if (location.hash !== `#${name}`) {
@@ -141,10 +143,15 @@
     });
   }
 
+  function isCoachingOrder(o) {
+    return o.action === 'coaching_booking' || String(o.order_id || '').startsWith('COACH-');
+  }
+
   function filteredOrders() {
     const q = (document.getElementById('ordersSearch')?.value || '').toLowerCase().trim();
     const filter = document.getElementById('ordersFilter')?.value || 'all';
     return orders.filter((o) => {
+      if (isCoachingOrder(o)) return false;
       if (filter === 'signed' && !o.signed) return false;
       if (filter === 'progress' && o.signed) return false;
       if (filter === 'unpaid' && o.payment_status !== 'past_due' && !o.access_blocked) return false;
@@ -155,11 +162,111 @@
   }
 
   function paymentBadge(o) {
+    if (!o.payment_status) return '<span class="badge">—</span>';
     if (o.payment_status === 'paid') return '<span class="badge ok">Payé</span>';
     if (o.payment_status === 'past_due') {
       return `<span class="badge pending">Impayé${o.access_blocked ? ' · bloqué' : ''}</span>`;
     }
     return '<span class="badge pending">En attente</span>';
+  }
+
+  async function loadCoachings() {
+    const msg = document.getElementById('coachingsMsg');
+    if (msg) {
+      msg.textContent = 'Chargement…';
+      msg.className = 'form-msg';
+    }
+    try {
+      const res = await fetch('/api/admin/coachings', { credentials: 'include', headers: headers(false) });
+      if (!res.ok) throw new Error('Accès refusé');
+      const data = await res.json();
+      coachings = data.orders || [];
+      if (msg) msg.textContent = '';
+      renderCoachings();
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message;
+        msg.className = 'form-msg err';
+      }
+    }
+  }
+
+  function filteredCoachings() {
+    const q = (document.getElementById('coachingsSearch')?.value || '').toLowerCase().trim();
+    if (!q) return coachings;
+    return coachings.filter((o) => {
+      const hay = `${o.order_id} ${o.name} ${o.email} ${o.phone} ${o.gym} ${o.activity} ${o.product} ${o.slot}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  function renderCoachings() {
+    const tbody = document.getElementById('coachingsBody');
+    const countEl = document.getElementById('coachingsCount');
+    if (!tbody) return;
+    const list = filteredCoachings();
+    if (countEl) {
+      countEl.textContent =
+        list.length === coachings.length
+          ? `${coachings.length} réservation(s)`
+          : `${list.length} sur ${coachings.length} réservation(s)`;
+    }
+    if (!list.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="10" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune réservation coaching</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list
+      .map((o) => {
+        const status =
+          o.booking_status === 'sent' || o.email_sent
+            ? '<span class="badge ok">Mail envoyé</span>'
+            : o.booking_status === 'queued' || o.booking_status === 'brevo_not_configured'
+              ? '<span class="badge pending">En file</span>'
+              : `<span class="badge pending">${escapeHtml(o.step_label || o.booking_status || 'Reçu')}</span>`;
+        return `
+      <tr>
+        <td><code style="font-size:11px">${escapeHtml(o.order_id)}</code></td>
+        <td>${escapeHtml(o.name)}</td>
+        <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>
+        <td><a href="tel:${escapeHtml(o.phone || '')}">${escapeHtml(o.phone || '—')}</a></td>
+        <td>${escapeHtml(o.gym || '—')}</td>
+        <td>${escapeHtml(o.activity || '—')}</td>
+        <td>${escapeHtml(o.booking_date || '—')}</td>
+        <td>${escapeHtml(o.slot || '—')}</td>
+        <td>${status}</td>
+        <td>
+          <button type="button" class="btn sm secondary del-coach" data-id="${escapeHtml(o.order_id)}" title="Supprimer">✕</button>
+        </td>
+      </tr>`;
+      })
+      .join('');
+
+    tbody.querySelectorAll('.del-coach').forEach((btn) => {
+      btn.onclick = async () => {
+        const id = btn.dataset.id;
+        if (!confirm(`Supprimer la réservation ${id} ?`)) return;
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: headers(false),
+          });
+          const data = await res.json();
+          if (!data.ok) throw new Error(data.error || 'Erreur');
+          coachings = coachings.filter((o) => o.order_id !== id);
+          renderCoachings();
+        } catch (err) {
+          const msg = document.getElementById('coachingsMsg');
+          if (msg) {
+            msg.textContent = err.message;
+            msg.className = 'form-msg err';
+          }
+          btn.disabled = false;
+        }
+      };
+    });
   }
 
   function renderOrders() {
@@ -184,12 +291,16 @@
         <td>${escapeHtml(o.name)}</td>
         <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>
         <td>${escapeHtml(o.product)}</td>
-        <td>${escapeHtml(STEP_LABELS[o.step] || o.step)}</td>
+        <td>${escapeHtml(o.step_label || STEP_LABELS[o.step] || o.step)}</td>
         <td>${paymentBadge(o)}</td>
         <td>${o.signed ? `✓ ${formatDate(o.signed_at)}` : '—'}</td>
         <td style="font-size:12px">${formatDate(o.updated_at || o.created_at)}</td>
         <td>
-          <button type="button" class="btn sm dl-contract" data-id="${escapeHtml(o.order_id)}">PDF</button>
+          ${
+            o.action
+              ? '—'
+              : `<button type="button" class="btn sm dl-contract" data-id="${escapeHtml(o.order_id)}">PDF</button>`
+          }
         </td>
         <td>
           <button type="button" class="btn sm secondary del-order" data-id="${escapeHtml(o.order_id)}" title="Supprimer">✕</button>
@@ -1140,6 +1251,8 @@
   document.getElementById('refreshOrdersBtn').onclick = loadOrders;
   document.getElementById('ordersSearch').oninput = renderOrders;
   document.getElementById('ordersFilter').onchange = renderOrders;
+  document.getElementById('refreshCoachingsBtn')?.addEventListener('click', loadCoachings);
+  document.getElementById('coachingsSearch')?.addEventListener('input', renderCoachings);
 
   (async function init() {
     try {
