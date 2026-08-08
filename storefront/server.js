@@ -2043,6 +2043,7 @@ function createApp() {
         phone: body.phone || '',
         gym: body.gym || 'minimes',
         current_plan: body.current_plan || '',
+        verify_order_id: body.verify_order_id || '',
       };
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
@@ -2083,7 +2084,24 @@ function createApp() {
         return res.status(402).json({ ok: false, error: 'paiement non confirmé' });
       }
       const meta = session.metadata || {};
-      const { enqueueChangeAfterPayment } = require('./lib/membership');
+      const { enqueueChangeAfterPayment, getCancelStatus } = require('./lib/membership');
+      let deciplusMemberId = null;
+      if (meta.verify_order_id) {
+        try {
+          const { loadOrder } = require('./lib/order-persistence');
+          const verified = await loadOrder(meta.verify_order_id);
+          if (verified?.cancel_status === 'verified' && verified.deciplus_member_id) {
+            deciplusMemberId = verified.deciplus_member_id;
+          } else {
+            const st = await getCancelStatus(meta.verify_order_id);
+            if (st?.status === 'verified' && verified?.deciplus_member_id) {
+              deciplusMemberId = verified.deciplus_member_id;
+            }
+          }
+        } catch {
+          /* re-vérif côté bot si besoin */
+        }
+      }
       const result = await enqueueChangeAfterPayment({
         identity: {
           first_name: meta.first_name,
@@ -2095,6 +2113,7 @@ function createApp() {
         },
         targetProductId: meta.target_product_id,
         stripeSessionId: sessionId,
+        deciplusMemberId,
       });
       res.json({ ok: true, ...result });
     } catch (err) {
@@ -2150,6 +2169,7 @@ function createApp() {
         mismatch_fields: body.mismatch_fields || [],
         reason: body.reason || null,
         cancelled_count: body.cancelled_count,
+        deciplus_member_id: body.deciplus_member_id || null,
       });
       if (body.status === 'mismatch') {
         const identity = body.customer || record.customer || {};

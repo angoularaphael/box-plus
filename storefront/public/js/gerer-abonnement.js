@@ -43,8 +43,9 @@
 
   async function pollIdentityStatus(orderId, { maxWaitMs = 90000 } = {}) {
     const startedAt = Date.now();
+    let delay = 700;
     while (Date.now() - startedAt < maxWaitMs) {
-      await new Promise((r) => setTimeout(r, 3500));
+      await new Promise((r) => setTimeout(r, delay));
       try {
         const r = await fetch(`/api/membership/cancel-status?order=${encodeURIComponent(orderId)}`);
         const s = await r.json();
@@ -57,6 +58,7 @@
       } catch {
         /* retry */
       }
+      delay = Math.min(1800, Math.round(delay * 1.25));
     }
     return { ok: false, status: 'timeout', mismatch_fields: [] };
   }
@@ -219,7 +221,7 @@
       const res = await fetch('/api/membership/change/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, verify_order_id: verify.order_id }),
       });
       const data = await res.json();
       if (!data.ok) {
