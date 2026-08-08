@@ -1956,6 +1956,29 @@ function createApp() {
     res.json({ ok: true, contact });
   });
 
+  app.get('/api/coachings/options', (_req, res) => {
+    try {
+      const { bookingOptions } = require('./lib/coaching-booking');
+      res.json({ ok: true, ...bookingOptions() });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/coachings/book', async (req, res) => {
+    try {
+      const { bookCoaching } = require('./lib/coaching-booking');
+      const result = await bookCoaching(req.body || {});
+      if (!result.ok) {
+        return res.status(400).json({ ok: false, errors: result.errors || ['Demande invalide'] });
+      }
+      res.json(result);
+    } catch (err) {
+      logError('Erreur réservation coaching', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   app.post('/api/membership/cancel', async (req, res) => {
     try {
       const body = req.body || {};
