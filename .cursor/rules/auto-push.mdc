@@ -1,15 +1,30 @@
 ---
-description: Pousser automatiquement sur main après chaque modification BOXPLUS
+description: Après chaque tâche, commit+push site (box-plus) ET bot BH (boxi-deci-bot)
 alwaysApply: true
 ---
 
-# Auto-push BOXPLUS
+# Auto-push site + bot BotHosting
 
-Après avoir terminé une tâche de code dans ce dépôt (`BOXPLUS`) :
+Dès qu’une tâche de code est terminée, **pousser sans attendre** que l’utilisateur dise « push » — sur les **deux** dépôts concernés.
 
-1. Commit uniquement les fichiers liés à la tâche en cours (pas de fichiers non liés, secrets, ou WIP local).
-2. Pousse sur `origin main` sans attendre que l'utilisateur le demande.
-3. Message de commit court, en français ou anglais selon le style du dépôt.
-4. Ne pas demander « voulez-vous que je push ? » — le faire directement et confirmer l'URL/commit dans la réponse.
+## 1. Site — `BOXPLUS` → `origin/main` (`box-plus`)
 
-Exceptions : ne pas push si l'utilisateur dit explicitement de ne pas le faire, ou si le commit échoue (hook, conflit) — dans ce cas corriger puis recommencer.
+1. Commit uniquement les fichiers liés à la tâche (pas de secrets, pas de `distrix/`, pas de PDF/WIP hors sujet).
+2. `git push origin HEAD` (branche `main`).
+3. Confirmer le commit dans la réponse.
+
+## 2. Bot BH — `../boxi-deci-bot` → `origin/main`
+
+Si la tâche touche le bot, le catalogue partagé, `lib/`, `bot/`, `config/`, ou des textes/produits aussi utilisés par le bot :
+
+1. Synchroniser depuis BOXPLUS (comme `scripts/publish-github.ps1` / copie `bot`, `lib`, `config` + fichiers storefront utiles) **sans écraser** `bot/.env`.
+2. Commit + `git push origin HEAD` sur `boxi-deci-bot`.
+3. Rappeler brièvement qu’un redeploy BotHosting peut être nécessaire.
+
+Si la tâche est **uniquement** boutique front (CSS/JS page, cadeau, copy UI) sans impact bot : push site obligatoire ; push bot seulement si des fichiers partagés ont changé (`products.json`, `billing-plan.js`, `storefront-copy.js`, etc.).
+
+## Style
+
+- Message de commit court, style du dépôt.
+- Ne jamais demander « je push ? » — le faire, puis confirmer.
+- Exceptions : l’utilisateur dit explicitement de ne pas push ; ou échec hook/conflit → corriger puis recommencer.
