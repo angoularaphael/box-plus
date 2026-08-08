@@ -307,7 +307,7 @@ window.BCCounselor = (function () {
             if (busy) return;
             push('user', 'Continuer vers la résiliation');
             replySoon(
-              'En cas de résiliation, vous ne pourrez plus bénéficier de votre tarif promotionnel en cas de réinscription. Êtes-vous certain de vouloir résilier ?',
+              'En cas de résiliation, vous ne pourrez plus bénéficier de votre tarif promotionnel en cas de réinscription. La résiliation sera <strong>effective sous 72&nbsp;heures</strong>. Êtes-vous certain de vouloir résilier ?',
               'confirm'
             );
           };
