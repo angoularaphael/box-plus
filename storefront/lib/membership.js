@@ -48,6 +48,48 @@ function getManagerContact(gym) {
   };
 }
 
+async function enqueueVerifyIdentity(body = {}) {
+  const orderId = `VERIFY-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+  const customer = {
+    first_name: body.first_name,
+    last_name: body.last_name,
+    birthdate: body.birthdate,
+    phone: body.phone,
+    email: body.email,
+  };
+  const payload = {
+    order_id: orderId,
+    action: 'verify_identity',
+    first_name: body.first_name,
+    last_name: body.last_name,
+    birthdate: body.birthdate,
+    phone: body.phone,
+    email: body.email,
+    gym: body.gym || 'minimes',
+    customer,
+    product_name: 'Vérification identité',
+    requires_payment: false,
+    requires_iban: false,
+    sale_type: 'none',
+  };
+  const result = await dispatchOrder(payload);
+  try {
+    const { saveOrderAsync } = require('./order-persistence');
+    await saveOrderAsync({
+      order_id: orderId,
+      access_token: crypto.randomBytes(16).toString('hex'),
+      action: 'verify_identity',
+      cancel_status: 'pending',
+      mismatch_fields: [],
+      customer,
+      created_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    logWarn('Statut verify non persisté', { order_id: orderId, error: err.message });
+  }
+  return { order_id: orderId, ...result };
+}
+
 async function enqueueCancelRequest(body = {}) {
   const orderId = `CANCEL-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
   const customer = {
@@ -251,6 +293,7 @@ module.exports = {
   listCurrentPlans,
   getManagerContact,
   enqueueCancelRequest,
+  enqueueVerifyIdentity,
   enqueueChangeAfterPayment,
   sendCancelMismatchEmail,
   updateCancelStatus,
