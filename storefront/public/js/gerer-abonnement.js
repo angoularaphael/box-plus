@@ -41,11 +41,11 @@
     });
   }
 
-  async function pollIdentityStatus(orderId, { maxWaitMs = 90000 } = {}) {
+  async function pollIdentityStatus(orderId, { maxWaitMs = 75000 } = {}) {
     const startedAt = Date.now();
-    let delay = 700;
+    let delay = 400;
+    // 1er poll immédiat (souvent déjà verified/mismatch si bot rapide)
     while (Date.now() - startedAt < maxWaitMs) {
-      await new Promise((r) => setTimeout(r, delay));
       try {
         const r = await fetch(`/api/membership/cancel-status?order=${encodeURIComponent(orderId)}`);
         const s = await r.json();
@@ -58,7 +58,8 @@
       } catch {
         /* retry */
       }
-      delay = Math.min(1800, Math.round(delay * 1.25));
+      await new Promise((r) => setTimeout(r, delay));
+      delay = Math.min(1200, Math.round(delay * 1.2));
     }
     return { ok: false, status: 'timeout', mismatch_fields: [] };
   }
@@ -119,9 +120,10 @@
           if (submitBtn) submitBtn.disabled = false;
           return;
         }
-        if (s.ok && s.status === 'done') {
-          msgEl.textContent =
-            'Votre résiliation a bien été enregistrée. Elle sera effective sous 72 heures. Une confirmation vous sera envoyée par e-mail.';
+        // Dès que l’identité est OK (verified) — pas besoin d’attendre la fin Deciplus
+        if (s.ok && (s.status === 'verified' || s.status === 'done')) {
+          msgEl.innerHTML =
+            '<strong>Votre résiliation sera traitée.</strong><br/>Les informations correspondent : la demande est prise en charge. Elle sera effective sous 72 heures ; une confirmation vous sera envoyée par e-mail.';
           msgEl.className = 'form-msg';
           if (submitBtn) submitBtn.disabled = false;
           return;
@@ -133,8 +135,8 @@
           if (submitBtn) submitBtn.disabled = false;
           return;
         }
-        msgEl.textContent =
-          'Demande bien reçue. Notre équipe traite votre résiliation et vous enverra une confirmation par e-mail.';
+        msgEl.innerHTML =
+          '<strong>Votre résiliation sera traitée.</strong><br/>Demande bien reçue. Notre équipe la finalise et vous enverra une confirmation par e-mail.';
         msgEl.className = 'form-msg';
         if (submitBtn) submitBtn.disabled = false;
       });

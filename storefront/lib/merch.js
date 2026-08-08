@@ -202,22 +202,26 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
       .replace(/\s*—\s*1ère échéance CB/i, ' — première échéance')
       .replace(/\bCB\b/g, 'carte');
   }
-  if (
+  enriched.supports_billing_choice = productSupportsBillingChoice(enriched);
+  enriched.supports_installment_choice = productSupportsInstallmentChoice(enriched);
+  if (enriched.supports_installment_choice) {
+    enriched.requires_iban = false;
+    enriched.installments_note = 'En une fois ou en 4× sans frais';
+  } else if (
     enriched.installments_note &&
-    /Deciplus|Stripe|PayPlug|prélèvement IBAN|suite par prélèvement IBAN/i.test(
+    /Deciplus|Stripe|PayPlug|prélèvement IBAN|suite par prélèvement IBAN|ensuite|prélèvement automatique/i.test(
       String(enriched.installments_note)
     )
   ) {
     if (enriched.id === 'offre-duo' || /offre\s*a\s*29/i.test(String(enriched.name || ''))) {
       enriched.installments_note = '29 € / 4 semaines';
     } else {
-      enriched.installments_note = '1ʳᵉ échéance par carte · ensuite prélèvement automatique';
+      enriched.installments_note = '1ʳᵉ échéance par carte · prélèvement sans engagement';
     }
-  }
-  enriched.supports_billing_choice = productSupportsBillingChoice(enriched);
-  enriched.supports_installment_choice = productSupportsInstallmentChoice(enriched);
-  if (enriched.supports_installment_choice) {
-    enriched.requires_iban = false;
+  } else if (enriched.installments_note) {
+    enriched.installments_note = String(enriched.installments_note)
+      .replace(/ensuite\s+/gi, '')
+      .replace(/prélèvement automatique/gi, 'prélèvement sans engagement');
   }
   // Prix boutique (ex. 259 €) prioritaire sur le total Deciplus synchronisé (ex. 295 €)
   const overrideCents = merchEntry.price_cents ?? staticP.price_cents;

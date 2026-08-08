@@ -35,7 +35,7 @@
     "deciplus_total_note": "Total contrat Deciplus : 545,86 €",
     "requires_iban": true,
     "requires_payment": true,
-    "installments_note": "1ʳᵉ échéance par carte · ensuite prélèvement automatique"
+    "installments_note": "1ʳᵉ échéance par carte · prélèvement sans engagement"
   },
   {
     "id": "offre-promo-etudiant",
@@ -48,7 +48,7 @@
     "deciplus_total_note": "Total contrat Deciplus : 489,86 €",
     "requires_iban": true,
     "requires_payment": true,
-    "installments_note": "1ʳᵉ échéance par carte · ensuite prélèvement automatique"
+    "installments_note": "1ʳᵉ échéance par carte · prélèvement sans engagement"
   },
   {
     "id": "offre-saison",
@@ -99,7 +99,7 @@
     "deciplus_total_note": "Total contrat Deciplus : 443,88 €",
     "requires_iban": true,
     "requires_payment": true,
-    "installments_note": "1ʳᵉ échéance par carte · ensuite prélèvement automatique"
+    "installments_note": "1ʳᵉ échéance par carte · prélèvement sans engagement"
   },
   {
     "id": "44-99-4-semaines",
@@ -112,7 +112,7 @@
     "deciplus_total_note": "Total contrat Deciplus : 539,88 €",
     "requires_iban": true,
     "requires_payment": true,
-    "installments_note": "1ʳᵉ échéance par carte · ensuite prélèvement automatique"
+    "installments_note": "1ʳᵉ échéance par carte · prélèvement sans engagement"
   },
   {
     "id": "comptant-12-mois",

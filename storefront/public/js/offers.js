@@ -29,7 +29,7 @@
     if (product.id === 'offre-duo' || /offre\s*a\s*29/i.test(product.name || '')) {
       return '29 € / 4 semaines';
     }
-    if (product.requires_iban) return '1ʳᵉ échéance par carte · puis prélèvement';
+    if (product.requires_iban) return '1ʳᵉ échéance par carte · prélèvement sans engagement';
     return 'Paiement sécurisé par carte';
   }
 
@@ -59,7 +59,7 @@
       return '29 € par personne toutes les 4 semaines. Accès illimité aux 5 salles et à toutes les disciplines.';
     }
     if (/4\s*semaines/i.test(n) || product.requires_iban) {
-      return 'Formule flexible : 1ʳᵉ échéance par carte, puis renouvellement toutes les 4 semaines. Accès illimité aux salles et disciplines.';
+      return 'Formule flexible : 1ʳᵉ échéance par carte, puis prélèvement sans engagement toutes les 4 semaines. Accès illimité aux salles et disciplines.';
     }
     if (/baby\s*boxe/i.test(n)) {
       return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison.';
@@ -82,7 +82,12 @@
     const price = product.marketing_price_label || product.stripe_price_label || product.price_label || '—';
     const benefits = product.benefits || [];
     const defaultBenefits = product.tab === 'abonnements'
-      ? ['Accès aux 5 salles', 'Toutes les disciplines', 'Encadrement coach']
+      ? [
+          'Accès aux 5 salles',
+          'Cours illimités + accès libre',
+          'Encadrement coach professionnel',
+          'Accès libre inclus de 10h à 21h30',
+        ]
       : [];
 
     const list = benefits.length ? benefits : defaultBenefits;

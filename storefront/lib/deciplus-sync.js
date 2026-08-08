@@ -108,7 +108,7 @@ function mapDeciplusItem(item) {
     price_subtitle: hasContractTotal ? `${formatEuros(stripeEuros)} — première échéance` : null,
     deciplus_total_note: null,
     installments_note: hasContractTotal
-      ? '1ʳᵉ échéance par carte · ensuite prélèvement automatique'
+      ? '1ʳᵉ échéance par carte · prélèvement sans engagement'
       : null,
     sale_type: saleType,
     requires_iban: requiresIban,

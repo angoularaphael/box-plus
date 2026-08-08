@@ -250,6 +250,7 @@ async function enqueueChangeAfterPayment({
     requires_iban: false,
     sale_type: 'none',
   });
+  const amountEuros = Number(product.price_cents || 0) / 100;
   const sale = await dispatchOrder({
     order_id: baseId,
     action: 'sale',
@@ -268,6 +269,7 @@ async function enqueueChangeAfterPayment({
     product_id: product.id,
     product_name: product.name,
     deciplus_id: product.deciplus_id,
+    deciplus_product_search: product.deciplus_product_search || null,
     price_cents: product.price_cents,
     requires_payment: true,
     requires_iban: false,
@@ -277,9 +279,19 @@ async function enqueueChangeAfterPayment({
     sale_date: today,
     effective_date: today,
     auto_badge: false,
+    paiement_comptant: true,
+    // Montant requis par validateOrder (sinon seule la résiliation partait)
+    payment: {
+      amount: amountEuros,
+      method: 'stripe',
+      status: 'paid',
+      date: new Date().toISOString(),
+      stripe_session_id: stripeSessionId,
+    },
     // E-mail de confirmation envoyé par le bot à la fin du job (pas ici)
     notify_change_complete: true,
     change_product_name: product.display_name || product.name,
+    source: 'storefront-change',
   });
 
   return { cancel, sale, order_id: baseId };

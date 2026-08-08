@@ -640,7 +640,7 @@
               <input type="radio" name="billing_plan" value="rib" ${savedPlan !== 'paypal' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>Carte bancaire</strong>
-                <small>1ʳᵉ échéance par carte, puis prélèvement</small>
+                <small>1ʳᵉ échéance par carte, puis prélèvement sans engagement</small>
                 ${paymentLogosHtml('card')}
               </span>
             </label>
@@ -648,7 +648,7 @@
               <input type="radio" name="billing_plan" value="paypal" ${savedPlan === 'paypal' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>PayPal</strong>
-                <small>1ʳᵉ échéance PayPal, puis prélèvement</small>
+                <small>1ʳᵉ échéance PayPal, puis prélèvement sans engagement</small>
                 ${paymentLogosHtml('paypal')}
               </span>
             </label>
@@ -818,7 +818,12 @@
         : p.duration_label || '';
     const benefits = Array.isArray(p.benefits) && p.benefits.length
       ? p.benefits
-      : ['Accès aux 5 salles', 'Toutes les disciplines', 'Encadrement coach'];
+      : [
+          'Accès aux 5 salles',
+          'Cours illimités + accès libre',
+          'Encadrement coach professionnel',
+          'Accès libre inclus de 10h à 21h30',
+        ];
     stepContent.innerHTML = `
       <h1>Votre offre</h1>
       <div class="offer-card" style="margin-bottom:24px">
@@ -1006,7 +1011,7 @@
     const existingIban = state.order?.payment?.iban || state.order?.customer_full?.iban || '';
     stepContent.innerHTML = `
       <h1>Coordonnées bancaires</h1>
-      <p class="sub">Indiquez votre IBAN pour les prochaines échéances — prélèvement automatique, sans surprise.</p>
+      <p class="sub">Indiquez votre IBAN pour les prochaines échéances — prélèvement sans engagement, sans surprise.</p>
       <form id="ibanForm" class="form-grid">
         <div class="full">
           <label for="iban">IBAN *</label>

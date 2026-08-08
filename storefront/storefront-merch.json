@@ -5,7 +5,13 @@
       "tab": "abonnements",
       "subsection": "prelevement",
       "display_name": "Sans engagement — Adulte",
-      "benefits": ["Accès aux 5 salles", "Toutes les disciplines", "Sans engagement longue durée", "Encadrement par des coachs pro"],
+      "benefits": [
+        "Accès aux 5 salles",
+        "Cours illimités + accès libre",
+        "Encadrement coach professionnel",
+        "Accès libre inclus de 10h à 21h30",
+        "Sans engagement longue durée"
+      ],
       "audience": "Adultes débutants et confirmés",
       "duration_label": "4 semaines renouvelables",
       "sort_order": 1,
@@ -16,7 +22,13 @@
       "tab": "abonnements",
       "subsection": "prelevement",
       "display_name": "Sans engagement — Étudiant",
-      "benefits": ["Accès aux 5 salles", "Toutes les disciplines", "Tarif étudiant sur justificatif", "Sans engagement"],
+      "benefits": [
+        "Accès aux 5 salles",
+        "Cours illimités + accès libre",
+        "Encadrement coach professionnel",
+        "Accès libre inclus de 10h à 21h30",
+        "Tarif étudiant sur justificatif"
+      ],
       "audience": "Étudiants (carte étudiante requise)",
       "duration_label": "4 semaines renouvelables",
       "sort_order": 2,
@@ -26,7 +38,13 @@
       "tab": "abonnements",
       "subsection": "comptant",
       "display_name": "Comptant 12 mois",
-      "benefits": ["Accès aux 5 salles", "Toutes les disciplines", "Meilleur rapport qualité/prix", "Paiement unique"],
+      "benefits": [
+        "Accès aux 5 salles",
+        "Cours illimités + accès libre",
+        "Encadrement coach professionnel",
+        "Accès libre inclus de 10h à 21h30",
+        "Meilleur rapport qualité/prix"
+      ],
       "audience": "Adultes et jeunes motivés sur la durée",
       "duration_label": "12 mois",
       "sort_order": 1,
@@ -37,7 +55,13 @@
       "tab": "abonnements",
       "subsection": "comptant",
       "display_name": "Comptant 6 mois",
-      "benefits": ["Accès aux 5 salles", "Toutes les disciplines", "Paiement en une seule fois"],
+      "benefits": [
+        "Accès aux 5 salles",
+        "Cours illimités + accès libre",
+        "Encadrement coach professionnel",
+        "Accès libre inclus de 10h à 21h30",
+        "Paiement en une seule fois"
+      ],
       "audience": "Adultes",
       "duration_label": "6 mois",
       "sort_order": 2,
@@ -47,7 +71,13 @@
       "tab": "abonnements",
       "subsection": "comptant",
       "display_name": "Comptant 3 mois",
-      "benefits": ["Accès aux 5 salles", "Toutes les disciplines", "Idéal pour démarrer"],
+      "benefits": [
+        "Accès aux 5 salles",
+        "Cours illimités + accès libre",
+        "Encadrement coach professionnel",
+        "Accès libre inclus de 10h à 21h30",
+        "Idéal pour démarrer"
+      ],
       "audience": "Débutants et reprises",
       "duration_label": "3 mois",
       "sort_order": 3,
@@ -120,9 +150,11 @@
       "display_name": "Promo 12 mois — 259 €",
       "description": "12 mois d’accès illimité aux 5 salles et à toutes les disciplines pour 259 €. Payez en une fois ou en 4× sans frais — sans prélèvement mensuel.",
       "benefits": [
-        "12 mois d’accès illimité",
-        "Paiement en 1× ou en 4× sans frais",
-        "Sans prélèvement mensuel"
+        "Accès aux 5 salles",
+        "Cours illimités + accès libre",
+        "Encadrement coach professionnel",
+        "Accès libre inclus de 10h à 21h30",
+        "Paiement en 1× ou en 4× sans frais"
       ],
       "audience": "Adultes",
       "sort_order": 5,
