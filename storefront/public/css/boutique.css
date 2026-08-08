@@ -720,6 +720,45 @@ input:focus, select:focus, textarea:focus {
 
 .manage-form { margin-top: 8px; }
 
+/* Revenir en haut */
+.back-top {
+  position: fixed;
+  left: 18px;
+  bottom: 22px;
+  z-index: 55;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--bc-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--bc-navy);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(11, 31, 58, 0.14);
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease, background 0.2s ease, border-color 0.2s ease;
+}
+.back-top.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.back-top:hover {
+  background: var(--bc-navy);
+  border-color: var(--bc-navy);
+  color: #fff;
+}
+.back-top__label { letter-spacing: 0.02em; }
+@media (max-width: 560px) {
+  .back-top { left: 14px; bottom: 16px; padding: 12px; }
+  .back-top__label { display: none; }
+}
+
 /* Chat flottant */
 .chat-fab {
   position: fixed;

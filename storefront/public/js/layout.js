@@ -122,6 +122,45 @@
     updateCartFab(n);
   }
 
+  function renderBackTop() {
+    if (document.getElementById('backTop')) return;
+    if (currentPath().includes('/admin')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'backTop';
+    btn.className = 'back-top';
+    btn.setAttribute('aria-label', 'Revenir en haut');
+    btn.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>
+      </svg>
+      <span class="back-top__label">Haut</span>`;
+    btn.hidden = true;
+    btn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    document.body.appendChild(btn);
+
+    let ticking = false;
+    const sync = () => {
+      ticking = false;
+      const show = window.scrollY > 380;
+      btn.hidden = !show;
+      btn.classList.toggle('is-visible', show);
+    };
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(sync);
+        }
+      },
+      { passive: true }
+    );
+    sync();
+  }
+
   function renderCartFab() {
     const path = currentPath();
     if (path === '/panier' || path.includes('panier') || path.includes('checkout') || path.includes('inscription') || path.includes('/admin')) return;
@@ -191,6 +230,7 @@
     if (headerSlot) headerSlot.innerHTML = renderHeader();
     if (footerSlot) footerSlot.innerHTML = renderFooter();
     initNav();
+    renderBackTop();
     renderCartFab();
     updateCartBadge();
     window.addEventListener('bccart:change', updateCartBadge);
