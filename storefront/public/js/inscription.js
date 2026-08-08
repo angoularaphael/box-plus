@@ -232,7 +232,7 @@
     }
     if (kind === 'payplug') {
       return `<span class="pay-logos" aria-hidden="true">
-        <img src="https://www.onatureshop.com/img/cms/Payplug-logo.png" alt="PayPlug paiement sécurisé" height="32" style="background:#111;border-radius:6px;padding:2px 6px" />
+        <img src="https://www.onatureshop.com/img/cms/Payplug-logo.png" alt="Paiement en 4× sans frais" height="32" style="background:#111;border-radius:6px;padding:2px 6px" />
       </span>`;
     }
     return `<span class="pay-logos" aria-hidden="true">
@@ -244,7 +244,7 @@
   function firstPaymentCaption(product) {
     const amount = priceLabel(product);
     if (supportsInstallmentChoice(product)) {
-      return `Montant total : <strong>${amount}</strong> — choisissez comptant ou 4× sans frais (pas d'IBAN)`;
+      return `Montant total : <strong>${amount}</strong> — payez en une fois ou en 4× sans frais`;
     }
     if (isComptantLikeProduct(product)) {
       return `Paiement de : <strong>${amount}</strong>`;
@@ -409,10 +409,10 @@
       return 'Paiement 4× temporairement indisponible. Choisissez le paiement en une fois, ou contactez le club.';
     }
     if (data.error === 'payplug_url_missing') {
-      return 'Impossible d\'ouvrir la page PayPlug. Réessayez ou choisissez le paiement en une fois.';
+      return 'Impossible d\'ouvrir le paiement en 4×. Réessayez ou choisissez le paiement en une fois.';
     }
     if (data.error === 'stripe_not_configured') {
-      return 'Paiement Stripe temporairement indisponible. Contactez le club.';
+      return 'Paiement temporairement indisponible. Contactez le club.';
     }
     if (data.error === 'not_found') {
       return 'Dossier introuvable. Revenez à l\'étape identité et recommencez, ou contactez le club.';
@@ -532,30 +532,30 @@
       const savedMethod = state.order?.payment?.preferred_checkout || 'card';
       billingHtml = `
         <div class="full billing-plan-block">
-          <p class="sub" style="margin-top:0">Étape 1 — Choisissez le type de paiement (pas d'IBAN, vente Deciplus en comptant).</p>
+          <p class="sub" style="margin-top:0">Étape 1 — Comment souhaitez-vous régler ?</p>
           <div class="billing-choice-row" role="radiogroup" aria-label="Type de paiement">
             <label class="billing-choice">
               <input type="radio" name="payment_plan" value="once" ${savedInstallment !== '4x' ? 'checked' : ''} />
               <span class="billing-choice-text">
-                <strong>Paiement comptant</strong>
-                <small>Une fois · ${priceLabel(p)}</small>
+                <strong>En une seule fois</strong>
+                <small>${priceLabel(p)}</small>
               </span>
             </label>
             <label class="billing-choice">
               <input type="radio" name="payment_plan" value="4x" ${savedInstallment === '4x' ? 'checked' : ''} />
               <span class="billing-choice-text">
-                <strong>4× sans frais</strong>
+                <strong>En 4× sans frais</strong>
                 <small>4 × ${quart} €</small>
               </span>
             </label>
           </div>
-          <p class="sub" style="margin:16px 0 8px">Étape 2 — Moyen de paiement</p>
+          <p class="sub" style="margin:16px 0 8px">Étape 2 — Choisissez votre moyen de paiement</p>
           <div id="onceMethods" class="billing-choice-row">
             <label class="billing-choice">
               <input type="radio" name="pay_method_once" value="card" ${savedMethod !== 'paypal' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>Carte bancaire</strong>
-                <small>Stripe</small>
+                <small>Paiement sécurisé</small>
                 ${paymentLogosHtml('card')}
               </span>
             </label>
@@ -563,7 +563,7 @@
               <input type="radio" name="pay_method_once" value="paypal" ${savedMethod === 'paypal' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>PayPal</strong>
-                <small>Stripe · PayPal</small>
+                <small>Paiement sécurisé</small>
                 ${paymentLogosHtml('paypal')}
               </span>
             </label>
@@ -572,8 +572,8 @@
             <label class="billing-choice">
               <input type="radio" name="pay_method_4x" value="payplug" checked />
               <span class="billing-choice-text">
-                <strong>PayPlug</strong>
-                <small>4× sans frais (Oney)</small>
+                <strong>4× sans frais</strong>
+                <small>Carte · sans frais supplémentaires</small>
                 ${paymentLogosHtml('payplug')}
               </span>
             </label>
@@ -581,13 +581,13 @@
               <input type="radio" name="pay_method_4x" value="paypal" />
               <span class="billing-choice-text">
                 <strong>PayPal</strong>
-                <small>4× / PayPal</small>
+                <small>En 4× via PayPal</small>
                 ${paymentLogosHtml('paypal')}
               </span>
             </label>
           </div>
           <div id="fourXAddress" class="form-grid" style="display:none;margin-top:12px">
-            <p class="sub full" style="margin:0 0 8px">Adresse requise pour le dossier 4× PayPlug :</p>
+            <p class="sub full" style="margin:0 0 8px">Adresse requise pour valider le paiement en 4× :</p>
             <div class="full"><label>Adresse *</label><input name="address" value="${esc(full.address || '')}" /></div>
             <div><label>Code postal *</label><input name="postal_code" value="${esc(full.postal_code || '')}" /></div>
             <div><label>Ville *</label><input name="city" value="${esc(full.city || '')}" /></div>
@@ -600,8 +600,8 @@
             <label class="billing-choice">
               <input type="radio" name="billing_plan" value="rib" ${savedPlan !== 'paypal' ? 'checked' : ''} />
               <span class="billing-choice-text">
-                <strong>Carte Bancaire</strong>
-                <small>1ère CB, puis prélèvement RIB</small>
+                <strong>Carte bancaire</strong>
+                <small>1ʳᵉ échéance par carte, puis prélèvement</small>
                 ${paymentLogosHtml('card')}
               </span>
             </label>
@@ -609,7 +609,7 @@
               <input type="radio" name="billing_plan" value="paypal" ${savedPlan === 'paypal' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>PayPal</strong>
-                <small>1ère échéance PayPal, puis prélèvement RIB</small>
+                <small>1ʳᵉ échéance PayPal, puis prélèvement</small>
                 ${paymentLogosHtml('paypal')}
               </span>
             </label>
@@ -623,7 +623,7 @@
               <input type="radio" name="billing_plan" value="card" checked />
               <span class="billing-choice-text">
                 <strong>Carte bancaire</strong>
-                <small>Paiement comptant</small>
+                <small>En une seule fois</small>
                 ${paymentLogosHtml('card')}
               </span>
             </label>
@@ -631,7 +631,7 @@
               <input type="radio" name="billing_plan" value="paypal" />
               <span class="billing-choice-text">
                 <strong>PayPal</strong>
-                <small>Paiement comptant</small>
+                <small>En une seule fois</small>
                 ${paymentLogosHtml('paypal')}
               </span>
             </label>
@@ -673,7 +673,7 @@
             plan === '4x'
               ? fourMethod === 'paypal'
                 ? 'Payer en 4× avec PayPal'
-                : 'Payer en 4× avec PayPlug'
+                : 'Payer en 4× sans frais'
               : 'Payer en une fois';
         }
       };
@@ -705,7 +705,7 @@
               ?.value?.trim();
             body.city = document.querySelector('#fourXAddress input[name="city"]')?.value?.trim();
             if (!body.address || !body.postal_code || !body.city) {
-              setMsg('Adresse complète requise pour le paiement 4× PayPlug.', 'err');
+              setMsg('Adresse complète requise pour le paiement en 4×.', 'err');
               return;
             }
           }
@@ -798,7 +798,6 @@
         <div class="offer-meta" style="margin-top:12px">
           ${duration ? `<div><strong>Durée :</strong> ${esc(duration)}</div>` : ''}
           ${payMode ? `<div><strong>Paiement :</strong> ${esc(payMode)}</div>` : ''}
-          ${p.deciplus_total_note ? `<div><strong>Note :</strong> ${esc(p.deciplus_total_note)}</div>` : ''}
         </div>
       </div>
       <button type="button" class="btn block" id="toStep2">Continuer</button>
@@ -971,8 +970,8 @@
       return;
     }
     stepContent.innerHTML = `
-      <h1>IBAN</h1>
-      <p class="sub">Veuillez entrer votre IBAN dans le texte ci-dessous pour le paiement des autres échéances.</p>
+      <h1>Coordonnées bancaires</h1>
+      <p class="sub">Indiquez votre IBAN pour les prochaines échéances — prélèvement automatique, sans surprise.</p>
       <form id="ibanForm" class="form-grid">
         <div class="full">
           <label for="iban">IBAN *</label>
@@ -1028,7 +1027,7 @@
         <div><label for="city">Ville *</label><input id="city" name="city" required value="${full.city || ''}" /></div>
         <div class="full photo-capture-block">
           <label>Photo *</label>
-          <p class="field-hint">Prenez une photo avec votre caméra. Elle sera associée à votre dossier et envoyée sur votre fiche Deciplus.</p>
+          <p class="field-hint">Prenez une photo avec votre caméra — elle sera associée à votre dossier adhérent.</p>
           <div class="photo-capture-actions">
             <button type="button" class="btn secondary" id="webcamBtn">Ouvrir la caméra</button>
           </div>
@@ -1364,7 +1363,7 @@
       if (data.pending) {
         setMsg(
           data.message ||
-            'Votre demande 4× est en cours de validation PayPlug. Cette page se mettra à jour automatiquement.',
+            'Votre paiement en 4× est en cours de validation. Cette page se mettra à jour automatiquement.',
           ''
         );
         window.setTimeout(async () => {
@@ -1376,7 +1375,7 @@
       }
       setMsg(data.message || data.error || 'Paiement 4× non confirmé', 'err');
     } catch {
-      setMsg('Impossible de vérifier le paiement PayPlug pour le moment.', 'err');
+      setMsg('Impossible de vérifier le paiement en 4× pour le moment.', 'err');
     }
     return false;
   }

@@ -3,7 +3,7 @@ let stripeMode = false;
 let catalogLoading = true;
 
 const BADGE_FEE_NOTICE =
-  "En souscrivant un abonnement, votre badge d'accès (34,99 €) sera prélevé automatiquement sur l'IBAN que vous indiquez, 72 heures après votre souscription. Le montant payé aujourd'hui par carte bancaire correspond à votre 1ère échéance d'abonnement.";
+  "En souscrivant un abonnement, votre badge d'accès (34,99 €) est prélevé automatiquement quelques jours après l'inscription. Le montant payé aujourd'hui par carte correspond à votre première échéance.";
 
 function shouldShowBadgeFeeNotice(product) {
   if (!product?.requires_iban) return false;
@@ -77,7 +77,7 @@ async function init() {
     const demoAllowed =
       !stripeMode || String(config.demo_checkout_enabled) === 'true';
 
-    document.getElementById('modePill').textContent = stripeMode ? 'Stripe actif' : 'Mode démo';
+    document.getElementById('modePill').textContent = stripeMode ? 'Paiement sécurisé' : 'Mode démonstration';
     document.getElementById('productId').value = currentProduct.id;
     document.getElementById('productTitle').textContent = currentProduct.name;
     document.getElementById('productSub').textContent = currentProduct.category || '';
@@ -88,10 +88,7 @@ async function init() {
 
     const contractEl = document.getElementById('sumContract');
     const installmentsEl = document.getElementById('sumInstallments');
-    if (currentProduct.deciplus_total_note && contractEl) {
-      contractEl.hidden = false;
-      contractEl.innerHTML = `<span>${currentProduct.deciplus_total_note}</span>`;
-    } else if (contractEl) {
+    if (contractEl) {
       contractEl.hidden = true;
     }
     if (currentProduct.installments_note && installmentsEl) {

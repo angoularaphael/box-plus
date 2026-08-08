@@ -37,7 +37,7 @@
       "tab": "abonnements",
       "subsection": "comptant",
       "display_name": "Comptant 6 mois",
-      "benefits": ["Accès aux 5 salles", "Toutes les disciplines", "Paiement unique CB"],
+      "benefits": ["Accès aux 5 salles", "Toutes les disciplines", "Paiement en une seule fois"],
       "audience": "Adultes",
       "duration_label": "6 mois",
       "sort_order": 2,
@@ -117,11 +117,11 @@
       "tab": "abonnements",
       "subsection": "comptant",
       "display_name": "Promo 12 mois — 259 €",
-      "description": "Offre promo saison : 259 € pour 12 mois d'accès illimité aux 5 salles et à toutes les disciplines. Paiement comptant (une fois) ou 4× sans frais — aucun IBAN, vente enregistrée en comptant sur Deciplus.",
+      "description": "12 mois d’accès illimité aux 5 salles et à toutes les disciplines pour 259 €. Payez en une fois ou en 4× sans frais — sans prélèvement mensuel.",
       "benefits": [
-        "12 mois d'accès illimité",
-        "1× Stripe/PayPal ou 4× PayPlug/PayPal",
-        "Pas d'IBAN — vente comptant Deciplus"
+        "12 mois d’accès illimité",
+        "Paiement en 1× ou en 4× sans frais",
+        "Sans prélèvement mensuel"
       ],
       "audience": "Adultes",
       "sort_order": 5,

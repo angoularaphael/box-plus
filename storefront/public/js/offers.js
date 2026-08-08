@@ -15,19 +15,19 @@
       product.id === 'offre-saison' ||
       /1\s*[x×]\s*ou\s*4\s*[x×]/i.test(product.badge || '')
     ) {
-      return 'Comptant (Stripe/PayPal) ou 4× (PayPlug/PayPal)';
+      return 'En une fois ou en 4× sans frais';
     }
     if (/comptant/i.test(product.name || '') || product.subsection === 'comptant') {
-      return 'Paiement unique CB — pas de prélèvement';
+      return 'Paiement unique — pas de prélèvement';
     }
     if (product.supports_billing_choice) {
-      return 'Échéances 4 sem. — RIB ou carte au choix';
+      return 'Sans engagement — carte ou prélèvement';
     }
     if (/4\s*[x×]\s*sans\s*frais/i.test(product.badge || '') || /sans\s*frais/i.test(product.badge || '')) {
-      return 'Paiement CB — 4× sans frais';
+      return 'Paiement en 4× sans frais';
     }
-    if (product.requires_iban) return 'Échéances — 1ère CB · suite prélèvement';
-    return 'Paiement par carte';
+    if (product.requires_iban) return '1ʳᵉ échéance par carte · puis prélèvement';
+    return 'Paiement sécurisé par carte';
   }
 
   function formatDuration(product) {

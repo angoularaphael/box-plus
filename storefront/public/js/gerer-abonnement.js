@@ -186,7 +186,7 @@
         changeMsg.hidden = false;
         changeMsg.className = data.ok ? 'form-msg' : 'form-msg err';
         changeMsg.textContent = data.ok
-          ? 'Paiement reçu — bascule prélèvement → comptant en cours dans Deciplus.'
+          ? 'Paiement reçu — votre changement d’abonnement est en cours de traitement.'
           : data.error || 'Confirmation impossible';
       })
       .catch(() => {});

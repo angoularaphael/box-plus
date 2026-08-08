@@ -173,8 +173,9 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
   const enriched = {
     ...staticP,
     ...catalogProduct,
-    description: catalogProduct.description || staticP.description || merchEntry.description || null,
-    tagline: catalogProduct.tagline || staticP.tagline || null,
+    // Copie marketing prioritaire (merch / products.json) — jamais le jargon sync interne
+    description: merchEntry.description || staticP.description || catalogProduct.description || null,
+    tagline: merchEntry.tagline || staticP.tagline || catalogProduct.tagline || null,
     tab: merchEntry.tab || 'abonnements',
     subsection,
     display_name: merchEntry.display_name || catalogProduct.name,
@@ -188,12 +189,27 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
     marketing_price_label: merchEntry.marketing_price_label || null,
     image: merchEntry.image || null,
     installments_note:
-      catalogProduct.installments_note || staticP.installments_note || merchEntry.installments_note || null,
+      merchEntry.installments_note || staticP.installments_note || catalogProduct.installments_note || null,
     supports_installment_choice:
       catalogProduct.supports_installment_choice === true ||
       staticP.supports_installment_choice === true ||
       merchEntry.supports_installment_choice === true,
   };
+  // Notes internes Deciplus / sync — jamais affichées côté client
+  enriched.deciplus_total_note = null;
+  if (enriched.price_subtitle && /Deciplus|IBAN|\bCB\b/i.test(String(enriched.price_subtitle))) {
+    enriched.price_subtitle = String(enriched.price_subtitle)
+      .replace(/\s*—\s*1ère échéance CB/i, ' — première échéance')
+      .replace(/\bCB\b/g, 'carte');
+  }
+  if (
+    enriched.installments_note &&
+    /Deciplus|Stripe|PayPlug|prélèvement IBAN|suite par prélèvement IBAN/i.test(
+      String(enriched.installments_note)
+    )
+  ) {
+    enriched.installments_note = '1ʳᵉ échéance par carte · ensuite prélèvement automatique';
+  }
   enriched.supports_billing_choice = productSupportsBillingChoice(enriched);
   enriched.supports_installment_choice = productSupportsInstallmentChoice(enriched);
   if (enriched.supports_installment_choice) {
