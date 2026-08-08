@@ -250,7 +250,7 @@
         changeMsg.hidden = false;
         changeMsg.className = data.ok ? 'form-msg' : 'form-msg err';
         changeMsg.textContent = data.ok
-          ? 'Paiement reçu — votre changement d’abonnement est en cours de traitement.'
+          ? 'Votre abonnement comptant a bien été enregistré. Il prendra effet dans quelques minutes. Un e-mail de confirmation vous sera envoyé dès que c’est actif.'
           : data.error || 'Confirmation impossible';
       })
       .catch(() => {});

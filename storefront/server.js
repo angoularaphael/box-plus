@@ -2147,6 +2147,29 @@ function createApp() {
     }
   });
 
+  // Fin de job changement d’abo (prélèvement → comptant) — e-mail client
+  app.post('/api/internal/change-complete', async (req, res) => {
+    if (!isAuthorizedSync(req)) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    try {
+      const body = req.body || {};
+      const { sendChangeConfirmationEmail } = require('./lib/membership');
+      const mail = await sendChangeConfirmationEmail(
+        {
+          email: body.email,
+          first_name: body.first_name,
+          last_name: body.last_name,
+        },
+        { name: body.product_name, change_product_name: body.product_name }
+      );
+      res.json({ ok: true, mail });
+    } catch (err) {
+      logError('Erreur change-complete', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   app.post('/api/internal/cancel-mismatch', async (req, res) => {
     if (!isAuthorizedSync(req)) {
       return res.status(401).json({ ok: false, error: 'unauthorized' });
