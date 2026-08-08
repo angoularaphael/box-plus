@@ -172,12 +172,12 @@
 
   function clearProgress() {
     try {
-      localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
     } catch {
       /* ignore */
     }
     try {
-      sessionStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
     } catch {
       /* ignore */
     }
@@ -831,7 +831,7 @@
         <div class="offer-meta" style="margin-top:12px">
           ${duration ? `<div><strong>Durée :</strong> ${esc(duration)}</div>` : ''}
           ${payMode ? `<div><strong>Paiement :</strong> ${esc(payMode)}</div>` : ''}
-        </div>
+      </div>
       </div>
       <button type="button" class="btn block" id="toStep2">Continuer</button>
       <a href="/abonnements" class="btn secondary block" id="chooseOtherOffer" style="margin-top:12px">← Choisir une autre offre</a>`;
@@ -936,18 +936,18 @@
       saveProgress();
 
       if (!state.orderId) {
-        const res = await fetch('/api/orders/draft', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+      const res = await fetch('/api/orders/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...body, product_id: state.productId }),
-        });
-        const data = await res.json();
-        if (!data.ok) {
-          setMsg((data.errors || [data.error]).join(', '), 'err');
-          return;
-        }
-        state.orderId = data.order_id;
-        state.token = data.access_token;
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        setMsg((data.errors || [data.error]).join(', '), 'err');
+        return;
+      }
+      state.orderId = data.order_id;
+      state.token = data.access_token;
       } else {
         const res = await fetch(`/api/orders/${state.orderId}/identity`, {
           method: 'PATCH',
@@ -1030,8 +1030,15 @@
         setMsg(orderErrorMessage(data), 'err');
         return;
       }
+      // Garde l'IBAN en local même si le rechargement serveur est en retard
+      state.order = state.order || {};
+      state.order.payment = { ...(state.order.payment || {}), iban: String(iban || '').replace(/\s+/g, '').toUpperCase() };
+      state.order.customer_full = { ...(state.order.customer_full || {}), iban: state.order.payment.iban };
       setMsg('');
       await loadOrder();
+      if (!state.order?.payment?.iban) {
+        state.order.payment = { ...(state.order.payment || {}), iban: String(iban || '').replace(/\s+/g, '').toUpperCase() };
+      }
       goToStep(6);
     };
   }
@@ -1158,6 +1165,14 @@
       await stopWebcam();
       const fd = new FormData(e.target);
       const body = Object.fromEntries(fd.entries());
+      // Renvoie l'IBAN déjà saisi — évite le faux « IBAN requis » si le store
+      // distant n'a pas encore propagé payment.iban sur cette instance.
+      if (!body.iban) {
+        body.iban =
+          state.order?.payment?.iban ||
+          state.order?.customer_full?.iban ||
+          undefined;
+      }
       const res = await fetch(`/api/orders/${state.orderId}/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -1165,6 +1180,11 @@
       });
       const data = await res.json();
       if (!data.ok) {
+        if (data.error === 'iban_required') {
+          setMsg(orderErrorMessage(data), 'err');
+          goToStep(5);
+          return;
+        }
         setMsg(orderErrorMessage(data), 'err');
         return;
       }
@@ -1297,10 +1317,10 @@
       }
       setMsg('Finalisation…');
       const signBody = JSON.stringify({
-        token: state.token,
-        session_id: state.sessionId || undefined,
-        consent_cgv: true,
-        consent_reglement: true,
+          token: state.token,
+          session_id: state.sessionId || undefined,
+          consent_cgv: true,
+          consent_reglement: true,
         consent_medical: true,
         signature_image: pad.toDataURL(),
       });

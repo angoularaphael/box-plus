@@ -101,17 +101,21 @@ function listOrdersFromFs() {
 }
 
 async function loadOrder(orderId) {
-  const local = loadOrderFromFs(orderId);
-  if (local) return local;
-  if (!useRemoteStore()) return null;
-  try {
-    const remote = await loadOrderFromRemote(orderId);
-    if (remote) saveOrderToFs(remote);
-    return remote;
-  } catch (err) {
-    logError('Chargement commande Supabase', { order_id: orderId, error: err.message });
-    return null;
+  // Sur Vercel, /tmp est local à l'instance : un cache FS périmé peut masquer
+  // une mise à jour IBAN faite sur une autre lambda. Quand le store distant est
+  // actif, on lit TOUJOURS Supabase en priorité.
+  if (useRemoteStore()) {
+    try {
+      const remote = await loadOrderFromRemote(orderId);
+      if (remote) {
+        saveOrderToFs(remote);
+        return remote;
+      }
+    } catch (err) {
+      logError('Chargement commande Supabase', { order_id: orderId, error: err.message });
+    }
   }
+  return loadOrderFromFs(orderId);
 }
 
 function saveOrder(order) {

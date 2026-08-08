@@ -180,8 +180,10 @@ async function markPaymentFailedAsync(orderId, paymentData = {}) {
 async function updateIbanAsync(orderId, iban) {
   const order = await loadOrderAsync(orderId);
   if (!order) return null;
-  order.payment = { ...(order.payment || {}), iban };
-  order.customer_full = { ...(order.customer_full || {}), iban };
+  const { normalizeIban } = require('../../lib/iban');
+  const clean = normalizeIban(iban);
+  order.payment = { ...(order.payment || {}), iban: clean };
+  order.customer_full = { ...(order.customer_full || {}), iban: clean };
   order.step = Math.max(order.step || 1, STEPS.DOSSIER);
   return saveOrderAsync(order);
 }
