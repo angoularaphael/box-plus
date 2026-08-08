@@ -248,13 +248,19 @@
     );
   }
 
-  function orderNeedsIban(order) {
+  /** L'offre demande un IBAN (étape visible) — indépendant du fait qu'il soit déjà saisi. */
+  function productRequiresIban(order) {
     const p = order?.product_snapshot || state.product;
-    if (order?.payment?.iban) return false;
     if (isComptantLikeProduct(p) || p?.requires_iban === false) return false;
     const plan = order?.payment?.billing_plan;
     if (plan === 'rib' || plan === 'paypal' || p?.requires_iban) return true;
+    if (/4\s*semaines/i.test(String(p?.name || '') + String(p?.duration_label || ''))) return true;
     return false;
+  }
+
+  /** IBAN encore manquant — pour bloquer l'avancée vers le dossier. */
+  function orderNeedsIban(order) {
+    return productRequiresIban(order) && !order?.payment?.iban;
   }
 
   function paymentLogosHtml(kind) {
@@ -307,13 +313,13 @@
     if (!order) return state.step;
     const paid = order.payment?.status === 'paid';
     const needsPay = orderRequiresPayment(order);
-    const needsIban = orderNeedsIban(order) && !order.payment?.iban;
+    const missingIban = orderNeedsIban(order);
 
     if (order.signature?.signed_at || order.step >= 8) return needsPay && !paid ? 4 : 8;
     if (order.step >= 7) return needsPay && !paid ? 4 : 7;
     if (order.step >= 6) return needsPay && !paid ? 4 : 6;
-    if (order.step >= 5) return needsPay && !paid ? 4 : needsIban ? 5 : 6;
-    if (paid) return needsIban ? 5 : 6;
+    if (order.step >= 5) return needsPay && !paid ? 4 : missingIban ? 5 : 6;
+    if (paid) return missingIban ? 5 : 6;
     if (order.customer_short) return 4;
     if (order.customer_full?.gym) return 3;
     if (order.order_id) return 2;
@@ -363,7 +369,7 @@
   }
 
   function updateStepper(step) {
-    const hideIban = !orderNeedsIban(state.order || { product_snapshot: state.product });
+    const hideIban = !productRequiresIban(state.order || { product_snapshot: state.product });
     document.querySelectorAll('.stepper-step').forEach((el) => {
       const s = Number(el.dataset.step);
       if (s === 5) {
@@ -998,20 +1004,24 @@
 
   function renderStep5() {
     if (guardPaidStep()) return;
-    if (!orderNeedsIban(state.order) || state.order?.payment?.iban) {
+    // Offre sans IBAN → passer. Sinon toujours afficher (même si déjà saisi) pour pouvoir modifier.
+    if (!productRequiresIban(state.order)) {
       goToStep(6);
       return;
     }
+    const existingIban = state.order?.payment?.iban || state.order?.customer_full?.iban || '';
     stepContent.innerHTML = `
       <h1>Coordonnées bancaires</h1>
       <p class="sub">Indiquez votre IBAN pour les prochaines échéances — prélèvement automatique, sans surprise.</p>
       <form id="ibanForm" class="form-grid">
         <div class="full">
           <label for="iban">IBAN *</label>
-          <input id="iban" name="iban" required placeholder="FR76 3000 6000 0112 3456 7890 189" value="${state.order?.payment?.iban || ''}" />
+          <input id="iban" name="iban" required placeholder="FR76 3000 6000 0112 3456 7890 189" value="${existingIban}" />
         </div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
+        <div class="full">${backButton('← Retour au paiement', 4)}</div>
       </form>`;
+    bindBackButtons();
     document.getElementById('ibanForm').onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Enregistrement…');
@@ -1045,7 +1055,7 @@
 
   function renderStep6() {
     if (guardPaidStep()) return;
-    if (orderNeedsIban(state.order) && !state.order?.payment?.iban) {
+    if (orderNeedsIban(state.order)) {
       goToStep(5);
       return;
     }
@@ -1078,7 +1088,7 @@
           <button type="button" class="btn secondary" id="webcamStopBtn" hidden style="margin-top:8px">Arrêter la caméra</button>
         </div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
-        <div class="full">${backButton('← Retour', orderNeedsIban(state.order) ? 5 : 4)}</div>
+        <div class="full">${backButton(productRequiresIban(state.order) ? '← Retour à l\'IBAN' : '← Retour', productRequiresIban(state.order) ? 5 : 4)}</div>
       </form>`;
 
     let webcamStream = null;
