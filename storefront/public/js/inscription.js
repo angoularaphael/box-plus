@@ -907,6 +907,7 @@
   function renderStep3() {
     // coordonnées déjà données à l'assistant d'un site du club → préremplies ;
     // ce que l'utilisateur a saisi ICI (brouillon/commande) garde la priorité.
+    // Date de naissance → étape dossier (pas ici).
     let bcpPrefill = {};
     try { bcpPrefill = JSON.parse(sessionStorage.getItem('bcp_prefill') || '{}'); } catch (e) { /* vide */ }
     const short = { ...bcpPrefill, ...(state.order?.customer_short || state.shortDraft || {}) };
@@ -917,10 +918,6 @@
         <div><label for="last_name">Nom *</label><input id="last_name" name="last_name" required value="${short.last_name || ''}" /></div>
         <div class="full"><label for="email">Email *</label><input id="email" name="email" type="email" required value="${short.email || ''}" /></div>
         <div class="full"><label for="phone">Téléphone *</label><input id="phone" name="phone" type="tel" required value="${short.phone || ''}" /></div>
-        <div class="full"><label for="birthdate">Date de naissance *</label>
-          <input id="birthdate" name="birthdate" type="date" required
-            min="1900-01-01" max="${new Date(new Date().getFullYear() - 5, 11, 31).toISOString().slice(0, 10)}"
-            value="${short.birthdate || ''}" /></div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
         <div class="full">${backButton('← Retour à la salle', 2)}</div>
       </form>`;
@@ -930,11 +927,8 @@
     form.onsubmit = async (e) => {
       e.preventDefault();
       const body = Object.fromEntries(new FormData(e.target).entries());
-      const birthErr = validateBirthdateClient(body.birthdate);
-      if (birthErr) {
-        setMsg(birthErr, 'err');
-        return;
-      }
+      // Conserver une date déjà en dossier / préremplie
+      if (!body.birthdate && short.birthdate) body.birthdate = short.birthdate;
       setMsg('Envoi…');
       body.token = state.token;
       body.gym = state.order?.customer_full?.gym || state.gymDraft;
@@ -1060,6 +1054,8 @@
       return;
     }
     const full = state.order?.customer_full || {};
+    const short = state.order?.customer_short || state.shortDraft || {};
+    const birthMax = new Date(new Date().getFullYear() - 5, 11, 31).toISOString().slice(0, 10);
     const photoOk = state.photoUploaded || Boolean(state.order?.documents?.photo) || Boolean(state.order?.documents?.photo_base64);
     stepContent.innerHTML = `
       <h1>Votre dossier</h1>
@@ -1072,6 +1068,10 @@
             <option value="M" ${full.gender === 'M' ? 'selected' : ''}>Homme</option>
             <option value="F" ${full.gender === 'F' ? 'selected' : ''}>Femme</option>
           </select></div>
+        <div><label for="birthdate">Date de naissance *</label>
+          <input id="birthdate" name="birthdate" type="date" required
+            min="1900-01-01" max="${birthMax}"
+            value="${short.birthdate || full.birthdate || ''}" /></div>
         <div class="full"><label for="address">Adresse *</label><input id="address" name="address" required value="${full.address || ''}" /></div>
         <div><label for="postal_code">Code postal *</label><input id="postal_code" name="postal_code" required value="${full.postal_code || ''}" /></div>
         <div><label for="city">Ville *</label><input id="city" name="city" required value="${full.city || ''}" /></div>
@@ -1175,6 +1175,11 @@
       await stopWebcam();
       const fd = new FormData(e.target);
       const body = Object.fromEntries(fd.entries());
+      const birthErr = validateBirthdateClient(body.birthdate);
+      if (birthErr) {
+        setMsg(birthErr, 'err');
+        return;
+      }
       // Renvoie l'IBAN déjà saisi — évite le faux « IBAN requis » si le store
       // distant n'a pas encore propagé payment.iban sur cette instance.
       if (!body.iban) {

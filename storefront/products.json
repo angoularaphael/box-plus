@@ -4,14 +4,14 @@
     "category": "Abonnements",
     "name": "OFFRE A 29€",
     "tagline": "Offre DUO rentrée 2026",
-    "description": "Inscrivez-vous à deux : 29 € par personne toutes les 4 semaines, sans engagement. Accès aux 5 salles et à toutes les disciplines.",
+    "description": "Inscrivez-vous à deux : 29 € par personne toutes les 4 semaines. Accès aux 5 salles et à toutes les disciplines.",
     "price_cents": 2900,
     "price_label": "29,00 €",
     "deciplus_total_note": "Total contrat Deciplus : 419,86 € (échéances)",
     "badge": "Rentrée 2026",
     "requires_iban": true,
     "requires_payment": true,
-    "installments_note": "1ʳᵉ échéance par carte · ensuite prélèvement automatique"
+    "installments_note": "29 € / 4 semaines"
   },
   {
     "id": "offre-promo-9",

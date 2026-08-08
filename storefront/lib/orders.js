@@ -125,14 +125,17 @@ function validateBirthdate(value) {
   return null;
 }
 
-function validateShortForm(input) {
+function validateShortForm(input, { requireBirthdate = false } = {}) {
   const errors = [];
   if (!input.first_name) errors.push('Prénom requis');
   if (!input.last_name) errors.push('Nom requis');
   if (!input.email) errors.push('Email requis');
   if (!input.phone) errors.push('Téléphone requis');
-  const birthErr = validateBirthdate(input.birthdate);
-  if (birthErr) errors.push(birthErr);
+  // Date de naissance collectée à l'étape dossier (sauf si explicitement exigée)
+  if (requireBirthdate || input.birthdate) {
+    const birthErr = validateBirthdate(input.birthdate);
+    if (birthErr) errors.push(birthErr);
+  }
   return errors;
 }
 
@@ -143,6 +146,8 @@ function validateFullForm(input, product = {}) {
   if (!input.address) errors.push('Adresse requise');
   if (!input.postal_code) errors.push('Code postal requis');
   if (!input.city) errors.push('Ville requise');
+  const birthErr = validateBirthdate(input.birthdate);
+  if (birthErr) errors.push(birthErr);
   return errors;
 }
 

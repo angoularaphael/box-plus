@@ -1206,18 +1206,17 @@ function createApp() {
       const product = findProduct(product_id);
       if (!product) return res.status(404).json({ ok: false, error: 'Produit introuvable' });
 
-      const hasShort =
-        rest.first_name && rest.last_name && rest.email && rest.phone && rest.birthdate;
+      const hasShort = rest.first_name && rest.last_name && rest.email && rest.phone;
       let customer_short = null;
       if (hasShort) {
-        const errors = validateShortForm(rest);
+        const errors = validateShortForm(rest, { requireBirthdate: false });
         if (errors.length) return res.status(400).json({ ok: false, errors });
         customer_short = {
           first_name: rest.first_name,
           last_name: rest.last_name,
           email: rest.email,
           phone: rest.phone,
-          birthdate: rest.birthdate,
+          birthdate: rest.birthdate || null,
         };
       }
 
@@ -1284,9 +1283,10 @@ function createApp() {
         last_name: req.body.last_name,
         email: req.body.email,
         phone: req.body.phone,
-        birthdate: req.body.birthdate,
+        // Conserver une date déjà saisie au dossier si non renvoyée ici
+        birthdate: req.body.birthdate || order.customer_short?.birthdate || null,
       };
-      const errors = validateShortForm(short);
+      const errors = validateShortForm(short, { requireBirthdate: false });
       if (errors.length) return res.status(400).json({ ok: false, errors });
       if (!order.customer_full?.gym && !req.body.gym) {
         return res.status(400).json({ ok: false, errors: ['Choisissez d\'abord votre salle'] });
@@ -1484,6 +1484,8 @@ function createApp() {
         });
       }
 
+      // Date de naissance saisie au dossier → customer_short
+      if (!full.birthdate) full.birthdate = order.customer_short?.birthdate || null;
       const errors = validateFullForm(full, product);
       if (errors.length) return res.status(400).json({ ok: false, errors });
 
@@ -1498,6 +1500,12 @@ function createApp() {
       if (order.documents?.photo) full.photo_path = order.documents.photo;
       if (order.documents?.photo_base64) full.photo_base64 = order.documents.photo_base64;
 
+      if (full.birthdate) {
+        await updateShortProfile(order.order_id, {
+          ...(order.customer_short || {}),
+          birthdate: full.birthdate,
+        });
+      }
       await updateFullProfile(order.order_id, full);
       res.json({ ok: true, step: STEPS.SIGNATURE });
     } catch (err) {
