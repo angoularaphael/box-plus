@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Coaching boxe individuel à Toulouse — cours particuliers | Boxing Center</title>
-  <meta name="description" content="Cours particuliers de boxe à Toulouse avec un coach diplômé : progression technique, remise en forme, préparation. Packs de 1 à 10 séances, dans 5 salles." />
+  <meta name="description" content="Cours particuliers de boxe à Toulouse avec un coach diplômé : MMA/Sols, préparation physique, Boxing Fitness. Réservez votre créneau dans l'une de nos 5 salles." />
   <script src="js/boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,10 +15,10 @@
   <meta property="og:site_name" content="Boxing Center Toulouse" />
   <meta property="og:locale" content="fr_FR" />
   <meta property="og:title" content="Coaching boxe individuel à Toulouse — cours particuliers | Boxing Center" />
-  <meta property="og:description" content="Cours particuliers de boxe à Toulouse avec un coach diplômé : progression technique, remise en forme, préparation. Packs de 1 à 10 séances, dans 5 salles." />
+  <meta property="og:description" content="Cours particuliers de boxe à Toulouse : MMA/Sols, préparation physique, Boxing Fitness. Réservez votre créneau dans l'une de nos 5 salles." />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Coaching boxe individuel à Toulouse — cours particuliers | Boxing Center" />
-  <meta name="twitter:description" content="Cours particuliers de boxe à Toulouse avec un coach diplômé : progression technique, remise en forme, préparation. Packs de 1 à 10 séances, dans 5 salles." />
+  <meta name="twitter:description" content="Cours particuliers de boxe à Toulouse : MMA/Sols, préparation physique, Boxing Fitness. Réservez votre créneau dans l'une de nos 5 salles." />
   <meta name="theme-color" content="#20254B" />
 </head>
 <body>
@@ -29,21 +29,78 @@
       <div class="breadcrumb" data-reveal><a href="/">Accueil</a> / Coachings</div>
       <span class="eyebrow" style="color:var(--bc-gold);display:block;margin-bottom:10px" data-reveal>Cours particuliers</span>
       <h1 data-reveal>Coachings individuels</h1>
-      <p data-reveal>Accompagnement personnalisé pour progresser à votre rythme — technique, remise en forme, préparation physique.</p>
+      <p data-reveal>Réservez une séance avec un coach — MMA / Sols, préparation physique ou Boxing Fitness, dans la salle de votre choix.</p>
     </div>
   </div>
 
-  <main class="section">
-    <div class="info-box" style="margin-bottom:32px">
-      Nos coachs adaptent chaque séance à votre niveau et vos objectifs — loisir, remise en forme ou perfectionnement technique.
-    </div>
-    <div id="offersGrid"><p style="color:var(--bc-muted)">Chargement…</p></div>
+  <main class="section coachings-page">
+    <section class="coaching-book" id="reserver" aria-labelledby="coachingBookTitle">
+      <div class="coaching-book__intro" data-reveal>
+        <span class="kicker">Réservation</span>
+        <h2 id="coachingBookTitle">Réserver un coaching</h2>
+        <p>Choisissez votre salle, votre activité et un créneau d’1&nbsp;heure. Les réservations sont ouvertes à partir de <strong>4&nbsp;jours</strong> après aujourd’hui. Votre demande est transmise au responsable de la salle.</p>
+      </div>
+
+      <form id="coachingBookForm" class="form-grid coaching-book__form" data-reveal>
+        <div class="full">
+          <label for="cb_name">Nom *</label>
+          <input id="cb_name" name="name" required autocomplete="name" placeholder="Votre nom complet" />
+        </div>
+        <div>
+          <label for="cb_email">Email *</label>
+          <input id="cb_email" name="email" type="email" required autocomplete="email" placeholder="vous@email.com" />
+        </div>
+        <div>
+          <label for="cb_phone">Téléphone *</label>
+          <input id="cb_phone" name="phone" type="tel" required autocomplete="tel" placeholder="06 …" />
+        </div>
+        <div>
+          <label for="cb_gym">Salle *</label>
+          <select id="cb_gym" name="gym" required>
+            <option value="">Choisir une salle</option>
+          </select>
+        </div>
+        <div>
+          <label for="cb_activity">Activité *</label>
+          <select id="cb_activity" name="activity" required>
+            <option value="">Choisir une activité</option>
+          </select>
+        </div>
+        <div>
+          <label for="cb_date">Date *</label>
+          <input id="cb_date" name="date" type="date" required />
+        </div>
+        <div>
+          <label for="cb_slot">Créneau (1&nbsp;h) *</label>
+          <select id="cb_slot" name="slot" required>
+            <option value="">Choisir un créneau</option>
+          </select>
+        </div>
+        <div class="full">
+          <button type="submit" class="btn block">Envoyer ma demande</button>
+        </div>
+        <p class="form-msg full" id="coachingBookMsg" hidden></p>
+      </form>
+    </section>
+
+    <section class="coaching-packs" aria-labelledby="coachingPacksTitle">
+      <div class="section-head" data-reveal style="margin-top:48px">
+        <span class="kicker">Packs</span>
+        <h2 id="coachingPacksTitle">Ou choisir un pack de séances</h2>
+        <p>Packs de 1 à 10 séances — progression technique, remise en forme ou perfectionnement.</p>
+      </div>
+      <div class="info-box" style="margin-bottom:24px">
+        Nos coachs adaptent chaque séance à votre niveau et vos objectifs — loisir, remise en forme ou perfectionnement technique.
+      </div>
+      <div id="offersGrid"><p style="color:var(--bc-muted)">Chargement…</p></div>
+    </section>
   </main>
 
   <div id="site-footer"></div>
   <script src="js/layout.js"></script>
   <script src="js/motion.js"></script>
   <script src="js/offers.js"></script>
+  <script src="js/coachings.js"></script>
   <script>
     (async function () {
       const res = await fetch('/api/products?tab=coachings');

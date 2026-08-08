@@ -720,6 +720,52 @@ input:focus, select:focus, textarea:focus {
 
 .manage-form { margin-top: 8px; }
 
+/* Coachings — réservation */
+.coaching-book {
+  max-width: 720px;
+  margin: 0 auto 16px;
+  padding: 28px 22px;
+  border: 1px solid var(--bc-border);
+  border-radius: var(--radius-lg, 16px);
+  background: #fff;
+  box-shadow: var(--shadow, 0 8px 24px rgba(11, 31, 58, 0.06));
+}
+.coaching-book__intro { margin-bottom: 22px; }
+.coaching-book__intro h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+  color: var(--bc-navy);
+  margin: 6px 0 10px;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+.coaching-book__intro p {
+  color: var(--bc-muted);
+  line-height: 1.65;
+  margin: 0;
+  max-width: 54ch;
+}
+.coaching-book__form label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bc-navy);
+  margin: 10px 0 6px;
+}
+.coaching-book__form input,
+.coaching-book__form select {
+  width: 100%;
+  min-height: 46px;
+}
+@media (max-width: 599px) {
+  .coaching-book { padding: 20px 16px; margin-left: 0; margin-right: 0; }
+  .coaching-book__form .btn.block { width: 100%; }
+}
+.coachings-page .section-head { text-align: left; }
+@media (min-width: 760px) {
+  .coachings-page .section-head { text-align: center; }
+}
+
 /* Revenir en haut */
 .back-top {
   position: fixed;
