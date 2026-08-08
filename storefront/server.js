@@ -2003,14 +2003,21 @@ function createApp() {
   app.post('/api/membership/verify', async (req, res) => {
     try {
       const body = req.body || {};
-      if (!body.first_name || !body.last_name || !body.birthdate || !body.phone) {
+      // Changement d’abo : nom + prénom + naissance (email pour retrouver la fiche)
+      if (!body.first_name || !body.last_name || !body.birthdate) {
         return res.status(400).json({
           ok: false,
-          error: 'Merci de renseigner le nom, le prénom, le téléphone et la date de naissance.',
+          error: 'Merci de renseigner le nom, le prénom et la date de naissance.',
+        });
+      }
+      if (!body.email && !body.phone) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Merci de renseigner un email ou un téléphone pour retrouver votre fiche.',
         });
       }
       const { enqueueVerifyIdentity } = require('./lib/membership');
-      const result = await enqueueVerifyIdentity(body);
+      const result = await enqueueVerifyIdentity({ ...body, verify_mode: body.verify_mode || 'change' });
       res.json({ ok: true, ...result });
     } catch (err) {
       logError('Erreur verify identité', { error: err.message });
@@ -2024,12 +2031,18 @@ function createApp() {
       const product = findProduct(body.target_product_id);
       if (!product) return res.status(404).json({ ok: false, error: 'Offre introuvable' });
       if (!stripe) return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
-      // Infos bloquantes (comme résiliation) : nom, prénom, téléphone, date de naissance
-      if (!body.first_name || !body.last_name || !body.birthdate || !body.phone) {
+      // Infos bloquantes : nom, prénom, date de naissance
+      if (!body.first_name || !body.last_name || !body.birthdate) {
         return res.status(400).json({
           ok: false,
           error:
-            'Merci de renseigner le nom, le prénom, le téléphone et la date de naissance (doivent correspondre à la fiche adhérent).',
+            'Merci de renseigner le nom, le prénom et la date de naissance (doivent correspondre à la fiche adhérent).',
+        });
+      }
+      if (!body.email && !body.phone) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Merci de renseigner un email ou un téléphone.',
         });
       }
       const baseUrl = getCheckoutBaseUrl(req);
