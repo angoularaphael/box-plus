@@ -1450,13 +1450,20 @@ function createApp() {
       if (!full.billing_plan && order.payment?.billing_plan) {
         full.billing_plan = order.payment.billing_plan;
       }
-      if (!full.iban && order.payment?.iban) full.iban = order.payment.iban;
+      // Préserver l'IBAN déjà enregistré (ou renvoyé par le front) — ne jamais
+      // l'écraser avec une chaîne vide du FormData.
+      const existingIban = order.payment?.iban || order.customer_full?.iban || null;
+      if (!String(full.iban || '').trim()) full.iban = existingIban || undefined;
       if (!full.gym) full.gym = order.customer_full?.gym;
 
       if (product?.requires_payment !== false && order.payment?.status !== 'paid') {
         const refreshed = await refreshPaymentFromStripe(order, req.body.session_id || req.query.session_id);
         if (refreshed?.payment?.status === 'paid') {
-          order.payment = refreshed.payment;
+          // Ne pas perdre l'IBAN lors d'une revérif Stripe
+          order.payment = {
+            ...refreshed.payment,
+            iban: refreshed.payment?.iban || full.iban || existingIban || null,
+          };
         } else {
           return res.status(402).json({
             ok: false,
@@ -1468,7 +1475,8 @@ function createApp() {
       }
 
       const plan = full.billing_plan || order.payment?.billing_plan;
-      if (requiresIbanForPlan(product, plan) && !full.iban && !order.payment?.iban) {
+      const ibanReady = Boolean(String(full.iban || '').trim() || order.payment?.iban);
+      if (requiresIbanForPlan(product, plan) && !ibanReady) {
         return res.status(400).json({
           ok: false,
           error: 'iban_required',
