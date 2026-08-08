@@ -310,6 +310,9 @@ async function sendUnpaidSubscriptionEmail(
 }
 
 async function sendNewMemberAdminEmail(payload = {}) {
+  if (/@boxplus-test\.local$/i.test(String(payload.email || ''))) {
+    return { sent: false, reason: 'test_email_skipped' };
+  }
   const adminTo =
     process.env.ADMIN_EMAIL || process.env.SUPER_ADMIN_EMAIL || process.env.ALERT_EMAIL || '';
   if (!adminTo) return { sent: false, reason: 'no_admin_email' };

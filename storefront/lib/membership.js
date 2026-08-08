@@ -74,7 +74,7 @@ async function enqueueCancelRequest(body = {}) {
     postal_code: body.postal_code,
     city: body.city,
     gym: body.gym || 'minimes',
-    cancel_date: body.cancel_date,
+    cancel_date: body.cancel_date || new Date().toISOString().slice(0, 10),
     customer,
     product_name: 'Résiliation abonnement',
     requires_payment: false,

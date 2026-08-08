@@ -11,6 +11,34 @@ window.BCCounselor = (function () {
     { id: 'other', label: 'Autre' },
   ];
 
+  const GYM_PAGES = {
+    minimes: {
+      label: 'Minimes',
+      url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/',
+    },
+    ramonville: {
+      label: 'Ramonville',
+      url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/',
+    },
+    portet: {
+      label: 'Portet',
+      url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/',
+    },
+    'etats-unis': {
+      label: 'États-Unis',
+      url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/',
+    },
+    'st-cyprien': {
+      label: 'St-Cyprien',
+      url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/',
+    },
+  };
+
+  const CLUB_STANDARD = {
+    display: '09 39 03 67 48',
+    tel: '+33939036748',
+  };
+
   function bubble(role, html) {
     const extra = role === 'typing' ? ' typing' : '';
     return `<div class="chat-row ${role}${extra}"><div class="chat-bubble chat-bubble-enter">${html}</div></div>`;
@@ -69,15 +97,16 @@ window.BCCounselor = (function () {
             <button type="button" class="chat-chip" id="contactManager" ${busy ? 'disabled' : ''}>Contacter mon manager</button>
             <button type="button" class="chat-chip danger" id="stillCancel" ${busy ? 'disabled' : ''}>Continuer vers la résiliation</button>
           </div>`;
-      } else if (step === 'manager') {
+      } else if (step === 'manager' || step === 'gym_redirect') {
         footer = `
           <div class="chat-quick">
             <p class="chat-choice-title">Choisissez votre salle :</p>
-            <button type="button" class="chat-chip" data-manager-gym="minimes">Minimes</button>
-            <button type="button" class="chat-chip" data-manager-gym="ramonville">Ramonville</button>
-            <button type="button" class="chat-chip" data-manager-gym="portet">Portet</button>
-            <button type="button" class="chat-chip" data-manager-gym="etats-unis">États-Unis</button>
-            <button type="button" class="chat-chip" data-manager-gym="st-cyprien">St-Cyprien</button>
+            ${Object.entries(GYM_PAGES)
+              .map(
+                ([id, g]) =>
+                  `<button type="button" class="chat-chip" data-manager-gym="${id}">${g.label}</button>`
+              )
+              .join('')}
           </div>`;
       } else if (step === 'confirm') {
         footer = `
@@ -87,14 +116,14 @@ window.BCCounselor = (function () {
           </div>`;
       } else if (step === 'form') {
         footer = `
-          <p class="chat-form-hint">Le nom, le prénom, le téléphone et la date de naissance <strong>doivent correspondre exactement à votre fiche adhérent.</strong></p>
+          <p class="chat-form-hint">Le nom, le prénom, le téléphone et la date de naissance doivent correspondre à votre fiche adhérent (majuscules / minuscules indifférentes).</p>
           <form id="cancelForm" class="chat-form form-grid">
             <div><label>Prénom *</label><input name="first_name" required /></div>
             <div><label>Nom *</label><input name="last_name" required /></div>
             <div><label>Naissance *</label><input name="birthdate" type="date" required min="1900-01-01" /></div>
             <div><label>Téléphone *</label><input name="phone" type="tel" required /></div>
             <div class="full"><label>Email (pour recevoir la confirmation)</label><input name="email" type="email" /></div>
-            <div><label>Salle *</label>
+            <div class="full"><label>Salle *</label>
               <select name="gym" required>
                 <option value="minimes">Minimes</option>
                 <option value="ramonville">Ramonville</option>
@@ -103,7 +132,6 @@ window.BCCounselor = (function () {
                 <option value="st-cyprien">St-Cyprien</option>
               </select>
             </div>
-            <div><label>Date résiliation *</label><input name="cancel_date" type="date" required /></div>
             <input type="hidden" name="reason" value="${reasonId || 'other'}" />
             <input type="hidden" name="reason_detail" value="${esc(freeText).replace(/"/g, '&quot;')}" />
             <div class="full"><button type="submit" class="btn block">Envoyer la demande</button></div>
@@ -200,8 +228,8 @@ window.BCCounselor = (function () {
             );
           } else {
             replySoon(
-              'Je suis désolé, je traite uniquement les demandes de résiliation. Pour le reste : <a href="https://boxingcenter.fr" target="_blank" rel="noopener">boxingcenter.fr</a> ou le standard du club au <a href="tel:+33562244682">05 62 24 46 82</a>.',
-              'done'
+              `Je suis désolé, je traite uniquement les demandes de résiliation. Pour le reste : <a href="https://boxingcenter.fr" target="_blank" rel="noopener">boxingcenter.fr</a> ou le standard du club au <a href="tel:${CLUB_STANDARD.tel}">${CLUB_STANDARD.display}</a>. Choisissez votre salle pour ouvrir sa page.`,
+              'gym_redirect'
             );
           }
         };
@@ -286,13 +314,23 @@ window.BCCounselor = (function () {
         }
       }
 
-      if (step === 'manager') {
+      if (step === 'manager' || step === 'gym_redirect') {
         root.querySelectorAll('[data-manager-gym]').forEach((btn) => {
           btn.onclick = () => {
             if (busy) return;
-            const label = btn.textContent.trim();
+            const gymId = btn.dataset.managerGym;
+            const gym = GYM_PAGES[gymId];
+            const label = (gym && gym.label) || btn.textContent.trim();
             push('user', label);
-            showManagerContact(btn.dataset.managerGym, label);
+            if (step === 'gym_redirect' && gym?.url) {
+              replySoon(
+                `Voici la page de votre salle ${esc(label)} : <a href="${esc(gym.url)}" target="_blank" rel="noopener">${esc(gym.url)}</a>`,
+                'done',
+                400
+              );
+              return;
+            }
+            showManagerContact(gymId, label);
           };
         });
       }
@@ -312,7 +350,7 @@ window.BCCounselor = (function () {
             if (busy) return;
             push('user', 'Oui, je confirme');
             replySoon(
-              'Très bien. Merci de renseigner les informations ci-dessous — le nom, le prénom, le téléphone et la date de naissance <strong>doivent correspondre exactement à votre fiche adhérent.</strong>',
+              'Très bien. Merci de renseigner les informations ci-dessous — le nom, le prénom, le téléphone et la date de naissance doivent correspondre à votre fiche adhérent (majuscules / minuscules indifférentes).',
               'form'
             );
           };
