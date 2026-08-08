@@ -215,6 +215,24 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
   if (enriched.supports_installment_choice) {
     enriched.requires_iban = false;
   }
+  // Prix boutique (ex. 259 €) prioritaire sur le total Deciplus synchronisé (ex. 295 €)
+  const overrideCents = merchEntry.price_cents ?? staticP.price_cents;
+  if (
+    enriched.supports_installment_choice &&
+    overrideCents != null &&
+    Number(overrideCents) > 0
+  ) {
+    const label =
+      merchEntry.marketing_price_label ||
+      staticP.price_label ||
+      staticP.marketing_price_label ||
+      `${(Number(overrideCents) / 100).toFixed(2).replace('.', ',')} €`;
+    enriched.price_cents = Number(overrideCents);
+    enriched.price_label = label;
+    enriched.stripe_price_label = label;
+    enriched.pay_today_label = label;
+    enriched.price_subtitle = null;
+  }
   return enriched;
 }
 

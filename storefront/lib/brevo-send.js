@@ -147,6 +147,8 @@ async function sendEmailViaBrevo({ to, subject, html, text, replyTo, attachments
 }
 
 function isConfigured() {
+  // Sur Vercel, seul l'API REST Brevo fonctionne (SMTP souvent bloqué)
+  if (onVercel()) return apiKeyConfigured();
   return apiKeyConfigured() || smtpConfigured();
 }
 

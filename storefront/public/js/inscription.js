@@ -39,6 +39,7 @@
     gymDraft: null,
     photoUploaded: false,
     emailWarning: null,
+    dispatchError: null,
   };
 
   const stepContent = document.getElementById('stepContent');
@@ -1300,6 +1301,7 @@
       }
       state.step = 8;
       state.emailWarning = data.email_warning || null;
+      state.dispatchError = data.dispatch_error || null;
       clearProgress();
       setMsg('');
       syncUrl();
@@ -1312,13 +1314,17 @@
     if (guardPaidStep()) return;
     const p = state.product;
     const emailNote = state.emailWarning
-      ? `<div class="notice-important" style="margin-top:16px;text-align:left"><strong>Email non envoyé</strong><p>Votre inscription est bien enregistrée. L'email de confirmation n'a pas pu être envoyé (${state.emailWarning}). Téléchargez votre contrat ci-dessous ou contactez le club.</p></div>`
+      ? `<div class="notice-important" style="margin-top:16px;text-align:left"><strong>Email non envoyé</strong><p>Votre inscription est bien enregistrée. L'email de confirmation n'a pas pu être envoyé (${esc(state.emailWarning)}). Téléchargez votre contrat ci-dessous ou contactez le club.</p></div>`
+      : '';
+    const dispatchNote = state.dispatchError
+      ? `<div class="notice-important" style="margin-top:12px;text-align:left"><strong>Traitement club en attente</strong><p>Votre paiement est OK. L'enregistrement automatique au club a échoué (${esc(state.dispatchError)}). Le club va finaliser votre dossier — gardez votre référence.</p></div>`
       : '';
     stepContent.innerHTML = `
       <div class="success-page" style="margin:20px auto">
         <div class="success-icon" aria-hidden="true"></div>
         <h1>Inscription confirmée</h1>
         ${emailNote}
+        ${dispatchNote}
         <div class="info-box" style="text-align:left">
           <strong>Référence :</strong> ${state.orderId}<br />
           <strong>Offre :</strong> ${p?.display_name || p?.name || '—'}

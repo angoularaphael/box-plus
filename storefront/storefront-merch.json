@@ -127,7 +127,9 @@
       "sort_order": 5,
       "active": true,
       "badge": "1× ou 4× sans frais",
-      "supports_installment_choice": true
+      "supports_installment_choice": true,
+      "price_cents": 25900,
+      "marketing_price_label": "259,00 €"
     },
     "offre-ete": {
       "tab": "abonnements",

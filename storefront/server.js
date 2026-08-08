@@ -1140,6 +1140,56 @@ function createApp() {
     }
   });
 
+  /** Relance bot + email pour une inscription déjà signée (ex. échec IBAN / Brevo). */
+  app.post('/api/admin/orders/:id/redispatch', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      let order = await loadOrderAsync(req.params.id);
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      if (!order.signature?.signed_at) {
+        return res.status(400).json({ ok: false, error: 'not_signed' });
+      }
+
+      let dispatch = null;
+      let dispatchError = null;
+      try {
+        dispatch = await dispatchLifecycleOrder(order);
+        order = (await loadOrderAsync(order.order_id)) || order;
+      } catch (err) {
+        dispatchError = err.message;
+      }
+
+      let email = { sent: Boolean(order.email_sent_at || order.email_sent) };
+      if (req.body?.resend_email !== false && !email.sent) {
+        const pdfPath = order.documents?.contract_pdf;
+        const pdfName = order.documents?.contract_filename || 'contrat.pdf';
+        const attachments =
+          pdfPath && fs.existsSync(pdfPath) ? [{ filepath: pdfPath, filename: pdfName }] : [];
+        email = await sendConfirmationEmail(order, attachments);
+        if (email.sent) await markEmailSent(order.order_id);
+      }
+
+      logInfo('Redispatch admin', {
+        order_id: order.order_id,
+        queued: dispatch?.queued,
+        email_sent: email.sent,
+        dispatch_error: dispatchError || undefined,
+      });
+      res.json({
+        ok: !dispatchError,
+        order_id: order.order_id,
+        queued: dispatch?.queued,
+        forwarded: dispatch?.forwarded,
+        email_sent: email.sent,
+        email_warning: email.sent ? undefined : email.error || email.reason,
+        dispatch_error: dispatchError || undefined,
+      });
+    } catch (err) {
+      logError('Redispatch admin échoué', { order_id: req.params.id, error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   app.post('/api/orders/draft', async (req, res) => {
     try {
       const { product_id, gym, ...rest } = req.body;
@@ -1451,14 +1501,49 @@ function createApp() {
       }
 
       if (order.step >= STEPS.CONFIRMED || order.signature?.signed_at) {
+        let dispatchError = null;
+        if (!order.dispatched_at && !order.dispatch_result?.queued) {
+          try {
+            await dispatchLifecycleOrder(order);
+            order = (await loadOrderAsync(order.order_id)) || order;
+          } catch (dispatchErr) {
+            dispatchError = dispatchErr.message;
+            logError('Redispatch lifecycle (already signed)', {
+              order_id: order.order_id,
+              error: dispatchErr.message,
+            });
+          }
+        }
+
+        let emailWarning;
+        if (!order.email_sent_at && !order.email_sent) {
+          const pdfPath = order.documents?.contract_pdf;
+          const pdfName = order.documents?.contract_filename || 'contrat.pdf';
+          const attachments =
+            pdfPath && fs.existsSync(pdfPath) ? [{ filepath: pdfPath, filename: pdfName }] : [];
+          const emailResult = await sendConfirmationEmail(order, attachments);
+          if (emailResult.sent) {
+            await markEmailSent(order.order_id);
+            order.email_sent_at = new Date().toISOString();
+          } else {
+            emailWarning =
+              emailResult.error ||
+              (emailResult.reason === 'smtp_not_configured'
+                ? 'Email non configuré'
+                : 'Email non envoyé');
+          }
+        }
+
         await syncInscriptionClient(order);
         return res.json({
           ok: true,
           step: STEPS.CONFIRMED,
           already_signed: true,
           order_id: order.order_id,
-          email_sent: Boolean(order.email_sent_at),
+          email_sent: Boolean(order.email_sent_at || order.email_sent),
+          email_warning: emailWarning,
           client_synced: Boolean(order.gestion_client_id),
+          dispatch_error: dispatchError || undefined,
           status_url: `/mon-inscription?order=${order.order_id}&token=${order.access_token}`,
         });
       }
