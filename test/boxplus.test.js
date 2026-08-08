@@ -130,7 +130,13 @@ test('annulation — job_id et validation', () => {
   const cancel = normalizeOrder({
     action: 'cancel',
     order_id: 'PS-500',
-    customer: { first_name: 'Ann', last_name: 'Ul', email: 'ann@example.com', phone: '0600000000' },
+    customer: {
+      first_name: 'Ann',
+      last_name: 'Ul',
+      email: 'ann@example.com',
+      phone: '0600000000',
+      birthdate: '1990-01-01',
+    },
     payment: { status: 'cancelled', amount: 29 },
   });
 
@@ -140,7 +146,11 @@ test('annulation — job_id et validation', () => {
 
   const bad = normalizeOrder({ action: 'cancel', order_id: 'PS-501' });
   const errors = validateCancelOrder(bad);
-  assert.ok(errors.includes('deciplus_member_id ou email/téléphone requis pour annulation'));
+  assert.ok(
+    errors.includes(
+      'deciplus_member_id ou nom, prénom, téléphone et date de naissance requis pour annulation'
+    )
+  );
 });
 
 test('generate-report extrait endpoints', () => {

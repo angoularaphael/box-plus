@@ -16,28 +16,55 @@ ALTERNATIVES À LA RÉSILATION
 - Déménagement : l’abo donne accès aux 5 centres — vérifier si le nouveau domicile est près d’une salle.
 - Blessure / médical : suspension sans frais possibles pour conserver le tarif préférentiel à la reprise (voir manager).
 - Changement de club : rappel accès multi-salles + associations partenaires (Nobles Arts Portésiens, Toulouse Mini Boxing Club).
-- Financier : exceptionnellement, offre promo (~29 €) envisageable avec le manager avant de partir.
+- Financier : exceptionnellement, l’offre à 29 € peut être envisagée avec le manager avant de partir. Dire exactement « 29 € », jamais « environ 29 € ».
 - Autre : écouter, proposer suspension / changement de formule / contact manager.
 
 RÈGLES
-- Français, ton chaleureux, concis (4–7 phrases max).
-- Ne jamais inventer de tarifs précis hors « environ 29 € » pour la promo manager.
+- Français, ton chaleureux, très concis : 2 ou 3 phrases, 55 mots maximum.
+- Ne jamais dire bonjour : la conversation est déjà commencée.
+- Ne répéter ni le motif du membre, ni une idée déjà formulée.
+- Une seule question maximum. Ne poser une question que si elle est indispensable.
+- Ne jamais inventer un tarif. Le seul tarif autorisé ici est exactement « 29 € ».
+- Si la réponse n’est pas certaine, proposer directement le manager de la salle au lieu d’improviser.
 - Ne pas mentionner Deciplus, bots techniques, ni systèmes internes.
 - Encourager à rester OU à parler au manager, sans forcer.
-- Terminer par une question ouverte invitant à rester ou à préciser.
 `.trim();
 
 const FALLBACKS = {
-  time: "Avez-vous pu consulter les plannings de nos cinq salles ? Votre abonnement donne aussi l'accès libre de 10h à 21h, 6 jours sur 7 — un autre créneau ou une autre salle pourrait mieux vous convenir. Souhaitez-vous qu’on regarde ça ensemble avant de partir ?",
-  move: 'Votre abonnement donne accès aux 5 centres Boxing Center. Votre nouveau domicile ne se situe-t-il pas à proximité de l’un d’entre eux ? On peut vérifier avec vous.',
+  time: "Votre abonnement donne accès aux cinq salles et à l’accès libre de 10h à 21h, 6 jours sur 7. Un autre créneau ou une autre salle pourrait mieux vous convenir.",
+  move: 'Votre abonnement donne accès aux cinq salles Boxing Center. Vérifiez si l’une d’elles reste proche de votre nouveau domicile.',
   medical:
-    'En cas de blessure, vous pouvez souvent suspendre votre abonnement sans frais et conserver vos conditions tarifaires préférentielles à la reprise. En avez-vous parlé à votre manager de salle ?',
-  club: 'Vous avez accès aux 5 salles, à toutes les disciplines, et à des associations partenaires. Peut-être qu’une autre formule ou une autre salle vous conviendrait mieux ?',
+    'En cas de blessure, une suspension sans frais peut être étudiée pour conserver vos conditions tarifaires. Votre manager de salle pourra la confirmer.',
+  club: 'Votre formule donne accès aux cinq salles et à toutes les disciplines. Le manager peut vous proposer une autre salle ou une formule plus adaptée.',
   money:
-    'J’ai bien compris que le prix est un frein. Exceptionnellement, une offre promotionnelle autour de 29 € peut être envisagée avec votre manager — souhaitez-vous en parler avant de résilier ?',
+    'Si le prix est le problème, une offre à 29 € peut exceptionnellement être étudiée par votre manager de salle.',
   other:
-    'Merci pour ces précisions. Avant toute décision, un échange avec votre manager de salle peut souvent débloquer la situation (suspension, autre formule, autre créneau). Que souhaitez-vous faire ?',
+    'Votre manager de salle peut vérifier une suspension, un autre créneau ou une formule mieux adaptée. Je peux vous transmettre son contact.',
 };
+
+function cleanReply(content, fallback) {
+  let reply = String(content || '')
+    .replace(/^```[\w]*\n?|```$/g, '')
+    .replace(/^(bonjour|bonsoir|salut)[\s,!.:;-]*/i, '')
+    .replace(/\benviron\s+29\s*€/gi, '29 €')
+    .trim();
+  if (!reply) return fallback;
+
+  const sentences = reply.match(/[^.!?]+[.!?]?/g) || [reply];
+  const seen = new Set();
+  const unique = [];
+  for (const sentence of sentences) {
+    const normalized = sentence.toLowerCase().replace(/[^a-zà-ÿ0-9]+/g, ' ').trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    unique.push(sentence.trim());
+    if (unique.length === 3) break;
+  }
+  reply = unique.join(' ').trim();
+  const words = reply.split(/\s+/);
+  if (words.length > 55) reply = `${words.slice(0, 55).join(' ').replace(/[,;:]$/, '')}.`;
+  return reply || fallback;
+}
 
 async function guideRetention({ reasonId, reasonLabel, freeText }) {
   const fallback = FALLBACKS[reasonId] || FALLBACKS.other;
@@ -59,15 +86,13 @@ async function guideRetention({ reasonId, reasonLabel, freeText }) {
             `Motif choisi : ${reasonLabel || reasonId || 'autre'}`,
             freeText ? `Précision du membre : ${String(freeText).slice(0, 800)}` : 'Pas de précision libre.',
             '',
-            'Rédige une réponse de rétention personnalisée à partir des ressources.',
+            'Rédige une seule réponse nouvelle, sans répéter les éléments déjà dits. Si tu ne sais pas, redirige vers le manager.',
           ].join('\n'),
         },
       ],
-      { maxTokens: 420, temperature: 0.45 }
+      { maxTokens: 160, temperature: 0.25 }
     );
-    const reply = String(content || '')
-      .replace(/^```[\w]*\n?|```$/g, '')
-      .trim();
+    const reply = cleanReply(content, fallback);
     return { reply: reply || fallback, source: 'groq' };
   } catch (err) {
     return { reply: fallback, source: 'template-fallback', error: err.message };

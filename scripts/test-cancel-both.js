@@ -37,33 +37,39 @@ async function run(order) {
   const customer = uniqueTestCustomer('cancel-both');
   customer.gym = 'minimes';
   const saleOrderId = `LIVE-CANCELBOTH-SALE-${runId}`;
+  const existingMemberId = process.argv[2] || null;
 
-  console.log('=== 1) Création abo + badge ===');
-  const sale = await run({
-    order_id: saleOrderId,
-    product_name: '44,99€/4 semaines Sans Engagement',
-    offer: 'dp-88',
-    gym: 'minimes',
-    customer,
-    payment: {
-      amount: 44.99,
-      status: 'paid',
-      method: 'card',
-      billing_plan: 'prelevement',
-      iban: VALID_TEST_IBAN,
-    },
-  });
-  console.log(JSON.stringify({
-    ok: sale?.ok,
-    status: sale?.result?.status,
-    member: sale?.result?.deciplus_member_id,
-    badge: sale?.result?.badge_action,
-    error: sale?.error || sale?.result?.error,
-  }, null, 2));
+  let memberId = existingMemberId;
+  if (!memberId) {
+    console.log('=== 1) Création abo + badge ===');
+    const sale = await run({
+      order_id: saleOrderId,
+      product_name: '44,99€/4 semaines Sans Engagement',
+      offer: 'dp-88',
+      gym: 'minimes',
+      customer,
+      payment: {
+        amount: 44.99,
+        status: 'paid',
+        method: 'card',
+        billing_plan: 'prelevement',
+        iban: VALID_TEST_IBAN,
+      },
+    });
+    console.log(JSON.stringify({
+      ok: sale?.ok,
+      status: sale?.result?.status,
+      member: sale?.result?.deciplus_member_id,
+      badge: sale?.result?.badge_action,
+      error: sale?.error || sale?.result?.error,
+    }, null, 2));
 
-  const memberId = sale?.result?.deciplus_member_id;
-  if (!memberId || sale?.result?.status !== 'success') {
-    throw new Error('Création abo+badge échouée — impossible de tester la résiliation');
+    memberId = sale?.result?.deciplus_member_id;
+    if (!memberId || sale?.result?.status !== 'success') {
+      throw new Error('Création abo+badge échouée — impossible de tester la résiliation');
+    }
+  } else {
+    console.log(`=== 1) Membre existant ${memberId} (abo + badge déjà créés) ===`);
   }
 
   console.log('\n=== 2) Résiliation complète (abo + badge) ===');

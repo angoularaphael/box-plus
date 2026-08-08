@@ -108,10 +108,31 @@
       const saved = readStoredProgress();
       if (!saved) return;
       if (!saved.savedAt || Date.now() - saved.savedAt > STORAGE_TTL_MS) {
-        localStorage.removeItem(STORAGE_KEY);
-        sessionStorage.removeItem(STORAGE_KEY);
+        clearProgress();
         return;
       }
+
+      const urlProduct = params.get('product');
+      // Nouveau produit choisi (via « Choisir une autre offre ») → ignorer l'ancien dossier
+      if (
+        urlProduct &&
+        saved.productId &&
+        urlProduct !== saved.productId &&
+        !params.get('order')
+      ) {
+        clearProgress();
+        state.productId = urlProduct;
+        state.orderId = null;
+        state.token = null;
+        state.sessionId = null;
+        state.order = null;
+        state.step = 1;
+        state.shortDraft = null;
+        state.gymDraft = null;
+        state.photoUploaded = false;
+        return;
+      }
+
       if (saved.productId && (!state.productId || state.productId === saved.productId)) {
         state.productId = saved.productId;
       }
@@ -135,14 +156,25 @@
         }
       }
     } catch {
-      localStorage.removeItem(STORAGE_KEY);
-      sessionStorage.removeItem(STORAGE_KEY);
+      clearProgress();
     }
   }
 
   function clearProgress() {
     localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(STORAGE_KEY);
+  }
+
+  /** Quitter le tunnel pour choisir une autre offre — sans réinjecter l'ancien paiement. */
+  function leaveToChooseAnotherOffer(e) {
+    if (e) e.preventDefault();
+    clearProgress();
+    window.removeEventListener('beforeunload', saveProgress);
+    const href =
+      (window.BCPaths && typeof window.BCPaths.link === 'function'
+        ? window.BCPaths.link('/abonnements')
+        : null) || '/abonnements';
+    window.location.href = href;
   }
 
   function syncUrl() {
@@ -168,8 +200,18 @@
     return (
       /comptant/i.test(String(p?.name || '')) ||
       p?.subsection === 'comptant' ||
+      p?.supports_installment_choice === true ||
       /4\s*[x×]\s*sans\s*frais/i.test(String(p?.badge || p?.name || '')) ||
+      /1\s*[x×]\s*ou\s*4\s*[x×]/i.test(String(p?.badge || '')) ||
       /sans\s*frais/i.test(String(p?.badge || ''))
+    );
+  }
+
+  function supportsInstallmentChoice(p) {
+    return (
+      p?.supports_installment_choice === true ||
+      String(p?.id || '') === 'offre-saison' ||
+      /1\s*[x×]\s*ou\s*4\s*[x×]/i.test(String(p?.badge || ''))
     );
   }
 
@@ -188,6 +230,11 @@
         <img src="https://up.yimg.com/ib/th/id/OIP.h_nvZo9_TUEbrpVqSdXsGAHaHa?pid=Api&rs=1&c=1&qlt=95&w=122&h=122" alt="PayPal" height="28" />
       </span>`;
     }
+    if (kind === 'payplug') {
+      return `<span class="pay-logos" aria-hidden="true">
+        <img src="https://www.onatureshop.com/img/cms/Payplug-logo.png" alt="PayPlug paiement sécurisé" height="32" style="background:#111;border-radius:6px;padding:2px 6px" />
+      </span>`;
+    }
     return `<span class="pay-logos" aria-hidden="true">
       <img src="https://tse1.mm.bing.net/th/id/OIP.i6EmD8Ol2FWxjgKeOSjh1wHaDo?r=0&pid=Api&h=220&P=0" alt="CB Visa Mastercard" height="28" />
       <img src="https://tse2.mm.bing.net/th/id/OIP.aejxZDH8dT3Q7pQ8GBLV_AHaHa?r=0&pid=Api&h=220&P=0" alt="American Express" height="28" />
@@ -196,6 +243,9 @@
 
   function firstPaymentCaption(product) {
     const amount = priceLabel(product);
+    if (supportsInstallmentChoice(product)) {
+      return `Montant total : <strong>${amount}</strong> — choisissez comptant ou 4× sans frais (pas d'IBAN)`;
+    }
     if (isComptantLikeProduct(product)) {
       return `Paiement de : <strong>${amount}</strong>`;
     }
@@ -355,6 +405,15 @@
     if (data.error === 'payment_not_completed' || data.error === 'payment_required') {
       return paymentFailureMessage();
     }
+    if (data.error === 'payplug_not_configured') {
+      return 'Paiement 4× temporairement indisponible. Choisissez le paiement en une fois, ou contactez le club.';
+    }
+    if (data.error === 'payplug_url_missing') {
+      return 'Impossible d\'ouvrir la page PayPlug. Réessayez ou choisissez le paiement en une fois.';
+    }
+    if (data.error === 'stripe_not_configured') {
+      return 'Paiement Stripe temporairement indisponible. Contactez le club.';
+    }
     if (data.error === 'not_found') {
       return 'Dossier introuvable. Revenez à l\'étape identité et recommencez, ou contactez le club.';
     }
@@ -401,6 +460,15 @@
     return product?.stripe_price_label || product?.price_label || '—';
   }
 
+  function esc(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   async function ensureProductForPayment() {
     if (!state.productId) return;
     const hasLabel = state.product?.stripe_price_label || state.product?.price_label;
@@ -431,6 +499,13 @@
         return;
       }
     }
+    if (params.get('payplug_return') === '1') {
+      await confirmPayplugReturn();
+      if (state.order?.payment?.status === 'paid') {
+        persistAndRender();
+        return;
+      }
+    }
     if (state.sessionId) {
       await confirmStripeReturn();
       if (state.order?.payment?.status === 'paid') {
@@ -440,13 +515,85 @@
     }
     await ensureProductForPayment();
     const p = state.product;
-    const isComptantLike = isComptantLikeProduct(p);
+    const installmentChoice = supportsInstallmentChoice(p);
+    const isComptantLike = isComptantLikeProduct(p) && !installmentChoice;
     const isPrelevement =
-      !isComptantLike && (Boolean(p?.requires_iban) || Boolean(p?.supports_billing_choice));
+      !isComptantLike &&
+      !installmentChoice &&
+      (Boolean(p?.requires_iban) || Boolean(p?.supports_billing_choice));
     const savedPlan = state.order?.payment?.billing_plan === 'paypal' ? 'paypal' : 'rib';
+    const savedInstallment =
+      state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
+    const full = state.order?.customer_full || {};
 
     let billingHtml = '';
-    if (isPrelevement) {
+    if (installmentChoice) {
+      const quart = ((Number(p.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
+      const savedMethod = state.order?.payment?.preferred_checkout || 'card';
+      billingHtml = `
+        <div class="full billing-plan-block">
+          <p class="sub" style="margin-top:0">Étape 1 — Choisissez le type de paiement (pas d'IBAN, vente Deciplus en comptant).</p>
+          <div class="billing-choice-row" role="radiogroup" aria-label="Type de paiement">
+            <label class="billing-choice">
+              <input type="radio" name="payment_plan" value="once" ${savedInstallment !== '4x' ? 'checked' : ''} />
+              <span class="billing-choice-text">
+                <strong>Paiement comptant</strong>
+                <small>Une fois · ${priceLabel(p)}</small>
+              </span>
+            </label>
+            <label class="billing-choice">
+              <input type="radio" name="payment_plan" value="4x" ${savedInstallment === '4x' ? 'checked' : ''} />
+              <span class="billing-choice-text">
+                <strong>4× sans frais</strong>
+                <small>4 × ${quart} €</small>
+              </span>
+            </label>
+          </div>
+          <p class="sub" style="margin:16px 0 8px">Étape 2 — Moyen de paiement</p>
+          <div id="onceMethods" class="billing-choice-row">
+            <label class="billing-choice">
+              <input type="radio" name="pay_method_once" value="card" ${savedMethod !== 'paypal' ? 'checked' : ''} />
+              <span class="billing-choice-text">
+                <strong>Carte bancaire</strong>
+                <small>Stripe</small>
+                ${paymentLogosHtml('card')}
+              </span>
+            </label>
+            <label class="billing-choice">
+              <input type="radio" name="pay_method_once" value="paypal" ${savedMethod === 'paypal' ? 'checked' : ''} />
+              <span class="billing-choice-text">
+                <strong>PayPal</strong>
+                <small>Stripe · PayPal</small>
+                ${paymentLogosHtml('paypal')}
+              </span>
+            </label>
+          </div>
+          <div id="fourXMethods" class="billing-choice-row" style="display:none">
+            <label class="billing-choice">
+              <input type="radio" name="pay_method_4x" value="payplug" checked />
+              <span class="billing-choice-text">
+                <strong>PayPlug</strong>
+                <small>4× sans frais (Oney)</small>
+                ${paymentLogosHtml('payplug')}
+              </span>
+            </label>
+            <label class="billing-choice">
+              <input type="radio" name="pay_method_4x" value="paypal" />
+              <span class="billing-choice-text">
+                <strong>PayPal</strong>
+                <small>4× / PayPal</small>
+                ${paymentLogosHtml('paypal')}
+              </span>
+            </label>
+          </div>
+          <div id="fourXAddress" class="form-grid" style="display:none;margin-top:12px">
+            <p class="sub full" style="margin:0 0 8px">Adresse requise pour le dossier 4× PayPlug :</p>
+            <div class="full"><label>Adresse *</label><input name="address" value="${esc(full.address || '')}" /></div>
+            <div><label>Code postal *</label><input name="postal_code" value="${esc(full.postal_code || '')}" /></div>
+            <div><label>Ville *</label><input name="city" value="${esc(full.city || '')}" /></div>
+          </div>
+        </div>`;
+    } else if (isPrelevement) {
       billingHtml = `
         <div class="full billing-plan-block">
           <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
@@ -503,13 +650,72 @@
         ${backButton('← Retour', 3)}
       </form>`;
     bindBillingPlanForm();
+    if (installmentChoice) {
+      const syncInstallmentUi = () => {
+        const plan = document.querySelector('input[name="payment_plan"]:checked')?.value || 'once';
+        const onceBox = document.getElementById('onceMethods');
+        const fourBox = document.getElementById('fourXMethods');
+        const addrBox = document.getElementById('fourXAddress');
+        const payBtn = document.getElementById('payBtn');
+        const fourMethod =
+          document.querySelector('input[name="pay_method_4x"]:checked')?.value || 'payplug';
+        if (onceBox) onceBox.style.display = plan === 'once' ? '' : 'none';
+        if (fourBox) fourBox.style.display = plan === '4x' ? '' : 'none';
+        const needAddress = plan === '4x' && fourMethod === 'payplug';
+        if (addrBox) {
+          addrBox.style.display = needAddress ? '' : 'none';
+          addrBox.querySelectorAll('input').forEach((input) => {
+            input.required = needAddress;
+          });
+        }
+        if (payBtn) {
+          payBtn.textContent =
+            plan === '4x'
+              ? fourMethod === 'paypal'
+                ? 'Payer en 4× avec PayPal'
+                : 'Payer en 4× avec PayPlug'
+              : 'Payer en une fois';
+        }
+      };
+      document
+        .querySelectorAll('input[name="payment_plan"], input[name="pay_method_4x"]')
+        .forEach((el) => {
+          el.addEventListener('change', syncInstallmentUi);
+        });
+      syncInstallmentUi();
+    }
     document.getElementById('payForm').onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Redirection…');
       saveProgress();
       const body = payRequestBody();
       const planInput = document.querySelector('input[name="billing_plan"]:checked');
-      if (isComptantLike) {
+      const installmentInput = document.querySelector('input[name="payment_plan"]:checked');
+      if (installmentChoice) {
+        body.payment_plan = installmentInput?.value || 'once';
+        if (body.payment_plan === '4x') {
+          const fourMethod =
+            document.querySelector('input[name="pay_method_4x"]:checked')?.value || 'payplug';
+          body.pay_method = fourMethod;
+          body.billing_plan = fourMethod === 'paypal' ? 'paypal' : null;
+          if (fourMethod === 'payplug') {
+            body.address = document.querySelector('#fourXAddress input[name="address"]')?.value?.trim();
+            body.postal_code = document
+              .querySelector('#fourXAddress input[name="postal_code"]')
+              ?.value?.trim();
+            body.city = document.querySelector('#fourXAddress input[name="city"]')?.value?.trim();
+            if (!body.address || !body.postal_code || !body.city) {
+              setMsg('Adresse complète requise pour le paiement 4× PayPlug.', 'err');
+              return;
+            }
+          }
+        } else {
+          const onceMethod =
+            document.querySelector('input[name="pay_method_once"]:checked')?.value || 'card';
+          body.pay_method = onceMethod;
+          body.billing_plan = onceMethod === 'paypal' ? 'paypal' : null;
+        }
+      } else if (isComptantLike) {
         body.billing_plan = planInput?.value === 'paypal' ? 'paypal' : null;
       } else if (planInput) {
         body.billing_plan = planInput.value;
@@ -553,19 +759,52 @@
       stepContent.innerHTML = `
         <h1>Votre offre</h1>
         <p class="sub">Cette offre est introuvable ou n'est plus disponible.</p>
-        <a href="/abonnements" class="btn block">Voir les offres disponibles</a>`;
+        <a href="/abonnements" class="btn block" id="seeOffers">Voir les offres disponibles</a>`;
+      document.getElementById('seeOffers').onclick = leaveToChooseAnotherOffer;
       return;
     }
+    const desc =
+      (window.BCOffers && typeof window.BCOffers.offerDescription === 'function'
+        ? window.BCOffers.offerDescription(p)
+        : null) ||
+      p.description ||
+      '';
+    const payMode =
+      window.BCOffers && typeof window.BCOffers.formatPaymentMode === 'function'
+        ? window.BCOffers.formatPaymentMode(p)
+        : p.installments_note || '';
+    const duration =
+      window.BCOffers && typeof window.BCOffers.formatDuration === 'function'
+        ? window.BCOffers.formatDuration(p)
+        : p.duration_label || '';
+    const benefits = Array.isArray(p.benefits) && p.benefits.length
+      ? p.benefits
+      : ['Accès aux 5 salles', 'Toutes les disciplines', 'Encadrement coach'];
     stepContent.innerHTML = `
       <h1>Votre offre</h1>
       <div class="offer-card" style="margin-bottom:24px">
-        <h3>${p.display_name || p.name}</h3>
-        <div class="offer-price">${p.stripe_price_label || p.price_label}</div>
-        ${p.installments_note ? `<p class="offer-price-sub">${p.installments_note}</p>` : ''}
+        ${p.badge ? `<span class="offer-tag">${esc(p.badge)}</span>` : ''}
+        <h3>${esc(p.display_name || p.name)}</h3>
+        <div class="offer-price">${esc(p.stripe_price_label || p.price_label)}</div>
+        ${p.installments_note ? `<p class="offer-price-sub">${esc(p.installments_note)}</p>` : ''}
+        ${
+          desc
+            ? `<div class="offer-selection-description"><strong>À retenir</strong><p>${esc(desc)}</p></div>`
+            : ''
+        }
+        <ul class="offer-benefits" style="margin-top:12px">
+          ${benefits.map((b) => `<li>${esc(b)}</li>`).join('')}
+        </ul>
+        <div class="offer-meta" style="margin-top:12px">
+          ${duration ? `<div><strong>Durée :</strong> ${esc(duration)}</div>` : ''}
+          ${payMode ? `<div><strong>Paiement :</strong> ${esc(payMode)}</div>` : ''}
+          ${p.deciplus_total_note ? `<div><strong>Note :</strong> ${esc(p.deciplus_total_note)}</div>` : ''}
+        </div>
       </div>
       <button type="button" class="btn block" id="toStep2">Continuer</button>
-      <a href="/abonnements" class="btn secondary block" style="margin-top:12px">← Choisir une autre offre</a>`;
+      <a href="/abonnements" class="btn secondary block" id="chooseOtherOffer" style="margin-top:12px">← Choisir une autre offre</a>`;
     document.getElementById('toStep2').onclick = () => goToStep(2);
+    document.getElementById('chooseOtherOffer').onclick = leaveToChooseAnotherOffer;
   }
 
   function renderStep2() {
@@ -789,10 +1028,9 @@
         <div><label for="city">Ville *</label><input id="city" name="city" required value="${full.city || ''}" /></div>
         <div class="full photo-capture-block">
           <label>Photo *</label>
-          <p class="field-hint">Ajoutez une photo d'identité ou filmez-vous avec la webcam.</p>
+          <p class="field-hint">Prenez une photo avec votre caméra. Elle sera associée à votre dossier et envoyée sur votre fiche Deciplus.</p>
           <div class="photo-capture-actions">
-            <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="user" ${photoOk ? '' : 'required'} />
-            <button type="button" class="btn secondary" id="webcamBtn">Se filmer / Prendre une photo</button>
+            <button type="button" class="btn secondary" id="webcamBtn">Ouvrir la caméra</button>
           </div>
           <video id="webcamPreview" playsinline muted hidden style="width:100%;max-width:320px;border-radius:8px;margin-top:10px;background:#111"></video>
           <canvas id="webcamCanvas" hidden></canvas>
@@ -809,7 +1047,6 @@
     const video = document.getElementById('webcamPreview');
     const canvas = document.getElementById('webcamCanvas');
     const snap = document.getElementById('webcamSnap');
-    const photoInput = document.getElementById('photo');
 
     async function stopWebcam() {
       if (webcamStream) {
@@ -834,7 +1071,7 @@
         document.getElementById('webcamStopBtn').hidden = true;
         setMsg('');
       } catch (err) {
-        setMsg('Caméra inaccessible — utilisez « Choisir un fichier ».', 'err');
+        setMsg('Caméra inaccessible. Autorisez la caméra dans votre navigateur puis réessayez.', 'err');
       }
     };
 
@@ -850,8 +1087,6 @@
           webcamBlob = blob;
           snap.src = URL.createObjectURL(blob);
           snap.hidden = false;
-          photoInput.removeAttribute('required');
-          photoInput.value = '';
           await stopWebcam();
           setMsg('Photo capturée — vous pouvez continuer.');
         },
@@ -867,8 +1102,7 @@
     document.getElementById('fullForm').onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Enregistrement…');
-      const file = photoInput?.files?.[0] || null;
-      const source = file || webcamBlob;
+      const source = webcamBlob;
       if (source) {
         const prepared = await prepareMemberPhoto(source);
         const fd = new FormData();
@@ -885,14 +1119,13 @@
         }
         state.photoUploaded = true;
       } else if (!photoOk) {
-        setMsg('Ajoutez une photo ou filmez-vous', 'err');
+        setMsg('Ouvrez la caméra et prenez une photo avant de continuer.', 'err');
         return;
       }
 
       await stopWebcam();
       const fd = new FormData(e.target);
       const body = Object.fromEntries(fd.entries());
-      delete body.photo;
       const res = await fetch(`/api/orders/${state.orderId}/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -1100,6 +1333,53 @@
   }
 
   let stripeConfirmDone = false;
+  let payplugConfirmDone = false;
+
+  async function confirmPayplugReturn() {
+    if (params.get('payplug_return') !== '1' || payplugConfirmDone) return false;
+    if (!state.orderId || !state.token) return false;
+    payplugConfirmDone = true;
+    setMsg('Vérification du paiement 4×…');
+    try {
+      const res = await fetch('/api/checkout/confirm-payplug', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: state.orderId,
+          token: state.token,
+          payment_id: state.order?.payment?.payplug_payment_id,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.ok && (data.paid || data.already_paid)) {
+        await loadOrder();
+        if (data.redirect) {
+          window.location.href = data.redirect;
+          return true;
+        }
+        state.step = stepFromOrder(state.order);
+        setMsg('');
+        return true;
+      }
+      if (data.pending) {
+        setMsg(
+          data.message ||
+            'Votre demande 4× est en cours de validation PayPlug. Cette page se mettra à jour automatiquement.',
+          ''
+        );
+        window.setTimeout(async () => {
+          payplugConfirmDone = false;
+          await confirmPayplugReturn();
+          if (state.order?.payment?.status === 'paid') persistAndRender();
+        }, 4000);
+        return false;
+      }
+      setMsg(data.message || data.error || 'Paiement 4× non confirmé', 'err');
+    } catch {
+      setMsg('Impossible de vérifier le paiement PayPlug pour le moment.', 'err');
+    }
+    return false;
+  }
 
   async function confirmStripeReturn() {
     const sessionId = params.get('session_id') || state.sessionId;
@@ -1161,6 +1441,7 @@
     }
 
     if (state.orderId && state.token) {
+      await confirmPayplugReturn();
       await confirmStripeReturn();
       const loaded = await loadOrder();
       if (state.order?.payment?.status === 'paid') {
@@ -1183,7 +1464,26 @@
 
     if (!state.productId && state.product) state.productId = state.product.id;
 
-    if (state.step === 1 && state.orderId && state.order) {
+    // Ne pas forcer le paiement si l'utilisateur est explicitement sur l'étape offre
+    // (ex. retour pour changer d'offre). Sinon reprendre le tunnel en cours.
+    const explicitStep1 = Number(params.get('step') || 0) === 1;
+    const orderProductId =
+      state.order?.product_id || state.order?.product_snapshot?.id || state.order?.product_snapshot?.legacy_id;
+    const productMismatch =
+      state.productId &&
+      orderProductId &&
+      state.productId !== orderProductId &&
+      state.productId !== state.order?.product_snapshot?.legacy_id;
+
+    if (productMismatch && !params.get('order')) {
+      // URL = nouvelle offre, dossier local = ancienne → repartir à zéro
+      clearProgress();
+      state.orderId = null;
+      state.token = null;
+      state.sessionId = null;
+      state.order = null;
+      state.step = 1;
+    } else if (state.step === 1 && state.orderId && state.order && !explicitStep1) {
       state.step = stepFromOrder(state.order);
     }
 

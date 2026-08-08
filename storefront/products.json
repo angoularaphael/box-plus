@@ -55,13 +55,15 @@
     "category": "Abonnements",
     "name": "OFFRE PROMO 12 MOIS",
     "tagline": "Saison 12 mois",
-    "description": "Abonnement saison 12 mois au tarif promo. Accès illimité aux 5 salles et à toutes les disciplines.",
+    "description": "Offre promo saison : 259 € pour 12 mois d'accès illimité aux 5 salles et à toutes les disciplines. Paiement comptant (une fois) ou 4× sans frais — aucun IBAN, vente enregistrée en comptant sur Deciplus.",
     "price_cents": 25900,
     "price_label": "259,00 €",
     "deciplus_total_note": "Deciplus affiche 295,00 € (12 mois)",
-    "badge": "4× sans frais",
-    "requires_iban": true,
-    "requires_payment": true
+    "badge": "1× ou 4× sans frais",
+    "requires_iban": false,
+    "requires_payment": true,
+    "supports_installment_choice": true,
+    "installments_note": "Comptant (Stripe/PayPal) ou 4× sans frais (PayPlug/PayPal)"
   },
   {
     "id": "boxe-educative",

@@ -81,7 +81,7 @@
         setWaiting('Vérification de vos informations sur votre fiche adhérent… Merci de patienter.');
         const orderId = data.order_id;
         const startedAt = Date.now();
-        const MAX_WAIT_MS = 3 * 60 * 1000;
+        const MAX_WAIT_MS = 90 * 1000;
 
         const poll = async () => {
           try {
@@ -102,6 +102,14 @@
               msgEl.textContent =
                 'Votre résiliation a bien été traitée. Une confirmation vous sera envoyée par e-mail.';
               msgEl.className = 'form-msg';
+              if (submitBtn) submitBtn.disabled = false;
+              return;
+            }
+            if (s.ok && (s.status === 'error' || s.status === 'manual_review')) {
+              msgEl.textContent =
+                'La vérification automatique n’a pas pu aboutir. Votre demande est enregistrée ; un responsable va la contrôler.';
+              msgEl.className = 'form-msg err';
+              if (submitBtn) submitBtn.disabled = false;
               return;
             }
           } catch {
@@ -113,6 +121,7 @@
             msgEl.textContent =
               'Demande bien reçue. Notre équipe traite votre résiliation et vous enverra une confirmation par e-mail.';
             msgEl.className = 'form-msg';
+            if (submitBtn) submitBtn.disabled = false;
           }
         };
         window.setTimeout(poll, 4000);
@@ -134,6 +143,7 @@
     const data = await res.json();
     if (!data.ok) return;
     currentSelect.innerHTML = (data.current_plans || [])
+      .filter((p) => !/promo/i.test(String(p.id || '')) && !/promo/i.test(String(p.label || '')))
       .map((p) => `<option value="${p.id}">${p.label}</option>`)
       .join('');
     targetSelect.innerHTML = (data.comptant_targets || [])

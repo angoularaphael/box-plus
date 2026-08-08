@@ -6,8 +6,10 @@ const { enqueue } = require('../../lib/queue');
 const { isValidFrenchIban, normalizeIban } = require('../../lib/iban');
 const {
   normalizeBillingPlan,
+  normalizePaymentPlan,
   requiresIbanForPlan,
   productSupportsBillingChoice,
+  productSupportsInstallmentChoice,
 } = require('../../lib/billing-plan');
 
 const PENDING_DIR =
@@ -41,9 +43,12 @@ function removePendingOrder(sessionId) {
 
 function buildOrderPayload(input, product) {
   const billingPlan = normalizeBillingPlan(input.billing_plan, product);
+  const paymentPlan = normalizePaymentPlan(input.payment_plan, product);
   const requiresIban = requiresIbanForPlan(product, billingPlan);
   const iban = requiresIban && input.iban ? normalizeIban(input.iban) : null;
   const amount = product.price_cents / 100;
+  const paymentMethod =
+    input.payment_method || (paymentPlan === '4x' ? 'payplug' : 'stripe');
 
   return {
     order_id: input.order_id || `STORE-${Date.now()}`,
@@ -56,6 +61,8 @@ function buildOrderPayload(input, product) {
     sale_type: product.sale_type || null,
     requires_iban: requiresIban,
     billing_plan: billingPlan,
+    payment_plan: paymentPlan,
+    paiement_comptant: Boolean(paymentPlan) || undefined,
     gym: input.gym,
     customer: {
       first_name: input.first_name,
@@ -77,15 +84,17 @@ function buildOrderPayload(input, product) {
     badge_method: input.badge_method || null,
     payment: {
       amount,
-      method: input.payment_method || 'stripe',
+      method: paymentMethod,
       status: product.requires_payment ? 'paid' : 'free',
       date: new Date().toISOString(),
       iban,
       billing_plan: billingPlan,
+      payment_plan: paymentPlan,
       recurring: billingPlan === 'cb' ? 'stripe_4_weeks' : billingPlan === 'rib' ? 'sepa_4_weeks' : null,
       stripe_session_id: input.stripe_session_id || null,
       stripe_payment_intent: input.stripe_payment_intent || null,
       stripe_subscription_id: input.stripe_subscription_id || null,
+      payplug_payment_id: input.payplug_payment_id || null,
       badge_timing: input.badge_timing || null,
       badge_method: input.badge_method || null,
     },
@@ -94,7 +103,7 @@ function buildOrderPayload(input, product) {
       medium: input.utm_medium || null,
       campaign: input.utm_campaign || 'rentree-2026',
     },
-    source: 'storefront-stripe',
+    source: paymentMethod === 'payplug' ? 'storefront-payplug' : 'storefront-stripe',
   };
 }
 
@@ -142,6 +151,9 @@ function validatePaymentForm(input, product) {
   const billingPlan = normalizeBillingPlan(input.billing_plan, product);
   if (productSupportsBillingChoice(product) && !input.billing_plan) {
     errors.push('Choisissez un mode de paiement (RIB ou PayPal)');
+  }
+  if (productSupportsInstallmentChoice(product) && !normalizePaymentPlan(input.payment_plan, product)) {
+    errors.push('Choisissez un paiement en une fois ou en 4× sans frais');
   }
   // IBAN collecté après Stripe — plus requis ici
   void billingPlan;
@@ -193,9 +205,11 @@ function buildOrderFromLifecycle(order, product) {
       city: full.city,
       iban: full.iban || order.payment?.iban,
       billing_plan: order.payment?.billing_plan,
+      payment_plan: order.payment?.payment_plan,
       payment_method: order.payment?.method || 'stripe',
       stripe_session_id: order.payment?.stripe_session_id,
       stripe_subscription_id: order.payment?.stripe_subscription_id,
+      payplug_payment_id: order.payment?.payplug_payment_id,
       emergency_contact: full.emergency_contact,
       medical_info: full.medical_info,
       photo_path: photoPath,

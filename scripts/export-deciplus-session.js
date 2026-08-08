@@ -1,18 +1,16 @@
 /**
- * Export session Deciplus — à lancer en local après connexion manuelle (+ code email).
- * Produit data/session/storage-state.json à uploader sur BotHosting.
+ * Export session Deciplus — connexion auto (.env) + code email si demandé.
+ * Produit data/session/storage-state.json
  */
 require('dotenv').config();
 
-// Export local Windows/Mac — navigateur visible, pas de deps Linux
 process.env.DECIPLUS_HEADLESS = 'false';
 delete process.env.PLAYWRIGHT_BROWSERS_PATH;
 delete process.env.BOXPLUS_HOSTED;
 
 const fs = require('fs');
-const path = require('path');
 const readline = require('readline');
-const { launchBrowser, saveSession, STORAGE_FILE } = require('../bot/auth');
+const { launchBrowser, saveSession, STORAGE_FILE, login } = require('../bot/auth');
 const { logInfo } = require('../lib/logger');
 
 async function waitForEnter(message) {
@@ -33,13 +31,29 @@ async function main() {
   }
 
   console.log('\n=== Export session Deciplus ===');
-  console.log('1. Le navigateur va s\'ouvrir');
-  console.log('2. Connecte-toi manuellement (login + code email si demandé)');
-  console.log('3. Choisis le site Minimes si écran zone');
-  console.log('4. Attends le tableau de bord Deciplus\n');
+  console.log('1. Connexion automatique avec DECIPLUS_USER / DECIPLUS_PASSWORD');
+  console.log('2. Si code email demandé : saisis-le dans le navigateur');
+  console.log('3. Choisis Minimes si écran zone');
+  console.log('4. Appuie sur Entrée ici quand le tableau de bord est OK\n');
+
+  // Nouvelle session propre
+  try {
+    if (fs.existsSync(STORAGE_FILE)) {
+      fs.renameSync(STORAGE_FILE, `${STORAGE_FILE}.bak-${Date.now()}`);
+      console.log('Ancienne session sauvegardée en .bak');
+    }
+  } catch {
+    /* ignore */
+  }
 
   const { browser, context, page } = await launchBrowser();
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  try {
+    await login(page, { siteLabel: process.env.DECIPLUS_DEFAULT_SITE || 'Minimes' });
+    logInfo('Login Deciplus tenté — vérifie le navigateur si code email');
+  } catch (err) {
+    console.warn('Login auto incomplet:', err.message);
+    console.log('Termine la connexion manuellement dans le navigateur.');
+  }
 
   await waitForEnter('Appuie sur Entrée quand tu es connecté à Deciplus… ');
 
@@ -59,7 +73,7 @@ async function main() {
 
   await saveSession(context);
   console.log(`\nSession exportée → ${STORAGE_FILE}`);
-  console.log('Upload ce fichier sur BotHosting : /home/container/data/session/storage-state.json\n');
+  console.log('Upload BotHosting si besoin : /home/container/data/session/storage-state.json\n');
 
   await browser.close();
 }

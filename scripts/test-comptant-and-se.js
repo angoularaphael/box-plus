@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Test live Deciplus : 3 offres comptant + 1 sans engagement (jusqu'au badge).
- * Usage: node scripts/test-comptant-and-se.js
+ * Usage: node scripts/test-comptant-and-se.js [comptant-12 comptant-6 ...]
  */
 require('dotenv').config();
 
@@ -56,6 +56,11 @@ const OFFERS = [
   },
 ];
 
+const requestedKeys = new Set(process.argv.slice(2));
+const selectedOffers = requestedKeys.size
+  ? OFFERS.filter((offer) => requestedKeys.has(offer.key))
+  : OFFERS;
+
 function buildOrder(offer, idx) {
   const customer = uniqueTestCustomer(`live-${offer.key}`);
   customer.gym = 'minimes';
@@ -86,12 +91,12 @@ function buildOrder(offer, idx) {
   }
 
   console.log('Queue:', process.env.BOXPLUS_QUEUE_DIR);
-  console.log(`=== Live test ${OFFERS.length} offres (session locale) ===\n`);
+  console.log(`=== Live test ${selectedOffers.length} offres (session locale) ===\n`);
 
   const results = [];
 
-  for (let i = 0; i < OFFERS.length; i += 1) {
-    const offer = OFFERS[i];
+  for (let i = 0; i < selectedOffers.length; i += 1) {
+    const offer = selectedOffers[i];
     const order = buildOrder(offer, i);
     console.log(`\n--- ${offer.key} · ${offer.product_name} ---`);
     console.log('order_id:', order.order_id);

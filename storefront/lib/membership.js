@@ -20,12 +20,32 @@ function listComptantTargets() {
 }
 
 function listCurrentPlans() {
+  // Pas de « Prélèvement promo » — retiré volontairement
   return [
     { id: 'prelevement-adulte', label: 'Prélèvement adulte (sans engagement)' },
     { id: 'prelevement-etudiant', label: 'Prélèvement étudiant' },
-    { id: 'prelevement-promo', label: 'Prélèvement promo' },
     { id: 'autre', label: 'Autre / je ne sais pas' },
-  ];
+  ].filter((p) => !/promo/i.test(p.id) && !/promo/i.test(p.label));
+}
+
+const MANAGER_LABELS = {
+  minimes: 'Minimes',
+  ramonville: 'Ramonville',
+  portet: 'Portet',
+  'etats-unis': 'États-Unis',
+  'st-cyprien': 'St-Cyprien',
+};
+
+function getManagerContact(gym) {
+  const id = String(gym || '').trim().toLowerCase();
+  if (!MANAGER_LABELS[id]) return null;
+  const envKey = `MANAGER_EMAIL_${id.replace(/-/g, '_').toUpperCase()}`;
+  return {
+    gym: id,
+    label: MANAGER_LABELS[id],
+    email:
+      String(process.env[envKey] || process.env.MANAGER_EMAIL_DEFAULT || 'boxingcenter31@gmail.com').trim(),
+  };
 }
 
 async function enqueueCancelRequest(body = {}) {
@@ -146,6 +166,7 @@ async function enqueueChangeAfterPayment({ identity, targetProductId, stripeSess
     throw new Error('Offre comptant cible invalide');
   }
   const baseId = `CHANGE-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+  const today = new Date().toISOString().slice(0, 10);
   const cancel = await dispatchOrder({
     order_id: `${baseId}-cancel`,
     action: 'cancel',
@@ -157,6 +178,8 @@ async function enqueueChangeAfterPayment({ identity, targetProductId, stripeSess
     email: identity.email,
     gym: identity.gym || 'minimes',
     customer: identity,
+    cancel_date: today,
+    effective_date: today,
     product_name: 'Résiliation prélèvement (changement)',
     requires_payment: false,
     requires_iban: false,
@@ -185,6 +208,8 @@ async function enqueueChangeAfterPayment({ identity, targetProductId, stripeSess
     sale_type: 'abonnement',
     payment_method: 'stripe',
     stripe_session_id: stripeSessionId,
+    sale_date: today,
+    effective_date: today,
     auto_badge: false,
   });
 
@@ -215,6 +240,7 @@ async function sendChangeConfirmationEmail(identity, product) {
 module.exports = {
   listComptantTargets,
   listCurrentPlans,
+  getManagerContact,
   enqueueCancelRequest,
   enqueueChangeAfterPayment,
   sendCancelMismatchEmail,

@@ -4,10 +4,13 @@ const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const {
   productSupportsBillingChoice,
+  productSupportsInstallmentChoice,
   isComptantStyleProduct,
   normalizeBillingPlan,
+  normalizePaymentPlan,
   requiresIbanForPlan,
   applyBillingPlanToProductConfig,
+  paymentModeLabel,
 } = require('../lib/billing-plan');
 
 describe('billing-plan', () => {
@@ -47,5 +50,22 @@ describe('billing-plan', () => {
 
   it('defaults to rib for 4-week products', () => {
     assert.equal(normalizeBillingPlan(null, fourWeeks), 'rib');
+  });
+
+  it('offre 259 supports 1x Stripe or 4x PayPlug and stays comptant-style', () => {
+    const promo = {
+      id: 'offre-saison',
+      name: 'OFFRE PROMO 12 MOIS',
+      badge: '1× ou 4× sans frais',
+      supports_installment_choice: true,
+      requires_iban: false,
+    };
+    assert.equal(productSupportsInstallmentChoice(promo), true);
+    assert.equal(isComptantStyleProduct(promo), true);
+    assert.equal(normalizePaymentPlan('once', promo), 'once');
+    assert.equal(normalizePaymentPlan('4x', promo), '4x');
+    assert.equal(normalizePaymentPlan(null, promo), null);
+    assert.match(paymentModeLabel(promo, null, '4x'), /PayPlug/i);
+    assert.match(paymentModeLabel(promo, null, 'once'), /Stripe/i);
   });
 });

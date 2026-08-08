@@ -46,15 +46,21 @@ function productSnapshot(product) {
     id: product.id,
     name: product.name,
     display_name: product.display_name || product.name,
+    description: product.description || null,
     price_cents: product.price_cents,
     price_label: product.price_label,
     stripe_price_label: product.stripe_price_label,
     installments_note: product.installments_note,
     requires_iban: product.requires_iban,
     supports_billing_choice: product.supports_billing_choice,
+    supports_installment_choice: product.supports_installment_choice,
+    badge: product.badge || null,
+    benefits: product.benefits || [],
+    deciplus_total_note: product.deciplus_total_note || null,
     requires_payment: product.requires_payment,
     sale_type: product.sale_type,
     deciplus_id: product.deciplus_id || null,
+    subsection: product.subsection || null,
   };
 }
 

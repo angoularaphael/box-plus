@@ -3,23 +3,26 @@ require('dotenv').config();
 const { runWithSession } = require('../bot/browser-pool');
 const { login } = require('../bot/auth');
 const { openMemberCheck } = require('../bot/wallet');
+const { fetchDeciplusCatalog, resolveBadgeProductConfig } = require('../bot/catalog');
+const { openSaleFlow, togglePaiementComptantOff } = require('../bot/sale');
+const { getGymConfig } = require('../lib/normalize');
 
 (async () => {
   const memberId = process.argv[2] || '20926';
   await runWithSession('debug', async (page) => {
     await login(page);
     await openMemberCheck(page, memberId);
-    await page.getByText(/Achat Carte/i).first().click().catch(() => {});
-    await page.waitForURL(/vente/, { timeout: 20000 }).catch(() => {});
-    await page.waitForTimeout(2000);
-
-    const search = page.locator('input[placeholder*="Rechercher"]').first();
-    await search.fill('Badge');
-    await page.waitForTimeout(2000);
-    await page.locator('.product-wrapper-title').filter({ hasText: /^Badge$/i }).first().click();
+    const catalog = await fetchDeciplusCatalog(page);
+    const badgeConfig = resolveBadgeProductConfig(catalog, {
+      badge_timing: 'deferred',
+      badge_method: 'iban',
+    });
+    await openSaleFlow(page, badgeConfig, getGymConfig('minimes'), 'carte');
+    await togglePaiementComptantOff(page);
     await page.waitForTimeout(3000);
 
-    const ctx = page;
+    let saleScope = [page, ...page.frames()].find((scope) => /nextgen\/vente/i.test(scope.url())) || page;
+    const ctx = saleScope;
     const probe = await ctx.evaluate(() => {
       function deepText(node) {
         if (!node) return '';
@@ -37,6 +40,18 @@ const { openMemberCheck } = require('../bot/wallet');
         hasValide: /Valide\s+du/i.test(text),
         idxConfig: text.search(/Configuration/i),
         snippet: text.slice(Math.max(0, text.search(/Configuration/i) - 20), text.search(/Configuration/i) + 120),
+        inputs: Array.from(document.querySelectorAll('input'))
+          .filter((el) => {
+            const r = el.getBoundingClientRect();
+            return r.width > 0 && r.height > 0;
+          })
+          .map((el) => ({
+            value: el.value,
+            placeholder: el.placeholder,
+            type: el.type,
+            outer: el.outerHTML.slice(0, 300),
+            parent: el.parentElement?.parentElement?.innerText?.slice(0, 180) || '',
+          })),
       };
     });
 
