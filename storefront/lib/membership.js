@@ -277,25 +277,28 @@ async function enqueueChangeAfterPayment({
     sale_date: today,
     effective_date: today,
     auto_badge: false,
+    // E-mail de confirmation envoyé par le bot à la fin du job (pas ici)
+    notify_change_complete: true,
+    change_product_name: product.display_name || product.name,
   });
 
-  await sendChangeConfirmationEmail(identity, product).catch(() => {});
   return { cancel, sale, order_id: baseId };
 }
 
-async function sendChangeConfirmationEmail(identity, product) {
+async function sendChangeConfirmationEmail(identity, product = {}) {
   if (!identity?.email || !isConfigured()) return { sent: false };
+  const offer = product.display_name || product.name || product.change_product_name || 'abonnement comptant';
   const html = `<p>Bonjour ${identity.first_name || ''},</p>
-    <p>Votre demande de passage en <strong>${product.display_name || product.name}</strong> a bien été enregistrée.</p>
-    <p>Le bot Boxing Center va couper votre prélèvement et activer le nouvel abonnement comptant.</p>
-    <p>À bientôt au club.</p>`;
+    <p>Bonne nouvelle : votre passage en <strong>${offer}</strong> est <strong>bien enregistré et actif</strong>.</p>
+    <p>Votre ancien prélèvement a été coupé et le nouvel abonnement comptant est en place. Il peut mettre <strong>quelques minutes</strong> à apparaître partout côté club.</p>
+    <p>À bientôt sur le ring,<br/>Boxing Center</p>`;
   try {
     await sendEmailViaBrevo({
       to: identity.email,
-      subject: 'Changement d\'abonnement confirmé — Boxing Center',
+      subject: 'Votre abonnement comptant est actif — Boxing Center',
       html,
     });
-    logInfo('Email changement abo envoyé', { email: identity.email });
+    logInfo('Email changement abo (fin de job) envoyé', { email: identity.email });
     return { sent: true };
   } catch (err) {
     logWarn('Email changement abo échoué', { error: err.message });
@@ -311,6 +314,7 @@ module.exports = {
   enqueueVerifyIdentity,
   enqueueChangeAfterPayment,
   sendCancelMismatchEmail,
+  sendChangeConfirmationEmail,
   updateCancelStatus,
   getCancelStatus,
   CANCEL_FIELD_LABELS,
