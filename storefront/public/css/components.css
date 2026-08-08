@@ -572,6 +572,27 @@
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
+@media (max-width: 720px) {
+  .testimonials-grid {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    padding: 4px 4px 14px;
+    margin: 0 -4px;
+    scrollbar-width: thin;
+  }
+  .testimonials-grid .testimonial-card {
+    flex: 0 0 min(82vw, 300px);
+    max-width: min(82vw, 300px);
+    scroll-snap-align: start;
+  }
+  .testimonials-grid .testimonial-card:hover {
+    transform: none;
+  }
+}
+
 .testimonial-card {
   background: var(--bc-card);
   border: 1px solid var(--bc-border);

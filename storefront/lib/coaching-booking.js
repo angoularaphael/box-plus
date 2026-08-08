@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('crypto');
 const { sendEmailViaBrevo, isConfigured, defaultReplyTo } = require('./brevo-send');
 const { getManagerContact } = require('./membership');
 const { logInfo, logWarn } = require('../../lib/logger');
@@ -157,6 +158,63 @@ async function sendCoachingBookingEmail(booking) {
   }
 }
 
+async function persistCoachingBooking(booking, mail = {}) {
+  const orderId = `COACH-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+  const activityLabel = ACTIVITIES.find((a) => a.id === booking.activity)?.label || booking.activity;
+  const slotLabel = listSlots().find((s) => s.id === booking.slot)?.label || booking.slot;
+  const gymLabel = mail.manager?.label || GYMS.find((g) => g.id === booking.gym)?.label || booking.gym;
+  const nameParts = String(booking.name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const first_name = nameParts[0] || booking.name;
+  const last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+  try {
+    const { saveOrderAsync } = require('./order-persistence');
+    await saveOrderAsync({
+      order_id: orderId,
+      access_token: crypto.randomBytes(16).toString('hex'),
+      action: 'coaching_booking',
+      booking_status: mail.sent ? 'sent' : mail.reason || 'queued',
+      customer: {
+        name: booking.name,
+        first_name,
+        last_name,
+        email: booking.email,
+        phone: booking.phone,
+      },
+      customer_short: {
+        first_name,
+        last_name,
+        email: booking.email,
+        phone: booking.phone,
+      },
+      gym: booking.gym,
+      activity: booking.activity,
+      activity_label: activityLabel,
+      slot: booking.slot,
+      slot_label: slotLabel,
+      booking_date: booking.date,
+      manager_email: mail.manager?.email || null,
+      product_name: `Coaching · ${activityLabel}`,
+      product_snapshot: {
+        name: `Coaching · ${activityLabel}`,
+        display_name: `${activityLabel} · ${gymLabel} · ${formatFrDate(booking.date)} · ${slotLabel}`,
+      },
+      step: 8,
+      payment: { status: 'n/a' },
+      email_sent_at: mail.sent ? new Date().toISOString() : null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    logWarn('Réservation coaching non persistée', { order_id: orderId, error: err.message });
+    return { order_id: orderId, persisted: false };
+  }
+  return { order_id: orderId, persisted: true };
+}
+
 async function bookCoaching(body = {}) {
   const check = validateBooking(body);
   if (!check.ok) return { ok: false, errors: check.errors };
@@ -164,8 +222,10 @@ async function bookCoaching(body = {}) {
   if (!mail.sent && mail.reason === 'brevo_error') {
     return { ok: false, errors: ['Envoi impossible pour le moment. Réessayez ou contactez votre salle.'] };
   }
+  const saved = await persistCoachingBooking(check.data, mail);
   return {
     ok: true,
+    order_id: saved.order_id,
     gym: check.data.gym,
     manager_label: mail.manager?.label || null,
     // En mode log (Brevo off), on considère quand même OK pour ne pas bloquer en local
