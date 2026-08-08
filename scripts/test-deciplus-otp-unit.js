@@ -10,6 +10,10 @@ function assert(cond, msg) {
 assert(extractOtpCode('Votre code : 482913') === '482913', 'labeled 6 digits');
 assert(extractOtpCode('Code de vérification Deciplus 193847') === '193847', 'deciplus phrasing');
 assert(
+  extractOtpCode('code unique suivant :\n\n807\u202F803\n\nDate : 8 août 2026') === '807803',
+  'deciplus spaced OTP ignores year'
+);
+assert(
   looksLikeDeciplusOtpMail({
     subject: 'Votre code Deciplus',
     from: 'noreply@deciplus.pro',
