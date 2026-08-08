@@ -85,10 +85,13 @@ async function enqueueCancelRequest(body = {}) {
   // Enregistrement statut pour le suivi front (spinner + mismatch en direct)
   try {
     const { saveOrderAsync } = require('./order-persistence');
+    const accessToken = crypto.randomBytes(16).toString('hex');
     await saveOrderAsync({
       order_id: orderId,
+      access_token: accessToken,
       action: 'cancel',
       cancel_status: 'pending',
+      mismatch_fields: [],
       customer,
       created_at: new Date().toISOString(),
     });
@@ -107,7 +110,13 @@ const CANCEL_FIELD_LABELS = {
 
 async function updateCancelStatus(orderId, { status, mismatch_fields, reason, cancelled_count } = {}) {
   const { loadOrder, saveOrderAsync } = require('./order-persistence');
-  const record = (await loadOrder(orderId)) || { order_id: orderId, action: 'cancel' };
+  const record = (await loadOrder(orderId)) || {
+    order_id: orderId,
+    action: 'cancel',
+    access_token: `cancel-${orderId}`,
+  };
+  if (!record.access_token) record.access_token = `cancel-${orderId}`;
+  if (!record.action) record.action = 'cancel';
   record.cancel_status = status || record.cancel_status || 'pending';
   record.mismatch_fields = Array.isArray(mismatch_fields) ? mismatch_fields : record.mismatch_fields || [];
   record.cancel_status_reason = reason || record.cancel_status_reason || null;

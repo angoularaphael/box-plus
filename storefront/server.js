@@ -2135,9 +2135,18 @@ function createApp() {
       });
       if (body.status === 'mismatch') {
         const identity = body.customer || record.customer || {};
-        await sendCancelMismatchEmail(identity, body.mismatch_fields || []).catch(() => {});
+        // Ne jamais faire échouer le statut à cause de l'email
+        try {
+          await sendCancelMismatchEmail(identity, body.mismatch_fields || []);
+        } catch (mailErr) {
+          logWarn('Email mismatch résiliation ignoré', { error: mailErr.message });
+        }
       }
-      res.json({ ok: true, status: (await getCancelStatus(body.order_id))?.status });
+      res.json({
+        ok: true,
+        status: (await getCancelStatus(body.order_id))?.status || body.status,
+        mismatch_fields: body.mismatch_fields || [],
+      });
     } catch (err) {
       logError('Erreur cancel-status interne', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });

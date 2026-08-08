@@ -52,10 +52,16 @@ async function loadOrderFromRemote(orderId) {
 
 async function saveOrderToRemote(order) {
   const sb = getSupabase();
+  // access_token NOT NULL en base — les CANCEL-* n'en ont pas forcément
+  const accessToken =
+    order.access_token ||
+    (order.action === 'cancel' ? `cancel-${order.order_id}` : null) ||
+    `tok-${order.order_id}`;
+  if (!order.access_token) order.access_token = accessToken;
   const { error } = await sb.from('boxplus_orders').upsert(
     {
       order_id: order.order_id,
-      access_token: order.access_token,
+      access_token: accessToken,
       payload: order,
       updated_at: order.updated_at || new Date().toISOString(),
     },
