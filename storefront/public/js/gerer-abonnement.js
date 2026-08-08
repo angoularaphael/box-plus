@@ -88,19 +88,21 @@
             const r = await fetch(`/api/membership/cancel-status?order=${encodeURIComponent(orderId)}`);
             const s = await r.json();
             if (s.ok && s.status === 'mismatch') {
-              const fields = s.mismatch_fields || [];
+              clearErrors();
+              const fields = Array.isArray(s.mismatch_fields) ? s.mismatch_fields : [];
+              // Uniquement les champs signalés comme faux (jamais l’inverse)
               markErrors(fields);
               const labels = fields.map((f) => FIELD_LABELS[f]).filter(Boolean);
               msgEl.textContent = labels.length
                 ? `Ces informations ne correspondent pas à votre fiche adhérent : ${labels.join(', ')}. Corrigez les champs en rouge puis renvoyez la demande.`
-                : 'Vos informations ne correspondent pas à votre fiche adhérent. Vérifiez-les puis renvoyez la demande.';
+                : 'Nous n’avons pas trouvé de fiche adhérent correspondant à ces informations. Vérifiez téléphone, nom, prénom et date de naissance, puis renvoyez la demande.';
               msgEl.className = 'form-msg err';
               if (submitBtn) submitBtn.disabled = false;
               return;
             }
             if (s.ok && s.status === 'done') {
               msgEl.textContent =
-                'Votre résiliation a bien été traitée. Une confirmation vous sera envoyée par e-mail.';
+                'Votre résiliation a bien été enregistrée. Elle sera effective sous 72 heures. Une confirmation vous sera envoyée par e-mail.';
               msgEl.className = 'form-msg';
               if (submitBtn) submitBtn.disabled = false;
               return;
