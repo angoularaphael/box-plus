@@ -218,7 +218,7 @@
     css.href = A('/css/gift-promo.css');
     document.head.appendChild(css);
     const s = document.createElement('script');
-    s.src = A('/js/gift-promo.js?v=29');
+    s.src = A('/js/gift-promo.js?v=30');
     s.defer = true;
     s.dataset.giftPromo = '1';
     document.body.appendChild(s);

@@ -208,7 +208,11 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
       String(enriched.installments_note)
     )
   ) {
-    enriched.installments_note = '1ʳᵉ échéance par carte · ensuite prélèvement automatique';
+    if (enriched.id === 'offre-duo' || /offre\s*a\s*29/i.test(String(enriched.name || ''))) {
+      enriched.installments_note = '29 € / 4 semaines';
+    } else {
+      enriched.installments_note = '1ʳᵉ échéance par carte · ensuite prélèvement automatique';
+    }
   }
   enriched.supports_billing_choice = productSupportsBillingChoice(enriched);
   enriched.supports_installment_choice = productSupportsInstallmentChoice(enriched);

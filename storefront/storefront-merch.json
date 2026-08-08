@@ -79,6 +79,7 @@
       "display_name": "Offre DUO 29 €",
       "benefits": ["29 € par personne", "4 semaines", "Idéal à deux"],
       "audience": "Adultes — inscription en duo",
+      "installments_note": "29 € / 4 semaines",
       "sort_order": 1,
       "active": true,
       "badge": "Promo"
