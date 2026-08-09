@@ -373,6 +373,7 @@ function birthdateToDeciplus(value) {
 function phonesMatch(a, b) {
   const na = phoneForDeciplus(a);
   const nb = phoneForDeciplus(b);
+  // Si l’un des deux n’est pas un FR 10 chiffres valide → pas de match
   return Boolean(na && nb && na === nb);
 }
 
