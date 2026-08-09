@@ -12,65 +12,82 @@
   <link rel="stylesheet" href="/css/boutique.css" />
   <link rel="stylesheet" href="/css/components.css" />
   <link rel="stylesheet" href="/css/offer-funnels.css" />
-  <link rel="preload" as="image" href="/img/bc/gym/gym-01.jpg" fetchpriority="high" />
+  <link rel="preload" as="image" href="/img/bc/gym/gym-03.jpg" fetchpriority="high" />
   <meta property="og:type" content="product" />
   <meta property="og:site_name" content="Boxing Center Toulouse" />
   <meta property="og:title" content="Abonnement boxe 12 mois à 259 € | Boxing Center Toulouse" />
   <meta property="og:description" content="Un an d'accès illimité aux 5 salles pour 259 € — 1× ou 4× sans frais." />
   <meta property="og:image" content="/img/bc/offers/offre-259.webp" />
-  <meta name="theme-color" content="#20254B" />
+  <meta name="theme-color" content="#0C1829" />
 </head>
-<body class="offer-page">
+<body class="offer-page offer-page--sheet">
   <div id="site-header"></div>
 
-  <header class="offer-split">
-    <div class="offer-split__media">
-      <img src="/img/bc/gym/gym-01.jpg" alt="Salle Boxing Center Toulouse" width="1200" height="1500" fetchpriority="high" />
+  <header class="offer-sheet">
+    <div class="offer-sheet__bg" aria-hidden="true">
+      <img src="/img/bc/gym/gym-03.jpg" alt="" width="1600" height="1000" fetchpriority="high" />
     </div>
-    <div class="offer-split__panel" data-reveal-group>
-      <div class="breadcrumb" data-reveal><a href="/">Accueil</a> / <a href="/offres-speciales">Offres</a> / 259&nbsp;€</div>
-      <p class="offer-split__kicker" data-reveal>12 mois · prix fixe</p>
-      <h1 data-reveal>Un an de boxe,<br />un seul montant.</h1>
-      <p class="offer-split__price" data-reveal>259&nbsp;€</p>
-      <p class="offer-split__lead" data-reveal>
-        Accès aux 5 salles et à toutes les disciplines. Payez en 1× ou en 4× sans frais —
-        sans mensualité qui s'éternise.
+    <div class="offer-sheet__veil" aria-hidden="true"></div>
+    <div class="offer-sheet__inner" data-reveal-group>
+      <p class="offer-sheet__crumb" data-reveal>
+        <a href="/">Accueil</a> · <a href="/offres-speciales">Offres</a> · Année
       </p>
-      <ul class="offer-split__bullets" data-reveal>
-        <li>5 salles à Toulouse</li>
-        <li>Cours + accès libre (selon horaires)</li>
-        <li>Débutants bienvenus</li>
+      <p class="offer-sheet__tag" data-reveal>Fiche formule · 12 mois</p>
+      <h1 data-reveal>L'année.<br /><em>Sans surprise.</em></h1>
+      <p class="offer-sheet__price" data-reveal>259&nbsp;€</p>
+      <p class="offer-sheet__lead" data-reveal>
+        Un seul montant pour 12 mois d'accès aux 5 salles. Payez en 1× ou en 4× sans frais.
+      </p>
+      <ul class="offer-sheet__stats" data-reveal>
+        <li><strong>5</strong><span>salles</span></li>
+        <li><strong>12</strong><span>mois</span></li>
+        <li><strong>1× / 4×</strong><span>sans frais</span></li>
+        <li><strong>∞</strong><span>cours*</span></li>
       </ul>
-      <div class="offer-split__cta" data-reveal>
-        <a href="#inscrire" class="btn btn--lg" data-offer-cta data-magnetic="0.22">Je m'inscris</a>
-        <a href="/offre/29" class="btn secondary">Plutôt 29&nbsp;€&nbsp;?</a>
+      <div class="offer-sheet__cta" data-reveal>
+        <a href="#inscrire" class="btn btn--lg" data-offer-cta data-magnetic="0.22">Je m'inscris — 259&nbsp;€</a>
+        <a href="/offre/29" class="btn on-dark">Voir plutôt 29&nbsp;€</a>
       </div>
-      <figure class="offer-split__poster" data-reveal>
-        <img src="/img/bc/offers/offre-259.webp" alt="Affiche offre 259 euros" width="280" height="350" loading="lazy" />
-      </figure>
     </div>
   </header>
 
   <main>
-    <section class="section offer-clean-grid">
-      <div class="section-head" data-reveal>
-        <span class="kicker">Inclus</span>
-        <h2>Ce que vous gardez toute l'année</h2>
-      </div>
-      <div class="offer-clean-grid__row" data-reveal-group>
-        <div data-reveal><h3>Multi-salles</h3><p>Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet.</p></div>
-        <div data-reveal><h3>Paiement simple</h3><p>259&nbsp;€ total — comptant ou 4× sans frais.</p></div>
-        <div data-reveal><h3>Encadrement</h3><p>Coachs diplômés, ambiance bienveillante.</p></div>
+    <section class="section offer-sheet-body">
+      <div class="offer-sheet-grid" data-reveal-group>
+        <article data-reveal>
+          <h2>Ce que tu verrouilles</h2>
+          <ul class="offer-sheet-checks">
+            <li>Accès multi-salles (Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet)</li>
+            <li>Cours + accès libre selon horaires du club</li>
+            <li>Débutants bienvenus — encadrement diplômé</li>
+            <li>Prix fixe : pas de mensualité qui s'éternise</li>
+          </ul>
+        </article>
+        <article class="offer-sheet-pay" data-reveal>
+          <h2>Comment tu paies</h2>
+          <div class="offer-sheet-pay__row">
+            <div>
+              <strong>1×</strong>
+              <span>259&nbsp;€ aujourd'hui</span>
+            </div>
+            <div>
+              <strong>4×</strong>
+              <span>~64,75&nbsp;€ · sans frais</span>
+            </div>
+          </div>
+          <p>Tu choisis le mode au moment de l'inscription en ligne.</p>
+        </article>
       </div>
     </section>
 
     <section class="section section-alt" id="inscrire">
       <div class="offer-cta-block" data-reveal>
-        <h2>Prêt à verrouiller votre année&nbsp;?</h2>
-        <p>Dossier en ligne, paiement sécurisé, signature électronique.</p>
+        <h2>Ouvre ton dossier</h2>
+        <p>Identité, paiement sécurisé, signature électronique — en quelques minutes.</p>
         <a href="/inscription?product=offre-saison" class="btn btn--lg" data-offer-cta>Continuer l'inscription</a>
         <p class="offer-fineprint">
           Badge d'accès (34,99&nbsp;€) prélevé sur IBAN 72&nbsp;h après souscription, selon conditions du club.
+          *Selon formule et planning des salles.
         </p>
       </div>
     </section>
@@ -81,14 +98,14 @@
     </section>
   </main>
 
-  <div class="offer-sticky-cta">
+  <div class="offer-sticky-cta offer-sticky-cta--dark">
     <div class="offer-sticky-cta__copy">12 mois — 259&nbsp;€ <span>1× ou 4× sans frais</span></div>
     <a href="/inscription?product=offre-saison" class="btn" data-offer-cta>Je m'inscris</a>
   </div>
 
   <div id="offerLeadModal" class="offer-lead-modal" hidden>
     <div class="offer-lead-modal__panel" role="dialog" aria-labelledby="offerLeadTitle259">
-      <h2 id="offerLeadTitle259">Votre place à 259&nbsp;€</h2>
+      <h2 id="offerLeadTitle259">Ta place à 259&nbsp;€</h2>
       <p>Coordonnées pour ouvrir le dossier — ensuite l'inscription.</p>
       <form id="offerLeadForm">
         <label for="prenom259">Prénom *</label>

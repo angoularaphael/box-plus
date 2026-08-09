@@ -12,61 +12,72 @@
   <link rel="stylesheet" href="/css/boutique.css" />
   <link rel="stylesheet" href="/css/components.css" />
   <link rel="stylesheet" href="/css/offer-funnels.css" />
-  <link rel="preload" as="image" href="/img/bc/disc/lady.webp" fetchpriority="high" />
+  <link rel="preload" as="image" href="/img/bc/disc/boxe-anglaise.webp" fetchpriority="high" />
   <meta property="og:type" content="product" />
   <meta property="og:site_name" content="Boxing Center Toulouse" />
   <meta property="og:title" content="Abonnement boxe dès 29 € | Boxing Center Toulouse" />
   <meta property="og:description" content="Première échéance à 29 €, puis prélèvement sans engagement. 5 salles, débutants bienvenus." />
   <meta property="og:image" content="/img/bc/offers/offre-29.webp" />
-  <meta name="theme-color" content="#20254B" />
+  <meta name="theme-color" content="#0C1829" />
 </head>
-<body class="offer-page">
+<body class="offer-page offer-page--sheet">
   <div id="site-header"></div>
 
-  <header class="offer-split offer-split--flip">
-    <div class="offer-split__media">
-      <img src="/img/bc/disc/lady.webp" alt="Cours de boxe au Boxing Center" width="1200" height="1500" fetchpriority="high" />
+  <header class="offer-sheet offer-sheet--alt">
+    <div class="offer-sheet__bg" aria-hidden="true">
+      <img src="/img/bc/disc/boxe-anglaise.webp" alt="" width="1600" height="1000" fetchpriority="high" />
     </div>
-    <div class="offer-split__panel" data-reveal-group>
-      <div class="breadcrumb" data-reveal><a href="/">Accueil</a> / <a href="/offres-speciales">Offres</a> / 29&nbsp;€</div>
-      <p class="offer-split__kicker" data-reveal>Flexible · pour démarrer</p>
-      <h1 data-reveal>Entrez dans le club<br />sans forcer le budget.</h1>
-      <p class="offer-split__price" data-reveal>29&nbsp;€</p>
-      <p class="offer-split__lead" data-reveal>
-        Première échéance à 29&nbsp;€, puis prélèvement sans engagement longue durée.
+    <div class="offer-sheet__veil" aria-hidden="true"></div>
+    <div class="offer-sheet__inner" data-reveal-group>
+      <p class="offer-sheet__crumb" data-reveal>
+        <a href="/">Accueil</a> · <a href="/offres-speciales">Offres</a> · Démarrage
+      </p>
+      <p class="offer-sheet__tag" data-reveal>Fiche formule · flexible</p>
+      <h1 data-reveal>Entre.<br /><em>Sans forcer.</em></h1>
+      <p class="offer-sheet__price" data-reveal>29&nbsp;€</p>
+      <p class="offer-sheet__lead" data-reveal>
+        Première échéance à 29&nbsp;€, puis prélèvement sans engagement long.
         Le bon rythme pour commencer — seul·e ou à deux.
       </p>
-      <ul class="offer-split__bullets" data-reveal>
-        <li>1ʳᵉ échéance accessible</li>
-        <li>5 salles · formule flexible</li>
-        <li>Débutants bienvenus</li>
+      <ul class="offer-sheet__stats" data-reveal>
+        <li><strong>29&nbsp;€</strong><span>1ʳᵉ échéance</span></li>
+        <li><strong>5</strong><span>salles</span></li>
+        <li><strong>0</strong><span>engagement long</span></li>
+        <li><strong>OK</strong><span>débutants</span></li>
       </ul>
-      <div class="offer-split__cta" data-reveal>
-        <a href="#inscrire" class="btn btn--lg" data-offer-cta data-magnetic="0.22">Je commence</a>
-        <a href="/offre/259" class="btn secondary">Voir l'année 259&nbsp;€</a>
+      <div class="offer-sheet__cta" data-reveal>
+        <a href="#inscrire" class="btn btn--lg" data-offer-cta data-magnetic="0.22">Je commence — 29&nbsp;€</a>
+        <a href="/offre/259" class="btn on-dark">Voir l'année 259&nbsp;€</a>
       </div>
-      <figure class="offer-split__poster" data-reveal>
-        <img src="/img/bc/offers/offre-29.webp" alt="Affiche offre 29 euros" width="280" height="350" loading="lazy" />
-      </figure>
     </div>
   </header>
 
   <main>
-    <section class="section offer-clean-grid">
-      <div class="section-head" data-reveal>
-        <span class="kicker">Pourquoi 29&nbsp;€</span>
-        <h2>Moins d'excuses, plus de premières séances</h2>
-      </div>
-      <div class="offer-clean-grid__row" data-reveal-group>
-        <div data-reveal><h3>Entrée douce</h3><p>Vous démarrez vraiment, sans vous projeter sur 12 mois tout de suite.</p></div>
-        <div data-reveal><h3>Flexibilité</h3><p>Prélèvement sans engagement long — vous gardez la main.</p></div>
-        <div data-reveal><h3>Réseau</h3><p>Une carte, cinq salles en région toulousaine.</p></div>
+    <section class="section offer-sheet-body">
+      <div class="offer-sheet-grid" data-reveal-group>
+        <article data-reveal>
+          <h2>Pourquoi ça marche</h2>
+          <ul class="offer-sheet-checks">
+            <li>Tu démarres vraiment, sans te projeter sur 12 mois tout de suite</li>
+            <li>Prélèvement flexible — tu gardes la main</li>
+            <li>Une carte, cinq salles en région toulousaine</li>
+            <li>Ambiance club, débutants accueillis</li>
+          </ul>
+        </article>
+        <article class="offer-sheet-pay" data-reveal>
+          <h2>Comment ça se passe</h2>
+          <div class="offer-sheet-pay__steps">
+            <p><strong>01</strong> Tu paies la 1ʳᵉ échéance (29&nbsp;€)</p>
+            <p><strong>02</strong> Tu signes et tu donnes ton IBAN</p>
+            <p><strong>03</strong> Tu viens t'entraîner</p>
+          </div>
+        </article>
       </div>
     </section>
 
     <section class="section section-alt" id="inscrire">
       <div class="offer-cta-block" data-reveal>
-        <h2>On ouvre votre dossier</h2>
+        <h2>Ouvre ton dossier</h2>
         <p>Identité, paiement de la 1ʳᵉ échéance, puis IBAN pour la suite.</p>
         <a href="/inscription?product=offre-duo" class="btn btn--lg" data-offer-cta>Continuer l'inscription</a>
         <p class="offer-fineprint">
@@ -81,7 +92,7 @@
     </section>
   </main>
 
-  <div class="offer-sticky-cta">
+  <div class="offer-sticky-cta offer-sticky-cta--dark">
     <div class="offer-sticky-cta__copy">29&nbsp;€ — 1ʳᵉ échéance <span>Puis prélèvement flexible</span></div>
     <a href="/inscription?product=offre-duo" class="btn" data-offer-cta>Je commence</a>
   </div>
