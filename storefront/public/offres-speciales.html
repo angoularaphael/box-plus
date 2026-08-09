@@ -17,70 +17,82 @@
   <meta property="og:locale" content="fr_FR" />
   <meta property="og:title" content="Offres spéciales boxe Toulouse — 259 € ou 29 € | Boxing Center" />
   <meta property="og:description" content="Deux façons d'entrer au Boxing Center : année à 259 € ou démarrage à 29 €. 5 salles, débutants bienvenus." />
-  <meta property="og:image" content="/img/bc/offers/offre-259.webp" />
+  <meta property="og:image" content="/img/bc/gym/gym-01.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="theme-color" content="#0C1829" />
+  <meta name="theme-color" content="#20254B" />
 </head>
-<body class="offer-hub-page">
+<body class="offer-hub-page offer-hub-page--editorial">
   <div id="site-header"></div>
 
-  <div id="gloveIntro" class="glove-intro" aria-hidden="true">
-    <canvas id="gloveSparks" class="glove-intro__canvas"></canvas>
-    <img id="gloveLeft" class="glove-intro__glove glove-intro__glove--left" src="/img/bc/offers/intro/glove-left.svg" alt="" />
-    <img id="gloveRight" class="glove-intro__glove glove-intro__glove--right" src="/img/bc/offers/intro/glove-right.svg" alt="" />
-    <div id="gloveLogo" class="glove-intro__logo">
-      <img src="/img/bc/offers/intro/logo-boxing-center.svg" alt="Boxing Center" width="180" height="80" />
+  <div id="fightIntro" class="fight-intro" aria-hidden="true">
+    <div class="fight-intro__bg" aria-hidden="true">
+      <img src="/img/bc/disc/showcase-ring.webp" alt="" />
     </div>
+    <div class="fight-intro__grain" aria-hidden="true"></div>
+    <div class="fight-intro__ropes" aria-hidden="true">
+      <span></span><span></span><span></span><span></span>
+    </div>
+    <div class="fight-intro__corners" aria-hidden="true">
+      <span class="fight-intro__corner fight-intro__corner--red">Red corner</span>
+      <span class="fight-intro__corner fight-intro__corner--blue">Blue corner</span>
+    </div>
+    <div class="fight-intro__stage">
+      <p class="fight-intro__club">Boxing Center · Toulouse</p>
+      <p class="fight-intro__round">Round 01</p>
+      <p id="fightCount" class="fight-intro__count" aria-live="polite">3</p>
+      <p class="fight-intro__go">Entre en combat</p>
+      <p class="fight-intro__sub">Choisis ta formule · 5 salles</p>
+    </div>
+    <button type="button" id="fightSkip" class="fight-intro__skip">Passer</button>
   </div>
 
-  <main id="offerChoice" class="offer-hub offer-choice">
-    <div class="offer-hub__sky" aria-hidden="true"></div>
-    <div class="offer-hub__inner">
-      <p class="offer-hub__eyebrow">Offres du moment · Toulouse</p>
-      <h1 class="offer-hub__title">Deux portes.<br />Zéro excuse.</h1>
-      <p class="offer-hub__lead">
-        Flexibilité à 29&nbsp;€, ou année verrouillée à 259&nbsp;€.
-        Clique. Inscris-toi. Monte sur le ring.
-      </p>
-
-      <div class="offer-pick" data-reveal-group>
-        <a class="offer-pick__card offer-pick__card--259" href="/offre/259" data-reveal data-magnetic="0.18">
-          <div class="offer-pick__glow" aria-hidden="true"></div>
-          <img src="/img/bc/offers/offre-259.webp" alt="Offre 12 mois à 259 euros" width="560" height="700" />
-          <div class="offer-pick__meta">
-            <span class="offer-pick__badge">Prix fixe</span>
-            <strong>259&nbsp;€</strong>
-            <span>12 mois · 1× ou 4× sans frais</span>
-            <em>Je prends l'année →</em>
-          </div>
-        </a>
-        <a class="offer-pick__card offer-pick__card--29" href="/offre/29" data-reveal data-magnetic="0.18">
-          <div class="offer-pick__glow" aria-hidden="true"></div>
-          <img src="/img/bc/offers/offre-29.webp" alt="Offre Duo 29 euros" width="560" height="700" />
-          <div class="offer-pick__meta">
-            <span class="offer-pick__badge">Pour démarrer</span>
-            <strong>29&nbsp;€</strong>
-            <span>1ʳᵉ échéance · sans engagement long</span>
-            <em>Je commence →</em>
-          </div>
-        </a>
+  <main id="offerChoice" class="offer-choice offer-editorial">
+    <section class="offer-editorial__hero">
+      <img class="offer-editorial__hero-img" src="/img/bc/gym/gym-01.jpg" alt="" width="1600" height="900" fetchpriority="high" />
+      <div class="offer-editorial__hero-veil" aria-hidden="true"></div>
+      <div class="offer-editorial__hero-copy">
+        <p class="offer-editorial__kicker">Boxing Center · Toulouse</p>
+        <h1>Deux formules.<br /><span>Un même club.</span></h1>
+        <p>Choisissez comment vous entrez — flexibilité ou année à prix fixe. Accès aux 5 salles, débutants bienvenus.</p>
       </div>
+    </section>
 
-      <p class="offer-hub__hint">5 salles · débutants bienvenus · inscription 100&nbsp;% en ligne</p>
-    </div>
+    <section class="offer-editorial__compare">
+      <article class="offer-plan" data-reveal>
+        <p class="offer-plan__label">Pour démarrer</p>
+        <p class="offer-plan__price">29&nbsp;€</p>
+        <p class="offer-plan__sub">1ʳᵉ échéance · puis prélèvement sans engagement long</p>
+        <ul class="offer-plan__list">
+          <li>Ticket d'entrée accessible</li>
+          <li>Idéal pour tester le rythme du club</li>
+          <li>5 salles · cours illimités selon formule</li>
+        </ul>
+        <a class="btn btn--lg" href="/offre/29" data-magnetic="0.2">Voir l'offre 29&nbsp;€</a>
+        <img class="offer-plan__thumb" src="/img/bc/offers/offre-29.webp" alt="Visuel offre 29 euros" width="200" height="250" loading="lazy" />
+      </article>
 
-    <section class="offer-urgency">
-      <div class="offer-urgency__inner" data-reveal-group>
-        <div data-reveal><strong data-count="5">0</strong><span>salles</span></div>
-        <div data-reveal><strong data-count="8">0</strong><span>disciplines</span></div>
-        <div data-reveal><strong>24/7</strong><span>inscription en ligne</span></div>
-      </div>
+      <article class="offer-plan" data-reveal>
+        <p class="offer-plan__label">Année complète</p>
+        <p class="offer-plan__price">259&nbsp;€</p>
+        <p class="offer-plan__sub">12 mois · payable en 1× ou 4× sans frais</p>
+        <ul class="offer-plan__list">
+          <li>Prix fixe, zéro surprise mensuelle</li>
+          <li>Accès illimité aux 5 salles</li>
+          <li>Cours + accès libre selon horaires</li>
+        </ul>
+        <a class="btn btn--lg" href="/offre/259" data-magnetic="0.2">Voir l'offre 259&nbsp;€</a>
+        <img class="offer-plan__thumb" src="/img/bc/offers/offre-259.webp" alt="Visuel offre 259 euros" width="200" height="250" loading="lazy" />
+      </article>
+    </section>
+
+    <section class="offer-editorial__note">
+      <p>Pas sûr&nbsp;? Commencez par une <a href="/seance-essai">séance d'essai gratuite</a>, puis choisissez votre formule.</p>
     </section>
   </main>
 
   <div id="site-footer"></div>
   <script src="/js/layout.js"></script>
   <script src="/js/motion.js"></script>
-  <script src="/js/offer-glove-intro.js"></script>
+  <script src="/js/offer-fight-intro.js"></script>
 </body>
 </html>
