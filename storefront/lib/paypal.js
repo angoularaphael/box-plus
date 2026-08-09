@@ -127,6 +127,7 @@ async function createPaypalOrder({
   const cancelUrl = `${returnBase}&step=4&cancelled=1`;
 
   const customId = String(order?.order_id || metadata.order_id || '').slice(0, 127);
+  // Ne pas mélanger payment_source + application_context (INCOMPATIBLE_PARAMETER_VALUE).
   const payload = {
     intent: 'CAPTURE',
     purchase_units: [
@@ -149,19 +150,9 @@ async function createPaypalOrder({
           user_action: 'PAY_NOW',
           return_url: returnUrl,
           cancel_url: cancelUrl,
-          // shipping_preference NO_SHIPPING pour abonnements / digital
           shipping_preference: 'NO_SHIPPING',
         },
       },
-    },
-    application_context: {
-      brand_name: 'Boxing Center',
-      locale: 'fr-FR',
-      landing_page: 'LOGIN',
-      user_action: 'PAY_NOW',
-      return_url: returnUrl,
-      cancel_url: cancelUrl,
-      shipping_preference: 'NO_SHIPPING',
     },
   };
 
