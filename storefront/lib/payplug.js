@@ -167,21 +167,36 @@ async function createHostedPayment({
   }
   const itemName =
     description || product?.display_name || product?.name || 'Paiement Boxing Center';
-  const customer = order ? customerDetails(order, customerOverrides) : customerDetails({ customer: customerOverrides }, {});
+  const customer = order
+    ? customerDetails(order, customerOverrides)
+    : customerDetails({ customer: customerOverrides }, {});
   const urls = buildReturnUrls(baseUrl, order);
+  const billing = {
+    first_name: customer.first_name || 'Client',
+    last_name: customer.last_name || 'Boxing',
+    email: customer.email || undefined,
+    address1: customer.address1 || customer.address || 'Boxing Center',
+    postcode: customer.postcode || customer.postal_code || '31000',
+    city: customer.city || 'Toulouse',
+    country: 'FR',
+    language: 'fr',
+  };
+  if (customer.mobile_phone_number) {
+    billing.mobile_phone_number = customer.mobile_phone_number;
+  }
+  if (customer.title) billing.title = customer.title;
+
+  // PayPlug exige shipping même pour un service (retrait / facturation)
+  const shipping = {
+    ...billing,
+    delivery_type: 'BILLING',
+  };
+
   const payload = {
     amount,
     currency: 'EUR',
-    billing: {
-      first_name: customer.first_name || 'Client',
-      last_name: customer.last_name || 'Boxing',
-      email: customer.email || undefined,
-      address1: customer.address1 || customer.address || undefined,
-      postcode: customer.postcode || customer.postal_code || undefined,
-      city: customer.city || undefined,
-      country: 'FR',
-      language: 'fr',
-    },
+    billing,
+    shipping,
     description: itemName.slice(0, 80),
     metadata: {
       ...(order?.order_id
@@ -197,9 +212,6 @@ async function createHostedPayment({
       cancel_url: cancelUrl || urls.cancel_url,
     },
   };
-  if (customer.mobile_phone_number) {
-    payload.billing.mobile_phone_number = customer.mobile_phone_number;
-  }
   return request('/payments', { method: 'POST', body: JSON.stringify(payload) });
 }
 
