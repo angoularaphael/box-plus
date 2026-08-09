@@ -32,12 +32,13 @@
       <p class="offer-sheet__crumb" data-reveal>
         <a href="/">Accueil</a> · <a href="/offres-speciales">Offres</a> · Démarrage
       </p>
-      <p class="offer-sheet__tag" data-reveal>Fiche formule · flexible</p>
+      <p class="offer-sheet__tag" data-reveal>Offre du moment · flexible</p>
       <h1 data-reveal>Entre.<br /><em>Sans forcer.</em></h1>
       <p class="offer-sheet__price" data-reveal>29&nbsp;€</p>
+      <p class="offer-sheet__was" data-reveal>1ʳᵉ échéance · puis prélèvement sans engagement long</p>
       <p class="offer-sheet__lead" data-reveal>
-        Première échéance à 29&nbsp;€, puis prélèvement sans engagement long.
-        Le bon rythme pour commencer — seul·e ou à deux.
+        Le ticket d'entrée pour tester le rythme du club — seul·e ou à deux.
+        Accès aux 5 salles, débutants bienvenus.
       </p>
       <ul class="offer-sheet__stats" data-reveal>
         <li><strong>29&nbsp;€</strong><span>1ʳᵉ échéance</span></li>
@@ -54,29 +55,51 @@
 
   <main>
     <section class="section offer-sheet-body">
-      <div class="offer-sheet-grid" data-reveal-group>
-        <article data-reveal>
-          <h2>Pourquoi ça marche</h2>
-          <ul class="offer-sheet-checks">
-            <li>Tu démarres vraiment, sans te projeter sur 12 mois tout de suite</li>
-            <li>Prélèvement flexible — tu gardes la main</li>
-            <li>Une carte, cinq salles en région toulousaine</li>
-            <li>Ambiance club, débutants accueillis</li>
-          </ul>
+      <div class="section-head" data-reveal>
+        <span class="kicker">Pourquoi 29&nbsp;€</span>
+        <h2>Moins d'excuses. Plus de premières séances.</h2>
+      </div>
+      <div class="offer-benefit-cards" data-reveal-group>
+        <article class="offer-benefit-card" data-reveal>
+          <strong>01</strong>
+          <h3>Entrée douce</h3>
+          <p>Tu démarres vraiment, sans te projeter sur 12 mois dès le premier jour.</p>
         </article>
-        <article class="offer-sheet-pay" data-reveal>
-          <h2>Comment ça se passe</h2>
-          <div class="offer-sheet-pay__steps">
-            <p><strong>01</strong> Tu paies la 1ʳᵉ échéance (29&nbsp;€)</p>
-            <p><strong>02</strong> Tu signes et tu donnes ton IBAN</p>
-            <p><strong>03</strong> Tu viens t'entraîner</p>
-          </div>
+        <article class="offer-benefit-card" data-reveal>
+          <strong>02</strong>
+          <h3>Flexibilité</h3>
+          <p>Prélèvement sans engagement long — tu gardes la main sur la suite.</p>
+        </article>
+        <article class="offer-benefit-card" data-reveal>
+          <strong>03</strong>
+          <h3>5 salles</h3>
+          <p>Une carte pour tout le réseau Boxing Center en région toulousaine.</p>
+        </article>
+        <article class="offer-benefit-card" data-reveal>
+          <strong>04</strong>
+          <h3>Ambiance club</h3>
+          <p>Débutants accueillis, coachs diplômés, groupes mixtes.</p>
         </article>
       </div>
     </section>
 
-    <section class="section section-alt" id="inscrire">
-      <div class="offer-cta-block" data-reveal>
+    <section class="section section-alt">
+      <div class="offer-pay-panel" data-reveal>
+        <div class="offer-pay-panel__copy">
+          <span class="kicker">Comment ça se passe</span>
+          <h2>3 étapes, c'est parti</h2>
+          <p>Dossier en ligne, puis tu viens t'entraîner.</p>
+        </div>
+        <div class="offer-pay-panel__steps">
+          <div class="offer-pay-step"><strong>01</strong><span>Tu paies la 1ʳᵉ échéance (29&nbsp;€)</span></div>
+          <div class="offer-pay-step"><strong>02</strong><span>Tu signes et tu donnes ton IBAN</span></div>
+          <div class="offer-pay-step"><strong>03</strong><span>Tu montes sur le ring</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="inscrire">
+      <div class="offer-cta-block offer-cta-block--roomy" data-reveal>
         <h2>Ouvre ton dossier</h2>
         <p>Identité, paiement de la 1ʳᵉ échéance, puis IBAN pour la suite.</p>
         <a href="/inscription?product=offre-duo" class="btn btn--lg" data-offer-cta>Continuer l'inscription</a>
@@ -86,7 +109,7 @@
       </div>
     </section>
 
-    <section class="section">
+    <section class="section section-alt">
       <div class="section-head"><h2>Questions fréquentes</h2></div>
       <div class="faq-list" id="offre29Faq"></div>
     </section>
@@ -123,6 +146,7 @@
   <div id="site-footer"></div>
   <script src="/js/layout.js"></script>
   <script src="/js/motion.js"></script>
+  <script src="/js/offer-sheet-motion.js"></script>
   <script src="/js/faq.js"></script>
   <script src="/js/offer-funnel.js"></script>
   <script>

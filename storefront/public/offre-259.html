@@ -32,17 +32,19 @@
       <p class="offer-sheet__crumb" data-reveal>
         <a href="/">Accueil</a> · <a href="/offres-speciales">Offres</a> · Année
       </p>
-      <p class="offer-sheet__tag" data-reveal>Fiche formule · 12 mois</p>
+      <p class="offer-sheet__tag" data-reveal>Offre du moment · 12 mois</p>
       <h1 data-reveal>L'année.<br /><em>Sans surprise.</em></h1>
       <p class="offer-sheet__price" data-reveal>259&nbsp;€</p>
+      <p class="offer-sheet__was" data-reveal>au lieu de 480&nbsp;€ · 1× ou 4× sans frais</p>
       <p class="offer-sheet__lead" data-reveal>
-        Un seul montant pour 12 mois d'accès aux 5 salles. Payez en 1× ou en 4× sans frais.
+        Un seul montant pour 12 mois d'accès aux 5 salles Boxing Center.
+        Tu t'entraînes où tu veux, quand le planning le permet — débutants bienvenus.
       </p>
       <ul class="offer-sheet__stats" data-reveal>
         <li><strong>5</strong><span>salles</span></li>
         <li><strong>12</strong><span>mois</span></li>
         <li><strong>1× / 4×</strong><span>sans frais</span></li>
-        <li><strong>∞</strong><span>cours*</span></li>
+        <li><strong>8</strong><span>disciplines</span></li>
       </ul>
       <div class="offer-sheet__cta" data-reveal>
         <a href="#inscrire" class="btn btn--lg" data-offer-cta data-magnetic="0.22">Je m'inscris — 259&nbsp;€</a>
@@ -53,46 +55,68 @@
 
   <main>
     <section class="section offer-sheet-body">
-      <div class="offer-sheet-grid" data-reveal-group>
-        <article data-reveal>
-          <h2>Ce que tu verrouilles</h2>
-          <ul class="offer-sheet-checks">
-            <li>Accès multi-salles (Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet)</li>
-            <li>Cours + accès libre selon horaires du club</li>
-            <li>Débutants bienvenus — encadrement diplômé</li>
-            <li>Prix fixe : pas de mensualité qui s'éternise</li>
-          </ul>
+      <div class="section-head" data-reveal>
+        <span class="kicker">Ce qui est inclus</span>
+        <h2>Tout ce que tu verrouilles pour l'année</h2>
+      </div>
+      <div class="offer-benefit-cards" data-reveal-group>
+        <article class="offer-benefit-card" data-reveal>
+          <strong>01</strong>
+          <h3>5 salles</h3>
+          <p>Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet — une carte, tout le réseau.</p>
         </article>
-        <article class="offer-sheet-pay" data-reveal>
-          <h2>Comment tu paies</h2>
-          <div class="offer-sheet-pay__row">
-            <div>
-              <strong>1×</strong>
-              <span>259&nbsp;€ aujourd'hui</span>
-            </div>
-            <div>
-              <strong>4×</strong>
-              <span>~64,75&nbsp;€ · sans frais</span>
-            </div>
-          </div>
-          <p>Tu choisis le mode au moment de l'inscription en ligne.</p>
+        <article class="offer-benefit-card" data-reveal>
+          <strong>02</strong>
+          <h3>Cours + libre</h3>
+          <p>Cours encadrés et accès libre selon les horaires de chaque salle.</p>
+        </article>
+        <article class="offer-benefit-card" data-reveal>
+          <strong>03</strong>
+          <h3>Prix fixe</h3>
+          <p>259&nbsp;€ total. Pas de mensualité qui s'éternise après coup.</p>
+        </article>
+        <article class="offer-benefit-card" data-reveal>
+          <strong>04</strong>
+          <h3>Débutants OK</h3>
+          <p>Coachs diplômés, ambiance bienveillante — tu progresses à ton rythme.</p>
         </article>
       </div>
     </section>
 
-    <section class="section section-alt" id="inscrire">
-      <div class="offer-cta-block" data-reveal>
+    <section class="section section-alt">
+      <div class="offer-pay-panel" data-reveal>
+        <div class="offer-pay-panel__copy">
+          <span class="kicker">Paiement</span>
+          <h2>Choisis comment tu règles</h2>
+          <p>Tu sélectionnes 1× ou 4× au moment de l'inscription en ligne.</p>
+        </div>
+        <div class="offer-pay-panel__options">
+          <div class="offer-pay-option">
+            <span>Comptant</span>
+            <strong>259&nbsp;€</strong>
+            <em>aujourd'hui</em>
+          </div>
+          <div class="offer-pay-option">
+            <span>4× sans frais</span>
+            <strong>~64,75&nbsp;€</strong>
+            <em>par échéance</em>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="inscrire">
+      <div class="offer-cta-block offer-cta-block--roomy" data-reveal>
         <h2>Ouvre ton dossier</h2>
         <p>Identité, paiement sécurisé, signature électronique — en quelques minutes.</p>
         <a href="/inscription?product=offre-saison" class="btn btn--lg" data-offer-cta>Continuer l'inscription</a>
         <p class="offer-fineprint">
           Badge d'accès (34,99&nbsp;€) prélevé sur IBAN 72&nbsp;h après souscription, selon conditions du club.
-          *Selon formule et planning des salles.
         </p>
       </div>
     </section>
 
-    <section class="section">
+    <section class="section section-alt">
       <div class="section-head"><h2>Questions fréquentes</h2></div>
       <div class="faq-list" id="offre259Faq"></div>
     </section>
@@ -129,6 +153,7 @@
   <div id="site-footer"></div>
   <script src="/js/layout.js"></script>
   <script src="/js/motion.js"></script>
+  <script src="/js/offer-sheet-motion.js"></script>
   <script src="/js/faq.js"></script>
   <script src="/js/offer-funnel.js"></script>
   <script>

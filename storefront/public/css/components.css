@@ -1597,7 +1597,7 @@ body:has(#adminPanel:not([hidden])) {
   padding: clamp(110px, 16vh, 160px) 20px clamp(40px, 7vh, 72px);
 }
 .hero__brand {
-  margin: 0 0 22px;
+  margin: 0 0 28px;
 }
 .hero__brand img {
   height: clamp(52px, 8vw, 78px);
@@ -1609,10 +1609,10 @@ body:has(#adminPanel:not([hidden])) {
   font-family: var(--font-display);
   text-transform: uppercase;
   font-size: clamp(3rem, 9vw, 6.4rem);
-  line-height: 0.88;
+  line-height: 0.9;
   letter-spacing: -0.02em;
   color: #fff;
-  margin: 0 0 18px;
+  margin: 0 0 26px;
   max-width: 12ch;
 }
 .hero__title span { display: block; }
@@ -1626,15 +1626,62 @@ body:has(#adminPanel:not([hidden])) {
 }
 .hero__lead {
   max-width: 36rem;
-  font-size: clamp(1rem, 1.5vw, 1.2rem);
-  color: rgba(255, 255, 255, 0.88);
-  line-height: 1.55;
+  font-size: clamp(1.05rem, 1.6vw, 1.25rem);
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.65;
+  margin: 0 0 22px;
+}
+.hero__offers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   margin: 0 0 28px;
+}
+.hero-offer-chip {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 118px;
+  padding: 14px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  transition: transform 0.3s var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)), background 0.25s, border-color 0.25s;
+}
+.hero-offer-chip span {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 4px;
+}
+.hero-offer-chip strong {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  line-height: 1;
+  font-weight: 700;
+}
+.hero-offer-chip:hover {
+  transform: translateY(-3px);
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+.hero-offer-chip--ghost {
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .hero__cta {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: 16px;
 }
 .hero--cinema .btn.white {
   background: #fff;
