@@ -226,7 +226,39 @@
 
   function orderRequiresPayment(order) {
     const p = order?.product_snapshot || state.product;
-    return p?.requires_payment !== false;
+    if (!p) return true;
+    if (p.requires_payment === false) return false;
+    if (Number(p.price_cents || 0) <= 0) return false;
+    if (/gratuit/i.test(String(p.price_label || p.stripe_price_label || ''))) return false;
+    return true;
+  }
+
+  /** Marque l’offre gratuite comme « payée » (free) puis enchaîne vers le dossier. */
+  async function ensureFreeOrderMarked() {
+    if (!state.orderId || !state.token) return false;
+    if (state.order?.payment?.status === 'paid' || state.order?.payment?.status === 'free') {
+      return true;
+    }
+    try {
+      const res = await fetch(`/api/orders/${state.orderId}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: state.token }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!data.ok) return false;
+      await loadOrder();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function nextStepAfterIdentity() {
+    if (!orderRequiresPayment(state.order || { product_snapshot: state.product })) {
+      return productRequiresIban(state.order) ? 5 : 6;
+    }
+    return 4;
   }
 
   function isComptantLikeProduct(p) {
@@ -319,8 +351,8 @@
     if (order.step >= 7) return needsPay && !paid ? 4 : 7;
     if (order.step >= 6) return needsPay && !paid ? 4 : 6;
     if (order.step >= 5) return needsPay && !paid ? 4 : missingIban ? 5 : 6;
-    if (paid) return missingIban ? 5 : 6;
-    if (order.customer_short) return 4;
+    if (paid || !needsPay) return missingIban ? 5 : 6;
+    if (order.customer_short) return needsPay ? 4 : missingIban ? 5 : 6;
     if (order.customer_full?.gym) return 3;
     if (order.order_id) return 2;
     return 1;
@@ -369,15 +401,23 @@
   }
 
   function updateStepper(step) {
-    const hideIban = !productRequiresIban(state.order || { product_snapshot: state.product });
+    const orderLike = state.order || { product_snapshot: state.product };
+    const hideIban = !productRequiresIban(orderLike);
+    const hidePay = !orderRequiresPayment(orderLike);
+    const visible = [];
     document.querySelectorAll('.stepper-step').forEach((el) => {
       const s = Number(el.dataset.step);
-      if (s === 5) {
-        el.hidden = hideIban;
-        el.classList.toggle('stepper-skipped', hideIban);
-      }
+      const hide = (s === 5 && hideIban) || (s === 4 && hidePay);
+      el.hidden = hide;
+      el.classList.toggle('stepper-skipped', hide);
+      if (!hide) visible.push(el);
       el.classList.toggle('active', s === step);
-      el.classList.toggle('done', s < step && !(hideIban && s === 5));
+      el.classList.toggle('done', s < step && !hide);
+    });
+    // Numérotation continue (1…n) sur les étapes visibles — pas de trou 3→6
+    visible.forEach((el, i) => {
+      const num = el.querySelector('.stepper-num');
+      if (num) num.textContent = String(i + 1);
     });
   }
 
@@ -564,6 +604,14 @@
   }
 
   async function renderStep4() {
+    // Offre gratuite → pas d’écran paiement
+    if (!orderRequiresPayment(state.order || { product_snapshot: state.product })) {
+      await ensureFreeOrderMarked();
+      state.step = nextStepAfterIdentity();
+      if (state.step === 4) state.step = 6;
+      persistAndRender();
+      return;
+    }
     if (state.order?.payment?.status === 'paid') {
       state.step = stepFromOrder(state.order);
       if (state.step !== 4) {
@@ -1036,6 +1084,11 @@
       };
       setMsg('');
       await loadOrder();
+      if (!orderRequiresPayment(state.order || { product_snapshot: state.product })) {
+        await ensureFreeOrderMarked();
+        goToStep(nextStepAfterIdentity());
+        return;
+      }
       goToStep(4);
     };
   }
@@ -1148,7 +1201,14 @@
           <button type="button" class="btn secondary" id="webcamStopBtn" hidden style="margin-top:8px">Arrêter la caméra</button>
         </div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
-        <div class="full">${backButton(productRequiresIban(state.order) ? '← Retour à l\'IBAN' : '← Retour', productRequiresIban(state.order) ? 5 : 4)}</div>
+        <div class="full">${backButton(
+          productRequiresIban(state.order)
+            ? '← Retour à l\'IBAN'
+            : orderRequiresPayment(state.order)
+              ? '← Retour au paiement'
+              : '← Retour à l\'identité',
+          productRequiresIban(state.order) ? 5 : orderRequiresPayment(state.order) ? 4 : 3
+        )}</div>
       </form>`;
 
     let webcamStream = null;
@@ -1460,7 +1520,11 @@
           <div class="success-icon"></div>
         </div>
         <h1>Inscription confirmée</h1>
-        <p class="sub" style="margin-top:-4px">Merci — votre paiement est enregistré.</p>
+        <p class="sub" style="margin-top:-4px">${
+          orderRequiresPayment(state.order)
+            ? 'Merci — votre paiement est enregistré.'
+            : 'Merci — votre inscription gratuite est enregistrée.'
+        }</p>
         ${emailNote}
         ${dispatchNote}
         <div class="info-box" style="text-align:left">

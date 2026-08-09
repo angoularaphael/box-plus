@@ -1847,17 +1847,19 @@ function createApp() {
       const { saveOrderAsync } = require('./lib/order-lifecycle');
       await saveOrderAsync(order);
 
-      if (!product.requires_payment) {
+      const isFreeProduct =
+        product.requires_payment === false || Number(product.price_cents || 0) <= 0;
+      if (isFreeProduct) {
         order = await markPaymentPaid(order.order_id, {
           method: 'free',
           status: 'paid',
-          billing_plan: billingPlan,
-          payment_plan: paymentPlan,
+          billing_plan: billingPlan || null,
+          payment_plan: paymentPlan || null,
         });
         return res.json({
           ok: true,
           mode: 'free',
-          redirect: inscriptionRedirect(order),
+          redirect: inscriptionRedirect(order, STEPS.DOSSIER),
         });
       }
 
