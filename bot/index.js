@@ -3,6 +3,16 @@
  * Phase 2 — Bot RPA Deciplus : traite la file d'attente BOXPLUS.
  */
 require('dotenv').config();
+// Même si lancé sans start.js (BotHosting) — installer imapflow/mailparser
+try {
+  const { ensureOtpDeps } = require('../lib/ensure-deps');
+  const otp = ensureOtpDeps();
+  if (!otp.ok) {
+    console.warn('[BOXPLUS] WARN: IMAP OTP deps absentes — login 2FA échouera jusqu’à npm install');
+  }
+} catch (err) {
+  console.warn('[BOXPLUS] WARN: ensure-deps:', err.message);
+}
 // Mode rapide par défaut (vérif / résiliation / changement) — désactiver avec DECIPLUS_FAST=0
 if (process.env.DECIPLUS_FAST == null || process.env.DECIPLUS_FAST === '') {
   process.env.DECIPLUS_FAST = '1';
@@ -377,10 +387,15 @@ async function processSaleJob(page, order, jobMeta = {}) {
     }
   }
 
-  let memberId = checkpoint.deciplus_member_id || null;
+  // Changement d’abo / reprise : l’id membre est déjà connu — ne pas re-chercher
+  let memberId =
+    checkpoint.deciplus_member_id ||
+    order.deciplus_member_id ||
+    order.customer?.deciplus_member_id ||
+    null;
   let memberResult = {
     member_id: memberId,
-    action: memberId ? 'checkpoint_resume' : null,
+    action: memberId ? (checkpoint.deciplus_member_id ? 'checkpoint_resume' : 'order_member_id') : null,
   };
 
   if (!memberId) {
