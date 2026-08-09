@@ -25,9 +25,14 @@ function showPaymentFailure(retryHref, message) {
   const nextList = document.querySelector('.success-next');
   const actions = document.getElementById('successActions');
 
-  if (page) page.classList.add('payment-failed');
+  if (page) {
+    page.classList.add('payment-failed');
+    page.classList.remove('success-page--celebrate');
+  }
   if (title) title.textContent = 'Paiement non confirmé';
   if (icon) icon.style.display = 'none';
+  const wrap = document.querySelector('.success-icon-wrap');
+  if (wrap) wrap.style.display = 'none';
   if (successText) {
     successText.textContent = message || PAYMENT_FAILED_MSG;
     successText.className = 'form-msg err';

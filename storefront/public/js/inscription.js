@@ -1453,17 +1453,24 @@
         ? window.BCPaths.link('/')
         : null) || '/';
     stepContent.innerHTML = `
-      <div class="success-page" style="margin:20px auto">
-        <div class="success-icon" aria-hidden="true"></div>
+      <div class="success-page success-page--celebrate" style="margin:20px auto">
+        <div class="success-icon-wrap" aria-hidden="true">
+          <span class="success-ring"></span>
+          <span class="success-burst">${Array.from({ length: 8 }, () => '<i></i>').join('')}</span>
+          <div class="success-icon"></div>
+        </div>
         <h1>Inscription confirmée</h1>
+        <p class="sub" style="margin-top:-4px">Merci — votre paiement est enregistré.</p>
         ${emailNote}
         ${dispatchNote}
         <div class="info-box" style="text-align:left">
           <strong>Référence :</strong> ${state.orderId}<br />
           <strong>Offre :</strong> ${p?.display_name || p?.name || '—'}
         </div>
-        <a href="${homeHref}" class="btn block" id="confirmHomeBtn" style="margin-top:24px">Retour à l'accueil</a>
-        <button type="button" class="btn secondary block" id="downloadContractBtn" style="margin-top:12px">Télécharger mon contrat</button>
+        <div class="success-actions" style="display:flex;flex-direction:column;gap:12px;margin-top:24px">
+          <a href="${homeHref}" class="btn block" id="confirmHomeBtn">Retour à l'accueil</a>
+          <button type="button" class="btn secondary block" id="downloadContractBtn">Télécharger mon contrat</button>
+        </div>
       </div>`;
     document.getElementById('confirmHomeBtn')?.addEventListener('click', () => {
       clearCacheAfterConfirm();

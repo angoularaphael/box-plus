@@ -14,8 +14,12 @@
 </head>
 <body>
   <div id="site-header"></div>
-  <main class="success-page">
-    <div class="success-icon" aria-hidden="true"></div>
+  <main class="success-page success-page--celebrate">
+    <div class="success-icon-wrap" aria-hidden="true">
+      <span class="success-ring"></span>
+      <span class="success-burst"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      <div class="success-icon"></div>
+    </div>
     <h1>C'est confirmé&nbsp;!</h1>
     <p id="successText">Votre commande a été enregistrée.</p>
     <ul class="success-next">
@@ -23,7 +27,7 @@
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"/></svg><span><strong>Retrait en salle</strong> — présentez votre email de confirmation à l'accueil.</span></li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg><span><strong>Une question ?</strong> — notre équipe vous répond dans votre salle ou via la FAQ.</span></li>
     </ul>
-    <div id="successActions" style="display:flex;flex-direction:column;align-items:center;gap:0.75rem;margin-top:0.5rem">
+    <div id="successActions" class="success-actions" style="display:flex;flex-direction:column;align-items:center;gap:0.75rem;margin-top:0.5rem">
       <a href="/" class="btn">Retour à l'accueil</a>
       <a id="downloadInvoiceBtn" href="#" class="btn secondary" style="display:none">
         Télécharger ma facture PDF

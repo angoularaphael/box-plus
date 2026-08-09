@@ -524,6 +524,7 @@ input:focus, select:focus, textarea:focus {
   margin: 80px auto;
   padding: 20px;
   text-align: center;
+  position: relative;
 }
 
 .success-page h1 { color: var(--bc-navy); margin: 20px 0 12px; }
@@ -542,6 +543,7 @@ input:focus, select:focus, textarea:focus {
   place-items: center;
   margin: 0 auto;
   position: relative;
+  z-index: 1;
 }
 
 .success-icon::after {
@@ -551,6 +553,156 @@ input:focus, select:focus, textarea:focus {
   border-left: 3px solid var(--bc-success);
   border-bottom: 3px solid var(--bc-success);
   transform: rotate(-45deg) translateY(-2px);
+}
+
+/* Celebration après achat / inscription confirmée */
+.success-page--celebrate .success-icon-wrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 8px;
+  display: grid;
+  place-items: center;
+}
+
+.success-page--celebrate .success-icon {
+  width: 88px;
+  height: 88px;
+  border-width: 3px;
+  background: rgba(22, 163, 74, 0.14);
+}
+
+.success-page--celebrate .success-icon::after {
+  width: 18px;
+  height: 10px;
+  border-left-width: 3.5px;
+  border-bottom-width: 3.5px;
+}
+
+.success-page--celebrate .success-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(22, 163, 74, 0.45);
+  pointer-events: none;
+}
+
+.success-page--celebrate .success-burst {
+  position: absolute;
+  inset: -12px;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.success-page--celebrate .success-burst i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3px;
+  border-radius: 2px;
+  background: var(--bc-gold, #c9a227);
+  opacity: 0;
+}
+
+.success-page--celebrate .success-burst i:nth-child(odd) {
+  background: var(--bc-navy, #0b1f3a);
+  border-radius: 50%;
+  width: 5px;
+  height: 5px;
+}
+
+.success-page--celebrate .success-burst i:nth-child(3n) {
+  background: var(--bc-success, #16a34a);
+}
+
+.has-motion .success-page--celebrate .success-icon-wrap {
+  animation: successPop 0.55s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.has-motion .success-page--celebrate .success-icon::after {
+  animation: successCheck 0.45s 0.2s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.has-motion .success-page--celebrate .success-ring {
+  animation: successRing 0.9s 0.1s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.has-motion .success-page--celebrate h1 {
+  animation: successFadeUp 0.5s 0.18s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.has-motion .success-page--celebrate .info-box,
+.has-motion .success-page--celebrate .notice-important,
+.has-motion .success-page--celebrate .success-actions,
+.has-motion .success-page--celebrate .btn {
+  animation: successFadeUp 0.5s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.has-motion .success-page--celebrate .info-box { animation-delay: 0.28s; }
+.has-motion .success-page--celebrate .notice-important { animation-delay: 0.32s; }
+.has-motion .success-page--celebrate .success-actions,
+.has-motion .success-page--celebrate .btn { animation-delay: 0.4s; }
+.has-motion .success-page--celebrate .btn + .btn { animation-delay: 0.48s; }
+
+.has-motion .success-page--celebrate .success-burst i {
+  animation: successParticle 0.85s var(--ease-out, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+
+.has-motion .success-page--celebrate .success-burst i:nth-child(1) { --dx: 0px; --dy: -42px; animation-delay: 0.12s; }
+.has-motion .success-page--celebrate .success-burst i:nth-child(2) { --dx: 34px; --dy: -28px; animation-delay: 0.16s; }
+.has-motion .success-page--celebrate .success-burst i:nth-child(3) { --dx: 42px; --dy: 6px; animation-delay: 0.14s; }
+.has-motion .success-page--celebrate .success-burst i:nth-child(4) { --dx: 28px; --dy: 34px; animation-delay: 0.2s; }
+.has-motion .success-page--celebrate .success-burst i:nth-child(5) { --dx: -8px; --dy: 40px; animation-delay: 0.18s; }
+.has-motion .success-page--celebrate .success-burst i:nth-child(6) { --dx: -36px; --dy: 22px; animation-delay: 0.22s; }
+.has-motion .success-page--celebrate .success-burst i:nth-child(7) { --dx: -40px; --dy: -10px; animation-delay: 0.15s; }
+.has-motion .success-page--celebrate .success-burst i:nth-child(8) { --dx: -24px; --dy: -36px; animation-delay: 0.19s; }
+
+@keyframes successPop {
+  0% { opacity: 0; transform: scale(0.4); }
+  70% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes successCheck {
+  0% { opacity: 0; transform: rotate(-45deg) translateY(-2px) scale(0.2); }
+  100% { opacity: 1; transform: rotate(-45deg) translateY(-2px) scale(1); }
+}
+
+@keyframes successRing {
+  0% { opacity: 0.7; transform: scale(0.7); }
+  100% { opacity: 0; transform: scale(1.55); }
+}
+
+@keyframes successFadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes successParticle {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .has-motion .success-page--celebrate .success-icon-wrap,
+  .has-motion .success-page--celebrate .success-icon::after,
+  .has-motion .success-page--celebrate .success-ring,
+  .has-motion .success-page--celebrate h1,
+  .has-motion .success-page--celebrate .info-box,
+  .has-motion .success-page--celebrate .notice-important,
+  .has-motion .success-page--celebrate .success-actions,
+  .has-motion .success-page--celebrate .btn,
+  .has-motion .success-page--celebrate .success-burst i {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .has-motion .success-page--celebrate .success-icon::after {
+    transform: rotate(-45deg) translateY(-2px) !important;
+  }
 }
 
 .pill {
