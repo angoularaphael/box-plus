@@ -8,9 +8,10 @@ const ORDERS_DIR =
   (process.env.VERCEL ? '/tmp/boxplus-orders' : path.join(__dirname, '../../data/storefront/orders'));
 
 function useRemoteStore() {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
   return Boolean(
     (process.env.VERCEL || process.env.BOXPLUS_ORDERS_REMOTE === '1') &&
-      process.env.SUPABASE_URL &&
+      url &&
       process.env.SUPABASE_SERVICE_ROLE_KEY
   );
 }

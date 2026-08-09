@@ -131,15 +131,48 @@ const {
 const { generateContractPdf, streamContractPdf } = require('./lib/contract-pdf');
 const { generateMaterielInvoicePdf } = require('./lib/invoice-pdf');
 const { upsertClientFromInscription, upsertMaterielClient } = require('./lib/client-sync');
+const { insertTunnelLead, tunnelFromProductId } = require('./lib/tunnel-lead');
 
 async function syncInscriptionClient(order) {
   const result = await upsertClientFromInscription(order);
+  if (!result.synced) {
+    logError('Sync portet_clients (gestion-manager) non faite', {
+      order_id: order?.order_id,
+      reason: result.reason || null,
+      error: result.error || null,
+    });
+  }
   if (result.synced && result.client_id && order.gestion_client_id !== result.client_id) {
     order.gestion_client_id = result.client_id;
     const { saveOrderAsync } = require('./lib/order-lifecycle');
     await saveOrderAsync(order);
   }
   return result;
+}
+
+async function maybeRecordTunnelLeadFromOrder(order) {
+  const tunnel = tunnelFromProductId(order?.product_id || order?.product_snapshot?.id);
+  if (!tunnel || tunnel === 'seance_essai') return null;
+  const short = order.customer_short || {};
+  if (!short.first_name || !short.phone) return null;
+  if (order.tunnel_lead_id) return { ok: true, lead_id: order.tunnel_lead_id, skipped: true };
+  const lead = await insertTunnelLead({
+    tunnel,
+    prenom: short.first_name,
+    nom: short.last_name,
+    telephone: short.phone,
+    email: short.email,
+    salle: order.customer_full?.gym || null,
+    product_id: order.product_id,
+    order_id: order.order_id,
+    source: 'boxplus-inscription',
+  });
+  if (lead.ok && lead.lead_id) {
+    order.tunnel_lead_id = lead.lead_id;
+    const { saveOrderAsync } = require('./lib/order-lifecycle');
+    await saveOrderAsync(order).catch(() => {});
+  }
+  return lead;
 }
 
 async function syncMaterielClient(order) {
@@ -1288,6 +1321,20 @@ function createApp() {
     }
   });
 
+  app.post('/api/tunnel-lead', async (req, res) => {
+    try {
+      const result = await insertTunnelLead(req.body || {});
+      if (!result.ok) {
+        const status = result.error === 'supabase_not_configured' ? 503 : 400;
+        return res.status(status).json({ ok: false, error: result.error || 'lead_failed' });
+      }
+      res.json({ ok: true, lead_id: result.lead_id });
+    } catch (err) {
+      logError('API tunnel-lead', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   app.post('/api/orders/draft', async (req, res) => {
     try {
       const { product_id, gym, ...rest } = req.body;
@@ -1317,6 +1364,9 @@ function createApp() {
       if (customer_short) {
         await syncInscriptionClient(order).catch((err) =>
           logError('Sync client inscription (draft)', { order_id: order.order_id, error: err.message })
+        );
+        await maybeRecordTunnelLeadFromOrder(order).catch((err) =>
+          logError('Lead tunnel (draft)', { order_id: order.order_id, error: err.message })
         );
       }
       res.json({

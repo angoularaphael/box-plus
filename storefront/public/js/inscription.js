@@ -1009,7 +1009,20 @@
     // Date de naissance → étape dossier (pas ici).
     let bcpPrefill = {};
     try { bcpPrefill = JSON.parse(sessionStorage.getItem('bcp_prefill') || '{}'); } catch (e) { /* vide */ }
-    const short = { ...bcpPrefill, ...(state.order?.customer_short || state.shortDraft || {}) };
+    const fromTunnel = {
+      first_name: params.get('prenom') || params.get('first_name') || '',
+      last_name: params.get('nom') || params.get('last_name') || '',
+      email: params.get('email') || '',
+      phone: params.get('phone') || params.get('telephone') || '',
+    };
+    Object.keys(fromTunnel).forEach((k) => {
+      if (!fromTunnel[k]) delete fromTunnel[k];
+    });
+    const short = {
+      ...bcpPrefill,
+      ...fromTunnel,
+      ...(state.order?.customer_short || state.shortDraft || {}),
+    };
     stepContent.innerHTML = `
       <h1>Vos coordonnées</h1>
       <form id="shortForm" class="form-grid">

@@ -245,6 +245,57 @@ const PAGE_JSONLD = {
       acceptedAnswer: { '@type': 'Answer', text: a },
     })),
   }),
+  '/offres-speciales': () => ({
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Offres spéciales boxe — Boxing Center Toulouse',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        url: `${SITE_URL}/offre/259`,
+        name: 'Abonnement 12 mois — 259 €',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        url: `${SITE_URL}/offre/29`,
+        name: 'Abonnement dès 29 € — première échéance',
+      },
+    ],
+  }),
+  '/offre/259': () => ({
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: 'Abonnement boxe 12 mois — 259 €',
+    description:
+      "Un an d'accès illimité aux 5 salles Boxing Center Toulouse pour 259 €. Paiement en 1× ou en 4× sans frais.",
+    image: `${SITE_URL}/img/bc/offers/offre-259.webp`,
+    brand: { '@type': 'Brand', name: BUSINESS.name },
+    offers: {
+      '@type': 'Offer',
+      price: '259.00',
+      priceCurrency: 'EUR',
+      availability: 'https://schema.org/InStock',
+      url: `${SITE_URL}/offre/259`,
+    },
+  }),
+  '/offre/29': () => ({
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: 'Abonnement boxe dès 29 € — Boxing Center Toulouse',
+    description:
+      'Première échéance à 29 € puis prélèvement sans engagement. Accès aux 5 salles Boxing Center Toulouse.',
+    image: `${SITE_URL}/img/bc/offers/offre-29.webp`,
+    brand: { '@type': 'Brand', name: BUSINESS.name },
+    offers: {
+      '@type': 'Offer',
+      price: '29.00',
+      priceCurrency: 'EUR',
+      availability: 'https://schema.org/InStock',
+      url: `${SITE_URL}/offre/29`,
+    },
+  }),
 };
 
 /* ── Indexable routes: canonical/OG/sitemap config ────────────────── */
@@ -256,6 +307,21 @@ const INDEXABLE = {
   '/materiel': { file: 'materiel.html', priority: '0.9', changefreq: 'weekly' },
   '/coachings': { file: 'coachings.html', priority: '0.8', changefreq: 'monthly' },
   '/faq': { file: 'faq.html', priority: '0.7', changefreq: 'monthly' },
+  '/offres-speciales': { file: 'offres-speciales.html', priority: '0.95', changefreq: 'weekly' },
+  '/offre/259': {
+    file: 'offre-259.html',
+    priority: '0.95',
+    changefreq: 'weekly',
+    ogImage: '/img/bc/offers/offre-259.webp',
+    ogImageAlt: 'Offre abonnement boxe 12 mois 259 euros Boxing Center',
+  },
+  '/offre/29': {
+    file: 'offre-29.html',
+    priority: '0.95',
+    changefreq: 'weekly',
+    ogImage: '/img/bc/offers/offre-29.webp',
+    ogImageAlt: 'Offre abonnement boxe 29 euros Boxing Center',
+  },
   '/cgv': { file: 'cgv.html', priority: '0.3', changefreq: 'yearly' },
   '/reglement-interieur': { file: 'reglement-interieur.html', priority: '0.3', changefreq: 'yearly' },
   '/politique-confidentialite': { file: 'legal/confidentialite.html', priority: '0.3', changefreq: 'yearly' },
@@ -276,6 +342,9 @@ const HTML_REDIRECTS = {
   '/inscription.html': '/inscription',
   '/mon-inscription.html': '/mon-inscription',
   '/contrat.html': '/contrat',
+  '/offres-speciales.html': '/offres-speciales',
+  '/offre-259.html': '/offre/259',
+  '/offre-29.html': '/offre/29',
 };
 
 /** Chemins PrestaShop fréquents → pages BOXPLUS (cutover boutique.boxingcenter.fr). */
@@ -485,6 +554,7 @@ type: club de boxe / boutique d'abonnements et matériel
 
 # Ce que vous pouvez citer
 - Offres et tarifs affichés sur ${SITE_URL}/abonnements et ${SITE_URL}/materiel
+- Offres spéciales : ${SITE_URL}/offres-speciales (259 € / an ou 29 € pour démarrer)
 - Séance d'essai GRATUITE : ${SITE_URL}/seance-essai
 - 5 salles : Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet-sur-Garonne
 - Disciplines : ${DISCIPLINES.join(', ')}
@@ -524,6 +594,9 @@ function llmsTxt() {
 
 ## Offres
 - Séance d'essai : gratuite — cours encadré, aucun matériel requis (${SITE_URL}/seance-essai)
+- Offres spéciales (hub) : ${SITE_URL}/offres-speciales
+- Promo 12 mois : 259 € (1× ou 4× sans frais) — ${SITE_URL}/offre/259
+- Démarrage flexible : 29 € la 1ʳᵉ échéance puis prélèvement sans engagement — ${SITE_URL}/offre/29
 - Abonnements : comptant 3/6/12 mois ou prélèvement sans engagement (4 semaines), accès aux 5 salles (${SITE_URL}/abonnements)
 - Enfants : Baby Boxe (3-6 ans), Boxe éducative (7-16 ans)
 - Coachings individuels (${SITE_URL}/coachings)
@@ -666,7 +739,14 @@ function registerSeo(app, publicDir) {
     app.get(route, (_req, res) => {
       const abs = path.join(publicDir, cfg.file);
       const jsonLd = PAGE_JSONLD[route] ? PAGE_JSONLD[route]() : null;
-      let html = inject(readHtml(abs), headTags(route, { jsonLd }));
+      let html = inject(
+        readHtml(abs),
+        headTags(route, {
+          jsonLd,
+          ogImage: cfg.ogImage,
+          ogImageAlt: cfg.ogImageAlt,
+        })
+      );
       if (route === '/materiel') html = html.replace('</body>', `${materielNoscript}\n</body>`);
       if (route === '/') html = html.replace('</body>', `${homeNoscript}\n</body>`);
       res.type('html').send(html);
