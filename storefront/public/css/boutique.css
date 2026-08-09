@@ -719,24 +719,49 @@ input:focus, select:focus, textarea:focus {
 .pill.live { border-color: var(--bc-success); color: var(--bc-success); }
 
 .page-hero {
+  position: relative;
   background: linear-gradient(135deg, var(--bc-navy) 0%, var(--bc-navy-light) 100%);
   color: #fff;
-  padding: 48px 20px;
+  padding: clamp(48px, 8vw, 88px) 20px;
+  overflow: hidden;
+  isolation: isolate;
 }
 
+.page-hero--photo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(105deg, rgba(8, 12, 20, 0.88) 0%, rgba(8, 12, 20, 0.55) 55%, rgba(8, 12, 20, 0.35) 100%),
+    var(--page-hero-img) center / cover no-repeat;
+}
+
+.page-hero--essai { --page-hero-img: url('../img/bc/disc/lady.webp'); }
+.page-hero--abo { --page-hero-img: url('../img/bc/disc/boxe-anglaise.webp'); }
+.page-hero--coach { --page-hero-img: url('../img/bc/disc/mma.webp'); }
+.page-hero--materiel { --page-hero-img: url('../img/bc/disc/cross.webp'); }
+.page-hero--faq { --page-hero-img: url('../img/bc/gym/gym-06.jpg'); }
+
 .page-hero-inner {
+  position: relative;
   max-width: var(--max);
   margin: 0 auto;
 }
 
 .page-hero h1 {
-  font-size: clamp(1.8rem, 5vw, 2.6rem);
-  margin-bottom: 12px;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  font-size: clamp(2.1rem, 6vw, 3.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  margin-bottom: 14px;
+  max-width: 16ch;
 }
 
 .page-hero p {
-  color: rgba(255, 255, 255, 0.8);
-  max-width: 600px;
+  color: rgba(255, 255, 255, 0.84);
+  max-width: 560px;
   font-size: 1.05rem;
 }
 
@@ -746,7 +771,7 @@ input:focus, select:focus, textarea:focus {
   margin-bottom: 16px;
 }
 
-.breadcrumb a { color: var(--bc-cta); }
+.breadcrumb a { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 
 /* Legal pages */
 .legal-page { max-width: 720px; }

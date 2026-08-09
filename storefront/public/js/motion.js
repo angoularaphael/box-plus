@@ -1,6 +1,7 @@
 /**
  * Boxing Center — motion engine (vanilla, dependency-free).
- * Scroll reveals · sticky-header state · count-ups · ambient video · magnetic CTAs.
+ * Scroll reveals · sticky-header · count-ups · ambient video · magnetic CTAs
+ * · parallax · disciplines reel · scroll-scrub video.
  */
 (function () {
   'use strict';
@@ -94,6 +95,9 @@
       });
     });
     observeReveals(document.querySelectorAll('[data-reveal]:not(.in), [data-reveal-auto]:not(.in)'));
+    initCounts();
+    initMagnetic();
+    initHoverLift();
   }
 
   function initCounts() {
@@ -111,7 +115,8 @@
       var io = new IntersectionObserver(function (entries) {
         entries.forEach(function (e) {
           if (!e.isIntersecting) return;
-          var start = null, dur = 1500;
+          var start = null;
+          var dur = 1500;
           requestAnimationFrame(function loop(ts) {
             if (start === null) start = ts;
             var p = Math.min(1, (ts - start) / dur);
@@ -132,11 +137,21 @@
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
         var v = e.target;
-        if (e.isIntersecting) { v.play().catch(function () {}); }
-        else v.pause();
+        if (e.isIntersecting) {
+          v.play().catch(function () {});
+        } else {
+          v.pause();
+        }
       });
     }, { threshold: 0.05 });
-    vids.forEach(function (v) { io.observe(v); });
+    vids.forEach(function (v) {
+      if (reduce) {
+        v.removeAttribute('autoplay');
+        v.pause();
+        return;
+      }
+      io.observe(v);
+    });
   }
 
   function initMagnetic() {
@@ -149,17 +164,133 @@
         var r = el.getBoundingClientRect();
         var mx = e.clientX - (r.left + r.width / 2);
         var my = e.clientY - (r.top + r.height / 2);
-        el.style.transform = 'translate(' + (mx * strength).toFixed(1) + 'px,' + (my * strength).toFixed(1) + 'px)';
+        el.style.transform =
+          'translate(' + (mx * strength).toFixed(1) + 'px,' + (my * strength).toFixed(1) + 'px)';
       });
-      el.addEventListener('pointerleave', function () { el.style.transform = ''; });
+      el.addEventListener('pointerleave', function () {
+        el.style.transform = '';
+      });
     });
   }
 
   function initHoverLift() {
     if (reduce) return;
-    document.querySelectorAll('.decision-card, .testimonial-card, .gear-card').forEach(function (el) {
+    document.querySelectorAll('.decision-card, .testimonial-card, .gear-card, .gym-card').forEach(function (el) {
       el.classList.add('hover-lift');
     });
+  }
+
+  function initParallax() {
+    if (reduce) return;
+    var nodes = Array.prototype.slice.call(document.querySelectorAll('[data-parallax]'));
+    if (!nodes.length) return;
+    var ticking = false;
+
+    function update() {
+      ticking = false;
+      var vh = window.innerHeight || 800;
+      nodes.forEach(function (el) {
+        // Never parallax a reveal node — fight between transforms.
+        if (el.hasAttribute('data-reveal') || el.hasAttribute('data-reveal-auto')) return;
+        var speed = parseFloat(el.getAttribute('data-parallax')) || 0.15;
+        var rect = el.getBoundingClientRect();
+        var mid = rect.top + rect.height / 2;
+        var offset = (mid - vh / 2) * speed * -1;
+        el.style.transform = 'translate3d(0,' + offset.toFixed(1) + 'px,0)';
+      });
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    update();
+  }
+
+  function initDiscReel() {
+    var reel = document.querySelector('[data-disc-reel]');
+    var track = document.querySelector('[data-disc-track]');
+    if (!reel || !track) return;
+
+    // Mobile: native horizontal scroll (CSS). Skip pin math.
+    if (window.matchMedia('(max-width: 760px)').matches || reduce) return;
+
+    var ticking = false;
+    function update() {
+      ticking = false;
+      var rect = reel.getBoundingClientRect();
+      var total = reel.offsetHeight - window.innerHeight;
+      if (total <= 0) return;
+      var scrolled = Math.min(Math.max(-rect.top, 0), total);
+      var progress = scrolled / total;
+      var maxX = Math.max(0, track.scrollWidth - window.innerWidth + 40);
+      track.style.transform = 'translate3d(' + (-maxX * progress).toFixed(1) + 'px,0,0)';
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    update();
+  }
+
+  function initScrub() {
+    var band = document.querySelector('[data-scrub]');
+    var video = document.querySelector('[data-scrub-video]');
+    if (!band || !video) return;
+
+    if (reduce) {
+      video.removeAttribute('autoplay');
+      return;
+    }
+
+    var ready = false;
+    var ticking = false;
+
+    function seek() {
+      ticking = false;
+      if (!ready || !video.duration) return;
+      var rect = band.getBoundingClientRect();
+      var view = window.innerHeight || 800;
+      var start = view * 0.85;
+      var end = view * 0.15;
+      var span = start - end;
+      if (span <= 0) return;
+      var p = (start - rect.top) / span;
+      p = Math.min(1, Math.max(0, p));
+      try {
+        video.currentTime = video.duration * p;
+      } catch (_) { /* ignore seek race */ }
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(seek);
+      }
+    }
+
+    function arm() {
+      ready = true;
+      video.pause();
+      seek();
+    }
+
+    if (video.readyState >= 1) arm();
+    else video.addEventListener('loadedmetadata', arm, { once: true });
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
   }
 
   ready(function () {
@@ -169,7 +300,10 @@
     initAmbientVideo();
     initMagnetic();
     initHoverLift();
+    initParallax();
+    initDiscReel();
+    initScrub();
   });
 
-  window.BCMotion = { refresh };
+  window.BCMotion = { refresh: refresh };
 })();
