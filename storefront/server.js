@@ -1603,7 +1603,7 @@ function createApp() {
 
   app.post('/api/orders/:id/sign', async (req, res) => {
     try {
-      const order = await loadOrderOrRecover(req.params.id, {
+      let order = await loadOrderOrRecover(req.params.id, {
         token: req.body.token,
         sessionId: req.body.session_id,
         stripe,
