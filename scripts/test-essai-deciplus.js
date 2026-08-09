@@ -27,7 +27,8 @@ async function main() {
       first_name: 'TestEssai',
       last_name: `Boxplus${String(stamp).slice(-6)}`,
       email: `test.essai.${stamp}@example.com`,
-      phone: '0612345678',
+      // Téléphone unique — évite de « matcher » un autre membre Deciplus
+      phone: `06${String(stamp).slice(-8)}`,
       birthdate: '1995-06-15',
       gender: 'M',
       address: '12 rue de la Boxe',

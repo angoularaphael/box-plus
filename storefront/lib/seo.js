@@ -78,7 +78,8 @@ const FAQ = [
   ['Puis-je accéder aux 5 salles ?', 'Selon votre formule, votre abonnement donne accès à nos 5 centres : Minimes, Ramonville, États-Unis, Saint-Cyprien et Portet. Vous choisissez une salle principale à l\'inscription.'],
   ['Quelle formule choisir pour commencer ?', 'Pour tester : la séance d\'essai gratuite. Pour la flexibilité : le prélèvement sans engagement. Pour économiser : le comptant 3, 6 ou 12 mois. Pour votre enfant : Baby Boxe ou Boxe éducative.'],
   ['Comment fonctionne la séance d\'essai ?', 'Réservez en ligne gratuitement. Un coach vous accueille, vous explique le déroulé et vous participez à un cours adapté aux débutants. Aucun matériel spécifique n\'est requis pour commencer.'],
-  ['Comment fonctionne le paiement par prélèvement ?', 'Vous payez la première échéance par carte bancaire, puis renseignez votre IBAN pour les prélèvements suivants. La formule est sans engagement longue durée — renouvelable toutes les 4 semaines.'],
+  ['Comment fonctionne le paiement par prélèvement ?', 'Vous payez la première échéance par carte bancaire, puis indiquez vos coordonnées bancaires pour les échéances suivantes. La formule est sans engagement — renouvelable toutes les 4 semaines.'],
+  ['Puis-je payer toutes les 4 semaines par carte ?', 'Oui, sur les formules sans engagement vous pouvez régler la première échéance par carte ou PayPal, puis les suivantes par prélèvement sans engagement. Simple, flexible, sans engagement longue durée.'],
   ['Puis-je résilier une formule sans engagement ?', 'Oui, les formules sans engagement peuvent être résiliées selon les conditions prévues au contrat. Contactez votre salle pour les démarches.'],
   ['Quel matériel faut-il pour commencer ?', 'Pour votre premier cours : tenue de sport et bouteille d\'eau suffisent. Nous vous conseillerons ensuite pour les gants et bandages — disponibles à la boutique du club.'],
   ['Mon enfant peut-il s\'inscrire ?', 'Oui ! Baby Boxe accueille les 3-6 ans et la Boxe éducative les 7-16 ans. L\'encadrement est adapté à chaque tranche d\'âge.'],
@@ -88,42 +89,67 @@ const DEFAULT_OG_IMAGE = '/img/bc/og-default.jpg'; // 1200x630, generated from g
 
 /* ── JSON-LD builders ─────────────────────────────────────────────── */
 
+function openingHoursSpec() {
+  return [
+    { '@type': 'OpeningHoursSpecification', dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], opens: '10:00', closes: '21:30' },
+  ];
+}
+
 function orgJsonLd() {
   return {
-    '@type': 'SportsOrganization',
+    '@type': ['SportsOrganization', 'LocalBusiness', 'SportsActivityLocation'],
     '@id': `${SITE_URL}/#org`,
     name: BUSINESS.name,
     alternateName: BUSINESS.legalName,
     url: `${SITE_URL}/`,
     logo: `${SITE_URL}/img/bc/logo/BC_Logo_Officiel_Transparent.png`,
+    image: `${SITE_URL}${DEFAULT_OG_IMAGE}`,
     foundingDate: BUSINESS.foundingDate,
     telephone: BUSINESS.telephone,
     email: BUSINESS.email,
     sameAs: BUSINESS.sameAs,
     sport: 'Boxe',
-    areaServed: { '@type': 'City', name: 'Toulouse' },
+    priceRange: '€€',
+    currenciesAccepted: 'EUR',
+    paymentAccepted: 'Cash, Credit Card, PayPal',
+    areaServed: [
+      { '@type': 'City', name: 'Toulouse' },
+      { '@type': 'AdministrativeArea', name: 'Haute-Garonne' },
+    ],
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: '12 rue de Fenouillet',
+      postalCode: '31200',
+      addressLocality: 'Toulouse',
+      addressRegion: 'Occitanie',
+      addressCountry: 'FR',
+    },
+    openingHoursSpecification: openingHoursSpec(),
+    hasMap: 'https://boxingcenter.fr',
+    knowsAbout: DISCIPLINES,
   };
 }
 
 function gymsJsonLd() {
   return SALLES.map((s) => ({
-    '@type': 'ExerciseGym',
+    '@type': ['ExerciseGym', 'SportsActivityLocation', 'LocalBusiness'],
+    '@id': `${SITE_URL}/#gym-${s.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-')}`,
     name: `Boxing Center — ${s.name}`,
     url: s.url || `${SITE_URL}/`,
     image: `${SITE_URL}${s.image}`,
-    /* Le numéro de la salle quand elle en publie un ; celui du réseau
-       sinon. On ne fait pas dire à Google ce que le site de la salle
-       contredit. */
     telephone: s.telephone || BUSINESS.telephone,
-    openingHours: BUSINESS.openingHours,
+    priceRange: '€€',
     parentOrganization: { '@id': `${SITE_URL}/#org` },
     address: {
       '@type': 'PostalAddress',
       ...(s.street ? { streetAddress: s.street } : {}),
       postalCode: s.postal,
       addressLocality: s.city,
+      addressRegion: 'Occitanie',
       addressCountry: 'FR',
     },
+    openingHoursSpecification: openingHoursSpec(),
+    areaServed: { '@type': 'City', name: s.city },
   }));
 }
 
@@ -136,11 +162,27 @@ const PAGE_JSONLD = {
         '@type': 'WebSite',
         '@id': `${SITE_URL}/#website`,
         url: `${SITE_URL}/`,
-        name: 'Boutique Boxing Center',
+        name: 'Boutique Boxing Center Toulouse',
+        alternateName: 'Boxing Center — boutique officielle',
+        description: 'Boutique officielle Boxing Center Toulouse : abonnements boxe, séance d\'essai gratuite, coachings et matériel. 5 salles en Haute-Garonne.',
         inLanguage: 'fr-FR',
         publisher: { '@id': `${SITE_URL}/#org` },
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${SITE_URL}/materiel?q={search_term_string}`,
+          'query-input': 'required name=search_term_string',
+        },
       },
       ...gymsJsonLd(),
+      {
+        '@type': 'FAQPage',
+        '@id': `${SITE_URL}/#faq-home`,
+        mainEntity: FAQ.slice(0, 6).map(([q, a]) => ({
+          '@type': 'Question',
+          name: q,
+          acceptedAnswer: { '@type': 'Answer', text: a },
+        })),
+      },
     ],
   }),
   '/abonnements': () => ({
@@ -149,7 +191,11 @@ const PAGE_JSONLD = {
     name: 'Abonnement boxe — Boxing Center Toulouse',
     serviceType: 'Abonnement salle de boxe',
     provider: { '@id': `${SITE_URL}/#org` },
-    areaServed: { '@type': 'City', name: 'Toulouse' },
+    areaServed: [
+      { '@type': 'City', name: 'Toulouse' },
+      { '@type': 'City', name: 'Ramonville-Saint-Agne' },
+      { '@type': 'City', name: 'Portet-sur-Garonne' },
+    ],
     description: `Abonnements boxe à Toulouse : comptant 3, 6 ou 12 mois, prélèvement sans engagement, formules enfants (Baby Boxe, Boxe éducative). Accès aux 5 salles, ${DISCIPLINES.length} disciplines : ${DISCIPLINES.join(', ')}.`,
     url: `${SITE_URL}/abonnements`,
   }),
@@ -162,10 +208,11 @@ const PAGE_JSONLD = {
     brand: { '@type': 'Brand', name: BUSINESS.name },
     offers: {
       '@type': 'Offer',
-      price: '10.00',
+      price: '0',
       priceCurrency: 'EUR',
       availability: 'https://schema.org/InStock',
       url: `${SITE_URL}/seance-essai`,
+      category: 'Free',
     },
   }),
   '/coachings': () => ({
@@ -231,6 +278,30 @@ const HTML_REDIRECTS = {
   '/contrat.html': '/contrat',
 };
 
+/** Chemins PrestaShop fréquents → pages BOXPLUS (cutover boutique.boxingcenter.fr). */
+const PRESTASHOP_REDIRECTS = {
+  '/content/4-a-propos': '/',
+  '/content/3-conditions-generales-de-ventes': '/cgv',
+  '/content/2-mentions-legales': '/politique-confidentialite',
+  '/nous-contacter': '/faq',
+  '/contactez-nous': '/faq',
+  '/historique-de-commandes': '/mon-inscription',
+  '/identite': '/mon-inscription',
+  '/adresse': '/mon-inscription',
+  '/module/ps_emailsubscription/subscription': '/',
+};
+
+const NOINDEX_PATHS = [
+  '/panier',
+  '/inscription',
+  '/mon-inscription',
+  '/contrat',
+  '/gerer-abonnement',
+  '/checkout.html',
+  '/success.html',
+  '/admin',
+];
+
 /* ── helpers ──────────────────────────────────────────────────────── */
 
 function esc(s) {
@@ -243,16 +314,27 @@ function setMeta(html, attr, key, value) {
   return html.replace(re, `$1${esc(value)}$2`);
 }
 
-function headTags(route, { ogImage, ogImageAlt, jsonLd, extra } = {}) {
+function headTags(route, { ogImage, ogImageAlt, jsonLd, extra, noindex } = {}) {
   const url = `${SITE_URL}${route === '/' ? '/' : route}`;
   const imgPath = ogImage || DEFAULT_OG_IMAGE;
   const img = `${SITE_URL}${imgPath}`;
+  const robots = noindex
+    ? 'noindex,nofollow'
+    : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1';
   const parts = [
     `<link rel="canonical" href="${url}" />`,
-    `<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />`,
+    `<meta name="robots" content="${robots}" />`,
+    `<meta name="googlebot" content="${robots}" />`,
     `<meta property="og:url" content="${url}" />`,
     `<meta property="og:image" content="${img}" />`,
   ];
+  if (route === '/') {
+    parts.push('<meta name="geo.region" content="FR-31" />');
+    parts.push('<meta name="geo.placename" content="Toulouse" />');
+    parts.push('<meta name="ICBM" content="43.6047, 1.4442" />');
+    parts.push('<meta name="language" content="fr" />');
+    parts.push('<link rel="alternate" href="https://boxingcenter.fr/" hreflang="fr" />');
+  }
   if (imgPath === DEFAULT_OG_IMAGE) {
     parts.push('<meta property="og:image:width" content="1200" />');
     parts.push('<meta property="og:image:height" content="630" />');
@@ -331,13 +413,7 @@ function productJsonLd(p) {
 /* ── text documents ───────────────────────────────────────────────── */
 
 function robotsTxt() {
-  return [
-    '# Boxing Center Toulouse — boutique officielle',
-    '# Les robots des moteurs IA (GPTBot, ClaudeBot, PerplexityBot, etc.) sont les bienvenus.',
-    '# Voir aussi /llms.txt',
-    '',
-    'User-agent: *',
-    'Allow: /',
+  const privatePaths = [
     'Disallow: /admin',
     'Disallow: /api/',
     'Disallow: /panier',
@@ -346,22 +422,105 @@ function robotsTxt() {
     'Disallow: /inscription',
     'Disallow: /mon-inscription',
     'Disallow: /contrat',
+    'Disallow: /gerer-abonnement',
+  ];
+  return [
+    '# Boxing Center Toulouse — boutique officielle',
+    '# Remplace progressivement https://boutique.boxingcenter.fr/ (PrestaShop)',
+    '# IA / GEO : /llms.txt · /llms-full.txt · /ai.txt',
+    '',
+    'User-agent: *',
+    'Allow: /',
+    ...privatePaths,
+    '',
+    '# Assistants & crawlers IA — contenu public autorisé',
+    'User-agent: GPTBot',
+    'Allow: /',
+    ...privatePaths,
+    '',
+    'User-agent: ChatGPT-User',
+    'Allow: /',
+    ...privatePaths,
+    '',
+    'User-agent: ClaudeBot',
+    'Allow: /',
+    ...privatePaths,
+    '',
+    'User-agent: anthropic-ai',
+    'Allow: /',
+    ...privatePaths,
+    '',
+    'User-agent: PerplexityBot',
+    'Allow: /',
+    ...privatePaths,
+    '',
+    'User-agent: Google-Extended',
+    'Allow: /',
+    ...privatePaths,
+    '',
+    'User-agent: Applebot-Extended',
+    'Allow: /',
+    ...privatePaths,
+    '',
+    'User-agent: Bytespider',
+    'Allow: /',
+    ...privatePaths,
     '',
     `Sitemap: ${SITE_URL}/sitemap.xml`,
+    `LLMs-Txt: ${SITE_URL}/llms.txt`,
     '',
   ].join('\n');
 }
 
+function aiTxt() {
+  return `# ai.txt — Boxing Center Toulouse (boutique officielle)
+
+# Instructions pour les agents et moteurs génératifs
+site: ${SITE_URL}/
+brand: Boxing Center
+locale: fr-FR
+city: Toulouse
+region: Occitanie, Haute-Garonne
+type: club de boxe / boutique d'abonnements et matériel
+
+# Ce que vous pouvez citer
+- Offres et tarifs affichés sur ${SITE_URL}/abonnements et ${SITE_URL}/materiel
+- Séance d'essai GRATUITE : ${SITE_URL}/seance-essai
+- 5 salles : Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet-sur-Garonne
+- Disciplines : ${DISCIPLINES.join(', ')}
+- FAQ : ${SITE_URL}/faq
+- Fiche structurée pour LLM : ${SITE_URL}/llms.txt
+
+# Ce qu'il ne faut pas inventer
+- Ne pas inventer de tarifs absents du site
+- Ne pas inventer d'horaires de cours précis (renvoyer vers la salle / boxingcenter.fr)
+- Ne pas confondre avec d'autres clubs de boxe toulousains
+
+# Contact
+phone: 05 62 24 46 82
+email: ${BUSINESS.email}
+club_site: https://boxingcenter.fr
+`;
+}
+
 function llmsTxt() {
-  const salles = SALLES.map((s) => `- Boxing Center ${s.name} — ${[s.street, `${s.postal} ${s.city}`].filter(Boolean).join(', ')}`).join('\n');
+  const salles = SALLES.map((s) => `- Boxing Center ${s.name} — ${[s.street, `${s.postal} ${s.city}`].filter(Boolean).join(', ')}${s.telephone ? ` — ${s.telephone}` : ''}`).join('\n');
   return `# Boxing Center Toulouse — boutique officielle
 
 > Club de boxe à Toulouse fondé en septembre 2016 : 5 salles (Minimes, Ramonville,
 > États-Unis, Saint-Cyprien, Portet-sur-Garonne), ${DISCIPLINES.length} disciplines
 > (${DISCIPLINES.join(', ')}), cours accessibles aux débutants comme aux confirmés,
-> femmes et enfants bienvenus. Cette boutique en ligne officielle vend les abonnements,
-> la séance d'essai, les coachings individuels et le matériel de boxe du club
-> (gants, bandes, protections, textile).
+> femmes et enfants bienvenus. Cette boutique en ligne officielle remplace
+> progressivement l'ancienne boutique PrestaShop (boutique.boxingcenter.fr) :
+> abonnements, séance d'essai gratuite, coachings individuels et matériel de boxe
+> (gants, bandes, protections, textile) — retrait en salle.
+
+## Priority facts (GEO / AI)
+- Marque : Boxing Center (Toulouse / Haute-Garonne)
+- Séance d'essai : GRATUITE (pas 10 €)
+- Accès multi-salles selon formule
+- Paiement en ligne : carte (PayPlug), PayPal ; prélèvement sans engagement
+- Langue du site : français
 
 ## Offres
 - Séance d'essai : gratuite — cours encadré, aucun matériel requis (${SITE_URL}/seance-essai)
@@ -370,14 +529,15 @@ function llmsTxt() {
 - Coachings individuels (${SITE_URL}/coachings)
 - Matériel et équipement de boxe : ${CATALOG.length} produits, retrait en salle (${SITE_URL}/materiel)
 
-## Salles
+## Salles (NAP)
 ${salles}
 
 ## Contact
-- Téléphone : 05 62 24 46 82 (lun-jeu 10h-17h)
+- Téléphone réseau : 05 62 24 46 82
 - Email : ${BUSINESS.email}
 - Site du club : https://boxingcenter.fr
 - FAQ : ${SITE_URL}/faq
+- Instructions IA : ${SITE_URL}/ai.txt
 
 Catalogue complet et FAQ détaillée : ${SITE_URL}/llms-full.txt
 `;
@@ -421,7 +581,17 @@ function registerSeo(app, publicDir) {
   app.get('/robots.txt', (_req, res) => res.type('text/plain').send(robotsTxt()));
   app.get('/llms.txt', (_req, res) => res.type('text/plain; charset=utf-8').send(llmsTxt()));
   app.get('/llms-full.txt', (_req, res) => res.type('text/plain; charset=utf-8').send(llmsFullTxt()));
+  app.get('/ai.txt', (_req, res) => res.type('text/plain; charset=utf-8').send(aiTxt()));
   app.get(`/${INDEXNOW_KEY}.txt`, (_req, res) => res.type('text/plain').send(INDEXNOW_KEY));
+
+  // Pages compte / tunnel : jamais indexées (X-Robots-Tag + meta côté HTML indexable)
+  app.use((req, res, next) => {
+    const p = String(req.path || '');
+    if (NOINDEX_PATHS.some((x) => p === x || p.startsWith(`${x}/`) || p.startsWith(`${x}.`))) {
+      res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    }
+    next();
+  });
 
   let sitemapCache = null;
   let sitemapAt = 0;
@@ -435,6 +605,10 @@ function registerSeo(app, publicDir) {
 
   // Legacy .html paths → clean URLs (single canonical version of every page).
   for (const [from, to] of Object.entries(HTML_REDIRECTS)) {
+    app.get(from, (_req, res) => res.redirect(301, to));
+  }
+  // Cutover PrestaShop → BOXPLUS (chemins connus ; à enrichir au moment du DNS)
+  for (const [from, to] of Object.entries(PRESTASHOP_REDIRECTS)) {
     app.get(from, (_req, res) => res.redirect(301, to));
   }
 
