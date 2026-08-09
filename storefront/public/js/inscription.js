@@ -968,7 +968,7 @@
         <div><label for="first_name">Prénom *</label><input id="first_name" name="first_name" required value="${short.first_name || ''}" /></div>
         <div><label for="last_name">Nom *</label><input id="last_name" name="last_name" required value="${short.last_name || ''}" /></div>
         <div class="full"><label for="email">Email *</label><input id="email" name="email" type="email" required value="${short.email || ''}" /></div>
-        <div class="full"><label for="phone">Téléphone *</label><input id="phone" name="phone" type="tel" required value="${short.phone || ''}" /></div>
+        <div class="full"><label for="phone">Téléphone mobile *</label><input id="phone" name="phone" type="tel" required inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78" value="${short.phone || ''}" /></div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
         <div class="full">${backButton('← Retour à la salle', 2)}</div>
       </form>`;
@@ -980,6 +980,15 @@
       const body = Object.fromEntries(new FormData(e.target).entries());
       // Conserver une date déjà en dossier / préremplie
       if (!body.birthdate && short.birthdate) body.birthdate = short.birthdate;
+      const phoneDigits = String(body.phone || '').replace(/\D/g, '');
+      const phoneOk =
+        /^0[67]\d{8}$/.test(phoneDigits) ||
+        /^33[67]\d{8}$/.test(phoneDigits) ||
+        /^[67]\d{8}$/.test(phoneDigits);
+      if (!phoneOk) {
+        setMsg('Téléphone mobile FR requis (ex. 06 12 34 56 78).', 'err');
+        return;
+      }
       setMsg('Envoi…');
       body.token = state.token;
       body.gym = state.order?.customer_full?.gym || state.gymDraft;

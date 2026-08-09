@@ -19,11 +19,22 @@ function headers() {
 }
 
 function phoneE164(value) {
-  const digits = String(value || '').replace(/\D/g, '');
+  const raw = String(value || '').trim();
+  let digits = raw.replace(/\D/g, '');
+  if (!digits) return undefined;
+  // 0033… → 33…
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  // Mobile FR saisi sans le 0 : 6XXXXXXXX / 7XXXXXXXX
+  if (/^[67]\d{8}$/.test(digits)) digits = `0${digits}`;
   if (/^0\d{9}$/.test(digits)) return `+33${digits.slice(1)}`;
   if (/^33\d{9}$/.test(digits)) return `+${digits}`;
-  if (String(value || '').startsWith('+')) return `+${digits}`;
+  if (raw.startsWith('+') && digits.length >= 10 && digits.length <= 15) return `+${digits}`;
   return undefined;
+}
+
+/** Mobile FR requis pour Oney (+336… / +337…). */
+function isFrenchMobileE164(value) {
+  return /^\+33[67]\d{8}$/.test(String(value || ''));
 }
 
 function customerDetails(order, overrides = {}) {
@@ -55,7 +66,9 @@ function validateOneyCustomer(details) {
   if (!details.first_name) missing.push('prénom');
   if (!details.last_name) missing.push('nom');
   if (!details.email) missing.push('email');
-  if (!details.mobile_phone_number) missing.push('téléphone');
+  if (!details.mobile_phone_number || !isFrenchMobileE164(details.mobile_phone_number)) {
+    missing.push('téléphone mobile FR (06/07…)');
+  }
   if (!details.address1) missing.push('adresse');
   if (!details.postcode) missing.push('code postal');
   if (!details.city) missing.push('ville');
