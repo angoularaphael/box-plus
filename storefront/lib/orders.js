@@ -46,20 +46,27 @@ function buildOrderPayload(input, product) {
   const paymentPlan = normalizePaymentPlan(input.payment_plan, product);
   const requiresIban = requiresIbanForPlan(product, billingPlan);
   const iban = requiresIban && input.iban ? normalizeIban(input.iban) : null;
-  const amount = product.price_cents / 100;
-  const paymentMethod =
-    input.payment_method || (paymentPlan === '4x' ? 'payplug' : 'stripe');
+  const isFree =
+    product.requires_payment === false ||
+    Number(product.price_cents || 0) <= 0 ||
+    product.id === 'seance-essai' ||
+    product.sale_type === 'none';
+  const amount = isFree ? 0 : Number(product.price_cents || 0) / 100;
+  const paymentMethod = isFree
+    ? 'free'
+    : input.payment_method || (paymentPlan === '4x' ? 'payplug' : 'payplug');
+  const saleType = isFree ? 'none' : product.sale_type || null;
 
   return {
     order_id: input.order_id || `STORE-${Date.now()}`,
     action: 'sale',
     product_id: product.id,
-    product_name: product.name,
+    product_name: product.name || product.display_name,
     product_reference: product.id,
     deciplus_id: product.deciplus_id || null,
-    deciplus_product_search: product.deciplus_product_search || null,
-    sale_type: product.sale_type || null,
-    requires_iban: requiresIban,
+    deciplus_product_search: product.deciplus_product_search || (isFree ? 'essai' : null),
+    sale_type: saleType,
+    requires_iban: isFree ? false : requiresIban,
     billing_plan: billingPlan,
     payment_plan: paymentPlan,
     paiement_comptant: Boolean(paymentPlan) || undefined,
@@ -85,12 +92,18 @@ function buildOrderPayload(input, product) {
     payment: {
       amount,
       method: paymentMethod,
-      status: product.requires_payment ? 'paid' : 'free',
+      status: 'paid',
       date: new Date().toISOString(),
-      iban,
+      iban: isFree ? null : iban,
       billing_plan: billingPlan,
       payment_plan: paymentPlan,
-      recurring: billingPlan === 'cb' ? 'stripe_4_weeks' : billingPlan === 'rib' ? 'sepa_4_weeks' : null,
+      recurring: isFree
+        ? null
+        : billingPlan === 'cb'
+          ? 'stripe_4_weeks'
+          : billingPlan === 'rib'
+            ? 'sepa_4_weeks'
+            : null,
       stripe_session_id: input.stripe_session_id || null,
       stripe_payment_intent: input.stripe_payment_intent || null,
       stripe_subscription_id: input.stripe_subscription_id || null,
@@ -103,7 +116,11 @@ function buildOrderPayload(input, product) {
       medium: input.utm_medium || null,
       campaign: input.utm_campaign || 'rentree-2026',
     },
-    source: paymentMethod === 'payplug' ? 'storefront-payplug' : 'storefront-stripe',
+    source: isFree
+      ? 'storefront-free'
+      : paymentMethod === 'payplug'
+        ? 'storefront-payplug'
+        : 'storefront-paypal',
   };
 }
 
