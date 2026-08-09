@@ -232,6 +232,7 @@
         if (submitBtn) submitBtn.disabled = false;
         return;
       }
+      if (data.payment_id) sessionStorage.setItem('bc_change_payplug_id', data.payment_id);
       if (data.url) window.location.href = data.url;
     } catch {
       changeMsg.textContent = 'Erreur de connexion au paiement';
@@ -241,22 +242,37 @@
   };
 
   const params = new URLSearchParams(location.search);
-  if (params.get('change') === '1' && params.get('session_id')) {
-    fetch('/api/membership/change/confirm', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: params.get('session_id') }),
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        changeMsg.hidden = false;
-        changeMsg.className = data.ok ? 'form-msg' : 'form-msg err';
-        changeMsg.textContent = data.ok
-          ? 'Votre abonnement comptant a bien été enregistré. Il prendra effet dans quelques minutes. Un e-mail de confirmation vous sera envoyé dès que c’est actif.'
-          : data.error || 'Confirmation impossible';
-      })
-      .catch(() => {});
+  async function confirmChangePayment() {
+    if (params.get('change') !== '1') return;
+    const paymentId =
+      params.get('payment_id') || sessionStorage.getItem('bc_change_payplug_id') || '';
+    const sessionId = params.get('session_id') || '';
+    if (!paymentId && !sessionId) return;
+
+    changeMsg.hidden = false;
+    changeMsg.textContent = 'Confirmation du paiement…';
+    changeMsg.className = 'form-msg';
+    try {
+      const res = await fetch('/api/membership/change/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          paymentId ? { payment_id: paymentId } : { session_id: sessionId }
+        ),
+      });
+      const data = await res.json();
+      changeMsg.className = data.ok ? 'form-msg' : 'form-msg err';
+      changeMsg.textContent = data.ok
+        ? 'Votre abonnement comptant a bien été enregistré. Il prendra effet dans quelques minutes. Un e-mail de confirmation vous sera envoyé dès que c’est actif.'
+        : data.error || 'Confirmation impossible';
+      sessionStorage.removeItem('bc_change_payplug_id');
+    } catch {
+      changeMsg.className = 'form-msg err';
+      changeMsg.textContent = 'Confirmation impossible';
+    }
   }
+
+  confirmChangePayment().catch(() => {});
 
   loadOptions().catch(() => {});
 })();

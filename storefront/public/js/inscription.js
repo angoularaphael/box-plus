@@ -439,16 +439,49 @@
     return true;
   }
 
+  async function loadPaypalMessaging(amountEuros) {
+    try {
+      const res = await fetch('/api/payments/config');
+      const cfg = await res.json().catch(() => ({}));
+      if (!cfg.ok || !cfg.paypal_client_id) return;
+      const renderMsg = () => {
+        if (!window.paypal?.Messages || !document.querySelector('[data-pp-message]')) return;
+        window.paypal.Messages({ amount: amountEuros, style: { layout: 'text' } }).render('[data-pp-message]');
+      };
+      if (document.getElementById('paypal-sdk-js')) {
+        renderMsg();
+        return;
+      }
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.id = 'paypal-sdk-js';
+        s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(cfg.paypal_client_id)}&currency=EUR&components=messages&enable-funding=paylater`;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      renderMsg();
+    } catch {
+      /* messaging optionnel */
+    }
+  }
+
   function orderErrorMessage(data) {
     if (data.message) return data.message;
     if (data.error === 'payment_not_completed' || data.error === 'payment_required') {
       return paymentFailureMessage();
     }
     if (data.error === 'payplug_not_configured') {
-      return 'Paiement 4× temporairement indisponible. Choisissez le paiement en une fois, ou contactez le club.';
+      return 'Paiement carte temporairement indisponible. Essayez PayPal, ou contactez le club.';
     }
     if (data.error === 'payplug_url_missing') {
-      return 'Impossible d\'ouvrir le paiement en 4×. Réessayez ou choisissez le paiement en une fois.';
+      return 'Impossible d\'ouvrir le paiement PayPlug. Réessayez ou choisissez PayPal.';
+    }
+    if (data.error === 'paypal_not_configured') {
+      return 'PayPal temporairement indisponible. Choisissez la carte, ou contactez le club.';
+    }
+    if (data.error === 'paypal_url_missing') {
+      return 'Impossible d\'ouvrir PayPal. Réessayez ou choisissez la carte.';
     }
     if (data.error === 'stripe_not_configured') {
       return 'Paiement temporairement indisponible. Contactez le club.';
@@ -545,6 +578,13 @@
         return;
       }
     }
+    if (params.get('paypal_return') === '1') {
+      await confirmPaypalReturn();
+      if (state.order?.payment?.status === 'paid') {
+        persistAndRender();
+        return;
+      }
+    }
     if (state.sessionId) {
       await confirmStripeReturn();
       if (state.order?.payment?.status === 'paid') {
@@ -620,10 +660,13 @@
               <input type="radio" name="pay_method_4x" value="paypal" />
               <span class="billing-choice-text">
                 <strong>PayPal</strong>
-                <small>En 4× via PayPal</small>
+                <small>PayPal — Paiement en 4X si éligible</small>
                 ${paymentLogosHtml('paypal')}
               </span>
             </label>
+            <div class="full" style="margin-top:8px">
+              <div data-pp-message data-pp-style-layout="text" data-pp-style-logo-type="inline" data-pp-amount="${(Number(p.price_cents || 0) / 100).toFixed(2)}"></div>
+            </div>
           </div>
           <div id="fourXAddress" class="form-grid" style="display:none;margin-top:12px">
             <p class="sub full" style="margin:0 0 8px">Adresse requise pour valider le paiement en 4× :</p>
@@ -722,6 +765,9 @@
           el.addEventListener('change', syncInstallmentUi);
         });
       syncInstallmentUi();
+      loadPaypalMessaging((Number(p.price_cents || 0) / 100).toFixed(2)).catch(() => {});
+    } else {
+      loadPaypalMessaging((Number(p?.price_cents || 0) / 100).toFixed(2)).catch(() => {});
     }
     document.getElementById('payForm').onsubmit = async (e) => {
       e.preventDefault();
@@ -1420,12 +1466,13 @@
 
   let stripeConfirmDone = false;
   let payplugConfirmDone = false;
+  let paypalConfirmDone = false;
 
   async function confirmPayplugReturn() {
     if (params.get('payplug_return') !== '1' || payplugConfirmDone) return false;
     if (!state.orderId || !state.token) return false;
     payplugConfirmDone = true;
-    setMsg('Vérification du paiement 4×…');
+    setMsg('Vérification du paiement…');
     try {
       const res = await fetch('/api/checkout/confirm-payplug', {
         method: 'POST',
@@ -1450,7 +1497,7 @@
       if (data.pending) {
         setMsg(
           data.message ||
-            'Votre paiement en 4× est en cours de validation. Cette page se mettra à jour automatiquement.',
+            'Votre paiement est en cours de validation. Cette page se mettra à jour automatiquement.',
           ''
         );
         window.setTimeout(async () => {
@@ -1460,9 +1507,42 @@
         }, 4000);
         return false;
       }
-      setMsg(data.message || data.error || 'Paiement 4× non confirmé', 'err');
+      setMsg(data.message || data.error || 'Paiement non confirmé', 'err');
     } catch {
-      setMsg('Impossible de vérifier le paiement en 4× pour le moment.', 'err');
+      setMsg('Impossible de vérifier le paiement pour le moment.', 'err');
+    }
+    return false;
+  }
+
+  async function confirmPaypalReturn() {
+    if (params.get('paypal_return') !== '1' || paypalConfirmDone) return false;
+    if (!state.orderId || !state.token) return false;
+    paypalConfirmDone = true;
+    setMsg('Vérification du paiement PayPal…');
+    try {
+      const res = await fetch('/api/checkout/confirm-paypal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: state.orderId,
+          token: state.token,
+          paypal_order_id: state.order?.payment?.paypal_order_id,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.ok && (data.paid || data.already_paid)) {
+        await loadOrder();
+        if (data.redirect) {
+          window.location.href = data.redirect;
+          return true;
+        }
+        state.step = stepFromOrder(state.order);
+        setMsg('');
+        return true;
+      }
+      setMsg(data.message || data.error || 'Paiement PayPal non confirmé', 'err');
+    } catch {
+      setMsg('Impossible de vérifier le paiement PayPal pour le moment.', 'err');
     }
     return false;
   }
@@ -1528,6 +1608,7 @@
 
     if (state.orderId && state.token) {
       await confirmPayplugReturn();
+      await confirmPaypalReturn();
       await confirmStripeReturn();
       const loaded = await loadOrder();
       if (state.order?.payment?.status === 'paid') {

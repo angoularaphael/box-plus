@@ -4,6 +4,7 @@ const sessionId = params.get('session_id') || '';
 const demo = params.get('demo');
 const productId = params.get('product') || '';
 const orderType = params.get('type') || '';
+const payplugReturn = params.get('payplug_return') === '1';
 
 const PAYMENT_FAILED_MSG =
   'Le paiement n\'a pas pu être finalisé — vous n\'avez pas été débité. Vous pouvez réessayer.';
@@ -71,6 +72,47 @@ async function confirmStripeSession(retryHref) {
   }
 }
 
+async function confirmPayplugMateriel() {
+  const successText = document.getElementById('successText');
+  if (successText) successText.textContent = 'Validation du paiement…';
+
+  const paymentId =
+    params.get('payment_id') || sessionStorage.getItem('bc_materiel_payplug_id') || '';
+
+  try {
+    const res = await fetch('/api/checkout/confirm-payplug-materiel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        payment_id: paymentId || undefined,
+        order_id: order || undefined,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) {
+      const orderId = order || data.order_id || '';
+      sessionStorage.removeItem('bc_materiel_payplug_id');
+      if (successText) {
+        successText.textContent = `Paiement confirmé — réf. ${orderId}. Retirez votre matériel en salle.`;
+      }
+      if (orderId) showInvoiceButton(orderId);
+      return;
+    }
+    if (data.pending || data.error === 'payment_pending') {
+      if (successText) {
+        successText.textContent =
+          data.message ||
+          'Paiement en cours de validation — vous recevrez un email dès confirmation.';
+      }
+      if (order) showInvoiceButton(order);
+      return;
+    }
+    showPaymentFailure('/panier', data.message || PAYMENT_FAILED_MSG);
+  } catch {
+    showPaymentFailure('/panier', PAYMENT_FAILED_MSG);
+  }
+}
+
 const successText = document.getElementById('successText');
 if (!successText) {
   /* legacy page */
@@ -78,6 +120,8 @@ if (!successText) {
   if (demo) {
     successText.textContent =
       'Commande matériel enregistrée — présentez-vous en salle pour le retrait.';
+  } else if (payplugReturn) {
+    void confirmPayplugMateriel();
   } else if (sessionId) {
     void confirmStripeSession('/panier');
   } else if (order) {

@@ -107,6 +107,13 @@
       if (!res.ok || !data.ok) {
         throw new Error((data.errors || [data.error]).join(', '));
       }
+      if (data.payment_id) {
+        try {
+          sessionStorage.setItem('bc_materiel_payplug_id', data.payment_id);
+        } catch {
+          /* ignore */
+        }
+      }
       if (data.mode === 'demo' || data.redirect) {
         window.BCCart.clear();
         location.href = data.redirect || data.url;
@@ -122,7 +129,7 @@
       errorEl.textContent = err.message || 'Erreur de paiement';
       errorEl.hidden = false;
       btn.disabled = false;
-      btn.textContent = 'Payer par carte';
+      btn.textContent = 'Payer';
     }
   });
 

@@ -84,6 +84,20 @@ async function request(path, options = {}) {
   return body;
 }
 
+function buildReturnUrls(baseUrl, order, { step = 4 } = {}) {
+  if (order?.order_id && order?.access_token) {
+    const returnBase = `${baseUrl}/inscription?order=${encodeURIComponent(order.order_id)}&token=${encodeURIComponent(order.access_token)}`;
+    return {
+      return_url: `${returnBase}&step=${step}&payplug_return=1`,
+      cancel_url: `${returnBase}&step=${step}&cancelled=1`,
+    };
+  }
+  return {
+    return_url: `${baseUrl}/`,
+    cancel_url: `${baseUrl}/`,
+  };
+}
+
 async function createFourTimesPayment({ order, product, baseUrl, customerOverrides = {} }) {
   const customer = customerDetails(order, customerOverrides);
   const missing = validateOneyCustomer(customer);
@@ -96,7 +110,7 @@ async function createFourTimesPayment({ order, product, baseUrl, customerOverrid
 
   const itemName = product.display_name || product.name || 'OFFRE PROMO 12 MOIS';
   const amount = Number(product.price_cents);
-  const returnBase = `${baseUrl}/inscription?order=${encodeURIComponent(order.order_id)}&token=${encodeURIComponent(order.access_token)}`;
+  const urls = buildReturnUrls(baseUrl, order);
   const payload = {
     amount,
     currency: 'EUR',
@@ -128,11 +142,64 @@ async function createFourTimesPayment({ order, product, baseUrl, customerOverrid
       payment_plan: '4x',
     },
     notification_url: `${baseUrl}/api/webhooks/payplug`,
+    hosted_payment: urls,
+  };
+  return request('/payments', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+/**
+ * Paiement carte hosted PayPlug (1×) — comptant, 1ʳᵉ échéance, matériel, etc.
+ */
+async function createHostedPayment({
+  order = null,
+  product = null,
+  baseUrl,
+  amountCents,
+  description,
+  metadata = {},
+  customerOverrides = {},
+  returnUrl = null,
+  cancelUrl = null,
+}) {
+  const amount = Number(amountCents || product?.price_cents || 0);
+  if (!amount || amount < 100) {
+    throw new Error('Montant PayPlug invalide');
+  }
+  const itemName =
+    description || product?.display_name || product?.name || 'Paiement Boxing Center';
+  const customer = order ? customerDetails(order, customerOverrides) : customerDetails({ customer: customerOverrides }, {});
+  const urls = buildReturnUrls(baseUrl, order);
+  const payload = {
+    amount,
+    currency: 'EUR',
+    billing: {
+      first_name: customer.first_name || 'Client',
+      last_name: customer.last_name || 'Boxing',
+      email: customer.email || undefined,
+      address1: customer.address1 || customer.address || undefined,
+      postcode: customer.postcode || customer.postal_code || undefined,
+      city: customer.city || undefined,
+      country: 'FR',
+      language: 'fr',
+    },
+    description: itemName.slice(0, 80),
+    metadata: {
+      ...(order?.order_id
+        ? { order_id: order.order_id, lifecycle_order_id: order.order_id }
+        : {}),
+      ...(product?.id ? { product_id: String(product.id) } : {}),
+      payment_plan: metadata.payment_plan || 'once',
+      ...metadata,
+    },
+    notification_url: `${baseUrl}/api/webhooks/payplug`,
     hosted_payment: {
-      return_url: `${returnBase}&step=4&payplug_return=1`,
-      cancel_url: `${returnBase}&step=4&cancelled=1`,
+      return_url: returnUrl || urls.return_url,
+      cancel_url: cancelUrl || urls.cancel_url,
     },
   };
+  if (customer.mobile_phone_number) {
+    payload.billing.mobile_phone_number = customer.mobile_phone_number;
+  }
   return request('/payments', { method: 'POST', body: JSON.stringify(payload) });
 }
 
@@ -159,6 +226,7 @@ function hostedPaymentUrl(payment) {
 
 module.exports = {
   createFourTimesPayment,
+  createHostedPayment,
   retrievePayment,
   isPayplugPaymentPaid,
   isPayplugPaymentPending,

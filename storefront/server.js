@@ -41,12 +41,22 @@ const {
 } = require('../lib/billing-plan');
 const {
   createFourTimesPayment,
+  createHostedPayment,
   retrievePayment,
   isPayplugPaymentPaid,
   isPayplugPaymentPending,
   isPayplugEnabled,
   hostedPaymentUrl,
 } = require('./lib/payplug');
+const {
+  isPaypalEnabled,
+  publicClientId: paypalPublicClientId,
+  createPaypalOrder,
+  capturePaypalOrder,
+  retrievePaypalOrder,
+  isPaypalOrderPaid,
+  paypalMode,
+} = require('./lib/paypal');
 const {
   getEnrichedProducts,
   getFeaturedProducts,
@@ -329,6 +339,69 @@ async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
   );
 
   logInfo('Paiement matériel confirmé', { order_id: order.order_id });
+  return {
+    ok: true,
+    order_id: order.order_id,
+    materiel: true,
+    redirect: `/success.html?order=${order.order_id}&type=materiel`,
+  };
+}
+
+async function fulfillMaterielPayplug(paymentId) {
+  if (!paymentId) return { ok: false, error: 'payment_id manquant' };
+  if (!isPayplugEnabled()) return { ok: false, error: 'payplug_not_configured' };
+
+  const payment = await retrievePayment(paymentId);
+  const meta = payment.metadata || {};
+  const pending = loadPendingCheckout(paymentId);
+  const orderId = meta.order_id || pending?.order_id;
+  if (!orderId) return { ok: false, error: 'order_not_found' };
+
+  let order = await loadMaterielOrderAsync(orderId);
+  if (!order && pending) {
+    order = await createMaterielOrderAsync({
+      order_id: pending.order_id,
+      customer: pending.customer,
+      items: pending.items,
+      total_cents: pending.total_cents,
+      pickup_gym: pending.pickup_gym,
+    });
+  }
+  if (!order) return { ok: false, error: 'order_not_found' };
+
+  if (order.payment?.status === 'paid') {
+    await sendMaterielEmailIfNeeded(order);
+    return { ok: true, order_id: order.order_id, materiel: true, already_processed: true };
+  }
+
+  if (!isPayplugPaymentPaid(payment)) {
+    if (payment.failure) {
+      return {
+        ok: false,
+        error: 'payment_failed',
+        message: payment.failure?.message || 'Paiement refusé',
+      };
+    }
+    return {
+      ok: false,
+      error: 'payment_pending',
+      pending: true,
+      message: 'Votre paiement est en cours de validation.',
+    };
+  }
+
+  order = await markMaterielPaidAsync(order.order_id, {
+    method: 'payplug',
+    payplug_payment_id: payment.id,
+  });
+  if (!order) return { ok: false, error: 'mark_paid_failed' };
+
+  removePendingCheckout(paymentId);
+  await sendMaterielEmailIfNeeded(order);
+  syncMaterielClient(order).catch((err) =>
+    logError('Sync client matériel', { error: err.message, order_id: order.order_id })
+  );
+  logInfo('Paiement matériel PayPlug confirmé', { order_id: order.order_id, payment_id: paymentId });
   return {
     ok: true,
     order_id: order.order_id,
@@ -745,7 +818,7 @@ function createApp() {
 
       const orderId = `MAT-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
 
-      if (!stripe) {
+      if (!isPayplugEnabled()) {
         if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true') {
           const order = await createMaterielOrderAsync({
             customer,
@@ -763,7 +836,7 @@ function createApp() {
             redirect: `/success.html?order=${order.order_id}&type=materiel&demo=1`,
           });
         }
-        return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
+        return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
 
       const baseUrl = getCheckoutBaseUrl(req);
@@ -778,29 +851,44 @@ function createApp() {
         logError('Sync client matériel (checkout)', { order_id: orderId, error: err.message })
       );
 
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        payment_method_types: ['card', 'paypal'],
-        line_items: buildStripeLineItems(items),
-        customer_email: customer.email,
+      const payment = await createHostedPayment({
+        order: {
+          order_id: orderId,
+          customer_full: customer,
+          customer_short: customer,
+        },
+        amountCents: total_cents,
+        description: `Matériel Boxing Center (${items.length} article${items.length > 1 ? 's' : ''})`,
+        baseUrl,
         metadata: {
           order_type: 'materiel',
           order_id: orderId,
+          payment_plan: 'once',
         },
-        success_url: `${baseUrl}/success.html?session_id={CHECKOUT_SESSION_ID}&order=${orderId}&type=materiel`,
-        cancel_url: `${baseUrl}/panier?cancelled=1`,
+        customerOverrides: customer,
+        returnUrl: `${baseUrl}/success.html?order=${encodeURIComponent(orderId)}&type=materiel&payplug_return=1`,
+        cancelUrl: `${baseUrl}/panier?cancelled=1`,
       });
+      const url = hostedPaymentUrl(payment);
+      if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
 
-      savePendingCheckout(session.id, {
+      savePendingCheckout(payment.id, {
         order_type: 'materiel',
         order_id: orderId,
         customer,
         pickup_gym: customer.pickup_gym,
         items,
         total_cents,
+        payplug_payment_id: payment.id,
       });
 
-      res.json({ ok: true, mode: 'stripe', url: session.url, session_id: session.id, order_id: orderId });
+      res.json({
+        ok: true,
+        mode: 'payplug',
+        url,
+        payment_id: payment.id,
+        order_id: orderId,
+      });
     } catch (err) {
       logError('Erreur checkout matériel', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
@@ -1709,7 +1797,6 @@ function createApp() {
         order = await updateGymAsync(order.order_id, req.body.gym);
       }
 
-      const orderStripe = stripeForOrder(order) || stripe;
       const product = findProduct(order.product_id) || order.product_snapshot;
 
       if (order.payment?.status === 'paid') {
@@ -1718,32 +1805,6 @@ function createApp() {
           mode: 'already_paid',
           redirect: inscriptionRedirect(order),
         });
-      }
-
-      if (orderStripe && req.body.session_id) {
-        try {
-          const session = await orderStripe.checkout.sessions.retrieve(req.body.session_id);
-          const lifecycleId =
-            session.metadata?.lifecycle_order_id || session.metadata?.order_id;
-          if (
-            session.payment_status === 'paid' &&
-            lifecycleId === order.order_id
-          ) {
-            order = await markPaymentPaid(order.order_id, {
-              method: 'stripe',
-              stripe_session_id: session.id,
-              iban: order.payment?.iban,
-              billing_plan: session.metadata?.billing_plan || order.payment?.billing_plan,
-            });
-            return res.json({
-              ok: true,
-              mode: 'already_paid',
-              redirect: inscriptionRedirect(order),
-            });
-          }
-        } catch {
-          /* session invalide — continuer vers nouveau paiement */
-        }
       }
 
       const paymentErrors = validatePaymentForm(req.body, product);
@@ -1764,20 +1825,13 @@ function createApp() {
       const rawBilling = String(req.body.billing_plan || '').trim().toLowerCase();
       const billingPlan = normalizeBillingPlan(rawBilling, product);
       const paymentPlan = normalizePaymentPlan(req.body.payment_plan, product);
+      const payMethod = String(req.body.pay_method || '').toLowerCase();
       const preferredCheckout =
-        rawBilling === 'paypal' ? 'paypal' : billingPlan === 'paypal' ? 'paypal' : 'card';
-      // Badge toujours ~72h / IBAN — plus de choix client
+        payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
+          ? 'paypal'
+          : 'card';
       const badgeTiming = 'deferred';
       const badgeMethod = 'iban';
-      const form = {
-        ...short,
-        ...req.body,
-        order_id: order.order_id,
-        billing_plan: billingPlan,
-        payment_plan: paymentPlan,
-        badge_timing: badgeTiming,
-        badge_method: badgeMethod,
-      };
 
       order.payment = {
         ...(order.payment || {}),
@@ -1809,139 +1863,134 @@ function createApp() {
 
       const gym = order.customer_full?.gym || req.body.gym || 'minimes';
       const baseUrl = getCheckoutBaseUrl(req);
+      const planLabel = paymentPlan || (productSupportsInstallmentChoice(product) ? 'once' : 'once');
 
-      // Offre 259 € — 4× : PayPlug (Oney) ou PayPal (Stripe). Deciplus reste comptant.
-      if (paymentPlan === '4x') {
-        const fourMethod = String(req.body.pay_method || '').toLowerCase();
-        const usePaypalFor4x =
-          fourMethod === 'paypal' || preferredCheckout === 'paypal' || rawBilling === 'paypal';
+      if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true' && !isPayplugEnabled() && !isPaypalEnabled()) {
+        order = await markPaymentPaid(order.order_id, {
+          method: 'demo',
+          billing_plan: billingPlan,
+          payment_plan: planLabel,
+        });
+        return res.json({
+          ok: true,
+          mode: 'demo',
+          redirect: inscriptionRedirect(order),
+        });
+      }
 
-        if (!usePaypalFor4x) {
-          if (!isPayplugEnabled()) {
-            return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
-          }
-          const customerOverrides = {
-            address: req.body.address || order.customer_full?.address,
-            postal_code: req.body.postal_code || order.customer_full?.postal_code,
-            city: req.body.city || order.customer_full?.city,
-            gender: req.body.gender || order.customer_full?.gender || 'M',
-            phone: req.body.phone || short?.phone,
-          };
-          try {
-            const payment = await createFourTimesPayment({
-              order: {
-                ...order,
-                customer_full: {
-                  ...(order.customer_full || {}),
-                  gym,
-                  ...customerOverrides,
-                },
-              },
-              product,
-              baseUrl,
-              customerOverrides,
-            });
-            order.payment = {
-              ...order.payment,
-              method: 'payplug',
-              payment_plan: '4x',
-              preferred_checkout: 'payplug',
-              payplug_payment_id: payment.id,
-              status: 'pending',
-            };
-            if (customerOverrides.address) {
-              order.customer_full = {
-                ...(order.customer_full || {}),
-                gym,
-                address: customerOverrides.address,
-                postal_code: customerOverrides.postal_code,
-                city: customerOverrides.city,
-                gender: customerOverrides.gender,
-              };
-            }
-            await saveOrderAsync(order);
-            const url = hostedPaymentUrl(payment);
-            if (!url) {
-              return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
-            }
-            return res.json({
-              ok: true,
-              mode: 'payplug_4x',
-              url,
-              payment_id: payment.id,
-            });
-          } catch (err) {
-            if (err.code === 'payplug_customer_incomplete') {
-              return res.status(400).json({
-                ok: false,
-                error: err.message,
-                missing: err.missing || [],
-              });
-            }
-            throw err;
-          }
+      // ——— PayPal natif (1× ou tentative Pay Later si éligible côté PayPal) ———
+      if (preferredCheckout === 'paypal') {
+        if (!isPaypalEnabled()) {
+          return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
         }
-        // 4× + PayPal → Stripe Checkout (PayPal), Deciplus comptant
+        const ppOrder = await createPaypalOrder({
+          order,
+          product,
+          amountCents: product.price_cents,
+          baseUrl,
+          paymentPlan: planLabel === '4x' ? '4x' : 'once',
+        });
+        if (!ppOrder.approve_url) {
+          return res.status(502).json({ ok: false, error: 'paypal_url_missing' });
+        }
         order.payment = {
           ...order.payment,
-          payment_plan: '4x',
+          method: 'paypal',
           preferred_checkout: 'paypal',
-          billing_plan: 'paypal',
+          payment_plan: planLabel === '4x' ? '4x' : 'once',
+          paypal_order_id: ppOrder.id,
+          status: 'pending',
         };
         await saveOrderAsync(order);
+        return res.json({
+          ok: true,
+          mode: 'paypal',
+          url: ppOrder.approve_url,
+          paypal_order_id: ppOrder.id,
+        });
       }
 
-      if (!orderStripe) {
-        if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true') {
-          order = await markPaymentPaid(order.order_id, {
-            method: 'demo',
-            billing_plan: billingPlan,
-            payment_plan: paymentPlan || 'once',
+      // ——— Carte PayPlug : 4× Oney ou 1× hosted ———
+      if (!isPayplugEnabled()) {
+        return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
+      }
+
+      const customerOverrides = {
+        address: req.body.address || order.customer_full?.address,
+        postal_code: req.body.postal_code || order.customer_full?.postal_code,
+        city: req.body.city || order.customer_full?.city,
+        gender: req.body.gender || order.customer_full?.gender || 'M',
+        phone: req.body.phone || short?.phone,
+      };
+
+      try {
+        let payment;
+        if (planLabel === '4x') {
+          payment = await createFourTimesPayment({
+            order: {
+              ...order,
+              customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
+            },
+            product,
+            baseUrl,
+            customerOverrides,
           });
-          return res.json({
-            ok: true,
-            mode: 'demo',
-            redirect: inscriptionRedirect(order),
+        } else {
+          payment = await createHostedPayment({
+            order: {
+              ...order,
+              customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
+            },
+            product,
+            baseUrl,
+            amountCents: product.price_cents,
+            metadata: {
+              payment_plan: 'once',
+              billing_plan: billingPlan || '',
+            },
+            customerOverrides,
           });
         }
-        return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
+
+        order.payment = {
+          ...order.payment,
+          method: 'payplug',
+          payment_plan: planLabel === '4x' ? '4x' : 'once',
+          preferred_checkout: 'payplug',
+          payplug_payment_id: payment.id,
+          status: 'pending',
+        };
+        if (customerOverrides.address) {
+          order.customer_full = {
+            ...(order.customer_full || {}),
+            gym,
+            address: customerOverrides.address,
+            postal_code: customerOverrides.postal_code,
+            city: customerOverrides.city,
+            gender: customerOverrides.gender,
+          };
+        }
+        await saveOrderAsync(order);
+        const url = hostedPaymentUrl(payment);
+        if (!url) {
+          return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
+        }
+        return res.json({
+          ok: true,
+          mode: planLabel === '4x' ? 'payplug_4x' : 'payplug',
+          url,
+          payment_id: payment.id,
+        });
+      } catch (err) {
+        if (err.code === 'payplug_customer_incomplete') {
+          return res.status(400).json({
+            ok: false,
+            error: err.message,
+            missing: err.missing || [],
+          });
+        }
+        throw err;
       }
-
-      const payload = buildOrderPayload(
-        {
-          ...form,
-          gym,
-          gender: req.body.gender || 'M',
-          payment_plan: paymentPlan || (productSupportsInstallmentChoice(product) ? 'once' : null),
-          payment_method: 'stripe',
-        },
-        product
-      );
-      payload.lifecycle_order_id = order.order_id;
-
-      const sessionParams = createCheckoutSessionParams({
-        product,
-        order,
-        payload,
-        baseUrl,
-        packOrderMetadata,
-        billingPlan,
-        badgeTiming,
-        badgeMethod,
-      });
-      if (sessionParams.metadata) {
-        sessionParams.metadata.payment_plan =
-          paymentPlan || (productSupportsInstallmentChoice(product) ? 'once' : '');
-      }
-      const session = await orderStripe.checkout.sessions.create(sessionParams);
-
-      savePendingOrder(session.id, payload);
-      res.json({
-        ok: true,
-        mode: billingPlan === 'cb' ? 'stripe_subscription' : 'stripe',
-        url: session.url,
-        session_id: session.id,
-      });
     } catch (err) {
       logError('Erreur pay order', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
@@ -2079,8 +2128,7 @@ function createApp() {
       const body = req.body || {};
       const product = findProduct(body.target_product_id);
       if (!product) return res.status(404).json({ ok: false, error: 'Offre introuvable' });
-      if (!stripe) return res.status(503).json({ ok: false, error: 'stripe_not_configured' });
-      // Infos bloquantes : nom, prénom, date de naissance
+      if (!isPayplugEnabled()) return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       if (!body.first_name || !body.last_name || !body.birthdate) {
         return res.status(400).json({
           ok: false,
@@ -2095,6 +2143,15 @@ function createApp() {
         });
       }
       const baseUrl = getCheckoutBaseUrl(req);
+      let deciplusMemberId = body.deciplus_member_id || '';
+      if (!deciplusMemberId && body.verify_order_id) {
+        try {
+          const verified = await loadOrderAsync(body.verify_order_id);
+          if (verified?.deciplus_member_id) deciplusMemberId = verified.deciplus_member_id;
+        } catch {
+          /* ignore */
+        }
+      }
       const meta = {
         order_type: 'membership_change',
         target_product_id: product.id,
@@ -2106,29 +2163,26 @@ function createApp() {
         gym: body.gym || 'minimes',
         current_plan: body.current_plan || '',
         verify_order_id: body.verify_order_id || '',
+        deciplus_member_id: String(deciplusMemberId || ''),
+        payment_plan: 'once',
       };
-      const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
-        payment_method_types: ['card', 'paypal'],
-        customer_email: body.email || undefined,
-        line_items: [
-          {
-            price_data: {
-              currency: 'eur',
-              unit_amount: product.price_cents,
-              product_data: {
-                name: product.display_name || product.name,
-                description: 'Changement prélèvement → comptant',
-              },
-            },
-            quantity: 1,
-          },
-        ],
+      const payment = await createHostedPayment({
+        amountCents: product.price_cents,
+        description: product.display_name || product.name || 'Changement abo comptant',
+        baseUrl,
         metadata: meta,
-        success_url: `${baseUrl}/gerer-abonnement?change=1&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/gerer-abonnement?change=cancelled`,
+        customerOverrides: {
+          first_name: body.first_name,
+          last_name: body.last_name,
+          email: body.email,
+          phone: body.phone,
+        },
+        returnUrl: `${baseUrl}/gerer-abonnement?change=1&payplug_return=1`,
+        cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled`,
       });
-      res.json({ ok: true, url: session.url, session_id: session.id });
+      const url = hostedPaymentUrl(payment);
+      if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
+      res.json({ ok: true, mode: 'payplug', url, payment_id: payment.id });
     } catch (err) {
       logError('Erreur change checkout', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
@@ -2137,16 +2191,53 @@ function createApp() {
 
   app.post('/api/membership/change/confirm', async (req, res) => {
     try {
+      const paymentId = req.body?.payment_id || req.body?.payplug_payment_id;
       const sessionId = req.body?.session_id;
+      const { enqueueChangeAfterPayment, getCancelStatus } = require('./lib/membership');
+
+      if (paymentId && isPayplugEnabled()) {
+        const payment = await retrievePayment(paymentId);
+        if (!isPayplugPaymentPaid(payment)) {
+          return res.status(402).json({ ok: false, error: 'paiement non confirmé' });
+        }
+        const meta = payment.metadata || {};
+        let deciplusMemberId = meta.deciplus_member_id || null;
+        if (!deciplusMemberId && meta.verify_order_id) {
+          try {
+            const verified = await loadOrderAsync(meta.verify_order_id);
+            if (verified?.deciplus_member_id) deciplusMemberId = verified.deciplus_member_id;
+            else {
+              const st = await getCancelStatus(meta.verify_order_id);
+              if (st?.deciplus_member_id) deciplusMemberId = st.deciplus_member_id;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        const result = await enqueueChangeAfterPayment({
+          identity: {
+            first_name: meta.first_name,
+            last_name: meta.last_name,
+            birthdate: meta.birthdate,
+            email: meta.email,
+            phone: meta.phone,
+            gym: meta.gym || 'minimes',
+          },
+          targetProductId: meta.target_product_id,
+          stripeSessionId: `payplug_${payment.id}`,
+          deciplusMemberId,
+        });
+        return res.json({ ok: true, ...result, mode: 'payplug' });
+      }
+
       if (!sessionId || !stripe) {
-        return res.status(400).json({ ok: false, error: 'session_id requis' });
+        return res.status(400).json({ ok: false, error: 'payment_id ou session_id requis' });
       }
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       if (!isStripeCheckoutPaid(session)) {
         return res.status(402).json({ ok: false, error: 'paiement non confirmé' });
       }
       const meta = session.metadata || {};
-      const { enqueueChangeAfterPayment, getCancelStatus } = require('./lib/membership');
       let deciplusMemberId = null;
       if (meta.verify_order_id) {
         try {
@@ -2425,14 +2516,29 @@ function createApp() {
   });
 
   async function markPayplugOrderPaid(order, payment) {
+    const plan =
+      payment.metadata?.payment_plan ||
+      order.payment?.payment_plan ||
+      'once';
     const paid = await markPaymentPaid(order.order_id, {
       method: 'payplug',
-      payment_plan: '4x',
+      payment_plan: plan,
+      billing_plan: order.payment?.billing_plan || payment.metadata?.billing_plan || null,
       payplug_payment_id: payment.id,
       status: 'paid',
     });
     return paid;
   }
+
+  app.get('/api/payments/config', (_req, res) => {
+    res.json({
+      ok: true,
+      payplug: isPayplugEnabled(),
+      paypal: isPaypalEnabled(),
+      paypal_client_id: isPaypalEnabled() ? paypalPublicClientId() : null,
+      paypal_mode: paypalMode(),
+    });
+  });
 
   app.post('/api/webhooks/payplug', async (req, res) => {
     try {
@@ -2442,10 +2548,41 @@ function createApp() {
       if (!isPayplugEnabled()) return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
 
       const payment = await retrievePayment(paymentId);
-      const orderId =
-        payment.metadata?.lifecycle_order_id ||
-        payment.metadata?.order_id ||
-        null;
+      const meta = payment.metadata || {};
+
+      // Changement d’abo (pas de lifecycle order)
+      if (meta.order_type === 'membership_change' && isPayplugPaymentPaid(payment)) {
+        const { enqueueChangeAfterPayment } = require('./lib/membership');
+        await enqueueChangeAfterPayment({
+          identity: {
+            first_name: meta.first_name,
+            last_name: meta.last_name,
+            birthdate: meta.birthdate,
+            email: meta.email,
+            phone: meta.phone,
+            gym: meta.gym || 'minimes',
+          },
+          targetProductId: meta.target_product_id,
+          stripeSessionId: `payplug_${payment.id}`,
+          deciplusMemberId: meta.deciplus_member_id || null,
+        });
+        logInfo('PayPlug changement abo confirmé', { payment_id: paymentId });
+        return res.json({ ok: true, membership_change: true });
+      }
+
+      // Matériel
+      if (meta.order_type === 'materiel') {
+        const out = await fulfillMaterielPayplug(paymentId);
+        return res.json({
+          ok: true,
+          materiel: true,
+          fulfilled: Boolean(out.ok),
+          order_id: out.order_id || meta.order_id || null,
+          status: out.error || (out.already_processed ? 'already_paid' : 'ok'),
+        });
+      }
+
+      const orderId = meta.lifecycle_order_id || meta.order_id || null;
       if (!orderId) {
         logWarn('PayPlug webhook sans order_id', { payment_id: paymentId });
         return res.json({ ok: true, ignored: true });
@@ -2460,11 +2597,15 @@ function createApp() {
       }
       if (isPayplugPaymentPaid(payment)) {
         await markPayplugOrderPaid(order, payment);
-        logInfo('PayPlug 4× confirmé', { order_id: orderId, payment_id: paymentId });
+        logInfo('PayPlug confirmé', {
+          order_id: orderId,
+          payment_id: paymentId,
+          payment_plan: payment.metadata?.payment_plan || order.payment?.payment_plan,
+        });
       } else if (payment.failure) {
         await markPaymentFailed(order.order_id, {
           method: 'payplug',
-          payment_plan: '4x',
+          payment_plan: payment.metadata?.payment_plan || order.payment?.payment_plan || 'once',
           payplug_payment_id: payment.id,
           failure: payment.failure,
         }).catch(() => {});
@@ -2472,6 +2613,37 @@ function createApp() {
       res.json({ ok: true });
     } catch (err) {
       logError('Erreur webhook PayPlug', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/checkout/confirm-payplug-materiel', async (req, res) => {
+    try {
+      const paymentId = req.body?.payment_id || req.body?.payplug_payment_id;
+      const orderIdHint = req.body?.order_id || null;
+      if (!paymentId && !orderIdHint) {
+        return res.status(400).json({ ok: false, error: 'payment_id ou order_id requis' });
+      }
+      let id = paymentId;
+      if (!id && orderIdHint) {
+        const pendingByOrder = loadPendingCheckout(orderIdHint);
+        id = pendingByOrder?.payplug_payment_id || null;
+      }
+      // Pending keys are PayPlug payment ids (see cart checkout)
+      if (!id) {
+        const order = await loadMaterielOrderAsync(orderIdHint);
+        id = order?.payment?.payplug_payment_id || null;
+      }
+      if (!id) return res.status(400).json({ ok: false, error: 'payment_id manquant' });
+
+      const out = await fulfillMaterielPayplug(id);
+      if (!out.ok) {
+        const status = out.error === 'payment_failed' ? 402 : out.error === 'payment_pending' ? 202 : 400;
+        return res.status(status).json(out);
+      }
+      return res.json(out);
+    } catch (err) {
+      logError('Erreur confirm PayPlug matériel', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });
@@ -2511,17 +2683,69 @@ function createApp() {
         return res.status(402).json({
           ok: false,
           error: 'payment_failed',
-          message: payment.failure?.message || 'Paiement 4× refusé',
+          message: payment.failure?.message || 'Paiement refusé',
         });
       }
       return res.json({
         ok: true,
         pending: isPayplugPaymentPending(payment) || true,
         message:
-          'Votre demande de paiement en 4× est en cours de validation. Merci de patienter quelques instants.',
+          'Votre paiement est en cours de validation. Merci de patienter quelques instants.',
       });
     } catch (err) {
       logError('Erreur confirm PayPlug', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/checkout/confirm-paypal', async (req, res) => {
+    try {
+      const { order_id: orderId, token, paypal_order_id: paypalOrderId } = req.body || {};
+      if (!orderId || !token) {
+        return res.status(400).json({ ok: false, error: 'order_id et token requis' });
+      }
+      let order = await loadOrderAsync(orderId);
+      if (!order || !verifyAccess(order, token)) {
+        return res.status(403).json({ ok: false, error: 'forbidden' });
+      }
+      if (order.payment?.status === 'paid') {
+        return res.json({
+          ok: true,
+          already_paid: true,
+          redirect: inscriptionRedirect(order),
+        });
+      }
+      if (!isPaypalEnabled()) {
+        return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
+      }
+      const id = paypalOrderId || order.payment?.paypal_order_id;
+      if (!id) return res.status(400).json({ ok: false, error: 'paypal_order_id manquant' });
+
+      let captured = await retrievePaypalOrder(id);
+      if (!isPaypalOrderPaid(captured)) {
+        captured = await capturePaypalOrder(id);
+      }
+      if (!isPaypalOrderPaid(captured)) {
+        return res.status(402).json({
+          ok: false,
+          error: 'payment_not_completed',
+          message: 'Paiement PayPal non confirmé',
+        });
+      }
+      order = await markPaymentPaid(order.order_id, {
+        method: 'paypal',
+        payment_plan: order.payment?.payment_plan || 'once',
+        billing_plan: order.payment?.billing_plan || 'paypal',
+        paypal_order_id: id,
+        status: 'paid',
+      });
+      return res.json({
+        ok: true,
+        paid: true,
+        redirect: inscriptionRedirect(order),
+      });
+    } catch (err) {
+      logError('Erreur confirm PayPal', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });
