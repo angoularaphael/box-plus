@@ -1,17 +1,18 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Boxing Center Toulouse — Club de boxe : abonnements, cours & matériel</title>
   <meta name="description" content="Club de boxe à Toulouse depuis 2016 : 5 salles, 8 disciplines, débutants bienvenus. Abonnements, séance d'essai gratuite, coachings et matériel de boxe en ligne." />
-  <script src="js/boot.js"></script>
+  <script src="/js/boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preload" as="image" href="img/bc/gym/gym-01.jpg" fetchpriority="high" />
+  <link rel="preload" as="image" href="/img/bc/gym/gym-01.jpg" fetchpriority="high" />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/boutique.css" />
-  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="/css/boutique.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <link rel="stylesheet" href="/css/offer-funnels.css" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Boxing Center Toulouse" />
   <meta property="og:locale" content="fr_FR" />
@@ -35,16 +36,16 @@
           loop
           playsinline
           preload="metadata"
-          poster="img/bc/gym/gym-01.jpg"
+          poster="/img/bc/gym/gym-01.jpg"
         >
-          <source src="media/hero-ambient.mp4" type="video/mp4" />
+          <source src="/media/hero-ambient.mp4" type="video/mp4" />
         </video>
-        <img class="hero__fallback" src="img/bc/gym/gym-01.jpg" alt="" width="1600" height="900" fetchpriority="high" />
+        <img class="hero__fallback" src="/img/bc/gym/gym-01.jpg" alt="" width="1600" height="900" fetchpriority="high" />
       </div>
       <div class="hero__veil" aria-hidden="true"></div>
       <div class="hero__inner" data-reveal-group>
         <p class="hero__brand" data-reveal>
-          <img src="img/bc/logo/BC_Logo_Officiel_Transparent.png" alt="Boxing Center" width="214" height="100" />
+          <img src="/img/bc/logo/BC_Logo_Officiel_Transparent.png" alt="Boxing Center" width="214" height="100" />
         </p>
         <h1 class="hero__title">
           <span data-reveal>La boxe,</span>
@@ -68,25 +69,51 @@
       </ul>
     </section>
 
+    <div class="promo-ticker" aria-hidden="true">
+      <div class="promo-ticker__track">
+        <span>Offre 259 € l'année</span><span>Offre 29 € pour démarrer</span><span>5 salles</span><span>Débutants bienvenus</span>
+        <span>Offre 259 € l'année</span><span>Offre 29 € pour démarrer</span><span>5 salles</span><span>Débutants bienvenus</span>
+      </div>
+    </div>
+
+    <section class="promo-special" aria-label="Offres spéciales">
+      <div class="promo-special__pulse" aria-hidden="true"></div>
+      <div class="promo-special__inner">
+        <div class="promo-special__copy">
+          <h2>259 € l'année · ou 29 € pour entrer</h2>
+          <p>Deux formules du moment — choisissez en un clic. Inscription en ligne, 5 salles, débutants bienvenus.</p>
+        </div>
+        <div class="promo-special__actions">
+          <a href="/offres-speciales" class="btn btn--lg" data-magnetic="0.25">Voir les offres spéciales</a>
+          <a href="/offre/29" class="btn white">Je commence à 29 €</a>
+        </div>
+      </div>
+    </section>
+
     <section class="section quickshop" aria-label="Catégories de la boutique">
       <div class="quickshop__grid" data-reveal-group>
+        <a class="qtile" href="/offres-speciales" data-reveal>
+          <img src="/img/bc/offers/offre-259.webp" alt="" loading="lazy" />
+          <span class="qtile__arrow" aria-hidden="true">↗</span>
+          <div class="qtile__label"><h3>Offres spéciales</h3><p>259 € l'année · 29 € pour démarrer</p></div>
+        </a>
         <a class="qtile" href="/abonnements" data-reveal>
-          <img src="img/bc/disc/boxe-anglaise.webp" alt="" loading="lazy" />
+          <img src="/img/bc/disc/boxe-anglaise.webp" alt="" loading="lazy" />
           <span class="qtile__arrow" aria-hidden="true">↗</span>
           <div class="qtile__label"><h3>Abonnements</h3><p>3, 6, 12 mois · sans engagement</p></div>
         </a>
         <a class="qtile" href="/seance-essai" data-reveal>
-          <img src="img/bc/disc/lady.webp" alt="" loading="lazy" />
+          <img src="/img/bc/disc/lady.webp" alt="" loading="lazy" />
           <span class="qtile__arrow" aria-hidden="true">↗</span>
           <div class="qtile__label"><h3>Séance d'essai</h3><p>Découvrez le club · Gratuit</p></div>
         </a>
         <a class="qtile" href="/coachings" data-reveal>
-          <img src="img/bc/disc/mma.webp" alt="" loading="lazy" />
+          <img src="/img/bc/disc/mma.webp" alt="" loading="lazy" />
           <span class="qtile__arrow" aria-hidden="true">↗</span>
           <div class="qtile__label"><h3>Coachings</h3><p>Cours particuliers · packs 1 à 10</p></div>
         </a>
         <a class="qtile" href="/materiel" data-reveal>
-          <img src="img/bc/disc/cross.webp" alt="" loading="lazy" />
+          <img src="/img/bc/disc/cross.webp" alt="" loading="lazy" />
           <span class="qtile__arrow" aria-hidden="true">↗</span>
           <div class="qtile__label"><h3>Matériel</h3><p>Gants, protections, textile club</p></div>
         </a>
@@ -131,22 +158,22 @@
       <div class="disc-reel" data-disc-reel>
         <div class="disc-reel__sticky">
           <div class="disc-reel__track" data-disc-track>
-            <a class="disc-tile" href="/abonnements"><img src="img/bc/disc/boxe-anglaise.webp" alt="Boxe anglaise" loading="lazy"><span class="disc-tile__name">Boxe anglaise</span></a>
-            <a class="disc-tile" href="/abonnements"><img src="img/bc/disc/muay-thai.webp" alt="Boxe thaï" loading="lazy"><span class="disc-tile__name">Boxe thaï</span></a>
-            <a class="disc-tile" href="/abonnements"><img src="img/bc/disc/kick.webp" alt="Kickboxing" loading="lazy"><span class="disc-tile__name">Kickboxing</span></a>
-            <a class="disc-tile" href="/abonnements"><img src="img/bc/disc/mma.webp" alt="MMA" loading="lazy"><span class="disc-tile__name">MMA</span></a>
-            <a class="disc-tile" href="/abonnements"><img src="img/bc/disc/cross.webp" alt="Cross training" loading="lazy"><span class="disc-tile__name">Cross training</span></a>
-            <a class="disc-tile" href="/abonnements"><img src="img/bc/disc/lady.webp" alt="Boxing Lady" loading="lazy"><span class="disc-tile__name">Boxing Lady</span></a>
-            <a class="disc-tile" href="/abonnements#enfants"><img src="img/bc/disc/educative.webp" alt="Boxe éducative" loading="lazy"><span class="disc-tile__name">Boxe éducative</span></a>
-            <a class="disc-tile" href="/abonnements"><img src="img/bc/disc/boxing-training.webp" alt="Fitness boxing" loading="lazy"><span class="disc-tile__name">Fitness boxing</span></a>
+            <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/boxe-anglaise.webp" alt="Boxe anglaise" loading="lazy"><span class="disc-tile__name">Boxe anglaise</span></a>
+            <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/muay-thai.webp" alt="Boxe thaï" loading="lazy"><span class="disc-tile__name">Boxe thaï</span></a>
+            <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/kick.webp" alt="Kickboxing" loading="lazy"><span class="disc-tile__name">Kickboxing</span></a>
+            <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/mma.webp" alt="MMA" loading="lazy"><span class="disc-tile__name">MMA</span></a>
+            <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/cross.webp" alt="Cross training" loading="lazy"><span class="disc-tile__name">Cross training</span></a>
+            <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/lady.webp" alt="Boxing Lady" loading="lazy"><span class="disc-tile__name">Boxing Lady</span></a>
+            <a class="disc-tile" href="/abonnements#enfants"><img src="/img/bc/disc/educative.webp" alt="Boxe éducative" loading="lazy"><span class="disc-tile__name">Boxe éducative</span></a>
+            <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/boxing-training.webp" alt="Fitness boxing" loading="lazy"><span class="disc-tile__name">Fitness boxing</span></a>
           </div>
         </div>
       </div>
     </section>
 
     <section class="scrub-band" data-scrub aria-label="L'ambiance Boxing Center">
-      <video class="scrub-band__video" data-scrub-video muted playsinline preload="auto" poster="img/bc/disc/showcase-ring.webp">
-        <source src="media/scrub-ring.mp4" type="video/mp4" />
+      <video class="scrub-band__video" data-scrub-video muted playsinline preload="auto" poster="/img/bc/disc/showcase-ring.webp">
+        <source src="/media/scrub-ring.mp4" type="video/mp4" />
       </video>
       <div class="scrub-band__veil" aria-hidden="true"></div>
       <div class="scrub-band__copy" data-reveal>
@@ -160,7 +187,7 @@
       <div class="why__grid">
         <div class="why__media" data-reveal>
           <div data-parallax="0.12">
-            <img src="img/bc/disc/showcase-ring.webp" alt="Entraînement encadré au Boxing Center" loading="lazy" width="620" height="760" />
+            <img src="/img/bc/disc/showcase-ring.webp" alt="Entraînement encadré au Boxing Center" loading="lazy" width="620" height="760" />
           </div>
         </div>
         <div class="why__content">
@@ -230,12 +257,12 @@
 
   <div id="site-footer"></div>
 
-  <script src="js/layout.js"></script>
-  <script src="js/motion.js"></script>
-  <script src="js/tracking.js" defer></script>
-  <script src="js/offers.js"></script>
-  <script src="js/faq.js"></script>
-  <script src="js/home.js"></script>
-  <script src="js/home-gear.js"></script>
+  <script src="/js/layout.js"></script>
+  <script src="/js/motion.js"></script>
+  <script src="/js/tracking.js" defer></script>
+  <script src="/js/offers.js"></script>
+  <script src="/js/faq.js"></script>
+  <script src="/js/home.js"></script>
+  <script src="/js/home-gear.js"></script>
 </body>
 </html>

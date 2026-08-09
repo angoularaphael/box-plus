@@ -1,77 +1,86 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Offres spéciales boxe Toulouse — 259 € l'année ou 29 € pour démarrer | Boxing Center</title>
   <meta name="description" content="Deux façons d'entrer au Boxing Center Toulouse : 12 mois à 259 € (1× ou 4×) ou première échéance à 29 € sans engagement. Choisissez votre formule en ligne." />
-  <script src="js/boot.js"></script>
+  <script src="/js/boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/boutique.css" />
-  <link rel="stylesheet" href="css/components.css" />
-  <link rel="stylesheet" href="css/offer-funnels.css" />
+  <link rel="stylesheet" href="/css/boutique.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <link rel="stylesheet" href="/css/offer-funnels.css" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Boxing Center Toulouse" />
   <meta property="og:locale" content="fr_FR" />
   <meta property="og:title" content="Offres spéciales boxe Toulouse — 259 € ou 29 € | Boxing Center" />
   <meta property="og:description" content="Deux façons d'entrer au Boxing Center : année à 259 € ou démarrage à 29 €. 5 salles, débutants bienvenus." />
+  <meta property="og:image" content="/img/bc/offers/offre-259.webp" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="theme-color" content="#0C1829" />
 </head>
 <body class="offer-hub-page">
   <div id="site-header"></div>
 
-  <main class="offer-hub" data-offer-hub data-phase="intro">
+  <div id="gloveIntro" class="glove-intro" aria-hidden="true">
+    <canvas id="gloveSparks" class="glove-intro__canvas"></canvas>
+    <img id="gloveLeft" class="glove-intro__glove glove-intro__glove--left" src="/img/bc/offers/intro/glove-left.svg" alt="" />
+    <img id="gloveRight" class="glove-intro__glove glove-intro__glove--right" src="/img/bc/offers/intro/glove-right.svg" alt="" />
+    <div id="gloveLogo" class="glove-intro__logo">
+      <img src="/img/bc/offers/intro/logo-boxing-center.svg" alt="Boxing Center" width="180" height="80" />
+    </div>
+  </div>
+
+  <main id="offerChoice" class="offer-hub offer-choice">
     <div class="offer-hub__sky" aria-hidden="true"></div>
     <div class="offer-hub__inner">
-      <p class="offer-hub__brand">
-        <img src="img/bc/logo/BC_Logo_Officiel_Transparent.png" alt="Boxing Center" width="214" height="100" />
-      </p>
       <p class="offer-hub__eyebrow">Offres du moment · Toulouse</p>
-      <h1 class="offer-hub__title">Deux portes.<br />Une seule salle d'attente&nbsp;: aucune.</h1>
+      <h1 class="offer-hub__title">Deux portes.<br />Zéro excuse.</h1>
       <p class="offer-hub__lead">
-        Vous voulez tester la flexibilité, ou verrouiller un an à prix fixe&nbsp;?
-        Voici les deux formules qui font bouger Toulouse — choisissez la vôtre.
+        Flexibilité à 29&nbsp;€, ou année verrouillée à 259&nbsp;€.
+        Clique. Inscris-toi. Monte sur le ring.
       </p>
 
-      <div class="orbit-stage" aria-label="Choix entre offre 259 euros et offre 29 euros">
-        <div class="orbit-stage__ring" aria-hidden="true"></div>
-        <div class="orbit-stage__core" aria-hidden="true">VS</div>
-
-        <div class="orbit-arm orbit-arm--259">
-          <a class="orbit-card orbit-card--259" href="/offre/259">
-            <img src="img/bc/offers/offre-259.webp" alt="Offre 12 mois à 259 euros" width="400" height="400" />
-            <div class="orbit-card__meta">
-              <strong>259&nbsp;€</strong>
-              <span>12 mois · 1× ou 4×</span>
-            </div>
-          </a>
-        </div>
-
-        <div class="orbit-arm orbit-arm--29">
-          <a class="orbit-card orbit-card--29" href="/offre/29">
-            <img src="img/bc/offers/offre-29.webp" alt="Offre à 29 euros la première échéance" width="400" height="400" />
-            <div class="orbit-card__meta">
-              <strong>29&nbsp;€</strong>
-              <span>Pour démarrer · sans engagement</span>
-            </div>
-          </a>
-        </div>
+      <div class="offer-pick" data-reveal-group>
+        <a class="offer-pick__card offer-pick__card--259" href="/offre/259" data-reveal data-magnetic="0.18">
+          <div class="offer-pick__glow" aria-hidden="true"></div>
+          <img src="/img/bc/offers/offre-259.webp" alt="Offre 12 mois à 259 euros" width="560" height="700" />
+          <div class="offer-pick__meta">
+            <span class="offer-pick__badge">Prix fixe</span>
+            <strong>259&nbsp;€</strong>
+            <span>12 mois · 1× ou 4× sans frais</span>
+            <em>Je prends l'année →</em>
+          </div>
+        </a>
+        <a class="offer-pick__card offer-pick__card--29" href="/offre/29" data-reveal data-magnetic="0.18">
+          <div class="offer-pick__glow" aria-hidden="true"></div>
+          <img src="/img/bc/offers/offre-29.webp" alt="Offre Duo 29 euros" width="560" height="700" />
+          <div class="offer-pick__meta">
+            <span class="offer-pick__badge">Pour démarrer</span>
+            <strong>29&nbsp;€</strong>
+            <span>1ʳᵉ échéance · sans engagement long</span>
+            <em>Je commence →</em>
+          </div>
+        </a>
       </div>
 
-      <p class="offer-hub__hint">Les offres se placent… choisissez celle qui vous parle.</p>
-      <div class="offer-hub__actions">
-        <a href="/offre/259" class="btn btn--lg" data-magnetic="0.25">Je veux l'année — 259&nbsp;€</a>
-        <a href="/offre/29" class="btn white btn--lg" data-magnetic="0.22">Je commence à 29&nbsp;€</a>
-      </div>
+      <p class="offer-hub__hint">5 salles · débutants bienvenus · inscription 100&nbsp;% en ligne</p>
     </div>
+
+    <section class="offer-urgency">
+      <div class="offer-urgency__inner" data-reveal-group>
+        <div data-reveal><strong data-count="5">0</strong><span>salles</span></div>
+        <div data-reveal><strong data-count="8">0</strong><span>disciplines</span></div>
+        <div data-reveal><strong>24/7</strong><span>inscription en ligne</span></div>
+      </div>
+    </section>
   </main>
 
   <div id="site-footer"></div>
-  <script src="js/layout.js"></script>
-  <script src="js/motion.js"></script>
-  <script src="js/offer-orbit.js"></script>
+  <script src="/js/layout.js"></script>
+  <script src="/js/motion.js"></script>
+  <script src="/js/offer-glove-intro.js"></script>
 </body>
 </html>

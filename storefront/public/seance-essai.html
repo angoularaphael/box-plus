@@ -1,16 +1,17 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Séance d'essai boxe gratuite à Toulouse — réservez en ligne | Boxing Center</title>
   <meta name="description" content="Testez un cours de boxe à Toulouse gratuitement : encadré par un coach diplômé, adapté aux débutants, dans l'une des 5 salles Boxing Center. Réservation en ligne." />
-  <script src="js/boot.js"></script>
+  <script src="/js/boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/boutique.css" />
-  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="/css/boutique.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <link rel="stylesheet" href="/css/offer-funnels.css" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Boxing Center Toulouse" />
   <meta property="og:locale" content="fr_FR" />
@@ -60,21 +61,21 @@
       </div>
       <div class="aud-grid" data-reveal-group>
         <div class="aud-card" data-reveal>
-          <div class="aud-card__media"><img src="img/bc/disc/boxing-training.webp" alt="Débutants en cours de boxe encadrés" loading="lazy" /></div>
+          <div class="aud-card__media"><img src="/img/bc/disc/boxing-training.webp" alt="Débutants en cours de boxe encadrés" loading="lazy" /></div>
           <div class="aud-card__body">
             <h4>Débutants</h4>
             <p>Jamais mis un gant ? C'est exactement pour vous — on vous guide dès la première minute.</p>
           </div>
         </div>
         <div class="aud-card" data-reveal>
-          <div class="aud-card__media"><img src="img/bc/disc/lady.webp" alt="Cours de boxe pour femmes au Boxing Center" loading="lazy" /></div>
+          <div class="aud-card__media"><img src="/img/bc/disc/lady.webp" alt="Cours de boxe pour femmes au Boxing Center" loading="lazy" /></div>
           <div class="aud-card__body">
             <h4>Femmes &amp; hommes</h4>
             <p>Cours mixtes et créneaux Lady Punch — la boxe sans cliché, pour la forme comme pour la confiance.</p>
           </div>
         </div>
         <div class="aud-card" data-reveal>
-          <div class="aud-card__media"><img src="img/bc/disc/cross.webp" alt="Entraînement tous niveaux" loading="lazy" /></div>
+          <div class="aud-card__media"><img src="/img/bc/disc/cross.webp" alt="Entraînement tous niveaux" loading="lazy" /></div>
           <div class="aud-card__body">
             <h4>Tous niveaux</h4>
             <p>Pas besoin d'être en forme pour commencer — chaque séance s'adapte à votre rythme.</p>
@@ -86,20 +87,12 @@
       </div>
     </section>
 
-    <section class="section">
-      <div class="section-head"><h2>Questions fréquentes</h2></div>
-      <div class="faq-list" id="essaiFaq"></div>
-    </section>
-  </main>
-
-  <div id="site-footer"></div>
-  <script src="js/layout.js"></script>
-  <script src="js/motion.js"></script>
-  <script src="js/faq.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      BCFaq.renderSubset('essaiFaq', ['essai', 'debutant', 'violent', 'materiel']);
-    });
-  </script>
-</body>
-</html>
+    <section class="promo-special" aria-label="Après l'essai">
+      <div class="promo-special__pulse" aria-hidden="true"></div>
+      <div class="promo-special__inner">
+        <div class="promo-special__copy">
+          <h2>Convaincu après l'essai&nbsp;?</h2>
+          <p>Passez aux offres du moment : 29&nbsp;€ pour démarrer, ou 259&nbsp;€ pour l'année.</p>
+        </div>
+        <div class="promo-special__actions">
+          <a href="/offres-speciales" class="btn btn--lg">Voir les offres spéciales</a>

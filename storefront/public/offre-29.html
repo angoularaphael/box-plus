@@ -1,17 +1,18 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Abonnement boxe dès 29 € — prélèvement sans engagement | Boxing Center Toulouse</title>
   <meta name="description" content="Commencez la boxe à Toulouse pour 29 € la première échéance. Formule flexible, prélèvement sans engagement, accès aux 5 salles Boxing Center. Inscription en ligne." />
-  <script src="js/boot.js"></script>
+  <script src="/js/boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/boutique.css" />
-  <link rel="stylesheet" href="css/components.css" />
-  <link rel="stylesheet" href="css/offer-funnels.css" />
+  <link rel="stylesheet" href="/css/boutique.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <link rel="stylesheet" href="/css/offer-funnels.css" />
+  <link rel="preload" as="image" href="/img/bc/offers/offre-29.webp" fetchpriority="high" />
   <meta property="og:type" content="product" />
   <meta property="og:site_name" content="Boxing Center Toulouse" />
   <meta property="og:locale" content="fr_FR" />
@@ -24,8 +25,15 @@
 <body>
   <div id="site-header"></div>
 
+  <div class="promo-ticker" aria-hidden="true">
+    <div class="promo-ticker__track">
+      <span>29 € pour démarrer</span><span>Sans engagement long</span><span>5 salles</span><span>Inscription en ligne</span>
+      <span>29 € pour démarrer</span><span>Sans engagement long</span><span>5 salles</span><span>Inscription en ligne</span>
+    </div>
+  </div>
+
   <header class="offer-tunnel-hero">
-    <img class="offer-tunnel-hero__img" src="img/bc/offers/offre-29.webp" alt="Offre Boxing Center 29 euros" width="1200" height="1200" fetchpriority="high" />
+    <img class="offer-tunnel-hero__img" src="/img/bc/offers/offre-29.webp" alt="Offre Boxing Center 29 euros" width="1200" height="1200" fetchpriority="high" />
     <div class="offer-tunnel-hero__veil" aria-hidden="true"></div>
     <div class="offer-tunnel-hero__inner" data-reveal-group>
       <div class="breadcrumb" data-reveal><a href="/">Accueil</a> / <a href="/offres-speciales">Offres</a> / 29&nbsp;€</div>
@@ -126,10 +134,10 @@
     data-inscription="/inscription?product=offre-duo"></div>
 
   <div id="site-footer"></div>
-  <script src="js/layout.js"></script>
-  <script src="js/motion.js"></script>
-  <script src="js/faq.js"></script>
-  <script src="js/offer-funnel.js"></script>
+  <script src="/js/layout.js"></script>
+  <script src="/js/motion.js"></script>
+  <script src="/js/faq.js"></script>
+  <script src="/js/offer-funnel.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       if (window.BCFaq) BCFaq.renderSubset('offre29Faq', ['prelevement', 'resiliation', 'debutant', 'formule']);

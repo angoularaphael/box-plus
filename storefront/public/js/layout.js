@@ -6,6 +6,11 @@
     { href: '/', label: 'Accueil', match: (p) => p === '/' || p.endsWith('index.html') },
     { href: '/abonnements', label: 'Abonnements', match: (p) => p.includes('abonnements') },
     {
+      href: '/offres-speciales',
+      label: 'Offres',
+      match: (p) => p.includes('offres-speciales') || p.includes('/offre/'),
+    },
+    {
       href: '/gerer-abonnement',
       label: 'Gérer mon abo',
       match: (p) => p.includes('gerer-abonnement'),
@@ -86,6 +91,7 @@
           <div class="footer-links">
             <h4>Boutique</h4>
             <a href="${L('/abonnements')}">Abonnements</a>
+            <a href="${L('/offres-speciales')}">Offres 259 € / 29 €</a>
             <a href="${L('/seance-essai')}">Séance d'essai</a>
             <a href="${L('/coachings')}">Coachings</a>
             <a href="${L('/materiel')}">Matériel</a>
