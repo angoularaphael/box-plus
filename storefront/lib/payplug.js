@@ -124,34 +124,43 @@ async function createFourTimesPayment({ order, product, baseUrl, customerOverrid
   const itemName = product.display_name || product.name || 'OFFRE PROMO 12 MOIS';
   const amount = Number(product.price_cents);
   const urls = buildReturnUrls(baseUrl, order);
+  // Accès club = retrait en salle (Oney n’accepte plus delivery_type "digital")
+  const deliveryDate = new Date();
+  deliveryDate.setDate(deliveryDate.getDate() + 1);
+  const expectedDelivery = deliveryDate.toISOString().slice(0, 10);
+
   const payload = {
-    amount,
+    // Oney = paiement différé uniquement (pas le champ amount)
+    authorized_amount: amount,
+    auto_capture: true,
     currency: 'EUR',
     payment_method: 'oney_x4_without_fees',
     billing: customer,
     shipping: {
       ...customer,
       delivery_type: 'BILLING',
+      company_name: 'Boxing Center',
     },
     payment_context: {
       cart: [
         {
           delivery_label: 'Boxing Center',
-          delivery_type: 'digital',
+          delivery_type: 'storepickup',
           brand: 'Boxing Center',
           merchant_item_id: String(product.id || 'offre-saison'),
-          name: itemName,
+          name: String(itemName).slice(0, 80),
+          expected_delivery_date: expectedDelivery,
           total_amount: amount,
           price: amount,
           quantity: 1,
         },
       ],
     },
-    description: itemName,
+    description: String(itemName).slice(0, 80),
     metadata: {
       order_id: order.order_id,
       lifecycle_order_id: order.order_id,
-      product_id: product.id,
+      product_id: String(product.id || ''),
       payment_plan: '4x',
     },
     notification_url: `${baseUrl}/api/webhooks/payplug`,
