@@ -1846,11 +1846,23 @@ body:has(#adminPanel:not([hidden])) {
   font-size: 1.05rem;
 }
 
-/* Home cinema topbar over hero */
-.home-cinema .topbar:not(.scrolled) {
+/* Home cinema: header flotte sur le hero (plus de bandeau blanc / noir) */
+.home-cinema #site-header {
   position: absolute;
+  top: 0;
   left: 0;
   right: 0;
+  z-index: 200;
+  height: 0;
+  overflow: visible;
+}
+.home-cinema .topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+.home-cinema .topbar:not(.scrolled) {
   background: transparent;
   border-bottom-color: transparent;
   box-shadow: none;
@@ -1861,20 +1873,41 @@ body:has(#adminPanel:not([hidden])) {
 .home-cinema .topbar:not(.scrolled) .nav-toggle span {
   background: #fff;
 }
+.home-cinema .topbar:not(.scrolled) .nav-cart,
+.home-cinema .topbar:not(.scrolled) .main-nav a {
+  color: rgba(255, 255, 255, 0.92);
+}
+.home-cinema .topbar:not(.scrolled) .main-nav a:hover,
+.home-cinema .topbar:not(.scrolled) .main-nav a.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
 @media (min-width: 900px) {
   .home-cinema .topbar:not(.scrolled) .main-nav {
     background: transparent;
     border: 0;
     box-shadow: none;
   }
-  .home-cinema .topbar:not(.scrolled) .main-nav a {
-    color: rgba(255, 255, 255, 0.92);
-  }
-  .home-cinema .topbar:not(.scrolled) .main-nav a:hover,
-  .home-cinema .topbar:not(.scrolled) .main-nav a.active {
-    background: rgba(255, 255, 255, 0.12);
-    color: #fff;
-  }
+}
+.home-cinema .topbar.scrolled {
+  position: fixed;
+  background: var(--bc-card);
+  border-bottom: 1px solid var(--bc-border);
+  box-shadow: var(--shadow);
+}
+.home-cinema .topbar.scrolled .logo img {
+  filter: none;
+}
+.home-cinema .hero--cinema {
+  margin-top: 0;
+}
+.home-cinema .hero__veil {
+  background:
+    linear-gradient(180deg, rgba(8, 12, 20, 0.28) 0%, rgba(8, 12, 20, 0.18) 32%, rgba(8, 12, 20, 0.82) 100%),
+    linear-gradient(90deg, rgba(8, 12, 20, 0.45) 0%, transparent 55%);
+}
+.home-cinema .hero__video {
+  object-position: center center;
 }
 
 /* ── Quick-shop category tiles ── */

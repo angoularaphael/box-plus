@@ -49,8 +49,10 @@
     function apply() {
       topbar = topbar || document.querySelector('.topbar');
       if (!topbar) return;
-      var y = window.scrollY;
-      topbar.classList.toggle('scrolled', y > 16);
+      var y = window.scrollY || window.pageYOffset || 0;
+      // Seuil un peu plus haut pour éviter le flash blanc / noir au chargement
+      var scrolled = y > 48;
+      topbar.classList.toggle('scrolled', scrolled);
       if (document.querySelector('.main-nav.open') || y <= 200) {
         topbar.classList.remove('nav-hidden');
       } else if (y > last + 3) {
@@ -62,6 +64,7 @@
     }
     apply();
     window.addEventListener('scroll', apply, { passive: true });
+    window.addEventListener('pageshow', apply);
   }
 
   function initReveals() {
