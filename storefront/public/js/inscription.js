@@ -280,6 +280,30 @@
     );
   }
 
+  function formatFrDate(d) {
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  }
+
+  function buildFourXScheduleHtml(quartLabel) {
+    const today = new Date();
+    const dates = [0, 30, 60, 90].map((days) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() + days);
+      return formatFrDate(d);
+    });
+    return `
+      <div class="fourx-schedule__inner">
+        <p class="fourx-schedule__title">Calendrier indicatif 4× sans frais</p>
+        <ul>
+          <li><strong>Aujourd’hui</strong> — paiement immédiat de <strong>${quartLabel}&nbsp;€</strong></li>
+          <li><strong>${dates[1]}</strong> — 2ᵉ échéance ${quartLabel}&nbsp;€</li>
+          <li><strong>${dates[2]}</strong> — 3ᵉ échéance ${quartLabel}&nbsp;€</li>
+          <li><strong>${dates[3]}</strong> — 4ᵉ échéance ${quartLabel}&nbsp;€</li>
+        </ul>
+        <p class="fourx-schedule__note">Dates estimées à partir d’aujourd’hui (± selon Oney / PayPlug).</p>
+      </div>`;
+  }
+
   /** L'offre demande un IBAN (étape visible) — indépendant du fait qu'il soit déjà saisi. */
   function productRequiresIban(order) {
     const p = order?.product_snapshot || state.product;
@@ -672,10 +696,11 @@
               <input type="radio" name="payment_plan" value="4x" ${savedInstallment === '4x' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>En 4× sans frais</strong>
-                <small>4 × ${quart} €</small>
+                <small>Paiement immédiat de ${quart}&nbsp;€, puis 3 échéances de ${quart}&nbsp;€</small>
               </span>
             </label>
           </div>
+          <div id="fourXSchedule" class="fourx-schedule" style="display:none" aria-live="polite"></div>
           <p class="sub" style="margin:16px 0 8px">Étape 2 — Choisissez votre moyen de paiement</p>
           <div id="onceMethods" class="billing-choice-row">
             <label class="billing-choice">
@@ -781,16 +806,22 @@
       </form>`;
     bindBillingPlanForm();
     if (installmentChoice) {
+      const quart = ((Number(p.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
       const syncInstallmentUi = () => {
         const plan = document.querySelector('input[name="payment_plan"]:checked')?.value || 'once';
         const onceBox = document.getElementById('onceMethods');
         const fourBox = document.getElementById('fourXMethods');
         const addrBox = document.getElementById('fourXAddress');
+        const schedule = document.getElementById('fourXSchedule');
         const payBtn = document.getElementById('payBtn');
         const fourMethod =
           document.querySelector('input[name="pay_method_4x"]:checked')?.value || 'payplug';
         if (onceBox) onceBox.style.display = plan === 'once' ? '' : 'none';
         if (fourBox) fourBox.style.display = plan === '4x' ? '' : 'none';
+        if (schedule) {
+          schedule.style.display = plan === '4x' ? '' : 'none';
+          if (plan === '4x') schedule.innerHTML = buildFourXScheduleHtml(quart);
+        }
         const needAddress = plan === '4x' && fourMethod === 'payplug';
         if (addrBox) {
           addrBox.style.display = needAddress ? '' : 'none';
@@ -802,8 +833,8 @@
           payBtn.textContent =
             plan === '4x'
               ? fourMethod === 'paypal'
-                ? 'Payer en 4× avec PayPal'
-                : 'Payer en 4× sans frais'
+                ? `Payer ${quart} € maintenant (4× PayPal)`
+                : `Payer ${quart} € maintenant (4× sans frais)`
               : 'Payer en une fois';
         }
       };

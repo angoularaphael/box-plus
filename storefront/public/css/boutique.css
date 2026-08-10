@@ -457,6 +457,39 @@ input:focus, select:focus, textarea:focus {
   color: var(--bc-muted);
 }
 
+.fourx-schedule {
+  margin: 14px 0 4px;
+  padding: 16px 18px;
+  background: rgba(32, 37, 75, 0.04);
+  border: 1px solid rgba(32, 37, 75, 0.1);
+  border-radius: 12px;
+}
+.fourx-schedule__title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--bc-navy);
+}
+.fourx-schedule ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.fourx-schedule li {
+  font-size: 14px;
+  color: var(--bc-navy);
+  line-height: 1.4;
+}
+.fourx-schedule__note {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--bc-muted);
+}
+
 @media (max-width: 560px) {
   .billing-choice-row {
     flex-direction: column;

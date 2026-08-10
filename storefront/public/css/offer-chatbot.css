@@ -1,0 +1,102 @@
+/* Mini chatbot offres */
+.offer-chat {
+  position: fixed;
+  right: 16px;
+  bottom: 78px;
+  z-index: 90;
+  font-family: var(--font-body, Montserrat, sans-serif);
+}
+.offer-chat__fab {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--bc-red, #E8001C);
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(232, 0, 28, 0.35);
+}
+.offer-chat__panel {
+  position: absolute;
+  right: 0;
+  bottom: 64px;
+  width: min(92vw, 340px);
+  background: #fff;
+  border: 1px solid rgba(32, 37, 75, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(12, 24, 41, 0.22);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: min(70vh, 440px);
+}
+.offer-chat__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--bc-navy, #20254B);
+  color: #fff;
+  font-size: 14px;
+}
+.offer-chat__x {
+  background: transparent;
+  border: 0;
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.offer-chat__log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  background: #f7f5f1;
+}
+.offer-chat__msg {
+  max-width: 92%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.offer-chat__msg--bot {
+  background: #fff;
+  color: var(--bc-navy, #20254B);
+  justify-self: start;
+}
+.offer-chat__msg--user {
+  background: var(--bc-navy, #20254B);
+  color: #fff;
+  justify-self: end;
+}
+.offer-chat__form {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid rgba(32, 37, 75, 0.08);
+  background: #fff;
+}
+.offer-chat__form input {
+  flex: 1;
+  border: 1px solid var(--bc-border, #dde1ea);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+}
+.offer-chat__form button {
+  border: 0;
+  border-radius: 10px;
+  background: var(--bc-red, #E8001C);
+  color: #fff;
+  font-weight: 700;
+  padding: 0 14px;
+  cursor: pointer;
+}
+@media (max-width: 720px) {
+  .offer-chat { bottom: 88px; right: 12px; }
+}
