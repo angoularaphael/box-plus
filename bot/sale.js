@@ -2305,17 +2305,22 @@ async function buyCarteBadge(page, productConfig, gymConfig, memberId = null) {
   return { action: 'carte_badge_created', sale_type: 'carte' };
 }
 
-async function annotateMember(page, order, productConfig) {
+async function annotateMember(page, order, productConfig, memberId = null) {
   const { buildFourXInfoComptaNote } = require('../lib/info-compta-note');
   try {
-    const { getMemberFormContext } = require('./member');
-    const ficheLink = page.locator('a').filter({ hasText: /Fiche d[eé]taill/i }).first();
-    if ((await ficheLink.count()) > 0 && (await ficheLink.isVisible().catch(() => false))) {
-      await ficheLink.click().catch(() => {});
+    const { getMemberFormContext, openMemberEditForm } = require('./member');
+    if (memberId) {
+      await openMemberEditForm(page, memberId).catch(() => {});
       await page.waitForTimeout(800);
+    } else {
+      const ficheLink = page.locator('a').filter({ hasText: /Fiche d[eé]taill/i }).first();
+      if ((await ficheLink.count()) > 0 && (await ficheLink.isVisible().catch(() => false))) {
+        await ficheLink.click().catch(() => {});
+        await page.waitForTimeout(800);
+      }
     }
 
-    const ctx = await getMemberFormContext(page, { waitMs: 4000 });
+    const ctx = await getMemberFormContext(page, { waitMs: 6000 });
     const ta = ctx
       .locator('textarea[name="info_compta"], input[name="info_compta"], textarea#info_compta')
       .first();
@@ -2331,6 +2336,7 @@ async function annotateMember(page, order, productConfig) {
       await ta.fill(fourXNote);
       logInfo('Info Compte/Paiement — note 4× sans frais écrite', {
         order_id: order?.order_id,
+        member_id: memberId,
         chars: fourXNote.length,
       });
     } else if (/Source:\s*|Produit:\s*|UTM\s|Commande:\s*|Montant PrestaShop|4× sans frais|4x sans frais/i.test(current)) {
@@ -2347,7 +2353,7 @@ async function annotateMember(page, order, productConfig) {
       .first();
     if ((await update.count()) > 0) {
       await update.click().catch(() => {});
-      await page.waitForTimeout(600);
+      await page.waitForTimeout(800);
     }
   } catch (err) {
     logWarn('Annotation info_compta ignorée', { error: err.message });
@@ -2395,7 +2401,7 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
   await dismissJqueryUiOverlay(page).catch(() => {});
   await openMemberCheck(page, memberId);
   await dismissJqueryUiOverlay(page).catch(() => {});
-  await annotateMember(page, order, productConfig).catch((err) => {
+  await annotateMember(page, order, productConfig, memberId).catch((err) => {
     logWarn('Annotation fiche membre ignorée', { error: err.message });
   });
   // Après Mettre à jour, revenir sur check.php (iframe) pour Achat Abonnement / Carte
