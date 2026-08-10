@@ -104,14 +104,14 @@ function boutiqueVerifyBody(customer, { birthdate } = {}) {
       lastName: 'GODIR',
       firstName: 'godir',
       birth: '12/12/2012',
-      phone: '012345678',
+      phone: '0612345678',
       foundViaPhone: true,
     },
     {
       last_name: 'godir',
       first_name: 'GODIR',
       birthdate: '2000-01-01',
-      phone: '012345678',
+      phone: '0612345678',
     }
   );
   assert(
