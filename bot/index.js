@@ -334,6 +334,7 @@ async function processCancelJob(page, order) {
   try {
     const result = await cancelSale(page, memberId, {
       cancelDate: order.cancel_date || order.effective_date || null,
+      cancelReason: order.cancel_reason || null,
     });
     await pushCancelStatus('done', { cancelledCount: result?.cancelled_count ?? null, memberId });
     return {
@@ -655,6 +656,16 @@ async function processJob(page, job) {
   const jobId = order.job_id;
   if (isProcessed(jobId)) {
     return { status: STATUS.DUPLICATE, duplicate: true, action: order.action };
+  }
+
+  const role = String(process.env.BOT_ROLE || 'all').toLowerCase();
+  const action = String(order.action || 'sale').toLowerCase();
+  const isChangeSale =
+    action === 'sale' &&
+    (order.notify_change_complete || String(order.source || '').includes('change'));
+
+  if (role === 'sales' && (action !== 'sale' || isChangeSale)) {
+    throw new Error(`Bot ventes refuse « ${action} » — utiliser BOXPLUS_BOT_URL_OPS`);
   }
 
   if (order.action === 'cancel') {

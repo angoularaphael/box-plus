@@ -3,43 +3,44 @@
 const { chatCompletion, isAiEnabled } = require('./groq');
 
 const KNOWLEDGE = `
-Ressources Boxing Center (Toulouse) pour guider un adhérent qui envisage de résilier :
+Ressources Boxing Center (Toulouse) pour accompagner un adhérent (résiliation, formule, salles) :
 
 AVANTAGES ABONNEMENT
 - Accès aux 5 salles : Minimes (12 rue de Fenouillet, 31200), Ramonville (33 rue des Ormes, 31530), Portet, États-Unis (388 avenue des États-Unis, 31200), St-Cyprien (11 Rue Sainte-Lucie, 31300).
 - Toutes les disciplines, encadrement coach.
 - Accès libre 6j/7 de 10h à 21h (musculation, cardio, boxe).
-- Événements : Boxing Center Trophy, Anglaise, Pieds-Poing, stages (si à jour médicalement — voir manager).
+- Événements : Boxing Center Trophy, Anglaise, Pieds-Poing, stages (si à jour médicalement).
 
 ALTERNATIVES À LA RÉSILATION
-- Manque de temps : consulter les plannings des 5 salles ; accès libre flexible 10h–21h.
-- Déménagement : l’abo donne accès aux 5 centres — vérifier si le nouveau domicile est près d’une salle.
-- Blessure / médical : suspension sans frais possibles pour conserver le tarif préférentiel à la reprise (voir manager).
-- Changement de club : rappel accès multi-salles + associations partenaires (Nobles Arts Portésiens, Toulouse Mini Boxing Club).
-- Financier : exceptionnellement, l’offre à 29 € peut être envisagée avec le manager avant de partir. Dire exactement « 29 € », jamais « environ 29 € ».
-- Autre : écouter, proposer suspension / changement de formule / contact manager.
+- Manque de temps : plannings des 5 salles ; accès libre flexible 10h–21h.
+- Déménagement : abo multi-salles — vérifier une salle près du nouveau domicile.
+- Blessure / médical : suspension sans frais possible pour garder le tarif à la reprise.
+- Changement de club : multi-salles + partenaires (Nobles Arts Portésiens, Toulouse Mini Boxing Club).
+- Financier : exceptionnellement, offre à 29 € via le manager. Dire exactement « 29 € », jamais « environ ».
+- Autre : écouter, proposer suspension / changement de formule.
 
 RÈGLES
-- Français, ton chaleureux, très concis : 2 ou 3 phrases, 55 mots maximum.
+- Français, ton chaleureux et naturel : tu peux parler un peu (jusqu’à ~120 mots, 4–5 phrases).
 - Ne jamais dire bonjour : la conversation est déjà commencée.
-- Ne répéter ni le motif du membre, ni une idée déjà formulée.
-- Une seule question maximum. Ne poser une question que si elle est indispensable.
-- Ne jamais inventer un tarif. Le seul tarif autorisé ici est exactement « 29 € ».
-- Si la réponse n’est pas certaine, proposer directement le manager de la salle au lieu d’improviser.
+- Ne pas répéter le motif du membre mot pour mot.
+- Jusqu’à 2 questions utiles pour comprendre et aider.
+- Ne jamais inventer un tarif. Seul tarif autorisé ici : exactement « 29 € ».
+- Si tu manques d’un détail, pose une question claire — ne renvoie pas systématiquement vers un email manager.
 - Ne pas mentionner Deciplus, bots techniques, ni systèmes internes.
-- Encourager à rester OU à parler au manager, sans forcer.
+- Encourager à rester ou à explorer une alternative, sans forcer ni paniquer.
+- Ne donne une adresse email manager que si le membre demande explicitement un contact humain.
 `.trim();
 
 const FALLBACKS = {
-  time: "Votre abonnement donne accès aux cinq salles et à l’accès libre de 10h à 21h, 6 jours sur 7. Un autre créneau ou une autre salle pourrait mieux vous convenir.",
-  move: 'Votre abonnement donne accès aux cinq salles Boxing Center. Vérifiez si l’une d’elles reste proche de votre nouveau domicile.',
+  time: "Votre abonnement donne accès aux cinq salles et à l’accès libre de 10h à 21h, 6 jours sur 7. Un autre créneau ou une autre salle pourrait mieux vous convenir — on peut aussi regarder une suspension temporaire si c’est juste une période chargée.",
+  move: 'Votre abonnement donne accès aux cinq salles Boxing Center. Vérifiez si l’une d’elles reste proche de votre nouveau domicile : souvent ça évite de tout couper.',
   medical:
-    'En cas de blessure, une suspension sans frais peut être étudiée pour conserver vos conditions tarifaires. Votre manager de salle pourra la confirmer.',
-  club: 'Votre formule donne accès aux cinq salles et à toutes les disciplines. Le manager peut vous proposer une autre salle ou une formule plus adaptée.',
+    'En cas de blessure, une suspension sans frais peut souvent être étudiée pour conserver vos conditions tarifaires à la reprise. Dites-moi ce qui vous bloque aujourd’hui et on voit la meilleure option.',
+  club: 'Votre formule donne accès aux cinq salles et à toutes les disciplines. Avant de partir, on peut vérifier une autre salle, un autre créneau ou une formule plus adaptée.',
   money:
-    'Si le prix est le problème, une offre à 29 € peut exceptionnellement être étudiée par votre manager de salle.',
+    'Si le prix est le problème, une offre à 29 € peut exceptionnellement être étudiée. On peut aussi regarder une formule plus légère — qu’est-ce qui pèse le plus pour vous ?',
   other:
-    'Votre manager de salle peut vérifier une suspension, un autre créneau ou une formule mieux adaptée. Je peux vous transmettre son contact.',
+    'Je peux vous aider à voir une suspension, un autre créneau ou une formule mieux adaptée. Expliquez-moi un peu votre situation et on avance ensemble.',
 };
 
 function cleanReply(content, fallback) {
@@ -58,11 +59,11 @@ function cleanReply(content, fallback) {
     if (!normalized || seen.has(normalized)) continue;
     seen.add(normalized);
     unique.push(sentence.trim());
-    if (unique.length === 3) break;
+    if (unique.length === 5) break;
   }
   reply = unique.join(' ').trim();
   const words = reply.split(/\s+/);
-  if (words.length > 55) reply = `${words.slice(0, 55).join(' ').replace(/[,;:]$/, '')}.`;
+  if (words.length > 120) reply = `${words.slice(0, 120).join(' ').replace(/[,;:]$/, '')}.`;
   return reply || fallback;
 }
 
@@ -84,13 +85,13 @@ async function guideRetention({ reasonId, reasonLabel, freeText }) {
           role: 'user',
           content: [
             `Motif choisi : ${reasonLabel || reasonId || 'autre'}`,
-            freeText ? `Précision du membre : ${String(freeText).slice(0, 800)}` : 'Pas de précision libre.',
+            freeText ? `Échanges du membre : ${String(freeText).slice(0, 1200)}` : 'Pas de précision libre.',
             '',
-            'Rédige une seule réponse nouvelle, sans répéter les éléments déjà dits. Si tu ne sais pas, redirige vers le manager.',
+            'Rédige une réponse utile et humaine pour poursuivre la conversation. Ne renvoie vers un email manager que si c’est vraiment nécessaire ou demandé.',
           ].join('\n'),
         },
       ],
-      { maxTokens: 160, temperature: 0.25 }
+      { maxTokens: 320, temperature: 0.55 }
     );
     const reply = cleanReply(content, fallback);
     return { reply: reply || fallback, source: 'groq' };

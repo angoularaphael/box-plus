@@ -2229,8 +2229,8 @@ function createApp() {
           email: body.email,
           phone: body.phone,
         },
-        returnUrl: `${baseUrl}/gerer-abonnement?change=1&payplug_return=1`,
-        cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled`,
+        returnUrl: `${baseUrl}/gerer-abonnement?change=1&payplug_return=1#changer`,
+        cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled#changer`,
       });
       const url = hostedPaymentUrl(payment);
       if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });

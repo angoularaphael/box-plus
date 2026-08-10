@@ -221,16 +221,16 @@ window.BCCounselor = (function () {
           const msg = root.querySelector('#counselorMsg').value.trim();
           if (!msg) return;
           push('user', esc(msg));
-          if (/résili|resili|annul/i.test(msg)) {
+          if (/résili|resili|annul|arrêter|arreter|quitter|partir/i.test(msg)) {
             replySoon(
               "C'est noté. Pouvez-vous choisir la raison de votre demande de résiliation ?",
               'reason'
             );
           } else {
-            replySoon(
-              `Je suis désolé, je traite uniquement les demandes de résiliation. Pour le reste : <a href="https://boxingcenter.fr" target="_blank" rel="noopener">boxingcenter.fr</a> ou le standard du club au <a href="tel:${CLUB_STANDARD.tel}">${CLUB_STANDARD.display}</a>. Choisissez votre salle pour ouvrir sa page.`,
-              'gym_redirect'
-            );
+            reasonId = 'other';
+            reasonLabel = 'Autre';
+            freeText = msg;
+            askAiGuide();
           }
         };
       }
@@ -275,11 +275,7 @@ window.BCCounselor = (function () {
             if (!msg) return;
             freeText = `${freeText}\n${msg}`.trim();
             push('user', esc(msg));
-            replySoon(
-              'Pour éviter de vous donner une réponse incertaine, je vous mets en relation avec le manager de votre salle.',
-              'manager',
-              500
-            );
+            askAiGuide();
           };
         }
         const keep = root.querySelector('#keepAbo');

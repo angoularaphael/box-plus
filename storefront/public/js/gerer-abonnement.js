@@ -266,10 +266,16 @@
         ? 'Votre abonnement comptant a bien été enregistré. Il prendra effet dans quelques minutes. Un e-mail de confirmation vous sera envoyé dès que c’est actif.'
         : data.error || 'Confirmation impossible';
       sessionStorage.removeItem('bc_change_payplug_id');
+      document.getElementById('changer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch {
       changeMsg.className = 'form-msg err';
       changeMsg.textContent = 'Confirmation impossible';
+      document.getElementById('changer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+  }
+
+  if (params.get('change') === '1' || params.get('change') === 'cancelled' || location.hash === '#changer') {
+    document.getElementById('changer')?.scrollIntoView({ behavior: 'instant', block: 'start' });
   }
 
   confirmChangePayment().catch(() => {});
