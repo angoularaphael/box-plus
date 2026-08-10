@@ -29,16 +29,18 @@
   <main>
     <section class="hero hero--cinema" aria-label="Boxing Center Toulouse">
       <div class="hero__stage" data-parallax="0.18">
+        <video
+          class="hero__video"
+          data-ambient
+          muted
+          loop
+          playsinline
+          preload="metadata"
+          poster="/img/bc/gym/gym-01.jpg"
+        >
+          <source src="/media/hero-ambient.mp4" type="video/mp4" />
+        </video>
         <img class="hero__fallback" src="/img/bc/gym/gym-01.jpg" alt="" width="1600" height="900" fetchpriority="high" />
-        <div class="hero__yt" aria-hidden="true">
-          <iframe
-            src="https://www.youtube.com/embed/wO781gt7uTU?autoplay=1&mute=1&controls=0&loop=1&playlist=wO781gt7uTU&playsinline=1&modestbranding=1&rel=0"
-            title="Boxing Center Toulouse"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-            loading="eager"
-          ></iframe>
-        </div>
       </div>
       <div class="hero__veil" aria-hidden="true"></div>
       <div class="hero__inner" data-reveal-group>
