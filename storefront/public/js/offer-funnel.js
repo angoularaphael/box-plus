@@ -23,12 +23,15 @@
       return;
     }
     modal.hidden = false;
+    document.body.classList.add('offer-modal-open');
+    modal.scrollTop = 0;
     var first = form && form.querySelector('input[name="prenom"]');
     if (first) first.focus();
   }
 
   function closeModal() {
     if (modal) modal.hidden = true;
+    document.body.classList.remove('offer-modal-open');
   }
 
   document.querySelectorAll('[data-offer-cta]').forEach(function (btn) {
