@@ -94,7 +94,7 @@
           <h2 class="gift-promo__title" id="giftPromoTitle">Offre à 29 €</h2>
           <p class="gift-promo__price">29<span>€</span></p>
           <p class="gift-promo__lead">29 € par personne · 4 semaines · accès aux 5 salles</p>
-          <a class="gift-promo__cta" href="${link('/inscription')}?product=${encodeURIComponent(PRODUCT_ID)}" data-track="gift_promo_cta">
+          <a class="gift-promo__cta" href="${link('/offre/29')}" data-track="gift_promo_cta">
             J’en profite
           </a>
           <button type="button" class="gift-promo__skip" data-gift-close>Plus tard</button>
