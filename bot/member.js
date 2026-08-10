@@ -1478,6 +1478,7 @@ module.exports = {
   DEFAULT_MATCH_FIELDS,
   CHANGE_MATCH_FIELDS,
   getMemberFormContext,
+  openMemberEditForm,
   startNewMemberFromSelect,
   openNewMemberForm,
   fillMemberForm,
