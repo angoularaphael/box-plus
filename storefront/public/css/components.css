@@ -1579,6 +1579,24 @@ body:has(#adminPanel:not([hidden])) {
 }
 .hero__video { z-index: 1; }
 .hero__fallback { z-index: 0; }
+.hero__yt {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.hero__yt iframe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100vw;
+  height: 56.25vw;
+  min-height: 115%;
+  min-width: 177.77vh;
+  transform: translate(-50%, -50%);
+  border: 0;
+}
 .hero__veil {
   position: absolute;
   inset: 0;
