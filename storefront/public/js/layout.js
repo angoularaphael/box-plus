@@ -91,7 +91,7 @@
           <div class="footer-links">
             <h4>Boutique</h4>
             <a href="${L('/abonnements')}">Abonnements</a>
-            <a href="${L('/offres-speciales')}">Offres 29 € / 259 €</a>
+            <a href="${L('/offres-speciales')}">Offres 29,99 € / 259 €</a>
             <a href="${L('/seance-essai')}">Séance d'essai</a>
             <a href="${L('/coachings')}">Coachings</a>
             <a href="${L('/materiel')}">Matériel</a>
@@ -230,6 +230,19 @@
     document.body.appendChild(s);
   }
 
+  function ensureChloe() {
+    const p = currentPath();
+    if (/gerer-abonnement|inscription|checkout|panier|success|contrat|mon-inscription|admin|attestation/i.test(p)) {
+      return;
+    }
+    if (document.querySelector('script[data-chloe]')) return;
+    const s = document.createElement('script');
+    s.src = A('/js/counselor-chloe.js?v=1');
+    s.defer = true;
+    s.dataset.chloe = '1';
+    document.body.appendChild(s);
+  }
+
   function mountLayout() {
     const headerSlot = document.getElementById('site-header');
     const footerSlot = document.getElementById('site-footer');
@@ -242,6 +255,7 @@
     window.addEventListener('bccart:change', updateCartBadge);
     ensureTracking();
     ensureGiftPromo();
+    ensureChloe();
   }
 
   if (document.readyState === 'loading') {

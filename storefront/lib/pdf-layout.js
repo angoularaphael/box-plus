@@ -120,8 +120,6 @@ function clubEmitterRows() {
     { label: 'Adresse', value: `${CLUB.address}\n${CLUB.city}, ${CLUB.country}` },
     { label: 'SIRET', value: CLUB.siret },
     { label: 'TVA', value: CLUB.tva },
-    { label: 'Téléphone', value: CLUB.phone },
-    { label: 'Email', value: CLUB.email },
     { label: 'Site web', value: CLUB.web },
   ];
 }
@@ -303,7 +301,7 @@ function clubEmitterRowsCompact() {
     { label: 'Société', value: CLUB.name },
     { label: 'Adresse', value: `${CLUB.address}, ${CLUB.city}` },
     { label: 'SIRET', value: CLUB.siret },
-    { label: 'Contact', value: `${CLUB.phone} — ${CLUB.email}` },
+    { label: 'Site web', value: CLUB.web },
   ];
 }
 
@@ -418,7 +416,7 @@ function drawSignatureBlockCompact(doc, order) {
 function drawPageFooter(doc) {
   const range = doc.bufferedPageRange();
   const total = range.count;
-  const footerText = `${CLUB.name} — SIRET ${CLUB.siret} — ${CLUB.phone} — ${CLUB.web}`;
+  const footerText = `${CLUB.name} — SIRET ${CLUB.siret} — ${CLUB.web}`;
 
   for (let i = 0; i < total; i += 1) {
     doc.switchToPage(range.start + i);

@@ -14,22 +14,27 @@ window.BCCounselor = (function () {
   const GYM_PAGES = {
     minimes: {
       label: 'Minimes',
+      manager: 'Medhi',
       url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/',
     },
     ramonville: {
       label: 'Ramonville',
+      manager: 'Pascal',
       url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/',
     },
     portet: {
       label: 'Portet',
+      manager: 'Valentin',
       url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/',
     },
     'etats-unis': {
       label: 'États-Unis',
+      manager: 'Sébastien',
       url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/',
     },
     'st-cyprien': {
       label: 'St-Cyprien',
+      manager: 'Daddy',
       url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/',
     },
   };
@@ -96,6 +101,13 @@ window.BCCounselor = (function () {
             <button type="button" class="chat-chip" id="keepAbo" ${busy ? 'disabled' : ''}>Je reste — merci pour les infos</button>
             <button type="button" class="chat-chip" id="contactManager" ${busy ? 'disabled' : ''}>Contacter mon manager</button>
             <button type="button" class="chat-chip danger" id="stillCancel" ${busy ? 'disabled' : ''}>Continuer vers la résiliation</button>
+          </div>`;
+      } else if (step === 'formula') {
+        footer = `
+          <div class="chat-quick">
+            <p class="chat-choice-title">Votre formule actuelle :</p>
+            <button type="button" class="chat-chip" data-formula="prelevement" ${busy ? 'disabled' : ''}>Prélèvement (sans engagement)</button>
+            <button type="button" class="chat-chip" data-formula="comptant" ${busy ? 'disabled' : ''}>Comptant / forfait (1× ou 4×)</button>
           </div>`;
       } else if (step === 'manager' || step === 'gym_redirect') {
         footer = `
@@ -199,25 +211,20 @@ window.BCCounselor = (function () {
     }
 
     async function showManagerContact(gym, label) {
+      const gymInfo = GYM_PAGES[gym] || {};
+      const manager = gymInfo.manager || 'votre manager';
+      const url = gymInfo.url || '';
       busy = true;
       push('typing', typingHtml());
       paint();
-      let email = 'boxingcenter31@gmail.com';
-      try {
-        const res = await fetch(`/api/membership/manager-contact?gym=${encodeURIComponent(gym)}`);
-        const data = await res.json();
-        if (data.ok && data.contact?.email) email = data.contact.email;
-      } catch {
-        /* contact général ci-dessus */
-      }
       history.pop();
       push(
         'bot',
-        `Vous pouvez écrire au manager de ${esc(label)} : <a href="mailto:${esc(email)}?subject=${encodeURIComponent(
-          `Demande adhérent — salle ${label}`
-        )}">${esc(email)}</a>.`
+        url
+          ? `Pour un échange en présentiel, adressez-vous à <strong>${esc(manager)}</strong> (salle ${esc(label)}). Voici la page de votre salle : <a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>`
+          : `Pour un échange en présentiel, adressez-vous à <strong>${esc(manager)}</strong> à la salle ${esc(label)}.`
       );
-      step = 'retain';
+      step = 'done';
       busy = false;
       paint();
     }
@@ -314,11 +321,32 @@ window.BCCounselor = (function () {
             if (busy) return;
             push('user', 'Continuer vers la résiliation');
             replySoon(
-              'En cas de résiliation, vous ne pourrez plus bénéficier de votre tarif promotionnel en cas de réinscription. La résiliation sera <strong>effective sous 72&nbsp;heures</strong>. Êtes-vous certain de vouloir résilier ?',
-              'confirm'
+              'Je ne traite que les abonnements <strong>par prélèvement</strong> (sans engagement). Les formules <strong>comptant</strong> (forfait 1× / 4×, année 259&nbsp;€, etc.) ne peuvent pas être résiliées ici — contactez votre manager en salle. Quelle est votre formule ?',
+              'formula'
             );
           };
         }
+      }
+
+      if (step === 'formula') {
+        root.querySelectorAll('[data-formula]').forEach((btn) => {
+          btn.onclick = () => {
+            if (busy) return;
+            const formula = btn.dataset.formula;
+            push('user', btn.textContent.trim());
+            if (formula === 'comptant') {
+              replySoon(
+                'Merci. Les formules comptant ne passent pas par ce tunnel. Choisissez votre salle pour voir le manager à contacter en présentiel.',
+                'manager'
+              );
+              return;
+            }
+            replySoon(
+              'En cas de résiliation d’un prélèvement, vous ne pourrez plus bénéficier de votre tarif promotionnel en cas de réinscription. La résiliation sera <strong>effective sous 72&nbsp;heures</strong>. Êtes-vous certain de vouloir résilier ?',
+              'confirm'
+            );
+          };
+        });
       }
 
       if (step === 'manager' || step === 'gym_redirect') {
@@ -329,14 +357,6 @@ window.BCCounselor = (function () {
             const gym = GYM_PAGES[gymId];
             const label = (gym && gym.label) || btn.textContent.trim();
             push('user', label);
-            if (step === 'gym_redirect' && gym?.url) {
-              replySoon(
-                `Voici la page de votre salle ${esc(label)} : <a href="${esc(gym.url)}" target="_blank" rel="noopener">${esc(gym.url)}</a>`,
-                'done',
-                400
-              );
-              return;
-            }
             showManagerContact(gymId, label);
           };
         });
@@ -384,7 +404,7 @@ window.BCCounselor = (function () {
       history.pop();
       push(
         'bot',
-        'Je suis David, conseiller virtuel de Boxing Center. Je peux vous accompagner pour votre demande de résiliation.'
+        'Je suis David, conseiller virtuel de Boxing Center. Je peux vous accompagner pour résilier un abonnement <strong>par prélèvement</strong> (sans engagement). Les formules comptant / forfait ne passent pas par ce tunnel — votre manager de salle pourra vous aider en présentiel.'
       );
       busy = false;
       paint();

@@ -488,6 +488,12 @@
     );
   }
 
+  function isPortetGym(gym) {
+    return String(gym || state.order?.customer_full?.gym || state.gymDraft || '')
+      .trim()
+      .toLowerCase() === 'portet';
+  }
+
   async function loadConfig() {
     const res = await fetch('/api/config');
     state.config = await res.json();
@@ -700,13 +706,81 @@
     const savedInstallment =
       state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
     const full = state.order?.customer_full || {};
+    const portetPaypalOnly = isPortetGym(full.gym);
 
     let billingHtml = '';
     if (installmentChoice) {
       const quart = ((Number(p.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
-      const savedMethod = state.order?.payment?.preferred_checkout || 'card';
+      const savedMethod = portetPaypalOnly
+        ? 'paypal'
+        : state.order?.payment?.preferred_checkout || 'card';
+      const onceMethods = portetPaypalOnly
+        ? `
+            <label class="billing-choice">
+              <input type="radio" name="pay_method_once" value="paypal" checked />
+              <span class="billing-choice-text">
+                <strong>PayPal</strong>
+                <small>Obligatoire pour la salle Portet</small>
+                ${paymentLogosHtml('paypal')}
+              </span>
+            </label>`
+        : `
+            <label class="billing-choice">
+              <input type="radio" name="pay_method_once" value="card" ${savedMethod !== 'paypal' ? 'checked' : ''} />
+              <span class="billing-choice-text">
+                <strong>Carte bancaire</strong>
+                <small>Paiement sécurisé</small>
+                ${paymentLogosHtml('card')}
+              </span>
+            </label>
+            <label class="billing-choice">
+              <input type="radio" name="pay_method_once" value="paypal" ${savedMethod === 'paypal' ? 'checked' : ''} />
+              <span class="billing-choice-text">
+                <strong>PayPal</strong>
+                <small>Paiement sécurisé</small>
+                ${paymentLogosHtml('paypal')}
+              </span>
+            </label>`;
+      const fourMethods = portetPaypalOnly
+        ? `
+            <label class="billing-choice">
+              <input type="radio" name="pay_method_4x" value="paypal" checked />
+              <span class="billing-choice-text">
+                <strong>PayPal</strong>
+                <small>4× PayPal si éligible — obligatoire à Portet</small>
+                ${paymentLogosHtml('paypal')}
+              </span>
+            </label>
+            <div class="full" style="margin-top:8px">
+              <div data-pp-message data-pp-style-layout="text" data-pp-style-logo-type="inline" data-pp-amount="${(Number(p.price_cents || 0) / 100).toFixed(2)}"></div>
+            </div>`
+        : `
+            <label class="billing-choice">
+              <input type="radio" name="pay_method_4x" value="payplug" checked />
+              <span class="billing-choice-text">
+                <strong>4× sans frais</strong>
+                <small>Carte · sans frais supplémentaires</small>
+                ${paymentLogosHtml('payplug')}
+              </span>
+            </label>
+            <label class="billing-choice">
+              <input type="radio" name="pay_method_4x" value="paypal" />
+              <span class="billing-choice-text">
+                <strong>PayPal</strong>
+                <small>PayPal — Paiement en 4X si éligible</small>
+                ${paymentLogosHtml('paypal')}
+              </span>
+            </label>
+            <div class="full" style="margin-top:8px">
+              <div data-pp-message data-pp-style-layout="text" data-pp-style-logo-type="inline" data-pp-amount="${(Number(p.price_cents || 0) / 100).toFixed(2)}"></div>
+            </div>`;
       billingHtml = `
         <div class="full billing-plan-block">
+          ${
+            portetPaypalOnly
+              ? '<p class="sub" style="margin-top:0;color:var(--bc-red,#E8001C)">Salle Portet : paiement uniquement via PayPal (carte PayPlug indisponible).</p>'
+              : ''
+          }
           <p class="sub" style="margin-top:0">Étape 1 — Comment souhaitez-vous régler ?</p>
           <div class="billing-choice-row" role="radiogroup" aria-label="Type de paiement">
             <label class="billing-choice">
@@ -726,45 +800,8 @@
           </div>
           <div id="fourXSchedule" class="fourx-schedule" style="display:none" aria-live="polite"></div>
           <p class="sub" style="margin:16px 0 8px">Étape 2 — Choisissez votre moyen de paiement</p>
-          <div id="onceMethods" class="billing-choice-row">
-            <label class="billing-choice">
-              <input type="radio" name="pay_method_once" value="card" ${savedMethod !== 'paypal' ? 'checked' : ''} />
-              <span class="billing-choice-text">
-                <strong>Carte bancaire</strong>
-                <small>Paiement sécurisé</small>
-                ${paymentLogosHtml('card')}
-              </span>
-            </label>
-            <label class="billing-choice">
-              <input type="radio" name="pay_method_once" value="paypal" ${savedMethod === 'paypal' ? 'checked' : ''} />
-              <span class="billing-choice-text">
-                <strong>PayPal</strong>
-                <small>Paiement sécurisé</small>
-                ${paymentLogosHtml('paypal')}
-              </span>
-            </label>
-          </div>
-          <div id="fourXMethods" class="billing-choice-row" style="display:none">
-            <label class="billing-choice">
-              <input type="radio" name="pay_method_4x" value="payplug" checked />
-              <span class="billing-choice-text">
-                <strong>4× sans frais</strong>
-                <small>Carte · sans frais supplémentaires</small>
-                ${paymentLogosHtml('payplug')}
-              </span>
-            </label>
-            <label class="billing-choice">
-              <input type="radio" name="pay_method_4x" value="paypal" />
-              <span class="billing-choice-text">
-                <strong>PayPal</strong>
-                <small>PayPal — Paiement en 4X si éligible</small>
-                ${paymentLogosHtml('paypal')}
-              </span>
-            </label>
-            <div class="full" style="margin-top:8px">
-              <div data-pp-message data-pp-style-layout="text" data-pp-style-logo-type="inline" data-pp-amount="${(Number(p.price_cents || 0) / 100).toFixed(2)}"></div>
-            </div>
-          </div>
+          <div id="onceMethods" class="billing-choice-row">${onceMethods}</div>
+          <div id="fourXMethods" class="billing-choice-row" style="display:none">${fourMethods}</div>
           <div id="fourXAddress" class="form-grid" style="display:none;margin-top:12px">
             <p class="sub full" style="margin:0 0 8px">Adresse requise pour valider le paiement en 4× :</p>
             <div class="full"><label>Adresse *</label><input name="address" value="${esc(full.address || '')}" /></div>
@@ -773,7 +810,22 @@
           </div>
         </div>`;
     } else if (isPrelevement) {
-      billingHtml = `
+      billingHtml = portetPaypalOnly
+        ? `
+        <div class="full billing-plan-block">
+          <p class="sub" style="margin-top:0;color:var(--bc-red,#E8001C)">Salle Portet : 1ʳᵉ échéance uniquement via PayPal.</p>
+          <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
+            <label class="billing-choice">
+              <input type="radio" name="billing_plan" value="paypal" checked />
+              <span class="billing-choice-text">
+                <strong>PayPal</strong>
+                <small>1ʳᵉ échéance PayPal, puis prélèvement sans engagement</small>
+                ${paymentLogosHtml('paypal')}
+              </span>
+            </label>
+          </div>
+        </div>`
+        : `
         <div class="full billing-plan-block">
           <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
             <label class="billing-choice">
@@ -795,7 +847,22 @@
           </div>
         </div>`;
     } else if (isComptantLike) {
-      billingHtml = `
+      billingHtml = portetPaypalOnly
+        ? `
+        <div class="full billing-plan-block">
+          <p class="sub" style="margin-top:0;color:var(--bc-red,#E8001C)">Salle Portet : paiement uniquement via PayPal.</p>
+          <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
+            <label class="billing-choice">
+              <input type="radio" name="billing_plan" value="paypal" checked />
+              <span class="billing-choice-text">
+                <strong>PayPal</strong>
+                <small>En une seule fois</small>
+                ${paymentLogosHtml('paypal')}
+              </span>
+            </label>
+          </div>
+        </div>`
+        : `
         <div class="full billing-plan-block">
           <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
             <label class="billing-choice">
@@ -838,15 +905,16 @@
         const addrBox = document.getElementById('fourXAddress');
         const schedule = document.getElementById('fourXSchedule');
         const payBtn = document.getElementById('payBtn');
-        const fourMethod =
-          document.querySelector('input[name="pay_method_4x"]:checked')?.value || 'payplug';
+        const fourMethod = portetPaypalOnly
+          ? 'paypal'
+          : document.querySelector('input[name="pay_method_4x"]:checked')?.value || 'payplug';
         if (onceBox) onceBox.style.display = plan === 'once' ? '' : 'none';
         if (fourBox) fourBox.style.display = plan === '4x' ? '' : 'none';
         if (schedule) {
           schedule.style.display = plan === '4x' ? '' : 'none';
           if (plan === '4x') schedule.innerHTML = buildFourXScheduleHtml(quart);
         }
-        const needAddress = plan === '4x' && fourMethod === 'payplug';
+        const needAddress = plan === '4x' && fourMethod === 'payplug' && !portetPaypalOnly;
         if (addrBox) {
           addrBox.style.display = needAddress ? '' : 'none';
           addrBox.querySelectorAll('input').forEach((input) => {
@@ -877,6 +945,10 @@
       setMsg('Redirection…');
       saveProgress();
       const body = payRequestBody();
+      if (portetPaypalOnly) {
+        body.pay_method = 'paypal';
+        if (!installmentChoice) body.billing_plan = 'paypal';
+      }
       const planInput = document.querySelector('input[name="billing_plan"]:checked');
       const installmentInput = document.querySelector('input[name="payment_plan"]:checked');
       if (installmentChoice) {
@@ -978,7 +1050,10 @@
       <div class="offer-card" style="margin-bottom:24px">
         ${p.badge ? `<span class="offer-tag">${esc(p.badge)}</span>` : ''}
         <h3>${esc(p.display_name || p.name)}</h3>
-        <div class="offer-price">${esc(p.stripe_price_label || p.price_label)}</div>
+        <div class="offer-price${p.price_was_label ? ' offer-price--promo' : ''}">
+          ${p.price_was_label ? `<span class="offer-price-was">${esc(p.price_was_label)}</span>` : ''}
+          <span class="offer-price-now">${esc(p.stripe_price_label || p.price_label)}</span>
+        </div>
         ${p.installments_note ? `<p class="offer-price-sub">${esc(p.installments_note)}</p>` : ''}
         ${
           desc

@@ -133,13 +133,23 @@
     "offre-duo": {
       "tab": "abonnements",
       "subsection": "promo",
-      "display_name": "Offre DUO 29 €",
-      "benefits": ["29 € par personne", "4 semaines", "Idéal à deux"],
-      "audience": "Adultes — inscription en duo",
-      "installments_note": "29 € / 4 semaines",
+      "display_name": "Sans engagement — 29,99 €",
+      "description": "29,99 € toutes les 4 semaines, sans engagement et sans préavis en cas de résiliation. Accès aux 5 salles et à toutes les disciplines.",
+      "benefits": [
+        "29,99 € / 4 semaines",
+        "Sans engagement / sans préavis",
+        "Accès aux 5 salles",
+        "1ʳᵉ échéance CB puis prélèvement"
+      ],
+      "audience": "Adultes — débutants bienvenus",
+      "duration_label": "Sans engagement",
+      "installments_note": "29,99 € / 4 semaines — 1ʳᵉ échéance CB puis prélèvement",
+      "price_cents": 2999,
+      "marketing_price_label": "29,99 €",
+      "price_was_label": "44,99 €",
       "sort_order": 1,
       "active": true,
-      "badge": "Promo"
+      "badge": "Rentrée 2026"
     },
     "offre-promo-9": {
       "tab": "abonnements",
@@ -189,7 +199,8 @@
       "badge": "1× ou 4× sans frais",
       "supports_installment_choice": true,
       "price_cents": 25900,
-      "marketing_price_label": "259,00 €"
+      "marketing_price_label": "259,00 €",
+      "price_was_label": "400,00 €"
     },
     "offre-ete": {
       "tab": "abonnements",

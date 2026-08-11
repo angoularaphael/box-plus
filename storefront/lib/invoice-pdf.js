@@ -297,5 +297,5 @@ module.exports = {
   generateMaterielInvoicePdf,
   streamInscriptionInvoicePdf,
   inscriptionInvoiceFilename,
-  DOCS_DIR,
+  renderInscriptionInvoice,
 };

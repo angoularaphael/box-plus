@@ -96,7 +96,58 @@ function ensureBottomSpace(doc, needed = 72) {
   if (doc.y + needed > bottom) doc.addPage();
 }
 
-function renderLegalPdf(doc, { title, md }) {
+function loadSignatureImage(order) {
+  if (!order?.signature) return null;
+  const imgPath = order.signature.image_path;
+  if (imgPath && fs.existsSync(imgPath)) return { type: 'path', value: imgPath };
+  if (order.signature.image_base64) {
+    const b64 = String(order.signature.image_base64).split(',').pop();
+    try {
+      return { type: 'buffer', value: Buffer.from(b64, 'base64') };
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function stampSignature(doc, order, { title = 'Signature électronique' } = {}) {
+  if (!order?.signature) return;
+  const left = doc.page.margins.left;
+  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const name = signerFullName(order) || 'Adhérent';
+  const date = order.signature.signed_at
+    ? new Date(order.signature.signed_at).toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      })
+    : new Date().toLocaleDateString('fr-FR');
+  const img = loadSignatureImage(order);
+  ensureBottomSpace(doc, img ? 140 : 70);
+  doc.moveDown(0.8);
+  doc.font('Helvetica-Bold').fontSize(10).fillColor(NAVY).text(title, left, doc.y, { width });
+  doc.moveDown(0.25);
+  doc
+    .font('Helvetica')
+    .fontSize(9)
+    .fillColor('#1A1A2E')
+    .text(`Nom : ${name}`, { width })
+    .text(`Date : ${date}`, { width });
+  if (img) {
+    doc.moveDown(0.3);
+    const y = doc.y;
+    try {
+      if (img.type === 'path') doc.image(img.value, left, y, { width: 180, height: 70, fit: true });
+      else doc.image(img.value, left, y, { width: 180, height: 70, fit: true });
+      doc.y = y + 78;
+    } catch {
+      doc.fontSize(8).fillColor(MUTED).text('(Signature manuscrite)', { width });
+    }
+  }
+}
+
+function renderLegalPdf(doc, { title, md, order = null, stamp = true }) {
   const left = doc.page.margins.left;
   const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
@@ -146,6 +197,7 @@ function renderLegalPdf(doc, { title, md }) {
     doc.moveDown(0.45);
   }
 
+  if (stamp && order) stampSignature(doc, order);
   drawPageFooter(doc);
 }
 
@@ -185,7 +237,7 @@ function readLegalMarkdown(spec) {
   return null;
 }
 
-async function renderMdToPdfFile(title, md, filepath) {
+async function renderMdToPdfFile(title, md, filepath, order = null) {
   ensureDir(path.dirname(filepath));
   const doc = new PDFDocument({
     size: 'A4',
@@ -195,7 +247,7 @@ async function renderMdToPdfFile(title, md, filepath) {
   });
   const stream = fs.createWriteStream(filepath);
   doc.pipe(stream);
-  renderLegalPdf(doc, { title, md });
+  renderLegalPdf(doc, { title, md, order, stamp: Boolean(order) });
   doc.end();
   await new Promise((resolve, reject) => {
     stream.on('finish', resolve);
@@ -204,7 +256,7 @@ async function renderMdToPdfFile(title, md, filepath) {
   return filepath;
 }
 
-async function writeLegalPdf(spec, { mdOverride = null, filenameOverride = null } = {}) {
+async function writeLegalPdf(spec, { mdOverride = null, filenameOverride = null, order = null } = {}) {
   ensureDir(DOCS_DIR);
   const filename = filenameOverride || spec.filename;
   const filepath = path.join(DOCS_DIR, filename);
@@ -216,7 +268,7 @@ async function writeLegalPdf(spec, { mdOverride = null, filenameOverride = null 
     md = loaded.md;
   }
 
-  await renderMdToPdfFile(spec.title, md, filepath);
+  await renderMdToPdfFile(spec.title, md, filepath, order);
   const size = fs.statSync(filepath).size;
   if (size < 500) return null;
   return { filepath, filename, source: mdOverride ? 'personalized' : 'generated', size };
@@ -234,12 +286,13 @@ async function generatePersonalizedMedicalPdf(order) {
     .replace(/[^a-zA-Z0-9_-]+/g, '-')
     .slice(0, 80);
   const filename = `Declaration-medicale-${safeId}.pdf`;
-  return writeLegalPdf(spec, { mdOverride: md, filenameOverride: filename });
+  return writeLegalPdf(spec, { mdOverride: md, filenameOverride: filename, order });
 }
 
 /**
  * Génère toujours les PDF depuis les .md (dans /tmp sur Vercel).
  * La déclaration médicale est personnalisée avec le nom du client.
+ * Signature manuscrite incrustée si order.signature présent.
  */
 async function generateInscriptionLegalPdfs(order = null) {
   const out = [];
@@ -252,7 +305,7 @@ async function generateInscriptionLegalPdfs(order = null) {
           ? await generatePersonalizedMedicalPdf(order)
           : await writeLegalPdf(spec);
       } else {
-        pdf = await writeLegalPdf(spec);
+        pdf = await writeLegalPdf(spec, { order });
       }
       if (pdf) out.push(pdf);
       else errors.push(`${spec.filename}: markdown introuvable (${LEGAL_DIR})`);
@@ -263,13 +316,60 @@ async function generateInscriptionLegalPdfs(order = null) {
   return { pdfs: out, errors, legalDir: LEGAL_DIR, docsDir: DOCS_DIR };
 }
 
+/**
+ * Un seul PDF : CGV + règlement + déclaration médicale (signés) + facture.
+ */
+async function generateInscriptionDossierPdf(order) {
+  if (!order?.order_id) throw new Error('order requis');
+  ensureDir(DOCS_DIR);
+  const { renderInscriptionInvoice } = require('./invoice-pdf');
+  const safeId = String(order.order_id).replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 80);
+  const filename = `dossier-inscription-${safeId}.pdf`;
+  const filepath = path.join(DOCS_DIR, filename);
+
+  const doc = new PDFDocument({
+    size: 'A4',
+    margins: { top: 48, bottom: 56, left: 48, right: 48 },
+    bufferPages: true,
+    autoFirstPage: true,
+  });
+  const stream = fs.createWriteStream(filepath);
+  doc.pipe(stream);
+
+  let first = true;
+  for (const spec of LEGAL_PDFS) {
+    const loaded = readLegalMarkdown(spec);
+    if (!loaded) continue;
+    if (!first) doc.addPage();
+    first = false;
+    let md = loaded.md;
+    if (spec.key === 'medical') {
+      md = personalizeMedicalMarkdown(md, signerFullName(order));
+    }
+    renderLegalPdf(doc, { title: spec.title, md, order, stamp: true });
+  }
+
+  doc.addPage();
+  renderInscriptionInvoice(doc, order);
+
+  doc.end();
+  await new Promise((resolve, reject) => {
+    stream.on('finish', resolve);
+    stream.on('error', reject);
+  });
+  const size = fs.statSync(filepath).size;
+  return { filepath, filename, size };
+}
+
 module.exports = {
   LEGAL_PDFS,
   LEGAL_DIR,
   DOCS_DIR,
   generateInscriptionLegalPdfs,
   generatePersonalizedMedicalPdf,
+  generateInscriptionDossierPdf,
   personalizeMedicalMarkdown,
   signerFullName,
   writeLegalPdf,
+  stampSignature,
 };

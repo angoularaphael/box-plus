@@ -111,7 +111,14 @@ function buildReturnUrls(baseUrl, order, { step = 4 } = {}) {
   };
 }
 
-async function createFourTimesPayment({ order, product, baseUrl, customerOverrides = {} }) {
+async function createFourTimesPayment({
+  order,
+  product,
+  baseUrl,
+  customerOverrides = {},
+  returnUrl = null,
+  cancelUrl = null,
+}) {
   const customer = customerDetails(order, customerOverrides);
   const missing = validateOneyCustomer(customer);
   if (missing.length) {
@@ -123,7 +130,10 @@ async function createFourTimesPayment({ order, product, baseUrl, customerOverrid
 
   const itemName = product.display_name || product.name || 'OFFRE PROMO 12 MOIS';
   const amount = Number(product.price_cents);
-  const urls = buildReturnUrls(baseUrl, order);
+  const urls =
+    returnUrl && cancelUrl
+      ? { return_url: returnUrl, cancel_url: cancelUrl }
+      : buildReturnUrls(baseUrl, order);
   // Accès club = retrait en salle (Oney n’accepte plus delivery_type "digital")
   const deliveryDate = new Date();
   deliveryDate.setDate(deliveryDate.getDate() + 1);

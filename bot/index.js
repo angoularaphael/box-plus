@@ -343,6 +343,22 @@ async function processCancelJob(page, order) {
       cancelDate: order.cancel_date || order.effective_date || null,
       cancelReason: order.cancel_reason || null,
     });
+    if (result?.refused && result.reason === 'comptant_refused') {
+      await pushCancelStatus('error', {
+        reason:
+          'Formule comptant détectée — résiliation web réservée aux prélèvements. Contactez votre manager en salle.',
+        memberId,
+      });
+      return {
+        status: STATUS.MANUAL_REVIEW,
+        action: 'cancel',
+        error:
+          'Résiliation refusée : formule comptant. Contactez le manager de votre salle en présentiel.',
+        cancel_reason: order.cancel_reason,
+        refused: true,
+        reason: 'comptant_refused',
+      };
+    }
     await pushCancelStatus('done', { cancelledCount: result?.cancelled_count ?? null, memberId });
     return {
       status: STATUS.SUCCESS,

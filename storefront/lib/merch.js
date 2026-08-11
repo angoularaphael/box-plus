@@ -188,6 +188,8 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
     sort_order: merchEntry.sort_order ?? 99,
     active: merchEntry.active !== false,
     marketing_price_label: merchEntry.marketing_price_label || null,
+    price_was_label: merchEntry.price_was_label || staticP.price_was_label || null,
+    price_was_cents: merchEntry.price_was_cents ?? staticP.price_was_cents ?? null,
     image: merchEntry.image || null,
     installments_note:
       merchEntry.installments_note || staticP.installments_note || catalogProduct.installments_note || null,
@@ -246,7 +248,7 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
     )
   ) {
     if (enriched.id === 'offre-duo' || /offre\s*a\s*29/i.test(String(enriched.name || ''))) {
-      enriched.installments_note = '29 € / 4 semaines';
+      enriched.installments_note = '29,99 € / 4 semaines — 1ʳᵉ échéance CB puis prélèvement';
     } else {
       enriched.installments_note = '1ʳᵉ échéance par carte · prélèvement sans engagement';
     }

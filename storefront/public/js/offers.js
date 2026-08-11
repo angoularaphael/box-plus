@@ -43,7 +43,7 @@
       return 'Paiement en 4× sans frais';
     }
     if (product.id === 'offre-duo' || /offre\s*a\s*29/i.test(product.name || '')) {
-      return '29 € / 4 semaines';
+      return '29,99 € toutes les 4 semaines — 1ʳᵉ échéance CB puis prélèvement';
     }
     if (product.requires_iban) return '1ʳᵉ échéance par carte · prélèvement sans engagement';
     return 'Paiement sécurisé par carte';
@@ -51,6 +51,8 @@
 
   function formatDuration(product) {
     const n = product.name || '';
+    if (product.id === 'offre-duo' || /offre\s*a\s*29/i.test(n)) return 'Sans engagement';
+    if (product.duration_label) return product.duration_label;
     if (/12\s*mois/i.test(n)) return '12 mois';
     if (/6\s*mois/i.test(n)) return '6 mois';
     if (/3\s*mois/i.test(n)) return '3 mois';
@@ -61,7 +63,7 @@
     if (product.tab === 'seance-essai') return '1 séance';
     if (product.tab === 'coachings') return 'Selon pack';
     if (product.subsection === 'enfants') return 'Saison';
-    return product.duration_label || 'Selon formule';
+    return 'Selon formule';
   }
 
   function offerDescription(product) {
@@ -81,7 +83,7 @@
       return `Réglez une seule fois et entraînez-vous pendant ${dur} : accès illimité aux salles et à toutes les disciplines, sans aucun prélèvement mensuel.`;
     }
     if (product.id === 'offre-duo' || /offre\s*a\s*29/i.test(n)) {
-      return '29 € par personne toutes les 4 semaines. Accès illimité aux 5 salles et à toutes les disciplines.';
+      return '29,99 € toutes les 4 semaines, sans engagement et sans préavis en cas de résiliation. Accès aux 5 salles et à toutes les disciplines.';
     }
     if (/4\s*semaines/i.test(n) || product.requires_iban) {
       return 'Formule flexible : 1ʳᵉ échéance par carte, puis prélèvement sans engagement toutes les 4 semaines. Accès illimité aux salles et disciplines.';
@@ -126,6 +128,7 @@
     const featured = isFeaturedOffer(product, opts);
     const displayName = product.display_name || product.name;
     const price = product.marketing_price_label || product.stripe_price_label || product.price_label || '—';
+    const priceWas = product.price_was_label || '';
     const benefits = product.benefits || [];
     const defaultBenefits = product.tab === 'abonnements'
       ? [
@@ -138,13 +141,20 @@
 
     const list = benefits.length ? benefits : defaultBenefits;
     const reveal = opts.animate ? ' data-reveal' : '';
+    const isDuo = product.id === 'offre-duo' || /offre\s*a\s*29/i.test(product.name || '');
+    const retainNote = isDuo
+      ? '29,99 € toutes les 4 semaines, sans engagement et sans préavis en cas de résiliation, accès aux 5 salles et à toutes les disciplines'
+      : '';
 
     return `
       <article class="offer-card ${featured ? 'featured' : ''}" data-id="${esc(product.id)}"${reveal}>
         ${featured ? '<span class="offer-badge">Populaire</span>' : ''}
         ${product.badge ? `<span class="offer-tag">${esc(product.badge)}</span>` : ''}
         <h3>${esc(displayName)}</h3>
-        <div class="offer-price">${esc(price)}</div>
+        <div class="offer-price${priceWas ? ' offer-price--promo' : ''}">
+          ${priceWas ? `<span class="offer-price-was">${esc(priceWas)}</span>` : ''}
+          <span class="offer-price-now">${esc(price)}</span>
+        </div>
         ${product.price_subtitle ? `<div class="offer-price-sub">${esc(product.price_subtitle)}</div>` : ''}
         ${product.installments_note ? `<div class="offer-price-sub">${esc(product.installments_note)}</div>` : ''}
         ${offerDescription(product) ? `<p class="offer-desc">${esc(offerDescription(product))}</p>` : ''}
@@ -155,6 +165,7 @@
         <div class="offer-meta">
           <div><strong>Durée :</strong> ${esc(formatDuration(product))}</div>
           <div><strong>Paiement :</strong> ${esc(formatPaymentMode(product))}</div>
+          ${retainNote ? `<div><strong>À retenir :</strong> ${esc(retainNote)}</div>` : ''}
           ${product.audience ? `<div><strong>Public :</strong> ${esc(product.audience)}</div>` : ''}
         </div>
         <a href="${(window.BCPaths?.link('/inscription') || '/inscription')}?product=${encodeURIComponent(product.id)}" class="btn block ${featured ? '' : 'secondary'}">

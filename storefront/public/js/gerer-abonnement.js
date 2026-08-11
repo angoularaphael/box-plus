@@ -316,34 +316,162 @@
       .filter((p) => !/promo/i.test(String(p.id || '')) && !/promo/i.test(String(p.label || '')))
       .map((p) => `<option value="${p.id}">${p.label}</option>`)
       .join('');
+    window.__bcChangeTargets = data.comptant_targets || [];
     targetSelect.innerHTML = (data.comptant_targets || [])
       .map(
         (p) =>
-          `<option value="${p.id}">${p.name}${p.price_label ? ` — ${p.price_label}` : ''}</option>`
+          `<option value="${p.id}" data-installment="${p.supports_installment_choice ? '1' : '0'}" data-cents="${p.price_cents || 0}">${p.name}${p.price_label ? ` — ${p.price_label}` : ''}</option>`
       )
       .join('');
   }
 
   const changePayPanel = document.getElementById('changePayPanel');
   const changePayLead = document.getElementById('changePayLead');
+  const changePayChoices = document.getElementById('changePayChoices');
   const changePayBtn = document.getElementById('changePayBtn');
   const changePayBack = document.getElementById('changePayBack');
   let changeCheckoutBody = null;
   let changeProductSummary = null;
+
+  function isPortetGym(gym) {
+    return String(gym || '').trim().toLowerCase() === 'portet';
+  }
+
+  function renderChangePayChoices({ product, gym }) {
+    const portet = isPortetGym(gym);
+    const cents = Number(product?.price_cents || 0);
+    const quart = cents > 0 ? (cents / 400).toFixed(2).replace('.', ',') : '';
+    const installment =
+      product?.supports_installment_choice === true ||
+      product?.id === 'offre-saison' ||
+      /259|12\s*mois|baby|educative|éducative/i.test(String(product?.name || product?.id || ''));
+
+    const methodRow = (name, value, checked, title, small) => `
+      <label class="billing-choice">
+        <input type="radio" name="${name}" value="${value}" ${checked ? 'checked' : ''} />
+        <span class="billing-choice-text">
+          <strong>${title}</strong>
+          <small>${small}</small>
+        </span>
+      </label>`;
+
+    let html = '';
+    if (portet) {
+      html += `<p class="manage-lead" style="color:var(--bc-red,#E8001C);margin:0 0 12px">Salle Portet : paiement uniquement via PayPal.</p>`;
+    }
+    if (installment) {
+      html += `
+        <p class="sub" style="margin:0 0 8px">Étape 1 — Comment souhaitez-vous régler ?</p>
+        <div class="billing-choice-row" role="radiogroup" aria-label="Type de paiement">
+          ${methodRow('change_payment_plan', 'once', true, 'En une seule fois', product?.price_label || '')}
+          ${methodRow('change_payment_plan', '4x', false, 'En 4× sans frais', quart ? `Paiement immédiat de ${quart} €` : '4 échéances sans frais')}
+        </div>
+        <div id="changeFourXSchedule" class="fourx-schedule" style="display:none;margin-top:10px"></div>
+        <p class="sub" style="margin:16px 0 8px">Étape 2 — Moyen de paiement</p>
+        <div id="changeOnceMethods" class="billing-choice-row">
+          ${
+            portet
+              ? methodRow('change_pay_method_once', 'paypal', true, 'PayPal', 'Obligatoire à Portet')
+              : `${methodRow('change_pay_method_once', 'payplug', true, 'Carte bancaire', 'PayPlug')}
+                 ${methodRow('change_pay_method_once', 'paypal', false, 'PayPal', 'Paiement sécurisé')}`
+          }
+        </div>
+        <div id="changeFourMethods" class="billing-choice-row" style="display:none">
+          ${
+            portet
+              ? methodRow('change_pay_method_4x', 'paypal', true, 'PayPal', '4× PayPal si éligible')
+              : `${methodRow('change_pay_method_4x', 'payplug', true, '4× sans frais', 'Carte PayPlug')}
+                 ${methodRow('change_pay_method_4x', 'paypal', false, 'PayPal', '4× PayPal si éligible')}`
+          }
+        </div>
+        ${
+          portet
+            ? ''
+            : `<div id="changeFourAddress" class="form-grid" style="display:none;margin-top:12px">
+            <p class="sub full" style="margin:0 0 8px">Adresse requise pour le 4× carte :</p>
+            <div class="full"><label>Adresse *</label><input name="address" id="chg_address" /></div>
+            <div><label>Code postal *</label><input name="postal_code" id="chg_postal" /></div>
+            <div><label>Ville *</label><input name="city" id="chg_city" /></div>
+          </div>`
+        }`;
+    } else {
+      html += `
+        <div class="billing-choice-row" role="radiogroup" aria-label="Moyen de paiement">
+          ${
+            portet
+              ? methodRow('change_pay_method', 'paypal', true, 'PayPal', 'Obligatoire à Portet')
+              : `${methodRow('change_pay_method', 'payplug', true, 'Carte bancaire', 'PayPlug')}
+                 ${methodRow('change_pay_method', 'paypal', false, 'PayPal', 'Paiement sécurisé')}`
+          }
+        </div>`;
+    }
+    changePayChoices.innerHTML = html;
+
+    if (installment) {
+      const sync = () => {
+        const plan = document.querySelector('input[name="change_payment_plan"]:checked')?.value || 'once';
+        const once = document.getElementById('changeOnceMethods');
+        const four = document.getElementById('changeFourMethods');
+        const addr = document.getElementById('changeFourAddress');
+        const schedule = document.getElementById('changeFourXSchedule');
+        if (once) once.style.display = plan === 'once' ? '' : 'none';
+        if (four) four.style.display = plan === '4x' ? '' : 'none';
+        if (schedule) {
+          schedule.style.display = plan === '4x' ? '' : 'none';
+          if (plan === '4x' && quart) {
+            const today = new Date();
+            const dates = [0, 30, 60, 90].map((d) => {
+              const x = new Date(today);
+              x.setDate(x.getDate() + d);
+              return x.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+            });
+            schedule.innerHTML = `<p class="fourx-schedule__title">Calendrier indicatif 4×</p><ul>
+              <li><strong>Aujourd’hui</strong> — ${quart}&nbsp;€</li>
+              <li><strong>${dates[1]}</strong> — ${quart}&nbsp;€</li>
+              <li><strong>${dates[2]}</strong> — ${quart}&nbsp;€</li>
+              <li><strong>${dates[3]}</strong> — ${quart}&nbsp;€</li>
+            </ul>`;
+          }
+        }
+        const fourMethod =
+          document.querySelector('input[name="change_pay_method_4x"]:checked')?.value || 'payplug';
+        if (addr) addr.style.display = plan === '4x' && fourMethod === 'payplug' && !portet ? '' : 'none';
+      };
+      changePayChoices
+        .querySelectorAll('input[name="change_payment_plan"], input[name="change_pay_method_4x"]')
+        .forEach((el) => el.addEventListener('change', sync));
+      sync();
+    }
+  }
 
   function showChangePayStep({ body, product, verifyOrderId }) {
     changeCheckoutBody = {
       ...body,
       verify_order_id: verifyOrderId,
     };
-    changeProductSummary = product || null;
+    const fromList = (window.__bcChangeTargets || []).find((p) => p.id === body.target_product_id);
+    changeProductSummary = {
+      ...(product || {}),
+      ...(fromList || {}),
+      supports_installment_choice:
+        fromList?.supports_installment_choice ||
+        product?.supports_installment_choice ||
+        body.target_product_id === 'offre-saison',
+    };
     const label =
-      product?.price_label ||
-      (product?.price_cents != null ? `${(Number(product.price_cents) / 100).toFixed(2).replace('.', ',')} €` : '');
-    const name = product?.name || targetSelect?.selectedOptions?.[0]?.textContent || 'abonnement comptant';
+      changeProductSummary?.price_label ||
+      (changeProductSummary?.price_cents != null
+        ? `${(Number(changeProductSummary.price_cents) / 100).toFixed(2).replace('.', ',')} €`
+        : '');
+    const name =
+      changeProductSummary?.name ||
+      targetSelect?.selectedOptions?.[0]?.textContent ||
+      'abonnement comptant';
+    const portet = isPortetGym(body.gym);
     changePayLead.textContent = label
-      ? `Identité confirmée. Montant à régler : ${label} (${name}). Choisissez PayPlug (carte) ou PayPal.`
-      : `Identité confirmée. Choisissez PayPlug (carte) ou PayPal pour finaliser le passage en comptant.`;
+      ? `Identité confirmée. Montant : ${label} (${name}).${portet ? ' PayPal uniquement (Portet).' : ''}`
+      : `Identité confirmée. Choisissez votre mode de paiement.`;
+    renderChangePayChoices({ product: changeProductSummary, gym: body.gym });
     changeForm.hidden = true;
     changePayPanel.hidden = false;
     changeMsg.hidden = false;
@@ -362,13 +490,47 @@
     if (submitBtn) submitBtn.disabled = false;
   }
 
-  async function startChangePayment(paymentMethod) {
+  async function startChangePayment() {
     if (!changeCheckoutBody) {
       changeMsg.hidden = false;
       changeMsg.className = 'form-msg err';
       changeMsg.textContent = 'Recommencez la vérification de vos informations.';
       return;
     }
+    const portet = isPortetGym(changeCheckoutBody.gym);
+    const installment =
+      changeProductSummary?.supports_installment_choice ||
+      document.querySelector('input[name="change_payment_plan"]');
+    let paymentMethod = 'payplug';
+    let paymentPlan = 'once';
+    const extra = {};
+    if (installment && document.querySelector('input[name="change_payment_plan"]')) {
+      paymentPlan =
+        document.querySelector('input[name="change_payment_plan"]:checked')?.value || 'once';
+      if (paymentPlan === '4x') {
+        paymentMethod =
+          document.querySelector('input[name="change_pay_method_4x"]:checked')?.value || 'payplug';
+        if (paymentMethod === 'payplug' && !portet) {
+          extra.address = document.getElementById('chg_address')?.value?.trim() || '';
+          extra.postal_code = document.getElementById('chg_postal')?.value?.trim() || '';
+          extra.city = document.getElementById('chg_city')?.value?.trim() || '';
+          if (!extra.address || !extra.postal_code || !extra.city) {
+            changeMsg.hidden = false;
+            changeMsg.className = 'form-msg err';
+            changeMsg.textContent = 'Adresse complète requise pour le paiement en 4×.';
+            return;
+          }
+        }
+      } else {
+        paymentMethod =
+          document.querySelector('input[name="change_pay_method_once"]:checked')?.value || 'payplug';
+      }
+    } else {
+      paymentMethod =
+        document.querySelector('input[name="change_pay_method"]:checked')?.value || 'payplug';
+    }
+    if (portet) paymentMethod = 'paypal';
+
     changePayBtn.disabled = true;
     changeMsg.hidden = false;
     changeMsg.className = 'form-msg';
@@ -380,14 +542,16 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...changeCheckoutBody,
+          ...extra,
           payment_method: paymentMethod,
+          payment_plan: paymentPlan,
         }),
       });
       const data = await res.json();
       if (!data.ok) {
         changeMsg.textContent =
           data.error === 'paypal_not_configured'
-            ? 'PayPal temporairement indisponible. Choisissez la carte.'
+            ? 'PayPal temporairement indisponible.'
             : data.error === 'payplug_not_configured'
               ? 'Paiement carte temporairement indisponible. Essayez PayPal.'
               : data.error || 'Erreur';
@@ -485,10 +649,14 @@
     }
 
     const selectedOpt = targetSelect?.selectedOptions?.[0];
+    const fromList = (window.__bcChangeTargets || []).find((p) => p.id === body.target_product_id);
     const productHint = {
       id: body.target_product_id,
       name: selectedOpt?.textContent || body.target_product_id,
       price_label: String(selectedOpt?.textContent || '').split('—')[1]?.trim() || '',
+      price_cents: fromList?.price_cents || Number(selectedOpt?.dataset?.cents || 0),
+      supports_installment_choice:
+        fromList?.supports_installment_choice || selectedOpt?.dataset?.installment === '1',
     };
     showChangePayStep({
       body,
@@ -500,9 +668,7 @@
   };
 
   changePayBtn?.addEventListener('click', () => {
-    const method =
-      document.querySelector('input[name="change_pay_method"]:checked')?.value || 'payplug';
-    void startChangePayment(method);
+    void startChangePayment();
   });
   changePayBack?.addEventListener('click', backToChangeForm);
 

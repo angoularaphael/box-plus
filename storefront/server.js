@@ -138,16 +138,38 @@ const { upsertClientFromInscription, upsertMaterielClient } = require('./lib/cli
 const { insertTunnelLead, tunnelFromProductId } = require('./lib/tunnel-lead');
 
 function streamOrderFacturePdf(order, res) {
+  const storedDossier = order.documents?.dossier_pdf;
+  if (storedDossier && fs.existsSync(storedDossier)) {
+    const name = order.documents?.dossier_filename || 'dossier-inscription.pdf';
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${name}"`);
+    fs.createReadStream(storedDossier).pipe(res);
+    return;
+  }
+  // Génération à la volée du dossier fusionné (CGV + RI + médical + facture)
+  if (order.signature?.signed_at) {
+    const { generateInscriptionDossierPdf } = require('./lib/legal-pdf');
+    generateInscriptionDossierPdf(order)
+      .then((dossier) => {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader(
+          'Content-Disposition',
+          `inline; filename="${dossier.filename || 'dossier-inscription.pdf'}"`
+        );
+        fs.createReadStream(dossier.filepath).pipe(res);
+      })
+      .catch((err) => {
+        logWarn('Dossier PDF admin fallback facture', { order_id: order.order_id, error: err.message });
+        streamInscriptionInvoicePdf(order, res);
+      });
+    return;
+  }
   const stored = order.documents?.invoice_pdf || order.documents?.contract_pdf;
   const storedName = order.documents?.invoice_filename || order.documents?.contract_filename || 'facture.pdf';
   if (stored && fs.existsSync(stored)) {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${storedName}"`);
     fs.createReadStream(stored).pipe(res);
-    return;
-  }
-  if (order.signature?.signed_at) {
-    streamInscriptionInvoicePdf(order, res);
     return;
   }
   streamContractPdf(order, res);
@@ -1901,10 +1923,14 @@ function createApp() {
       const billingPlan = normalizeBillingPlan(rawBilling, product);
       const paymentPlan = normalizePaymentPlan(req.body.payment_plan, product);
       const payMethod = String(req.body.pay_method || '').toLowerCase();
-      const preferredCheckout =
+      const gym = order.customer_full?.gym || req.body.gym || 'minimes';
+      const gymNorm = String(gym).trim().toLowerCase();
+      const portetPaypalOnly = gymNorm === 'portet';
+      let preferredCheckout =
         payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
           ? 'paypal'
           : 'card';
+      if (portetPaypalOnly) preferredCheckout = 'paypal';
       const badgeTiming = 'deferred';
       const badgeMethod = 'iban';
 
@@ -1938,7 +1964,6 @@ function createApp() {
         });
       }
 
-      const gym = order.customer_full?.gym || req.body.gym || 'minimes';
       const baseUrl = getCheckoutBaseUrl(req);
       const planLabel = paymentPlan || (productSupportsInstallmentChoice(product) ? 'once' : 'once');
 
@@ -2209,6 +2234,39 @@ function createApp() {
     }
   });
 
+  app.post('/api/membership/welcome-counsel', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const { guideWelcome } = require('./lib/counselor-ai');
+      const messages = Array.isArray(body.messages)
+        ? body.messages
+            .slice(-16)
+            .map((m) => ({
+              role: m.role === 'bot' || m.role === 'assistant' ? 'assistant' : 'user',
+              content: String(m.content || m.text || m.html || '')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 600),
+            }))
+            .filter((m) => m.content)
+        : [];
+      const result = await guideWelcome({
+        freeText: body.free_text || body.message || '',
+        messages,
+      });
+      res.json({ ok: true, reply: result.reply, source: result.source });
+    } catch (err) {
+      logError('Erreur welcome counsel', { error: err.message });
+      res.status(500).json({
+        ok: false,
+        error: err.message,
+        reply:
+          'Je peux t’aider sur les offres, salles ou documents. Pour une résiliation, ouvre « Gérer mon abo » (David).',
+      });
+    }
+  });
+
   app.post('/api/membership/verify', async (req, res) => {
     try {
       const body = req.body || {};
@@ -2298,7 +2356,22 @@ function createApp() {
         });
       }
       const method = String(body.payment_method || body.method || 'payplug').toLowerCase();
-      const preferPaypal = method === 'paypal';
+      const gymNorm = String(body.gym || '').trim().toLowerCase();
+      const portetPaypalOnly = gymNorm === 'portet';
+      let preferPaypal = method === 'paypal' || portetPaypalOnly;
+      const {
+        productSupportsInstallmentChoice,
+        normalizePaymentPlan,
+      } = require('../../lib/billing-plan');
+      const paymentPlan =
+        normalizePaymentPlan(body.payment_plan, product) ||
+        (productSupportsInstallmentChoice(product) ? 'once' : 'once');
+      if (portetPaypalOnly && !preferPaypal) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Pour la salle Portet, le paiement doit passer par PayPal.',
+        });
+      }
       if (preferPaypal && !isPaypalEnabled()) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
       }
@@ -2316,6 +2389,10 @@ function createApp() {
           /* ignore */
         }
       }
+      const amountCents =
+        paymentPlan === '4x'
+          ? Math.round(Number(product.price_cents || 0) / 4)
+          : Number(product.price_cents || 0);
       const meta = {
         order_type: 'membership_change',
         target_product_id: product.id,
@@ -2328,8 +2405,9 @@ function createApp() {
         current_plan: body.current_plan || '',
         verify_order_id: body.verify_order_id || '',
         deciplus_member_id: String(deciplusMemberId || ''),
-        payment_plan: 'once',
+        payment_plan: paymentPlan,
         amount_cents: Number(product.price_cents || 0),
+        charge_cents: amountCents,
       };
 
       const {
@@ -2341,7 +2419,7 @@ function createApp() {
           product,
           amountCents: product.price_cents,
           baseUrl,
-          paymentPlan: 'once',
+          paymentPlan: paymentPlan === '4x' ? '4x' : 'once',
           description: product.display_name || product.name || 'Changement abo comptant',
           metadata: {
             order_id: body.verify_order_id || `chg-${Date.now()}`,
@@ -2368,6 +2446,67 @@ function createApp() {
             name: product.display_name || product.name,
             price_label: product.price_label || product.marketing_price_label,
             price_cents: product.price_cents,
+            supports_installment_choice: productSupportsInstallmentChoice(product),
+          },
+        });
+      }
+
+      if (paymentPlan === '4x') {
+        const syntheticOrder = {
+          order_id: body.verify_order_id || `chg-${Date.now()}`,
+          customer_short: {
+            first_name: body.first_name,
+            last_name: body.last_name,
+            email: body.email,
+            phone: body.phone,
+          },
+          customer_full: {
+            first_name: body.first_name,
+            last_name: body.last_name,
+            email: body.email,
+            phone: body.phone,
+            gym: body.gym || 'minimes',
+            address: body.address,
+            postal_code: body.postal_code,
+            city: body.city,
+            gender: body.gender || 'M',
+          },
+        };
+        const payment = await createFourTimesPayment({
+          order: syntheticOrder,
+          product,
+          baseUrl,
+          customerOverrides: {
+            first_name: body.first_name,
+            last_name: body.last_name,
+            email: body.email,
+            phone: body.phone,
+            address: body.address,
+            postal_code: body.postal_code,
+            city: body.city,
+            gender: body.gender || 'M',
+          },
+          returnUrl: `${baseUrl}/gerer-abonnement?change=1&payplug_return=1`,
+          cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled`,
+        });
+        const url = hostedPaymentUrl(payment);
+        if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
+        await saveMembershipChangePending(payment.id, {
+          ...meta,
+          payment_method: 'payplug',
+          payplug_payment_id: payment.id,
+        });
+        return res.json({
+          ok: true,
+          mode: 'payplug_4x',
+          url,
+          payment_id: payment.id,
+          product: {
+            id: product.id,
+            name: product.display_name || product.name,
+            price_label: product.price_label || product.marketing_price_label,
+            price_cents: product.price_cents,
+            supports_installment_choice: true,
           },
         });
       }
@@ -2403,6 +2542,7 @@ function createApp() {
           name: product.display_name || product.name,
           price_label: product.price_label || product.marketing_price_label,
           price_cents: product.price_cents,
+          supports_installment_choice: productSupportsInstallmentChoice(product),
         },
       });
     } catch (err) {

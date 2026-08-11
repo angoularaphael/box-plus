@@ -875,18 +875,54 @@ async function cancelAllMemberSales(page, memberId, { maxSales = 15, cancelDate 
   return { member_id: memberId, cancelled_count: total, details };
 }
 
+function looksLikeComptantContract(label) {
+  const t = String(label || '');
+  if (/pr[ée]l[èe]vement|4\s*semaines|sans\s*engagement|iban|sepa/i.test(t)) return false;
+  return /comptant|259\s*€|12\s*mois|promo\s*12|baby\s*boxe|boxe\s*[eé]ducative|1\s*[x×]\s*ou\s*4|forfait\s*annuel/i.test(
+    t
+  );
+}
+
 async function cancelSale(page, memberId, options = {}) {
   if (!memberId) throw new Error('member_id requis pour résilier');
   const cancelDate = options.cancelDate || options.cancel_date || null;
   const cancelReason = String(options.cancelReason || options.cancel_reason || '').toLowerCase();
+  const isChange =
+    cancelReason === 'change_to_comptant' || cancelReason.startsWith('change_');
+
+  if (!isChange) {
+    try {
+      await reopenMemberAfterCancel(page, memberId);
+      const contracts = await findActiveContracts(page);
+      const abo = contracts.filter((c) => !c.isBadge);
+      if (abo.length > 0 && abo.every((c) => looksLikeComptantContract(c.label))) {
+        logInfo('Résiliation web refusée — formule comptant détectée', {
+          member_id: memberId,
+          labels: abo.map((c) => c.label?.slice(0, 80)),
+        });
+        return {
+          action: 'sale_cancelled',
+          sale_type: 'cancel',
+          refused: true,
+          reason: 'comptant_refused',
+          cancelled_count: 0,
+          details: [{ cancelled: false, reason: 'comptant_refused' }],
+        };
+      }
+    } catch (err) {
+      logWarn('Contrôle comptant avant résiliation — poursuite', {
+        member_id: memberId,
+        error: err.message,
+      });
+    }
+  }
+
   const outcome = await cancelAllMemberSales(page, memberId, {
     maxSales: 15,
     cancelDate,
   });
   if (outcome.cancelled_count === 0) {
     const reason = outcome.details[0]?.reason || 'inconnu';
-    const isChange =
-      cancelReason === 'change_to_comptant' || cancelReason.startsWith('change_');
     // Changement d’abo : le but est la vente. Déjà résilié / panneau absent → on continue.
     if (isChange) {
       logInfo('Changement abo — résiliation non bloquante, on continue la vente', {

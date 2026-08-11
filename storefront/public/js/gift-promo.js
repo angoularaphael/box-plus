@@ -1,5 +1,5 @@
 /**
- * Entrée boutique — cadeau qui s'ouvre sur les offres promo (29 € ou 259 €).
+ * Entrée boutique — cadeau qui s'ouvre sur les offres promo (29,99 € ou 259 €).
  * Une fois par session navigateur.
  */
 (function () {
@@ -11,8 +11,9 @@
   const OFFERS = [
     {
       id: 'offre-duo',
-      price: '29',
-      title: '29 € / 4 semaines',
+      price: '29,99',
+      priceWas: '44,99',
+      title: '29,99 € / 4 semaines',
       lead: '1ʳᵉ échéance CB · sans engagement · 5 salles',
       href: '/offre/29',
       track: 'gift_promo_cta_29',
@@ -20,6 +21,7 @@
     {
       id: 'offre-saison-259',
       price: '259',
+      priceWas: '400',
       title: '259 € / 12 mois',
       lead: '1× ou 4× sans frais · tarif annuel · 5 salles',
       href: '/offre/259',
@@ -79,7 +81,10 @@
     return OFFERS.map(
       (o, i) => `
         <a class="gift-promo__offer" href="${link(o.href)}" data-track="${o.track}" data-offer="${o.id}" style="--i:${i}">
-          <span class="gift-promo__offer-price">${o.price}<span>€</span></span>
+          <span class="gift-promo__offer-prices">
+            ${o.priceWas ? `<span class="gift-promo__offer-was" aria-hidden="true">${o.priceWas}<span>€</span></span>` : ''}
+            <span class="gift-promo__offer-price">${o.price}<span>€</span></span>
+          </span>
           <span class="gift-promo__offer-title">${o.title}</span>
           <span class="gift-promo__offer-lead">${o.lead}</span>
           <span class="gift-promo__offer-cta">Choisir cette offre</span>

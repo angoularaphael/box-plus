@@ -2,10 +2,9 @@ const fs = require('fs');
 const { logInfo, logWarn } = require('../../lib/logger');
 const { getMailFrom, CGV_URL, REGLEMENT_URL, SITE_URL } = require('./branding');
 const {
-  generateInscriptionInvoicePdf,
   generateMaterielInvoicePdf,
 } = require('./invoice-pdf');
-const { generateInscriptionLegalPdfs } = require('./legal-pdf');
+const { generateInscriptionDossierPdf } = require('./legal-pdf');
 const { sendEmailViaBrevo, isConfigured, defaultReplyTo } = require('./brevo-send');
 
 function buildConfirmationHtml(order, attachmentNames = []) {
@@ -14,7 +13,7 @@ function buildConfirmationHtml(order, attachmentNames = []) {
   const gym = order.customer_full?.gym || '—';
   const pjList =
     attachmentNames.length > 0
-      ? `<p style="font-size:13px;color:#334155"><strong>Pièces jointes (${attachmentNames.length}) :</strong> ${attachmentNames
+      ? `<p style="font-size:13px;color:#334155"><strong>Pièce jointe :</strong> ${attachmentNames
           .map((n) => escapeHtml(n))
           .join(', ')}</p>`
       : '';
@@ -37,7 +36,7 @@ function buildConfirmationHtml(order, attachmentNames = []) {
     <li>Pas besoin d'expérience — nos coachs vous accueillent</li>
     <li>Votre abonnement donne accès à nos 5 salles</li>
   </ul>
-  <p>Vous trouverez en pièces jointes votre <strong>facture Boxing Center</strong> au nom de ${escapeHtml(short.first_name || '')} ${escapeHtml(short.last_name || '')}, les <strong>CGV</strong>, le <strong>règlement intérieur</strong> et la <strong>déclaration médicale</strong>.</p>
+  <p>Vous trouverez en pièce jointe votre <strong>dossier d'inscription</strong> (CGV, règlement intérieur, déclaration médicale signés + facture) au nom de ${escapeHtml(short.first_name || '')} ${escapeHtml(short.last_name || '')}.</p>
   ${pjList}
   <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="${SITE_URL}" style="color:#2EC4C6">${SITE_URL.replace('https://', '')}</a></p>
 </body>
@@ -74,18 +73,12 @@ async function buildInscriptionAttachments(order, extra = []) {
   };
 
   try {
-    const { pdfs: legalPdfs, errors, legalDir } = await generateInscriptionLegalPdfs(order);
-    for (const pdf of legalPdfs) {
-      const ok = pushFile(pdf.filename, pdf.filepath);
-      if (!ok) {
-        logWarn('PJ légale non ajoutée', { filename: pdf.filename, filepath: pdf.filepath });
-      }
-    }
-    if (errors?.length) {
-      logWarn('PDF légaux partiels', { order_id: order.order_id, errors, legalDir });
+    const dossier = await generateInscriptionDossierPdf(order);
+    if (dossier?.filepath) {
+      pushFile(dossier.filename, dossier.filepath);
     }
   } catch (err) {
-    logWarn('PDF légaux inscription non générés', {
+    logWarn('Dossier inscription PDF non généré', {
       order_id: order.order_id,
       error: err.message,
       stack: err.stack,
@@ -100,22 +93,12 @@ async function buildInscriptionAttachments(order, extra = []) {
     }
   }
 
-  try {
-    const invoice = await generateInscriptionInvoicePdf(order);
-    if (invoice?.filepath) {
-      pushFile(invoice.filename, invoice.filepath);
-    }
-  } catch (err) {
-    logWarn('Facture inscription non générée', { order_id: order.order_id, error: err.message });
-  }
-
   const names = attachments.map((a) => a.filename);
   const totalBytes = attachments.reduce((n, a) => n + (a.content?.length || 0), 0);
-  if (attachments.length < 4) {
-    logWarn('PJ inscription incomplètes (attendu: 4)', {
+  if (!attachments.length) {
+    logWarn('PJ inscription manquante', {
       order_id: order.order_id,
-      count: attachments.length,
-      attachments: names,
+      count: 0,
       totalBytes,
     });
   } else {

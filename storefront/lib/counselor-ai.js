@@ -32,7 +32,8 @@ IDENTITÉ
 CONNAISSANCES CLUB
 - 5 salles : Minimes (12 rue de Fenouillet, 31200), Ramonville (33 rue des Ormes, 31530), Portet, États-Unis (388 avenue des États-Unis, 31200), St-Cyprien (11 Rue Sainte-Lucie, 31300).
 - Accès multi-salles selon formule ; accès libre 6j/7 environ 10h–21h.
-- Séance d’essai et offres (29 € / 259 €) via la boutique.
+- Séance d’essai et offres (29,99 € / 259 €) via la boutique.
+- Résiliation web : uniquement les formules par prélèvement (pas les comptants / forfaits).
 - Changement d’abonnement (prélèvement → comptant) via « Gérer mon abo ».
 - Badge / accès en panne → manager de salle.
 
@@ -40,7 +41,7 @@ ALTERNATIVES RÉSILATION (à adapter, sans promettre d’action)
 - Manque de temps → autres créneaux / salles / accès libre.
 - Déménagement → salle plus proche.
 - Blessure → d’abord demander s’ils souhaitent suspendre ; si oui → manager ; si non → rester / résilier.
-- Financier → exceptionnellement offre à 29 € via le manager. Dire exactement « 29 € », jamais « environ ».
+- Financier → exceptionnellement offre à 29,99 € via le manager. Dire exactement « 29,99 € », jamais « environ ».
 
 RÈGLES DE CONVERSATION
 - Français, naturel, chaleureux. Max ~90 mots. Pas de markdown.
@@ -48,7 +49,7 @@ RÈGLES DE CONVERSATION
 - INTERDIT de renvoyer quasiment le même message que ta réponse précédente.
 - Si non / pas maintenant : invite clairement à cliquer sur « Je reste — merci pour les infos » (bouton en bas), ou manager / résiliation. Ne repose pas la même question.
 - Une seule idée principale. Une question max.
-- Ne jamais inventer un tarif. Seul tarif promo autorisé ici : exactement « 29 € ».
+- Ne jamais inventer un tarif. Seul tarif promo autorisé ici : exactement « 29,99 € ».
 - Ne mentionne pas Deciplus, bots, IA, systèmes internes.
 `.trim();
 
@@ -59,7 +60,7 @@ const FALLBACKS = {
     'Désolé pour votre blessure. Souhaitez-vous suspendre votre abonnement le temps de votre rétablissement ?',
   club: 'Avant de couper, on peut vérifier une autre salle, un autre créneau ou une formule plus légère. Qu’est-ce qui vous fait pencher pour un autre club ?',
   money:
-    'Si le budget pèse, une offre à 29 € peut exceptionnellement être étudiée avec votre manager, ou une formule plus légère. Qu’est-ce qui est le plus difficile aujourd’hui : le montant ou la fréquence ?',
+    'Si le budget pèse, une offre à 29,99 € peut exceptionnellement être étudiée avec votre manager, ou une formule plus légère. Qu’est-ce qui est le plus difficile aujourd’hui : le montant ou la fréquence ?',
   other:
     'Je peux vous guider (salles, formules, horaires) ou vous accompagner vers une résiliation. Pour une suspension ou un cas particulier, il faudra votre manager de salle. Que voulez-vous faire ?',
 };
@@ -103,7 +104,8 @@ function cleanReply(content, fallback) {
   let reply = String(content || '')
     .replace(/^```[\w]*\n?|```$/g, '')
     .replace(/^(bonjour|bonsoir|salut)[\s,!.:;-]*/i, '')
-    .replace(/\benviron\s+29\s*€/gi, '29 €')
+    .replace(/\benviron\s+29(?:,99)?\s*€/gi, '29,99 €')
+    .replace(/\b29\s*€/gi, '29,99 €')
     .replace(/je (peux|vais|lance|lance\s+la)\s+suspend/gi, 'votre manager peut suspend')
     .replace(/on (peut|va)\s+suspend/gi, 'votre manager peut suspend')
     .trim();
@@ -292,8 +294,106 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
   }
 }
 
+const WELCOME_KNOWLEDGE = `
+Tu es Chloée, conseillère d’accueil de la boutique Boxing Center Toulouse (box-plus).
+
+MISSION
+- Accueillir, informer, orienter vers les bonnes pages / offres.
+- Répondre sur : CGV, règlement intérieur, déclaration médicale, FAQ boutique, abonnements, offres promo, salles, séance d’essai, matériel, coachings.
+
+OFFRES CLÉS
+- Sans engagement : 29,99 € toutes les 4 semaines (1ʳᵉ échéance CB/PayPal puis prélèvement), sans préavis de résiliation, accès 5 salles.
+- Année : 259 € / 12 mois (1× ou 4× sans frais), sans prélèvement mensuel.
+- Portet : paiement PayPal uniquement.
+- Séance d’essai gratuite disponible.
+
+PAGES UTILES
+- Offres : /offres-speciales, /offre/29, /offre/259
+- Inscription : /inscription
+- Abonnements : /abonnements
+- Gérer mon abo / résiliation : /gerer-abonnement (David)
+- CGV : /cgv — Règlement : /reglement-interieur — Médical : /attestation-medicale
+- FAQ : /faq
+
+RÉSILATION
+- Tu ne gères PAS les résiliations. Oriente vers David sur /gerer-abonnement (prélèvements uniquement).
+
+RÈGLES
+- Français, chaleureux, max ~90 mots. Pas de markdown lourd.
+- Ne dis pas bonjour à chaque message.
+- Ne promets pas de modifier un abo / suspendre / rembourser.
+- Ne mentionne pas Deciplus, bots, IA.
+- Tarif exact : 29,99 € (jamais « environ »).
+`.trim();
+
+const WELCOME_FALLBACK =
+  'Je peux t’aider sur les offres 29,99 € / 259 €, les salles, l’essai gratuit, les CGV ou le règlement. Pour une résiliation, ouvre « Gérer mon abo » et discute avec David.';
+
+async function guideWelcome({ freeText, messages = [] } = {}) {
+  const lastUser = lastMemberMessage(messages, freeText);
+  if (/résili|resili|annul.*abo|arrêter.*abo|arreter.*abo/i.test(lastUser)) {
+    return {
+      reply:
+        'Pour une résiliation d’abonnement par prélèvement, ouvre la page « Gérer mon abo » et discute avec David, notre conseiller. Je reste dispo pour les offres et infos boutique.',
+      source: 'redirect-david',
+    };
+  }
+
+  const fallback = WELCOME_FALLBACK;
+  if (!isAiEnabled()) {
+    if (/29|sans engagement|4 semaines|pr[eé]l[eè]vement/i.test(lastUser)) {
+      return {
+        reply:
+          'L’offre à 29,99 € : 1ʳᵉ échéance CB ou PayPal, puis prélèvement toutes les 4 semaines, sans engagement. Accès aux 5 salles. Tu peux t’inscrire via /offre/29.',
+        source: 'faq',
+      };
+    }
+    if (/259|12 mois|4x|4×|comptant/i.test(lastUser)) {
+      return {
+        reply:
+          'L’offre à 259 € couvre 12 mois : en 1× ou en 4× sans frais (64,75 €). Pas de prélèvement mensuel. Voir /offre/259.',
+        source: 'faq',
+      };
+    }
+    if (/cgv|r[eè]glement|m[eé]dical|attestation/i.test(lastUser)) {
+      return {
+        reply:
+          'Les documents sont en ligne : CGV (/cgv), règlement intérieur (/reglement-interieur) et déclaration médicale (/attestation-medicale). Tu les signes aussi à l’inscription.',
+        source: 'faq',
+      };
+    }
+    return { reply: fallback, source: 'template' };
+  }
+
+  try {
+    const transcript = buildTranscript(messages, freeText).replace(/David:/g, 'Chloée:');
+    const { content } = await chatCompletion(
+      [
+        { role: 'system', content: WELCOME_KNOWLEDGE },
+        {
+          role: 'user',
+          content: [
+            'Réponds au visiteur boutique (accueil info).',
+            transcript ? `Conversation:\n${transcript}` : '',
+            lastUser ? `Dernier message: ${lastUser}` : '',
+          ]
+            .filter(Boolean)
+            .join('\n'),
+        },
+      ],
+      { maxTokens: 260, temperature: 0.7 }
+    );
+    const reply = cleanReply(content, fallback).replace(/29 €/g, '29,99 €');
+    return { reply: reply || fallback, source: 'groq' };
+  } catch (err) {
+    return { reply: fallback, source: 'template-fallback', error: err.message };
+  }
+}
+
 module.exports = {
   guideRetention,
+  guideWelcome,
   isAiEnabled,
   FALLBACKS,
+  WELCOME_FALLBACK,
 };

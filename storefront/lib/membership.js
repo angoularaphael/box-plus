@@ -9,13 +9,15 @@ const { logInfo, logWarn } = require('../../lib/logger');
 
 function listComptantTargets() {
   const { getEnrichedProducts } = require('./merch');
+  const { productSupportsInstallmentChoice } = require('../../lib/billing-plan');
   return (getEnrichedProducts() || [])
-    .filter((p) => isComptantStyleProduct(p) && /3|6|12/.test(String(p.name || '')))
+    .filter((p) => isComptantStyleProduct(p) && /3|6|12|259|baby|educative|éducative/i.test(String(p.name || p.display_name || p.id || '')))
     .map((p) => ({
       id: p.id,
       name: p.display_name || p.name,
       price_label: p.price_label || p.stripe_price_label,
       price_cents: p.price_cents,
+      supports_installment_choice: productSupportsInstallmentChoice(p),
     }));
 }
 
@@ -36,6 +38,14 @@ const MANAGER_LABELS = {
   'st-cyprien': 'St-Cyprien',
 };
 
+const MANAGER_NAMES = {
+  minimes: 'Medhi',
+  ramonville: 'Pascal',
+  portet: 'Valentin',
+  'etats-unis': 'Sébastien',
+  'st-cyprien': 'Daddy',
+};
+
 function getManagerContact(gym) {
   const id = String(gym || '').trim().toLowerCase();
   if (!MANAGER_LABELS[id]) return null;
@@ -43,6 +53,7 @@ function getManagerContact(gym) {
   return {
     gym: id,
     label: MANAGER_LABELS[id],
+    manager: MANAGER_NAMES[id] || null,
     email:
       String(process.env[envKey] || process.env.MANAGER_EMAIL_DEFAULT || 'boxingcenter31@gmail.com').trim(),
   };
