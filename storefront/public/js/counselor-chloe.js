@@ -21,6 +21,11 @@ window.BCChloe = (function () {
 
   function formatBotHtml(text) {
     let s = esc(String(text || ''));
+    s = s.replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    s = s.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+      if (s.includes(`href="${url}`)) return url;
+      return `<a href="${url}" target="_blank" rel="noopener">${url}</a>`;
+    });
     s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
     s = s.replace(/\n/g, '<br>');
