@@ -1356,6 +1356,88 @@ input:focus, select:focus, textarea:focus {
   to { transform: rotate(360deg); }
 }
 
+.change-congrats {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(165deg, rgba(12, 24, 41, 0.88), rgba(8, 8, 8, 0.9));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.28s ease;
+}
+.change-congrats.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.change-congrats__panel {
+  position: relative;
+  width: min(100%, 420px);
+  padding: 36px 28px 28px;
+  border-radius: 16px;
+  background: #fff;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  transform: translateY(12px) scale(0.98);
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.change-congrats.is-open .change-congrats__panel {
+  transform: none;
+}
+.change-congrats__close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #111;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.change-congrats__kicker {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--bc-gold, #c8902f);
+}
+.change-congrats__title {
+  margin: 0 0 10px;
+  font-family: var(--font-display, 'Barlow Condensed', sans-serif);
+  font-size: clamp(1.8rem, 5vw, 2.2rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--bc-navy, #0b1f3a);
+}
+.change-congrats__lead {
+  margin: 0 auto 22px;
+  max-width: 32ch;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: #4b5563;
+}
+.change-congrats__cta {
+  min-width: 180px;
+}
+.change-congrats__burst {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, #fff 0 28%, transparent 29%),
+    conic-gradient(from 20deg, #e8001c, #c8902f, #e8001c);
+  box-shadow: 0 0 0 8px rgba(232, 0, 28, 0.08);
+}
+body.change-congrats-lock { overflow: hidden; }
+
 .chat-form {
   padding: 12px;
   background: #fff;

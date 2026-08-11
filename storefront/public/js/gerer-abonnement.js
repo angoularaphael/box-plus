@@ -41,9 +41,9 @@
     });
   }
 
-  async function pollIdentityStatus(orderId, { maxWaitMs = 120000 } = {}) {
+  async function pollIdentityStatus(orderId, { maxWaitMs = 90000 } = {}) {
     const startedAt = Date.now();
-    let delay = 500;
+    let delay = 250;
     while (Date.now() - startedAt < maxWaitMs) {
       try {
         const r = await fetch(`/api/membership/cancel-status?order=${encodeURIComponent(orderId)}`);
@@ -58,9 +58,54 @@
         /* retry */
       }
       await new Promise((r) => setTimeout(r, delay));
-      delay = Math.min(2000, Math.round(delay * 1.25));
+      delay = Math.min(1000, Math.round(delay * 1.2));
     }
     return { ok: false, status: 'timeout', mismatch_fields: [] };
+  }
+
+  function showChangeCongrats() {
+    if (document.getElementById('changeCongrats')) return;
+    const root = document.createElement('div');
+    root.id = 'changeCongrats';
+    root.className = 'change-congrats';
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.setAttribute('aria-labelledby', 'changeCongratsTitle');
+    root.innerHTML = `
+      <div class="change-congrats__panel">
+        <button type="button" class="change-congrats__close" data-congrats-close aria-label="Fermer">×</button>
+        <div class="change-congrats__burst" aria-hidden="true"></div>
+        <p class="change-congrats__kicker">Boxing Center</p>
+        <h2 class="change-congrats__title" id="changeCongratsTitle">Félicitations !</h2>
+        <p class="change-congrats__lead">Votre bascule en abonnement comptant est enregistrée. Elle sera active dans quelques minutes — un e-mail de confirmation suivra.</p>
+        <button type="button" class="btn change-congrats__cta" data-congrats-close>Continuer</button>
+      </div>`;
+    document.body.appendChild(root);
+    document.body.classList.add('change-congrats-lock');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => root.classList.add('is-open'));
+    });
+    const close = () => {
+      root.classList.remove('is-open');
+      document.body.classList.remove('change-congrats-lock');
+      setTimeout(() => root.remove(), 320);
+    };
+    root.querySelectorAll('[data-congrats-close]').forEach((el) => {
+      el.addEventListener('click', close);
+    });
+    root.addEventListener('click', (e) => {
+      if (e.target === root) close();
+    });
+    document.addEventListener(
+      'keydown',
+      function onKey(e) {
+        if (e.key === 'Escape') {
+          close();
+          document.removeEventListener('keydown', onKey);
+        }
+      },
+      { passive: true }
+    );
   }
 
   function openChat() {
@@ -266,6 +311,7 @@
         : data.error || 'Confirmation impossible';
       sessionStorage.removeItem('bc_change_payplug_id');
       document.getElementById('changer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (data.ok) showChangeCongrats();
     } catch {
       changeMsg.className = 'form-msg err';
       changeMsg.textContent = 'Confirmation impossible';

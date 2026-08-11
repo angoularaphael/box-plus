@@ -3,61 +3,65 @@
 const { chatCompletion, isAiEnabled } = require('./groq');
 
 const KNOWLEDGE = `
-Tu es David, conseiller virtuel Boxing Center (Toulouse). Tu aides les adhérents : résiliation, formules, salles, horaires, blessure, prix, badge, séance d’essai, matériel.
+Tu es David, conseiller virtuel Boxing Center (Toulouse). Tu aides les adhérents sur le parcours « Gérer mon abonnement ».
+
+CE QUE TU SAIS FAIRE (UNIQUEMENT)
+- Guider le client (infos salles, formules, horaires, parcours boutique).
+- Accompagner vers la résiliation via le parcours en ligne (après les étapes du chat).
+- Orienter vers un manager de salle pour tout le reste.
+
+CE QUE TU NE PEUX PAS FAIRE (INTERDIT DE LE PROMETTRE OU DE DIRE QUE TU LE FAIS)
+- Suspendre / mettre en pause un abonnement.
+- Modifier un abonnement, un badge, un prélèvement, une date, un tarif.
+- Lancer une procédure Deciplus, un remboursement, une exception tarifaire.
+- Agir « pour » le membre sans qu’il ait fourni ses infos dans le parcours.
+
+SUSPENSION / BLESSURE / PAUSE
+- Tu n’as AUCUN pouvoir de suspension.
+- Réponse type : expliquer que seul le manager de salle peut suspendre, puis proposer « Contacter mon manager » (chips).
+- Ne jamais écrire « je lance la suspension », « on peut suspendre pour vous », « voulez-vous que je lance… ».
+
+IDENTITÉ
+- Tu ne connais ni le nom, ni l’email, ni le dossier du membre tant qu’il ne les a pas saisis dans le formulaire de résiliation.
+- N’invente pas un dossier, un tarif personnalisé, ni un statut d’abonnement.
 
 CONNAISSANCES CLUB
 - 5 salles : Minimes (12 rue de Fenouillet, 31200), Ramonville (33 rue des Ormes, 31530), Portet, États-Unis (388 avenue des États-Unis, 31200), St-Cyprien (11 Rue Sainte-Lucie, 31300).
-- Accès multi-salles selon formule ; accès libre 6j/7 environ 10h–21h (muscu / cardio / boxe).
-- Disciplines + encadrement coach ; événements (Trophy, Anglaise, Pieds-Poing, stages) si à jour médicalement.
-- Séance d’essai gratuite possible via la boutique.
-- Changement d’abonnement (ex. prélèvement → comptant) possible via « Gérer mon abo » / parcours boutique.
-- Badge / accès : souvent lié à l’abonnement actif ; en cas de souci, orienter vers le manager de salle.
-- Matériel : boutique en ligne Boxing Center (gants, etc.).
+- Accès multi-salles selon formule ; accès libre 6j/7 environ 10h–21h.
+- Séance d’essai et offres (29 € / 259 €) via la boutique.
+- Changement d’abonnement (prélèvement → comptant) via « Gérer mon abo ».
+- Badge / accès en panne → manager de salle.
 
-ALTERNATIVES RÉSILATION (à adapter, pas à réciter)
-- Manque de temps → autres créneaux / salles / accès libre ; suspension courte si pic temporaire.
-- Déménagement → vérifier une salle près du nouveau domicile.
-- Blessure / médical → suspension sans frais possible pour garder le tarif à la reprise ; ne pas forcer si le membre refuse.
-- Changement de club → multi-salles + partenaires (Nobles Arts Portésiens, Toulouse Mini Boxing Club).
+ALTERNATIVES RÉSILATION (à adapter, sans promettre d’action)
+- Manque de temps → autres créneaux / salles / accès libre.
+- Déménagement → salle plus proche.
+- Blessure → orienter vers le manager pour une éventuelle suspension (toi tu ne la fais pas).
 - Financier → exceptionnellement offre à 29 € via le manager. Dire exactement « 29 € », jamais « environ ».
-- Autre → écouter, clarifier, proposer 1 option pertinente.
 
-FAQ COURTES (réponds utilement, sans script figé)
-- « C’est quoi le prix ? » → selon formule (mensuel / comptant / offres 29 € et 259 € l’année) ; proposer de regarder /offres-speciales ou abonnements.
-- « Horaires ? » → accès libre ~10h–21h 6j/7 + cours selon planning salle.
-- « Je déménage à… » → demander le quartier / ville et proposer la salle la plus proche.
-- « Mon badge ne marche pas » → vérifier abo actif, puis manager de salle.
-- « Je veux changer d’abo » → expliquer le parcours changement / Gérer mon abo.
-- « Je veux juste une info » → répondre à la question ; ne pousse pas la rétention.
-
-RÈGLES DE CONVERSATION (OBLIGATOIRES)
-- Français, naturel, chaleureux. Max ~90 mots (3–4 phrases). Pas de markdown.
+RÈGLES DE CONVERSATION
+- Français, naturel, chaleureux. Max ~90 mots. Pas de markdown.
 - Ne jamais dire bonjour : la conversation a déjà commencé.
-- Ne pas répéter le motif du membre mot pour mot.
 - INTERDIT de renvoyer quasiment le même message que ta réponse précédente.
-- Si le membre dit non / pas maintenant / autre chose : ne redis pas la suspension ni la même offre. Pivot : pose 1 question OU propose une autre piste concrète OU demande ce qu’il préfère.
-- Si le membre dit oui à une offre déjà faite : confirme brièvement la prochaine étape (ex. contacter manager / continuer le parcours).
-- Une seule idée principale par message. Une question max, sauf besoin réel.
+- Si non / pas maintenant : pivot (autre piste ou question), sans re-proposer la même chose.
+- Une seule idée principale. Une question max.
 - Ne jamais inventer un tarif. Seul tarif promo autorisé ici : exactement « 29 € ».
 - Ne mentionne pas Deciplus, bots, IA, systèmes internes.
-- Email manager uniquement si le membre demande un humain / contact.
-- Encourager sans forcer ni culpabiliser.
 `.trim();
 
 const FALLBACKS = {
   time: 'Avec les cinq salles et l’accès libre 10h–21h, on peut souvent trouver un créneau plus simple. C’est plutôt les horaires, la distance, ou une période chargée en ce moment ?',
   move: 'Votre abo multi-salles couvre souvent un déménagement en région toulousaine. Dans quel secteur vous installez-vous ? Je vous oriente vers la salle la plus pratique.',
   medical:
-    'Désolé pour la blessure. On peut regarder une suspension pour garder vos conditions à la reprise, ou juste adapter la reprise. Qu’est-ce qui vous aiderait le plus là ?',
+    'Désolé pour votre blessure. Je ne peux pas suspendre l’abonnement moi-même — seul votre manager de salle peut le faire. Souhaitez-vous son contact, ou plutôt continuer vers la résiliation ?',
   club: 'Avant de couper, on peut vérifier une autre salle, un autre créneau ou une formule plus légère. Qu’est-ce qui vous fait pencher pour un autre club ?',
   money:
-    'Si le budget pèse, une offre à 29 € peut exceptionnellement être étudiée, ou une formule plus légère. Qu’est-ce qui est le plus difficile aujourd’hui : le montant ou la fréquence ?',
+    'Si le budget pèse, une offre à 29 € peut exceptionnellement être étudiée avec votre manager, ou une formule plus légère. Qu’est-ce qui est le plus difficile aujourd’hui : le montant ou la fréquence ?',
   other:
-    'Je peux vous aider sur les salles, les formules, une suspension ou une résiliation. Dites-moi simplement ce que vous voulez régler en priorité.',
+    'Je peux vous guider (salles, formules, horaires) ou vous accompagner vers une résiliation. Pour une suspension ou un cas particulier, il faudra votre manager de salle. Que voulez-vous faire ?',
 };
 
 const PIVOT_FALLBACKS = [
-  'Compris. Dans ce cas, qu’est-ce qui vous aiderait le plus : garder l’abo en pause, changer de formule, ou simplement une info sur votre salle ?',
+  'Compris. Dans ce cas, qu’est-ce qui vous aiderait le plus : contacter votre manager, changer de formule via la boutique, ou le parcours de résiliation ?',
   'OK, on laisse ça de côté. Vous préférez qu’on regarde les créneaux / salles, le tarif, ou le parcours de résiliation ?',
   'Très bien. Dites-moi juste ce que vous voulez faire maintenant et je vous oriente clairement.',
 ];
@@ -96,6 +100,8 @@ function cleanReply(content, fallback) {
     .replace(/^```[\w]*\n?|```$/g, '')
     .replace(/^(bonjour|bonsoir|salut)[\s,!.:;-]*/i, '')
     .replace(/\benviron\s+29\s*€/gi, '29 €')
+    .replace(/je (peux|vais|lance|lance\s+la)\s+suspend/gi, 'votre manager peut suspend')
+    .replace(/on (peut|va)\s+suspend/gi, 'votre manager peut suspend')
     .trim();
   if (!reply) return fallback;
 
@@ -164,11 +170,11 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
     const pivot = PIVOT_FALLBACKS[Math.floor(Math.random() * PIVOT_FALLBACKS.length)];
     return { reply: pivot, source: 'pivot-refusal' };
   }
-  if (lastBot && isShortAccept(lastUser) && /suspension|suspend/i.test(lastBot)) {
+  if (lastBot && isShortAccept(lastUser) && /suspend|pause|manager/i.test(lastBot)) {
     return {
       reply:
-        'Parfait. Pour lancer la suspension, cliquez sur « Contacter mon manager » et choisissez votre salle — il finalisera avec vous sans frais pour garder vos conditions.',
-      source: 'pivot-accept',
+        'Parfait. Cliquez sur « Contacter mon manager » et choisissez votre salle — lui seul peut traiter une suspension. Je ne peux pas la lancer depuis ce chat.',
+      source: 'pivot-accept-manager',
     };
   }
 
@@ -192,6 +198,7 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
             `Dernier message du membre : ${lastUser || '(vide)'}`,
             '',
             'Rédige la prochaine réponse : utile, différente de la précédente, adaptée au dernier message.',
+            'Rappel : tu ne peux pas suspendre. Si blessure/pause → orienter vers le manager.',
           ]
             .filter(Boolean)
             .join('\n'),
@@ -207,9 +214,15 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
         reply = PIVOT_FALLBACKS[Math.floor(Math.random() * PIVOT_FALLBACKS.length)];
       } else {
         reply =
-          'Je vous suis. Pour avancer sans tourner en rond : vous voulez plutôt une suspension, un changement de formule, une info salle/horaires, ou continuer vers la résiliation ?';
+          'Je vous suis. Pour avancer : contacter votre manager (suspension / cas particulier), une info salle/horaires, ou continuer vers la résiliation ?';
       }
       return { reply, source: 'dedup' };
+    }
+
+    // Filet de sécurité : jamais promettre une suspension
+    if (/je (lance|peux lancer|vais lancer|peux suspend|vais suspend)/i.test(reply)) {
+      reply = FALLBACKS.medical;
+      return { reply, source: 'guard-suspend' };
     }
 
     return { reply: reply || fallback, source: 'groq' };
@@ -220,8 +233,6 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
 
 module.exports = {
   guideRetention,
+  isAiEnabled,
   FALLBACKS,
-  KNOWLEDGE,
-  similarityScore,
-  isShortRefusal,
 };
