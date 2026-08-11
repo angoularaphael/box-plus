@@ -124,25 +124,23 @@
   <div id="offerLeadModal" class="offer-lead-modal" hidden>
     <div class="offer-lead-modal__panel" role="dialog" aria-labelledby="offerLeadTitle29">
       <h2 id="offerLeadTitle29">C'est parti pour 29&nbsp;€</h2>
-      <p>Coordonnées pour ouvrir le dossier.</p>
+      <p>Renseigne les coordonnées d'un ami qui pourrait aussi être intéressé — on pourra le recontacter.</p>
       <form id="offerLeadForm">
-        <label for="prenom29">Prénom *</label>
-        <input id="prenom29" name="prenom" required autocomplete="given-name" />
-        <label for="nom29">Nom</label>
-        <input id="nom29" name="nom" autocomplete="family-name" />
-        <label for="tel29">Téléphone *</label>
-        <input id="tel29" name="telephone" type="tel" required autocomplete="tel" inputmode="tel" />
-        <label for="email29">Email</label>
-        <input id="email29" name="email" type="email" autocomplete="email" />
+        <label for="prenom29">Prénom de ton ami *</label>
+        <input id="prenom29" name="prenom" required autocomplete="off" />
+        <label for="nom29">Nom de ton ami</label>
+        <input id="nom29" name="nom" autocomplete="off" />
+        <label for="tel29">Téléphone de ton ami *</label>
+        <input id="tel29" name="telephone" type="tel" required autocomplete="off" inputmode="tel" />
         <p id="offerLeadError" class="offer-lead-error" role="alert"></p>
         <div class="offer-lead-modal__actions">
-          <button type="submit" class="btn btn--lg">Continuer</button>
-          <button type="button" class="offer-lead-modal__skip" id="offerLeadSkip">Passer</button>
+          <button type="submit" class="btn btn--lg">Continuer mon inscription</button>
+          <button type="button" class="offer-lead-modal__skip offer-lead-modal__skip--ghost" id="offerLeadSkip">Passer</button>
         </div>
       </form>
     </div>
   </div>
-  <div id="offerFunnelConfig" hidden data-product="offre-duo" data-tunnel="offre_29" data-inscription="/inscription?product=offre-duo"></div>
+  <div id="offerFunnelConfig" hidden data-product="offre-duo" data-tunnel="offre_29" data-lead-mode="friend" data-inscription="/inscription?product=offre-duo"></div>
 
   <div id="site-footer"></div>
   <script src="/js/layout.js"></script>

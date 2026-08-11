@@ -1,5 +1,5 @@
 /**
- * Tunnel offre — modal lead (tunnel_leads) puis redirect inscription.
+ * Tunnel offre — modal lead (tunnel_leads + portet_clients) puis redirect inscription.
  */
 (function () {
   'use strict';
@@ -9,6 +9,8 @@
 
   var productId = cfg.getAttribute('data-product') || '';
   var tunnel = cfg.getAttribute('data-tunnel') || '';
+  var leadMode = cfg.getAttribute('data-lead-mode') || 'self';
+  var isFriendLead = leadMode === 'friend';
   var inscriptionUrl = cfg.getAttribute('data-inscription') || '/inscription?product=' + encodeURIComponent(productId);
 
   var modal = document.getElementById('offerLeadModal');
@@ -63,9 +65,15 @@
         email: String(fd.get('email') || '').trim(),
         source: 'boutique-tunnel-' + tunnel,
         product_id: productId,
+        sync_portet: true,
+        is_friend_referral: isFriendLead,
       };
       if (!payload.prenom || !payload.telephone) {
-        if (errEl) errEl.textContent = 'Prénom et téléphone sont requis.';
+        if (errEl) {
+          errEl.textContent = isFriendLead
+            ? 'Prénom et téléphone de ton ami sont requis.'
+            : 'Prénom et téléphone sont requis.';
+        }
         return;
       }
       var submit = form.querySelector('[type="submit"]');
@@ -79,6 +87,11 @@
         var data = await res.json().catch(function () { return {}; });
         if (!res.ok) {
           throw new Error(data.error || 'Envoi impossible');
+        }
+        // Ami ≠ inscrit : on ne préremplit pas l'inscription avec ses coords
+        if (isFriendLead) {
+          window.location.href = inscriptionUrl;
+          return;
         }
         var q = new URLSearchParams();
         q.set('product', productId);

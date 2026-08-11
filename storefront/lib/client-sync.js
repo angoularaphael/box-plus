@@ -245,10 +245,41 @@ async function upsertMaterielClient(order) {
   }
 }
 
+async function upsertLeadClient(fields = {}) {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!url || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { synced: false, reason: 'supabase_not_configured' };
+  }
+  const prenom = cleanNamePart(fields.prenom);
+  const telephone = normalizeFrenchPhone(fields.telephone || fields.phone);
+  if (!prenom || !telephone) {
+    return { synced: false, reason: 'missing_fields' };
+  }
+  try {
+    return await upsertPortetClient(
+      getSupabase(),
+      {
+        prenom,
+        nom: cleanNamePart(fields.nom),
+        email: normalizeEmail(fields.email),
+        telephone,
+        salle: fields.salle || null,
+        offre: fields.offre || 'Lead boutique',
+        source: 'boxplus',
+      },
+      { orderId: fields.order_id || fields.lead_id || null, logLabel: fields.logLabel || 'lead' }
+    );
+  } catch (err) {
+    logWarn('Sync lead → portet_clients échouée', { error: err.message });
+    return { synced: false, reason: 'db_error', error: err.message };
+  }
+}
+
 module.exports = {
   clientFieldsFromOrder,
   upsertClientFromInscription,
   upsertMaterielClient,
+  upsertLeadClient,
   buildRowVariants,
   isSchemaOrConstraintError,
 };

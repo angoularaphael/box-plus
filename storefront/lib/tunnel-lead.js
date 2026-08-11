@@ -70,10 +70,11 @@ async function insertTunnelLead(input = {}) {
 
   try {
     const sb = getSupabase();
+    const isFriend = Boolean(input.is_friend_referral || input.friend || tunnel === 'referral_pote');
     const { data, error } = await sb
       .from('tunnel_leads')
       .insert({
-        tunnel,
+        tunnel: isFriend && tunnel === 'offre_29' ? 'referral_pote' : tunnel,
         prenom,
         nom,
         telephone,
@@ -83,6 +84,8 @@ async function insertTunnelLead(input = {}) {
           source: input.source || 'boxplus',
           product_id: input.product_id || null,
           order_id: input.order_id || null,
+          is_friend_referral: isFriend,
+          origin_tunnel: tunnel,
         },
       })
       .select('id')
@@ -93,8 +96,31 @@ async function insertTunnelLead(input = {}) {
       return { ok: false, error: error.message };
     }
 
-    logInfo('Lead tunnel enregistré', { tunnel, lead_id: data.id });
-    return { ok: true, lead_id: data.id };
+    logInfo('Lead tunnel enregistré', { tunnel, lead_id: data.id, friend: isFriend });
+
+    let portet = { synced: false };
+    const wantPortet =
+      input.sync_portet !== false &&
+      (isFriend || tunnel === 'offre_29' || tunnel === 'offre_259' || tunnel === 'referral_pote');
+    if (wantPortet) {
+      const { upsertLeadClient } = require('./client-sync');
+      portet = await upsertLeadClient({
+        prenom,
+        nom,
+        telephone,
+        email,
+        salle,
+        lead_id: data.id,
+        offre: isFriend
+          ? 'Parrainage — Offre 29 € (ami)'
+          : tunnel === 'offre_259'
+            ? 'Lead — Offre 259 €'
+            : 'Lead — Offre 29 €',
+        logLabel: isFriend ? 'ami-parrainage' : 'tunnel-lead',
+      });
+    }
+
+    return { ok: true, lead_id: data.id, portet_synced: Boolean(portet.synced), portet };
   } catch (err) {
     logWarn('tunnel_leads exception', { error: err.message });
     return { ok: false, error: err.message };
