@@ -1,7 +1,6 @@
 const fs = require('fs');
 const { logInfo, logWarn } = require('../../lib/logger');
 const { readLegal } = require('./contract-pdf');
-const { declarationMedicalePdfPath } = require('./legal-docs');
 const { getMailFrom, CGV_URL, REGLEMENT_URL, SITE_URL } = require('./branding');
 const {
   generateInscriptionInvoicePdf,
@@ -42,15 +41,15 @@ async function buildInscriptionAttachments(order, extra = []) {
   const attachments = [];
   const cgv = readLegal('cgv.md');
   const reglement = readLegal('reglement.md');
+  const declaration = readLegal('attestation-medicale.md');
   if (cgv) {
     attachments.push({ filename: 'CGV-Boxing-Center.txt', content: cgv });
   }
   if (reglement) {
     attachments.push({ filename: 'Reglement-interieur.txt', content: reglement });
   }
-  const declPdf = declarationMedicalePdfPath();
-  if (fs.existsSync(declPdf)) {
-    attachments.push({ filename: 'Declaration-medicale-Boxing-Center.pdf', path: declPdf });
+  if (declaration) {
+    attachments.push({ filename: 'Declaration-medicale-Boxing-Center.txt', content: declaration });
   }
   const seenPaths = new Set();
   for (const att of extra) {
