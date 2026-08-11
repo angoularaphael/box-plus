@@ -394,10 +394,22 @@
     return 1;
   }
 
-  function persistAndRender() {
+  function scrollFunnelTop() {
+    const el =
+      document.getElementById('stepper') ||
+      document.querySelector('.checkout-layout') ||
+      document.getElementById('stepContent');
+    const y = el
+      ? el.getBoundingClientRect().top + (window.scrollY || window.pageYOffset || 0) - 12
+      : 0;
+    window.scrollTo({ top: Math.max(0, y), behavior: 'auto' });
+  }
+
+  async function persistAndRender() {
     saveProgress();
     syncUrl();
-    void render();
+    await render();
+    scrollFunnelTop();
   }
 
   function goToStep(step) {
@@ -412,7 +424,7 @@
     } catch {
       /* ignore */
     }
-    persistAndRender();
+    void persistAndRender();
   }
 
   async function ensureProductLoaded() {

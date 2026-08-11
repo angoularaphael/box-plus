@@ -105,6 +105,7 @@
     "price_cents": 3699,
     "price_label": "36,99 €",
     "deciplus_total_note": "Total contrat Deciplus : 443,88 €",
+    "badge": "Sans engagement",
     "requires_iban": true,
     "requires_payment": true,
     "installments_note": "1ʳᵉ échéance par carte · prélèvement sans engagement"
@@ -118,6 +119,7 @@
     "price_cents": 4499,
     "price_label": "44,99 €",
     "deciplus_total_note": "Total contrat Deciplus : 539,88 €",
+    "badge": "Sans engagement",
     "requires_iban": true,
     "requires_payment": true,
     "installments_note": "1ʳᵉ échéance par carte · prélèvement sans engagement"
@@ -130,6 +132,7 @@
     "description": "Payez en une seule fois et entraînez-vous 12 mois en illimité — aucun prélèvement ensuite. Accès aux 5 salles.",
     "price_cents": 40000,
     "price_label": "400,00 €",
+    "badge": "Paiement comptant",
     "requires_iban": false,
     "requires_payment": true,
     "installments_note": "Paiement unique par carte ou PayPal"
@@ -142,6 +145,7 @@
     "description": "Payez en une seule fois et entraînez-vous 6 mois en illimité — aucun prélèvement ensuite. Accès aux 5 salles.",
     "price_cents": 25000,
     "price_label": "250,00 €",
+    "badge": "Paiement comptant",
     "requires_iban": false,
     "requires_payment": true,
     "installments_note": "Paiement unique par carte ou PayPal"
@@ -154,6 +158,7 @@
     "description": "Payez en une seule fois et entraînez-vous 3 mois en illimité — aucun prélèvement ensuite. Accès aux 5 salles.",
     "price_cents": 15000,
     "price_label": "150,00 €",
+    "badge": "Paiement comptant",
     "requires_iban": false,
     "requires_payment": true,
     "installments_note": "Paiement unique par carte ou PayPal"

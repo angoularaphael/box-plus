@@ -16,7 +16,8 @@
       "duration_label": "4 semaines renouvelables",
       "sort_order": 1,
       "active": true,
-      "featured": true
+      "featured": true,
+      "badge": "Sans engagement"
     },
     "etudiants-4-semaines": {
       "tab": "abonnements",
@@ -32,7 +33,8 @@
       "audience": "Étudiants (carte étudiante requise)",
       "duration_label": "4 semaines renouvelables",
       "sort_order": 2,
-      "active": true
+      "active": true,
+      "badge": "Sans engagement"
     },
     "comptant-12-mois": {
       "tab": "abonnements",
@@ -49,7 +51,8 @@
       "duration_label": "12 mois",
       "sort_order": 1,
       "active": true,
-      "featured": true
+      "featured": true,
+      "badge": "Paiement comptant"
     },
     "comptant-6-mois": {
       "tab": "abonnements",
@@ -65,7 +68,8 @@
       "audience": "Adultes",
       "duration_label": "6 mois",
       "sort_order": 2,
-      "active": true
+      "active": true,
+      "badge": "Paiement comptant"
     },
     "comptant-3-mois": {
       "tab": "abonnements",
@@ -81,7 +85,8 @@
       "audience": "Débutants et reprises",
       "duration_label": "3 mois",
       "sort_order": 3,
-      "active": true
+      "active": true,
+      "badge": "Paiement comptant"
     },
     "baby-boxe": {
       "tab": "abonnements",
