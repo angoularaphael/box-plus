@@ -46,12 +46,18 @@
 
   function initHeader() {
     var topbar, last = 0;
+    function scrollThreshold() {
+      if (!document.body.classList.contains('home-cinema')) return 48;
+      var hero = document.querySelector('.hero--cinema');
+      if (!hero) return 80;
+      // Passe en header clair seulement après ~55% du hero (évite flash blanc au load)
+      return Math.max(120, Math.round(hero.offsetHeight * 0.55));
+    }
     function apply() {
       topbar = topbar || document.querySelector('.topbar');
       if (!topbar) return;
       var y = window.scrollY || window.pageYOffset || 0;
-      // Seuil un peu plus haut pour éviter le flash blanc / noir au chargement
-      var scrolled = y > 48;
+      var scrolled = y > scrollThreshold();
       topbar.classList.toggle('scrolled', scrolled);
       if (document.querySelector('.main-nav.open') || y <= 200) {
         topbar.classList.remove('nav-hidden');
@@ -65,6 +71,7 @@
     apply();
     window.addEventListener('scroll', apply, { passive: true });
     window.addEventListener('pageshow', apply);
+    window.addEventListener('resize', apply);
   }
 
   function initReveals() {

@@ -1889,6 +1889,26 @@ body:has(#adminPanel:not([hidden])) {
     box-shadow: none;
   }
 }
+/* Menu mobile ouvert : panneau clair + texte sombre (évite blanc sur blanc) */
+@media (max-width: 899px) {
+  .home-cinema .topbar:not(.scrolled) .main-nav.open {
+    background: #fff;
+    border-top: 1px solid var(--bc-border);
+    box-shadow: var(--shadow);
+  }
+  .home-cinema .topbar:not(.scrolled) .main-nav.open a {
+    color: var(--bc-navy);
+  }
+  .home-cinema .topbar:not(.scrolled) .main-nav.open a:hover,
+  .home-cinema .topbar:not(.scrolled) .main-nav.open a.active {
+    background: var(--bc-bg);
+    color: var(--bc-navy);
+  }
+  .home-cinema .topbar:not(.scrolled) .main-nav.open .nav-cta {
+    background: var(--bc-cta) !important;
+    color: #fff !important;
+  }
+}
 .home-cinema .topbar.scrolled {
   position: fixed;
   background: var(--bc-card);
@@ -1898,13 +1918,34 @@ body:has(#adminPanel:not([hidden])) {
 .home-cinema .topbar.scrolled .logo img {
   filter: none;
 }
+.home-cinema .topbar.scrolled .nav-toggle span {
+  background: var(--bc-navy);
+}
+.home-cinema .topbar.scrolled .nav-cart,
+.home-cinema .topbar.scrolled .main-nav a {
+  color: var(--bc-navy);
+}
+.home-cinema .topbar.scrolled .main-nav a:hover,
+.home-cinema .topbar.scrolled .main-nav a.active {
+  background: var(--bc-bg);
+  color: var(--bc-navy);
+}
+.home-cinema .topbar.scrolled .nav-cta {
+  background: var(--bc-cta) !important;
+  color: #fff !important;
+}
 .home-cinema .hero--cinema {
   margin-top: 0;
 }
+/* Voile plus dense : texte blanc lisible même sur zones claires de la vidéo */
 .home-cinema .hero__veil {
   background:
-    linear-gradient(180deg, rgba(8, 12, 20, 0.28) 0%, rgba(8, 12, 20, 0.18) 32%, rgba(8, 12, 20, 0.82) 100%),
-    linear-gradient(90deg, rgba(8, 12, 20, 0.45) 0%, transparent 55%);
+    linear-gradient(180deg, rgba(8, 12, 20, 0.55) 0%, rgba(8, 12, 20, 0.42) 38%, rgba(8, 12, 20, 0.88) 100%),
+    linear-gradient(90deg, rgba(8, 12, 20, 0.62) 0%, rgba(8, 12, 20, 0.2) 55%, transparent 78%);
+}
+.home-cinema .hero__title,
+.home-cinema .hero__lead {
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
 }
 .home-cinema .hero__video {
   object-position: center center;
