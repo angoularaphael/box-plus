@@ -8,13 +8,29 @@
     return d.innerHTML;
   }
 
+  function hasInstallmentChoice(product) {
+    const id = String(product.id || '');
+    const legacy = String(product.legacy_id || '');
+    const title = String(product.name || product.display_name || '');
+    return (
+      product.supports_installment_choice === true ||
+      id === 'offre-saison' ||
+      legacy === 'offre-saison' ||
+      id === 'baby-boxe' ||
+      legacy === 'baby-boxe' ||
+      id === 'dp-93' ||
+      id === 'boxe-educative' ||
+      legacy === 'boxe-educative' ||
+      id === 'dp-45' ||
+      /BABY\s*BOXE/i.test(title) ||
+      /BOXE\s*EDUCATIVE/i.test(title) ||
+      /1\s*[x×]\s*ou\s*4\s*[x×]/i.test(String(product.badge || ''))
+    );
+  }
+
   function formatPaymentMode(product) {
     if (!product.requires_payment) return 'Gratuit';
-    if (
-      product.supports_installment_choice ||
-      product.id === 'offre-saison' ||
-      /1\s*[x×]\s*ou\s*4\s*[x×]/i.test(product.badge || '')
-    ) {
+    if (hasInstallmentChoice(product)) {
       return 'En une fois ou en 4× sans frais';
     }
     if (/comptant/i.test(product.name || '') || product.subsection === 'comptant') {
@@ -51,8 +67,17 @@
   function offerDescription(product) {
     if (product.description) return product.description;
     const n = String(product.name || '');
-    if (/comptant/i.test(n) || product.subsection === 'comptant') {
+    if (/baby\s*boxe/i.test(n)) {
+      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison. Paiement comptant en 1× ou 4× sans frais.';
+    }
+    if (/educative|éducative/i.test(n)) {
+      return 'Boxe éducative pour enfants et ados : technique, respect et confiance en soi, tout au long de la saison. Paiement comptant en 1× ou 4× sans frais.';
+    }
+    if (hasInstallmentChoice(product) || /comptant/i.test(n) || product.subsection === 'comptant') {
       const dur = formatDuration(product);
+      if (hasInstallmentChoice(product)) {
+        return `Réglez en une fois ou en 4× sans frais pour ${dur} : accès illimité, sans prélèvement mensuel.`;
+      }
       return `Réglez une seule fois et entraînez-vous pendant ${dur} : accès illimité aux salles et à toutes les disciplines, sans aucun prélèvement mensuel.`;
     }
     if (product.id === 'offre-duo' || /offre\s*a\s*29/i.test(n)) {
@@ -61,12 +86,6 @@
     if (/4\s*semaines/i.test(n) || product.requires_iban) {
       return 'Formule flexible : 1ʳᵉ échéance par carte, puis prélèvement sans engagement toutes les 4 semaines. Accès illimité aux salles et disciplines.';
     }
-    if (/baby\s*boxe/i.test(n)) {
-      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison.';
-    }
-    if (/educative|éducative/i.test(n)) {
-      return 'Boxe éducative pour enfants et ados : technique, respect et confiance en soi, tout au long de la saison.';
-    }
     return '';
   }
 
@@ -74,6 +93,33 @@
     if (product.featured_home) return true;
     const ids = opts.featuredIds || [];
     return ids.includes(product.id) || (product.legacy_id && ids.includes(product.legacy_id));
+  }
+
+  function formatFrDate(d) {
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+  }
+
+  function fourXSchedulePreview(product) {
+    if (!hasInstallmentChoice(product) || !product.requires_payment) return '';
+    const total = Number(product.price_cents || 0) / 100;
+    if (!(total > 0)) return '';
+    const quart = (total / 4).toFixed(2).replace('.', ',');
+    const today = new Date();
+    const dates = [0, 30, 60, 90].map((days) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() + days);
+      return formatFrDate(d);
+    });
+    return `
+      <div class="fourx-schedule fourx-schedule--card">
+        <p class="fourx-schedule__title">Calendrier indicatif 4× sans frais</p>
+        <ul>
+          <li><strong>Aujourd’hui</strong> — ${quart}&nbsp;€</li>
+          <li><strong>${dates[1]}</strong> — ${quart}&nbsp;€</li>
+          <li><strong>${dates[2]}</strong> — ${quart}&nbsp;€</li>
+          <li><strong>${dates[3]}</strong> — ${quart}&nbsp;€</li>
+        </ul>
+      </div>`;
   }
 
   function renderOfferCard(product, opts = {}) {
@@ -102,6 +148,7 @@
         ${product.price_subtitle ? `<div class="offer-price-sub">${esc(product.price_subtitle)}</div>` : ''}
         ${product.installments_note ? `<div class="offer-price-sub">${esc(product.installments_note)}</div>` : ''}
         ${offerDescription(product) ? `<p class="offer-desc">${esc(offerDescription(product))}</p>` : ''}
+        ${fourXSchedulePreview(product)}
         <ul class="offer-benefits">
           ${list.map((b) => `<li>${esc(b)}</li>`).join('')}
         </ul>

@@ -70,22 +70,30 @@
     "category": "Abonnements",
     "name": "BOXE EDUCATIVE",
     "tagline": "Boxe éducative",
-    "description": "Boxe éducative enfants & ados : apprentissage ludique et progressif, sans coups portés. Saison complète encadrée par nos coachs.",
+    "description": "Boxe éducative enfants & ados : apprentissage ludique et progressif, sans coups portés. Saison complète. Paiement comptant en une fois ou en 4× sans frais.",
     "price_cents": 29500,
     "price_label": "295,00 €",
-    "requires_iban": true,
-    "requires_payment": true
+    "badge": "1× ou 4× sans frais",
+    "requires_iban": false,
+    "requires_payment": true,
+    "supports_installment_choice": true,
+    "installments_note": "En une fois ou en 4× sans frais",
+    "duration_label": "Saison"
   },
   {
     "id": "baby-boxe",
     "category": "Abonnements",
     "name": "BABY BOXE",
     "tagline": "Baby boxe",
-    "description": "Éveil sportif par la boxe pour les plus petits : motricité, coordination et confiance en soi. Saison complète.",
+    "description": "Éveil sportif par la boxe pour les plus petits : motricité, coordination et confiance en soi. Saison complète. Paiement comptant en une fois ou en 4× sans frais.",
     "price_cents": 25000,
     "price_label": "250,00 €",
-    "requires_iban": true,
-    "requires_payment": true
+    "badge": "1× ou 4× sans frais",
+    "requires_iban": false,
+    "requires_payment": true,
+    "supports_installment_choice": true,
+    "installments_note": "En une fois ou en 4× sans frais",
+    "duration_label": "Saison"
   },
   {
     "id": "etudiants-4-semaines",

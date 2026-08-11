@@ -87,21 +87,43 @@
       "tab": "abonnements",
       "subsection": "enfants",
       "display_name": "Baby Boxe",
-      "benefits": ["3 à 6 ans", "Éveil corporel ludique", "Encadrement adapté"],
+      "description": "Éveil sportif et boxe ludique pour les 3-6 ans, saison complète. Paiement comptant en une fois ou en 4× sans frais — sans prélèvement.",
+      "benefits": [
+        "3 à 6 ans",
+        "Éveil corporel ludique",
+        "Encadrement adapté",
+        "Paiement en 1× ou en 4× sans frais"
+      ],
       "audience": "Enfants 3-6 ans",
-      "duration_label": "Selon formule",
+      "duration_label": "Saison",
       "sort_order": 1,
-      "active": true
+      "active": true,
+      "badge": "1× ou 4× sans frais",
+      "supports_installment_choice": true,
+      "requires_iban": false,
+      "requires_payment": true,
+      "installments_note": "En une fois ou en 4× sans frais"
     },
     "boxe-educative": {
       "tab": "abonnements",
       "subsection": "enfants",
       "display_name": "Boxe éducative",
-      "benefits": ["7 à 16 ans", "Apprentissage technique", "Confiance et discipline"],
+      "description": "Boxe éducative pour enfants et ados (7-16 ans), saison complète. Paiement comptant en une fois ou en 4× sans frais — sans prélèvement.",
+      "benefits": [
+        "7 à 16 ans",
+        "Apprentissage technique",
+        "Confiance et discipline",
+        "Paiement en 1× ou en 4× sans frais"
+      ],
       "audience": "Enfants et ados 7-16 ans",
-      "duration_label": "Selon formule",
+      "duration_label": "Saison",
       "sort_order": 2,
-      "active": true
+      "active": true,
+      "badge": "1× ou 4× sans frais",
+      "supports_installment_choice": true,
+      "requires_iban": false,
+      "requires_payment": true,
+      "installments_note": "En une fois ou en 4× sans frais"
     },
     "offre-duo": {
       "tab": "abonnements",

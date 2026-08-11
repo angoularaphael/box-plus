@@ -273,9 +273,21 @@
   }
 
   function supportsInstallmentChoice(p) {
+    const id = String(p?.id || '');
+    const legacy = String(p?.legacy_id || '');
+    const title = String(p?.name || p?.display_name || '');
     return (
       p?.supports_installment_choice === true ||
-      String(p?.id || '') === 'offre-saison' ||
+      id === 'offre-saison' ||
+      legacy === 'offre-saison' ||
+      id === 'baby-boxe' ||
+      legacy === 'baby-boxe' ||
+      id === 'dp-93' ||
+      id === 'boxe-educative' ||
+      legacy === 'boxe-educative' ||
+      id === 'dp-45' ||
+      /BABY\s*BOXE/i.test(title) ||
+      /BOXE\s*EDUCATIVE/i.test(title) ||
       /1\s*[x×]\s*ou\s*4\s*[x×]/i.test(String(p?.badge || ''))
     );
   }
