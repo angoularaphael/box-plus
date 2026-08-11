@@ -237,6 +237,93 @@
       .join('');
   }
 
+  const changePayPanel = document.getElementById('changePayPanel');
+  const changePayLead = document.getElementById('changePayLead');
+  const changePayBtn = document.getElementById('changePayBtn');
+  const changePayBack = document.getElementById('changePayBack');
+  let changeCheckoutBody = null;
+  let changeProductSummary = null;
+
+  function showChangePayStep({ body, product, verifyOrderId }) {
+    changeCheckoutBody = {
+      ...body,
+      verify_order_id: verifyOrderId,
+    };
+    changeProductSummary = product || null;
+    const label =
+      product?.price_label ||
+      (product?.price_cents != null ? `${(Number(product.price_cents) / 100).toFixed(2).replace('.', ',')} €` : '');
+    const name = product?.name || targetSelect?.selectedOptions?.[0]?.textContent || 'abonnement comptant';
+    changePayLead.textContent = label
+      ? `Identité confirmée. Montant à régler : ${label} (${name}). Choisissez PayPlug (carte) ou PayPal.`
+      : `Identité confirmée. Choisissez PayPlug (carte) ou PayPal pour finaliser le passage en comptant.`;
+    changeForm.hidden = true;
+    changePayPanel.hidden = false;
+    changeMsg.hidden = false;
+    changeMsg.className = 'form-msg';
+    changeMsg.textContent = 'Identité confirmée — choisissez votre mode de paiement ci-dessous.';
+    changePayPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function backToChangeForm() {
+    changePayPanel.hidden = true;
+    changeForm.hidden = false;
+    changeCheckoutBody = null;
+    changeProductSummary = null;
+    changeMsg.hidden = true;
+    const submitBtn = changeForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = false;
+  }
+
+  async function startChangePayment(paymentMethod) {
+    if (!changeCheckoutBody) {
+      changeMsg.hidden = false;
+      changeMsg.className = 'form-msg err';
+      changeMsg.textContent = 'Recommencez la vérification de vos informations.';
+      return;
+    }
+    changePayBtn.disabled = true;
+    changeMsg.hidden = false;
+    changeMsg.className = 'form-msg';
+    changeMsg.innerHTML =
+      '<span class="cancel-spinner" aria-hidden="true"></span> Ouverture du paiement…';
+    try {
+      const res = await fetch('/api/membership/change/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...changeCheckoutBody,
+          payment_method: paymentMethod,
+        }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        changeMsg.textContent =
+          data.error === 'paypal_not_configured'
+            ? 'PayPal temporairement indisponible. Choisissez la carte.'
+            : data.error === 'payplug_not_configured'
+              ? 'Paiement carte temporairement indisponible. Essayez PayPal.'
+              : data.error || 'Erreur';
+        changeMsg.className = 'form-msg err';
+        changePayBtn.disabled = false;
+        return;
+      }
+      if (data.payment_id) sessionStorage.setItem('bc_change_payplug_id', data.payment_id);
+      if (data.paypal_order_id) sessionStorage.setItem('bc_change_paypal_id', data.paypal_order_id);
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      changeMsg.textContent = 'URL de paiement manquante';
+      changeMsg.className = 'form-msg err';
+      changePayBtn.disabled = false;
+    } catch {
+      changeMsg.textContent = 'Erreur de connexion au paiement';
+      changeMsg.className = 'form-msg err';
+      changePayBtn.disabled = false;
+    }
+  }
+
   changeForm.onsubmit = async (e) => {
     e.preventDefault();
     const body = Object.fromEntries(new FormData(e.target).entries());
@@ -286,39 +373,42 @@
       return;
     }
 
-    changeMsg.textContent = 'Identité confirmée — redirection vers le paiement…';
-    changeMsg.className = 'form-msg';
-    try {
-      const res = await fetch('/api/membership/change/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...body, verify_order_id: verify.order_id }),
-      });
-      const data = await res.json();
-      if (!data.ok) {
-        changeMsg.textContent = data.error || 'Erreur';
-        changeMsg.className = 'form-msg err';
-        if (submitBtn) submitBtn.disabled = false;
-        return;
-      }
-      if (data.payment_id) sessionStorage.setItem('bc_change_payplug_id', data.payment_id);
-      if (data.url) window.location.href = data.url;
-    } catch {
-      changeMsg.textContent = 'Erreur de connexion au paiement';
-      changeMsg.className = 'form-msg err';
-      if (submitBtn) submitBtn.disabled = false;
-    }
+    const selectedOpt = targetSelect?.selectedOptions?.[0];
+    const productHint = {
+      id: body.target_product_id,
+      name: selectedOpt?.textContent || body.target_product_id,
+      price_label: String(selectedOpt?.textContent || '').split('—')[1]?.trim() || '',
+    };
+    showChangePayStep({
+      body,
+      product: productHint,
+      verifyOrderId: verify.order_id,
+    });
+    if (submitBtn) submitBtn.disabled = false;
   };
+
+  changePayBtn?.addEventListener('click', () => {
+    const method =
+      document.querySelector('input[name="change_pay_method"]:checked')?.value || 'payplug';
+    void startChangePayment(method);
+  });
+  changePayBack?.addEventListener('click', backToChangeForm);
 
   const params = new URLSearchParams(location.search);
   async function confirmChangePayment() {
     if (params.get('change') !== '1') return;
     const paymentId =
       params.get('payment_id') || sessionStorage.getItem('bc_change_payplug_id') || '';
+    const paypalOrderId =
+      params.get('paypal_order_id') ||
+      params.get('token') ||
+      sessionStorage.getItem('bc_change_paypal_id') ||
+      '';
     const sessionId = params.get('session_id') || '';
-    if (!paymentId && !sessionId) return;
+    const fromPaypal = params.get('paypal_return') === '1';
+    if (!paymentId && !sessionId && !(fromPaypal && paypalOrderId)) return;
 
-    const confirmKey = `bc_change_done_${paymentId || sessionId}`;
+    const confirmKey = `bc_change_done_${paymentId || paypalOrderId || sessionId}`;
     if (sessionStorage.getItem(confirmKey) === '1') {
       changeMsg.hidden = false;
       changeMsg.className = 'form-msg';
@@ -332,12 +422,15 @@
     changeMsg.textContent = 'Confirmation du paiement…';
     changeMsg.className = 'form-msg';
     try {
+      const payload = paymentId
+        ? { payment_id: paymentId }
+        : fromPaypal && paypalOrderId
+          ? { paypal_order_id: paypalOrderId }
+          : { session_id: sessionId };
       const res = await fetch('/api/membership/change/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          paymentId ? { payment_id: paymentId } : { session_id: sessionId }
-        ),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       changeMsg.className = data.ok ? 'form-msg' : 'form-msg err';
@@ -345,6 +438,7 @@
         ? 'Votre abonnement comptant a bien été enregistré. Il prendra effet dans quelques minutes. Un e-mail de confirmation vous sera envoyé dès que c’est actif.'
         : data.error || 'Confirmation impossible';
       sessionStorage.removeItem('bc_change_payplug_id');
+      sessionStorage.removeItem('bc_change_paypal_id');
       document.getElementById('changer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (data.ok) {
         sessionStorage.setItem(confirmKey, '1');
@@ -359,6 +453,11 @@
 
   if (params.get('change') === '1' || params.get('change') === 'cancelled' || location.hash === '#changer') {
     document.getElementById('changer')?.scrollIntoView({ behavior: 'instant', block: 'start' });
+  }
+  if (params.get('change') === 'cancelled') {
+    changeMsg.hidden = false;
+    changeMsg.className = 'form-msg err';
+    changeMsg.textContent = 'Paiement annulé — vous n’avez pas été débité. Vous pouvez réessayer.';
   }
 
   confirmChangePayment().catch(() => {});

@@ -67,8 +67,37 @@
         <div><label for="c_gym">Salle *</label><select id="c_gym" name="gym" required></select></div>
         <div class="full"><label for="c_current">Abonnement actuel *</label><select id="c_current" name="current_plan" required></select></div>
         <div class="full"><label for="c_target">Nouvel abonnement comptant *</label><select id="c_target" name="target_product_id" required></select></div>
-        <div class="full"><button type="submit" class="btn block">Payer et basculer en comptant</button></div>
+        <div class="full"><button type="submit" class="btn block">Vérifier mes informations</button></div>
       </form>
+      <div id="changePayPanel" class="change-pay-panel" hidden>
+        <p class="manage-card-kicker" style="margin:0 0 8px">Paiement</p>
+        <h3 id="changePayTitle" style="margin:0 0 6px">Choisissez votre moyen de paiement</h3>
+        <p id="changePayLead" class="manage-lead" style="margin-bottom:16px"></p>
+        <div class="billing-choice-row" role="radiogroup" aria-label="Moyen de paiement">
+          <label class="billing-choice">
+            <input type="radio" name="change_pay_method" value="payplug" checked />
+            <span class="billing-choice-text">
+              <strong>Carte bancaire</strong>
+              <small>Paiement sécurisé PayPlug</small>
+              <span class="pay-logos" aria-hidden="true">
+                <img src="https://tse1.mm.bing.net/th/id/OIP.i6EmD8Ol2FWxjgKeOSjh1wHaDo?r=0&pid=Api&h=220&P=0" alt="CB Visa Mastercard" height="28" />
+              </span>
+            </span>
+          </label>
+          <label class="billing-choice">
+            <input type="radio" name="change_pay_method" value="paypal" />
+            <span class="billing-choice-text">
+              <strong>PayPal</strong>
+              <small>Paiement sécurisé PayPal</small>
+              <span class="pay-logos" aria-hidden="true">
+                <img src="https://up.yimg.com/ib/th/id/OIP.h_nvZo9_TUEbrpVqSdXsGAHaHa?pid=Api&rs=1&c=1&qlt=95&w=122&h=122" alt="PayPal" height="28" />
+              </span>
+            </span>
+          </label>
+        </div>
+        <button type="button" class="btn block" id="changePayBtn" style="margin-top:16px">Payer et basculer en comptant</button>
+        <button type="button" class="btn secondary block" id="changePayBack" style="margin-top:10px">← Modifier mes informations</button>
+      </div>
       <p class="form-msg" id="changeMsg" hidden></p>
     </section>
 
@@ -115,6 +144,6 @@
   <div id="site-footer"></div>
   <script src="/js/layout.js"></script>
   <script src="/js/counselor-david.js"></script>
-  <script src="/js/gerer-abonnement.js"></script>
+  <script src="/js/gerer-abonnement.js?v=2"></script>
 </body>
 </html>

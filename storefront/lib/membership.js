@@ -401,6 +401,32 @@ async function sendChangeConfirmationEmail(identity, product = {}) {
   }
 }
 
+function changePendingId(paymentRef) {
+  const safe = String(paymentRef || '')
+    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .slice(0, 80);
+  return `chgpend-${safe || 'unknown'}`;
+}
+
+async function saveMembershipChangePending(paymentRef, payload = {}) {
+  const { saveOrderAsync } = require('./order-persistence');
+  const orderId = changePendingId(paymentRef);
+  await saveOrderAsync({
+    order_id: orderId,
+    access_token: `chgpend-${orderId}`,
+    action: 'membership_change_pending',
+    payment_ref: String(paymentRef || ''),
+    created_at: new Date().toISOString(),
+    ...payload,
+  });
+  return orderId;
+}
+
+async function loadMembershipChangePending(paymentRef) {
+  const { loadOrder } = require('./order-persistence');
+  return loadOrder(changePendingId(paymentRef));
+}
+
 module.exports = {
   listComptantTargets,
   listCurrentPlans,
@@ -415,5 +441,8 @@ module.exports = {
   sendChangeConfirmationEmail,
   updateCancelStatus,
   getCancelStatus,
+  saveMembershipChangePending,
+  loadMembershipChangePending,
+  changePendingId,
   CANCEL_FIELD_LABELS,
 };

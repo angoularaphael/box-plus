@@ -102,6 +102,61 @@ async function testChangeValidation() {
       'API options ne doit pas exposer Prélèvement promo'
     );
     console.log('OK /api/membership/options');
+
+    const paypalCheckout = await fetch(`http://127.0.0.1:${port}/api/membership/change/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        target_product_id: 'comptant-3-mois',
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        birthdate: '1990-01-15',
+        email: 'ada@example.com',
+        gym: 'minimes',
+        current_plan: 'prelevement-adulte',
+        payment_method: 'paypal',
+      }),
+    });
+    const paypalData = await paypalCheckout.json();
+    // Sans credentials PayPal : 503 ; avec credentials : url paypal.
+    if (paypalCheckout.status === 503) {
+      assert.equal(paypalData.error, 'paypal_not_configured');
+      console.log('OK change checkout paypal — non configuré (503 attendu en local)');
+    } else if (paypalCheckout.ok && paypalData.ok) {
+      assert.equal(paypalData.mode, 'paypal');
+      assert.ok(paypalData.url || paypalData.paypal_order_id);
+      console.log('OK change checkout paypal — url créée');
+    } else {
+      assert.fail(`paypal checkout inattendu: ${paypalCheckout.status} ${JSON.stringify(paypalData)}`);
+    }
+
+    const payplugCheckout = await fetch(`http://127.0.0.1:${port}/api/membership/change/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        target_product_id: 'comptant-3-mois',
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        birthdate: '1990-01-15',
+        email: 'ada@example.com',
+        gym: 'minimes',
+        current_plan: 'prelevement-adulte',
+        payment_method: 'payplug',
+      }),
+    });
+    const payplugData = await payplugCheckout.json();
+    if (payplugCheckout.status === 503) {
+      assert.equal(payplugData.error, 'payplug_not_configured');
+      console.log('OK change checkout payplug — non configuré (503 attendu en local)');
+    } else if (payplugCheckout.ok && payplugData.ok) {
+      assert.equal(payplugData.mode, 'payplug');
+      assert.ok(payplugData.url || payplugData.payment_id);
+      console.log('OK change checkout payplug — url créée');
+    } else {
+      // Peut échouer si clé invalide : on accepte une erreur métier autre que validation 400
+      assert.notEqual(payplugCheckout.status, 400, 'identité complète ne doit pas être rejetée');
+      console.log('OK change checkout payplug — branche atteinte', payplugCheckout.status);
+    }
   } finally {
     await new Promise((r) => server.close(r));
   }

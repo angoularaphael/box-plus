@@ -115,6 +115,8 @@ async function createPaypalOrder({
   paymentPlan = 'once',
   description = null,
   metadata = {},
+  returnUrl = null,
+  cancelUrl = null,
 }) {
   const amount = Number(amountCents || product?.price_cents || 0);
   if (!amount) throw new Error('Montant PayPal invalide');
@@ -123,10 +125,12 @@ async function createPaypalOrder({
   const returnBase = order?.access_token
     ? `${baseUrl}/inscription?order=${encodeURIComponent(order.order_id)}&token=${encodeURIComponent(order.access_token)}`
     : `${baseUrl}/`;
-  const returnUrl = `${returnBase}&step=4&paypal_return=1`;
-  const cancelUrl = `${returnBase}&step=4&cancelled=1`;
+  const resolvedReturn = returnUrl || `${returnBase}&step=4&paypal_return=1`;
+  const resolvedCancel = cancelUrl || `${returnBase}&step=4&cancelled=1`;
 
-  const customId = String(order?.order_id || metadata.order_id || '').slice(0, 127);
+  const customId = String(
+    order?.order_id || metadata.order_id || metadata.payment_ref || metadata.verify_order_id || ''
+  ).slice(0, 127);
   // Ne pas mélanger payment_source + application_context (INCOMPATIBLE_PARAMETER_VALUE).
   const payload = {
     intent: 'CAPTURE',
@@ -148,8 +152,8 @@ async function createPaypalOrder({
           locale: 'fr-FR',
           landing_page: 'LOGIN',
           user_action: 'PAY_NOW',
-          return_url: returnUrl,
-          cancel_url: cancelUrl,
+          return_url: resolvedReturn,
+          cancel_url: resolvedCancel,
           shipping_preference: 'NO_SHIPPING',
         },
       },

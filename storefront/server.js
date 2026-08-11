@@ -2219,7 +2219,6 @@ function createApp() {
       const body = req.body || {};
       const product = findProduct(body.target_product_id);
       if (!product) return res.status(404).json({ ok: false, error: 'Offre introuvable' });
-      if (!isPayplugEnabled()) return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       if (!body.first_name || !body.last_name || !body.birthdate) {
         return res.status(400).json({
           ok: false,
@@ -2233,6 +2232,15 @@ function createApp() {
           error: 'Merci de renseigner un email ou un téléphone.',
         });
       }
+      const method = String(body.payment_method || body.method || 'payplug').toLowerCase();
+      const preferPaypal = method === 'paypal';
+      if (preferPaypal && !isPaypalEnabled()) {
+        return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
+      }
+      if (!preferPaypal && !isPayplugEnabled()) {
+        return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
+      }
+
       const baseUrl = getCheckoutBaseUrl(req);
       let deciplusMemberId = body.deciplus_member_id || '';
       if (!deciplusMemberId && body.verify_order_id) {
@@ -2256,7 +2264,49 @@ function createApp() {
         verify_order_id: body.verify_order_id || '',
         deciplus_member_id: String(deciplusMemberId || ''),
         payment_plan: 'once',
+        amount_cents: Number(product.price_cents || 0),
       };
+
+      const {
+        saveMembershipChangePending,
+      } = require('./lib/membership');
+
+      if (preferPaypal) {
+        const ppOrder = await createPaypalOrder({
+          product,
+          amountCents: product.price_cents,
+          baseUrl,
+          paymentPlan: 'once',
+          description: product.display_name || product.name || 'Changement abo comptant',
+          metadata: {
+            order_id: body.verify_order_id || `chg-${Date.now()}`,
+            verify_order_id: body.verify_order_id || '',
+          },
+          returnUrl: `${baseUrl}/gerer-abonnement?change=1&paypal_return=1#changer`,
+          cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled#changer`,
+        });
+        if (!ppOrder.approve_url) {
+          return res.status(502).json({ ok: false, error: 'paypal_url_missing' });
+        }
+        await saveMembershipChangePending(ppOrder.id, {
+          ...meta,
+          payment_method: 'paypal',
+          paypal_order_id: ppOrder.id,
+        });
+        return res.json({
+          ok: true,
+          mode: 'paypal',
+          url: ppOrder.approve_url,
+          paypal_order_id: ppOrder.id,
+          product: {
+            id: product.id,
+            name: product.display_name || product.name,
+            price_label: product.price_label || product.marketing_price_label,
+            price_cents: product.price_cents,
+          },
+        });
+      }
+
       const payment = await createHostedPayment({
         amountCents: product.price_cents,
         description: product.display_name || product.name || 'Changement abo comptant',
@@ -2273,7 +2323,23 @@ function createApp() {
       });
       const url = hostedPaymentUrl(payment);
       if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
-      res.json({ ok: true, mode: 'payplug', url, payment_id: payment.id });
+      await saveMembershipChangePending(payment.id, {
+        ...meta,
+        payment_method: 'payplug',
+        payplug_payment_id: payment.id,
+      });
+      res.json({
+        ok: true,
+        mode: 'payplug',
+        url,
+        payment_id: payment.id,
+        product: {
+          id: product.id,
+          name: product.display_name || product.name,
+          price_label: product.price_label || product.marketing_price_label,
+          price_cents: product.price_cents,
+        },
+      });
     } catch (err) {
       logError('Erreur change checkout', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
@@ -2283,12 +2349,49 @@ function createApp() {
   app.post('/api/membership/change/confirm', async (req, res) => {
     try {
       const paymentId = req.body?.payment_id || req.body?.payplug_payment_id;
+      const paypalOrderId = req.body?.paypal_order_id;
       const sessionId = req.body?.session_id;
       const {
         confirmMembershipChangeOnce,
         resolveDeciplusMemberId,
         getCancelStatus,
+        loadMembershipChangePending,
       } = require('./lib/membership');
+
+      if (paypalOrderId && isPaypalEnabled()) {
+        let captured = await retrievePaypalOrder(paypalOrderId);
+        if (!isPaypalOrderPaid(captured)) {
+          captured = await capturePaypalOrder(paypalOrderId);
+        }
+        if (!isPaypalOrderPaid(captured)) {
+          return res.status(402).json({ ok: false, error: 'paiement non confirmé' });
+        }
+        const pending = await loadMembershipChangePending(paypalOrderId);
+        if (!pending?.target_product_id) {
+          return res.status(404).json({ ok: false, error: 'changement introuvable pour ce paiement' });
+        }
+        const deciplusMemberId = await resolveDeciplusMemberId(
+          {
+            deciplus_member_id: pending.deciplus_member_id,
+            verify_order_id: pending.verify_order_id,
+          },
+          getCancelStatus
+        );
+        const result = await confirmMembershipChangeOnce({
+          identity: {
+            first_name: pending.first_name,
+            last_name: pending.last_name,
+            birthdate: pending.birthdate,
+            email: pending.email,
+            phone: pending.phone,
+            gym: pending.gym || 'minimes',
+          },
+          targetProductId: pending.target_product_id,
+          stripeSessionId: `paypal_${paypalOrderId}`,
+          deciplusMemberId,
+        });
+        return res.json({ ok: true, ...result, mode: 'paypal' });
+      }
 
       if (paymentId && isPayplugEnabled()) {
         const payment = await retrievePayment(paymentId);
@@ -2314,7 +2417,10 @@ function createApp() {
       }
 
       if (!sessionId || !stripe) {
-        return res.status(400).json({ ok: false, error: 'payment_id ou session_id requis' });
+        return res.status(400).json({
+          ok: false,
+          error: 'payment_id, paypal_order_id ou session_id requis',
+        });
       }
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       if (!isStripeCheckoutPaid(session)) {

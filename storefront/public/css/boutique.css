@@ -1446,7 +1446,15 @@ input:focus, select:focus, textarea:focus {
     conic-gradient(from 20deg, #e8001c, #c8902f, #e8001c);
   box-shadow: 0 0 0 8px rgba(232, 0, 28, 0.08);
 }
-body.change-congrats-lock { overflow: hidden; }
+.change-congrats-lock { overflow: hidden; }
+.change-pay-panel {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(32, 37, 75, 0.08);
+}
+.change-pay-panel .billing-choice-row {
+  margin-top: 4px;
+}
 
 .chat-form {
   padding: 12px;
