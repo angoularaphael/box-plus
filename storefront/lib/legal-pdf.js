@@ -157,25 +157,33 @@ function resolveStaticPdf(spec) {
   return { filepath, filename: spec.filename, source: 'static' };
 }
 
-async function writeLegalPdf(spec) {
-  const staticPdf = resolveStaticPdf(spec);
-  if (staticPdf) return staticPdf;
-
+async function writeLegalPdf(spec, { mdOverride = null, filenameOverride = null } = {}) {
   ensureDir(DOCS_DIR);
+
+  if (!mdOverride) {
+    const staticPdf = resolveStaticPdf(spec);
+    if (staticPdf) return staticPdf;
+  }
+
   const mdPath = path.join(LEGAL_DIR, spec.md);
-  if (!fs.existsSync(mdPath)) {
+  if (!mdOverride && !fs.existsSync(mdPath)) {
     return null;
   }
-  const mdStat = fs.statSync(mdPath);
-  const filepath = path.join(DOCS_DIR, spec.filename);
-  if (fs.existsSync(filepath)) {
-    const pdfStat = fs.statSync(filepath);
-    if (pdfStat.mtimeMs >= mdStat.mtimeMs && pdfStat.size > 4000) {
-      return { filepath, filename: spec.filename, source: 'cache' };
+
+  const filename = filenameOverride || spec.filename;
+  const filepath = path.join(DOCS_DIR, filename);
+
+  if (!mdOverride) {
+    const mdStat = fs.statSync(mdPath);
+    if (fs.existsSync(filepath)) {
+      const pdfStat = fs.statSync(filepath);
+      if (pdfStat.mtimeMs >= mdStat.mtimeMs && pdfStat.size > 4000) {
+        return { filepath, filename, source: 'cache' };
+      }
     }
   }
 
-  const md = fs.readFileSync(mdPath, 'utf8');
+  const md = mdOverride || fs.readFileSync(mdPath, 'utf8');
   const doc = new PDFDocument({
     size: 'A4',
     margins: { top: 48, bottom: 56, left: 48, right: 48 },
@@ -190,15 +198,64 @@ async function writeLegalPdf(spec) {
     stream.on('finish', resolve);
     stream.on('error', reject);
   });
-  return { filepath, filename: spec.filename, source: 'generated' };
+  return { filepath, filename, source: mdOverride ? 'personalized' : 'generated' };
 }
 
-async function generateInscriptionLegalPdfs() {
+function signerFullName(order) {
+  const short = order?.customer_short || {};
+  const full = order?.customer_full || {};
+  const first = String(short.first_name || full.first_name || '').trim();
+  const last = String(short.last_name || full.last_name || '').trim();
+  return [first, last].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function personalizeMedicalMarkdown(md, fullName) {
+  const name = String(fullName || '').trim();
+  if (!name) return md;
+  let out = String(md || '');
+  // "Je soussigné(e), déclare" → "Je soussigné(e) Jean Dupont, déclare"
+  out = out.replace(
+    /Je soussigné\(e\),\s*/g,
+    `Je soussigné(e) ${name}, `
+  );
+  if (!/Fait (à|pour)/i.test(out) && !/Signataire\s*:/i.test(out)) {
+    const date = new Date().toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+    out += `\n\n## Signataire\n\nNom : ${name}\n\nDate d'acceptation électronique : ${date}\n`;
+  }
+  return out;
+}
+
+async function generatePersonalizedMedicalPdf(order) {
+  const spec = LEGAL_PDFS.find((s) => s.md === 'attestation-medicale.md');
+  if (!spec) return null;
+  const mdPath = path.join(LEGAL_DIR, spec.md);
+  if (!fs.existsSync(mdPath)) return null;
+
+  const name = signerFullName(order);
+  const raw = fs.readFileSync(mdPath, 'utf8');
+  const md = personalizeMedicalMarkdown(raw, name);
+  const safeId = String(order?.order_id || 'adh')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .slice(0, 80);
+  const filename = `Declaration-medicale-${safeId}.pdf`;
+  return writeLegalPdf(spec, { mdOverride: md, filenameOverride: filename });
+}
+
+async function generateInscriptionLegalPdfs(order = null) {
   const out = [];
   const errors = [];
   for (const spec of LEGAL_PDFS) {
     try {
-      const pdf = await writeLegalPdf(spec);
+      let pdf = null;
+      if (spec.md === 'attestation-medicale.md' && order) {
+        pdf = await generatePersonalizedMedicalPdf(order);
+      } else {
+        pdf = await writeLegalPdf(spec);
+      }
       if (pdf) out.push(pdf);
       else errors.push(`${spec.filename}: fichier introuvable`);
     } catch (err) {
@@ -213,5 +270,8 @@ module.exports = {
   LEGAL_DIR,
   DOCS_DIR,
   generateInscriptionLegalPdfs,
+  generatePersonalizedMedicalPdf,
+  personalizeMedicalMarkdown,
+  signerFullName,
   writeLegalPdf,
 };

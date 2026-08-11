@@ -60,7 +60,7 @@ async function buildInscriptionAttachments(order, extra = []) {
   };
 
   try {
-    const { pdfs: legalPdfs, errors } = await generateInscriptionLegalPdfs();
+    const { pdfs: legalPdfs, errors } = await generateInscriptionLegalPdfs(order);
     for (const pdf of legalPdfs) {
       pushFile(pdf.filename, pdf.filepath);
     }
