@@ -17,9 +17,13 @@ CE QUE TU NE PEUX PAS FAIRE (INTERDIT DE LE PROMETTRE OU DE DIRE QUE TU LE FAIS)
 - Agir « pour » le membre sans qu’il ait fourni ses infos dans le parcours.
 
 SUSPENSION / BLESSURE / PAUSE
-- Tu n’as AUCUN pouvoir de suspension.
-- Réponse type : expliquer que seul le manager de salle peut suspendre, puis proposer « Contacter mon manager » (chips).
-- Ne jamais écrire « je lance la suspension », « on peut suspendre pour vous », « voulez-vous que je lance… ».
+- Tu n’as AUCUN pouvoir de suspension toi-même.
+- ORDRE OBLIGATOIRE en cas de blessure / médical / pause :
+  1) D’abord demander clairement : « Souhaitez-vous suspendre votre abonnement le temps de votre rétablissement ? »
+  2) Si OUI → expliquer que seul le manager peut le faire, et inviter à cliquer sur « Contacter mon manager ».
+  3) Si NON → inviter à cliquer sur « Je reste — merci pour les infos », ou « Continuer vers la résiliation ».
+- Ne jamais écrire « je lance la suspension » / « on suspend pour vous ».
+- Ne saute pas l’étape 1 : ne propose pas d’abord le manager sans avoir demandé s’ils veulent suspendre.
 
 IDENTITÉ
 - Tu ne connais ni le nom, ni l’email, ni le dossier du membre tant qu’il ne les a pas saisis dans le formulaire de résiliation.
@@ -35,14 +39,14 @@ CONNAISSANCES CLUB
 ALTERNATIVES RÉSILATION (à adapter, sans promettre d’action)
 - Manque de temps → autres créneaux / salles / accès libre.
 - Déménagement → salle plus proche.
-- Blessure → orienter vers le manager pour une éventuelle suspension (toi tu ne la fais pas).
+- Blessure → d’abord demander s’ils souhaitent suspendre ; si oui → manager ; si non → rester / résilier.
 - Financier → exceptionnellement offre à 29 € via le manager. Dire exactement « 29 € », jamais « environ ».
 
 RÈGLES DE CONVERSATION
 - Français, naturel, chaleureux. Max ~90 mots. Pas de markdown.
 - Ne jamais dire bonjour : la conversation a déjà commencé.
 - INTERDIT de renvoyer quasiment le même message que ta réponse précédente.
-- Si non / pas maintenant : pivot (autre piste ou question), sans re-proposer la même chose.
+- Si non / pas maintenant : invite clairement à cliquer sur « Je reste — merci pour les infos » (bouton en bas), ou manager / résiliation. Ne repose pas la même question.
 - Une seule idée principale. Une question max.
 - Ne jamais inventer un tarif. Seul tarif promo autorisé ici : exactement « 29 € ».
 - Ne mentionne pas Deciplus, bots, IA, systèmes internes.
@@ -52,7 +56,7 @@ const FALLBACKS = {
   time: 'Avec les cinq salles et l’accès libre 10h–21h, on peut souvent trouver un créneau plus simple. C’est plutôt les horaires, la distance, ou une période chargée en ce moment ?',
   move: 'Votre abo multi-salles couvre souvent un déménagement en région toulousaine. Dans quel secteur vous installez-vous ? Je vous oriente vers la salle la plus pratique.',
   medical:
-    'Désolé pour votre blessure. Je ne peux pas suspendre l’abonnement moi-même — seul votre manager de salle peut le faire. Souhaitez-vous son contact, ou plutôt continuer vers la résiliation ?',
+    'Désolé pour votre blessure. Souhaitez-vous suspendre votre abonnement le temps de votre rétablissement ?',
   club: 'Avant de couper, on peut vérifier une autre salle, un autre créneau ou une formule plus légère. Qu’est-ce qui vous fait pencher pour un autre club ?',
   money:
     'Si le budget pèse, une offre à 29 € peut exceptionnellement être étudiée avec votre manager, ou une formule plus légère. Qu’est-ce qui est le plus difficile aujourd’hui : le montant ou la fréquence ?',
@@ -159,13 +163,50 @@ function lastAssistantMessage(messages = []) {
   return '';
 }
 
+function isInjuryMessage(text) {
+  return /bless|fractur|accident|op[eé]ration|m[eé]dical|entorse|tendon|pause|suspend/i.test(
+    String(text || '')
+  );
+}
+
+function lastBotAskedSuspend(lastBot) {
+  return /souhaitez-vous\s+suspend|voulez-vous\s+suspend|suspendre votre abonnement/i.test(
+    String(lastBot || '')
+  );
+}
+
 async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }) {
   const fallback = FALLBACKS[reasonId] || FALLBACKS.other;
   const lastUser = lastMemberMessage(messages, freeText);
   const lastBot = lastAssistantMessage(messages);
   const transcript = buildTranscript(messages, freeText);
+  const injuryContext = reasonId === 'medical' || isInjuryMessage(lastUser) || isInjuryMessage(freeText);
 
-  // Réponses courtes : ne pas régénérer le même pitch
+  // Après la question suspension : oui → manager / non → rester
+  if (lastBotAskedSuspend(lastBot) && isShortAccept(lastUser)) {
+    return {
+      reply:
+        'Parfait. Je ne peux pas suspendre moi-même : cliquez sur « Contacter mon manager » et choisissez votre salle — il finalisera la suspension avec vous.',
+      source: 'pivot-accept-suspend',
+    };
+  }
+  if (lastBotAskedSuspend(lastBot) && isShortRefusal(lastUser)) {
+    return {
+      reply:
+        'Compris. Si vous restez, cliquez sur « Je reste — merci pour les infos ». Sinon vous pouvez continuer vers la résiliation.',
+      source: 'pivot-refuse-suspend',
+    };
+  }
+
+  // Première fois blessure/médical : demander la suspension AVANT le manager
+  if (injuryContext && !lastBotAskedSuspend(lastBot)) {
+    const userTurns = (messages || []).filter((m) => m.role === 'user' || m.role === 'member').length;
+    if (userTurns <= 3 || reasonId === 'medical') {
+      return { reply: FALLBACKS.medical, source: 'ask-suspend-first' };
+    }
+  }
+
+  // Réponses courtes génériques : ne pas régénérer le même pitch
   if (lastBot && isShortRefusal(lastUser)) {
     return {
       reply:
@@ -182,7 +223,7 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
   }
 
   if (!isAiEnabled()) {
-    return { reply: fallback, source: 'template' };
+    return { reply: injuryContext ? FALLBACKS.medical : fallback, source: 'template' };
   }
 
   try {
@@ -201,7 +242,10 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
             `Dernier message du membre : ${lastUser || '(vide)'}`,
             '',
             'Rédige la prochaine réponse : utile, différente de la précédente, adaptée au dernier message.',
-            'Rappel : tu ne peux pas suspendre. Si blessure/pause → orienter vers le manager.',
+            injuryContext
+              ? 'Contexte blessure/médical : si tu n’as pas encore demandé s’ils veulent suspendre, pose CETTE question en premier. Ne propose pas le manager avant leur oui.'
+              : 'Rappel : tu ne peux pas suspendre toi-même.',
+            'Si le membre dit non / pas intéressé (hors question suspension) : « Je reste — merci pour les infos », sinon manager ou résiliation.',
           ]
             .filter(Boolean)
             .join('\n'),
@@ -209,15 +253,29 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
       ],
       { maxTokens: 280, temperature: 0.75 }
     );
-    let reply = cleanReply(content, fallback);
+    let reply = cleanReply(content, injuryContext ? FALLBACKS.medical : fallback);
+
+    // Garde-fou : blessure sans question suspend → forcer la question
+    if (
+      injuryContext &&
+      !lastBotAskedSuspend(lastBot) &&
+      !lastBotAskedSuspend(reply) &&
+      !isShortAccept(lastUser) &&
+      !isShortRefusal(lastUser)
+    ) {
+      return { reply: FALLBACKS.medical, source: 'guard-ask-suspend' };
+    }
 
     // Garde-fou anti-doublon si le modèle ressert le même texte
     if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
       if (isShortRefusal(lastUser)) {
-        reply = PIVOT_FALLBACKS[Math.floor(Math.random() * PIVOT_FALLBACKS.length)];
+        reply =
+          'Compris. Cliquez sur « Je reste — merci pour les infos » si vous restez avec nous, sinon contactez votre manager ou continuez vers la résiliation.';
+      } else if (injuryContext && !lastBotAskedSuspend(lastBot)) {
+        reply = FALLBACKS.medical;
       } else {
         reply =
-          'Je vous suis. Pour avancer : contacter votre manager (suspension / cas particulier), une info salle/horaires, ou continuer vers la résiliation ?';
+          'Je vous suis. Cliquez sur « Je reste — merci pour les infos » si ça vous va, ou choisissez manager / résiliation en bas.';
       }
       return { reply, source: 'dedup' };
     }
@@ -230,7 +288,7 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
 
     return { reply: reply || fallback, source: 'groq' };
   } catch (err) {
-    return { reply: fallback, source: 'template-fallback', error: err.message };
+    return { reply: injuryContext ? FALLBACKS.medical : fallback, source: 'template-fallback', error: err.message };
   }
 }
 
