@@ -143,7 +143,22 @@
 
   function initAmbientVideo() {
     var vids = document.querySelectorAll('video[data-ambient]');
-    if (!vids.length || !('IntersectionObserver' in window)) return;
+    if (!vids.length) return;
+    vids.forEach(function (v) {
+      if (reduce) {
+        v.removeAttribute('autoplay');
+        v.pause();
+        return;
+      }
+      v.muted = true;
+      v.playsInline = true;
+      var tryPlay = function () {
+        v.play().catch(function () {});
+      };
+      tryPlay();
+      v.addEventListener('loadeddata', tryPlay, { once: true });
+    });
+    if (!('IntersectionObserver' in window)) return;
     var io = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
         var v = e.target;
@@ -155,12 +170,7 @@
       });
     }, { threshold: 0.05 });
     vids.forEach(function (v) {
-      if (reduce) {
-        v.removeAttribute('autoplay');
-        v.pause();
-        return;
-      }
-      io.observe(v);
+      if (!reduce) io.observe(v);
     });
   }
 

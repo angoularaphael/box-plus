@@ -41,10 +41,9 @@
     });
   }
 
-  async function pollIdentityStatus(orderId, { maxWaitMs = 75000 } = {}) {
+  async function pollIdentityStatus(orderId, { maxWaitMs = 120000 } = {}) {
     const startedAt = Date.now();
-    let delay = 400;
-    // 1er poll immédiat (souvent déjà verified/mismatch si bot rapide)
+    let delay = 500;
     while (Date.now() - startedAt < maxWaitMs) {
       try {
         const r = await fetch(`/api/membership/cancel-status?order=${encodeURIComponent(orderId)}`);
@@ -59,7 +58,7 @@
         /* retry */
       }
       await new Promise((r) => setTimeout(r, delay));
-      delay = Math.min(1200, Math.round(delay * 1.2));
+      delay = Math.min(2000, Math.round(delay * 1.25));
     }
     return { ok: false, status: 'timeout', mismatch_fields: [] };
   }
