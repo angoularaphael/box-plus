@@ -23,6 +23,80 @@
     birthdate: 'Date de naissance',
   };
 
+  const changeRateHint = document.getElementById('changeRateHint');
+
+  function cleanChangeReturnUrl() {
+    try {
+      const url = new URL(window.location.href);
+      ['change', 'paypal_return', 'payplug_return', 'payment_id', 'paypal_order_id', 'token', 'PayerID', 'session_id'].forEach(
+        (k) => url.searchParams.delete(k)
+      );
+      if (url.hash === '#changer') url.hash = '';
+      window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function rateLimitLine(data) {
+    if (!data) return '';
+    if (data.code === 'rate_limited' || data.locked) {
+      return data.message || data.error || 'Trop de tentatives. Réessayez plus tard.';
+    }
+    if (typeof data.rate_limit_remaining === 'number') {
+      const max = data.max_attempts || 5;
+      return data.rate_limit_message || `Tentatives restantes : ${data.rate_limit_remaining} sur ${max}.`;
+    }
+    if (typeof data.remaining === 'number') {
+      return data.message || `Tentatives restantes : ${data.remaining} sur ${data.max_attempts || 5}.`;
+    }
+    return data.message || '';
+  }
+
+  function setChangeRateHint(data) {
+    if (!changeRateHint) return;
+    const line = rateLimitLine(data);
+    if (!line) {
+      changeRateHint.hidden = true;
+      changeRateHint.textContent = '';
+      return;
+    }
+    changeRateHint.hidden = false;
+    changeRateHint.textContent = line;
+    changeRateHint.className =
+      data?.locked || data?.code === 'rate_limited' ? 'form-hint form-hint--warn' : 'form-hint';
+  }
+
+  async function refreshChangeRateHint(body) {
+    if (!body?.first_name || !body?.last_name || !body?.birthdate) return;
+    if (!body.email && !body.phone) return;
+    try {
+      const res = await fetch('/api/membership/rate-limit-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body, scope: 'change' }),
+      });
+      const data = await res.json();
+      if (data.ok || data.code === 'rate_limited') setChangeRateHint(data);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function bindChangeRateWatchers() {
+    const fields = ['c_first', 'c_last', 'c_birth', 'c_email', 'c_phone'];
+    const sync = () => {
+      const body = Object.fromEntries(new FormData(changeForm).entries());
+      void refreshChangeRateHint(body);
+    };
+    fields.forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('change', sync);
+      el.addEventListener('blur', sync);
+    });
+  }
+
   gymList.innerHTML = GYMS.map(
     (g) =>
       `<li class="manage-gym-item"><strong>${g.label}</strong><span>${g.address}</span></li>`
@@ -166,9 +240,14 @@
         }
         if (!data.ok) {
           if (submitBtn) submitBtn.disabled = false;
+          const limitLine = rateLimitLine(data);
           msgEl.textContent =
             data.error ||
+            limitLine ||
             "Je suis désolé, mais nous n'avons pas pu trouver d'abonnement correspondant à ces informations.";
+          if (limitLine && data.error && data.error !== limitLine) {
+            msgEl.textContent = `${data.error} ${limitLine}`;
+          }
           msgEl.className = 'form-msg err';
           return;
         }
@@ -189,8 +268,11 @@
         }
         // Dès que l’identité est OK (verified) — pas besoin d’attendre la fin Deciplus
         if (s.ok && (s.status === 'verified' || s.status === 'done')) {
+          const left = rateLimitLine(data);
           msgEl.innerHTML =
-            '<strong>Votre résiliation sera traitée.</strong><br/>Les informations correspondent : la demande est prise en charge. Elle sera effective sous 72 heures ; une confirmation vous sera envoyée par e-mail.';
+            `<strong>Votre résiliation sera traitée.</strong><br/>Les informations correspondent : la demande est prise en charge. Elle sera effective sous 72 heures ; une confirmation vous sera envoyée par e-mail.${
+              left ? `<br/><span class="rate-limit-note">${left}</span>` : ''
+            }`;
           msgEl.className = 'form-msg';
           if (submitBtn) submitBtn.disabled = false;
           showCancelCongrats();
@@ -353,8 +435,9 @@
       verify = {};
     }
     if (!verify.ok || !verify.order_id) {
-      changeMsg.textContent = verify.error || 'Vérification impossible';
+      changeMsg.textContent = [verify.error, rateLimitLine(verify)].filter(Boolean).join(' ') || 'Vérification impossible';
       changeMsg.className = 'form-msg err';
+      setChangeRateHint(verify);
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
@@ -390,6 +473,10 @@
       product: productHint,
       verifyOrderId: verify.order_id,
     });
+    setChangeRateHint(verify);
+    if (verify.rate_limit_message) {
+      changeMsg.textContent = `Identité confirmée — choisissez votre mode de paiement. ${verify.rate_limit_message}`;
+    }
     if (submitBtn) submitBtn.disabled = false;
   };
 
@@ -405,7 +492,6 @@
     if (params.get('change') !== '1') return;
     const fromPaypal = params.get('paypal_return') === '1';
     const fromPayplug = params.get('payplug_return') === '1';
-    // PayPal renvoie souvent ?token=ORDER_ID — ne pas laisser un vieux payplug_id passer devant
     const paypalOrderId = fromPaypal
       ? params.get('paypal_order_id') ||
         params.get('token') ||
@@ -416,7 +502,11 @@
       ? ''
       : params.get('payment_id') || sessionStorage.getItem('bc_change_payplug_id') || '';
     const sessionId = fromPaypal || fromPayplug ? '' : params.get('session_id') || '';
-    if (!paymentId && !sessionId && !paypalOrderId) return;
+    if (!paymentId && !sessionId && !paypalOrderId) {
+      // Ancienne URL ?change=1 sans paiement → nettoyer sans popup
+      if (!fromPaypal && !fromPayplug) cleanChangeReturnUrl();
+      return;
+    }
     if (fromPaypal && !paypalOrderId) {
       changeMsg.hidden = false;
       changeMsg.className = 'form-msg err';
@@ -427,11 +517,12 @@
 
     const confirmKey = `bc_change_done_${paymentId || paypalOrderId || sessionId}`;
     if (sessionStorage.getItem(confirmKey) === '1') {
+      // Déjà confirmé : pas de popup à chaque refresh
+      cleanChangeReturnUrl();
       changeMsg.hidden = false;
       changeMsg.className = 'form-msg';
       changeMsg.textContent =
-        'Votre abonnement comptant a bien été enregistré. Il prendra effet dans quelques minutes. Un e-mail de confirmation vous sera envoyé dès que c’est actif.';
-      showChangeCongrats();
+        'Votre abonnement comptant a déjà été enregistré. Un e-mail de confirmation suivra.';
       return;
     }
 
@@ -461,6 +552,7 @@
       if (data.ok) {
         sessionStorage.setItem(confirmKey, '1');
         showChangeCongrats();
+        cleanChangeReturnUrl();
       }
     } catch {
       changeMsg.className = 'form-msg err';
@@ -476,8 +568,10 @@
     changeMsg.hidden = false;
     changeMsg.className = 'form-msg err';
     changeMsg.textContent = 'Paiement annulé — vous n’avez pas été débité. Vous pouvez réessayer.';
+    cleanChangeReturnUrl();
   }
 
+  bindChangeRateWatchers();
   confirmChangePayment().catch(() => {});
 
   loadOptions().catch(() => {});

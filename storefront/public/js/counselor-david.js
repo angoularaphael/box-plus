@@ -116,7 +116,7 @@ window.BCCounselor = (function () {
           </div>`;
       } else if (step === 'form') {
         footer = `
-          <p class="chat-form-hint">Le nom, le prénom, le téléphone et la date de naissance doivent correspondre à votre fiche adhérent (majuscules / minuscules indifférentes).</p>
+          <p class="chat-form-hint">Le <strong>nom</strong>, le <strong>prénom</strong>, le <strong>téléphone</strong> et la <strong>date de naissance</strong> doivent correspondre à votre fiche adhérent (majuscules / minuscules indifférentes).</p>
           <form id="cancelForm" class="chat-form form-grid">
             <div><label>Prénom *</label><input name="first_name" required /></div>
             <div><label>Nom *</label><input name="last_name" required /></div>
@@ -357,7 +357,7 @@ window.BCCounselor = (function () {
             if (busy) return;
             push('user', 'Oui, je confirme');
             replySoon(
-              'Très bien. Merci de renseigner les informations ci-dessous — le nom, le prénom, le téléphone et la date de naissance doivent correspondre à votre fiche adhérent (majuscules / minuscules indifférentes).',
+              'Très bien. Merci de renseigner les informations ci-dessous — le <strong>nom</strong>, le <strong>prénom</strong>, le <strong>téléphone</strong> et la <strong>date de naissance</strong> doivent correspondre à votre fiche adhérent (majuscules / minuscules indifférentes).',
               'form'
             );
           };

@@ -2151,14 +2151,23 @@ function createApp() {
         return res.status(429).json({
           ok: false,
           error: limit.error,
+          message: limit.message || limit.error,
           code: limit.code,
           retry_after_sec: limit.retry_after_sec,
           locked_until: limit.locked_until,
+          remaining: 0,
+          max_attempts: limit.max_attempts,
         });
       }
       const { enqueueCancelRequest } = require('./lib/membership');
       const result = await enqueueCancelRequest(body);
-      res.json({ ok: true, ...result, rate_limit_remaining: limit.remaining });
+      res.json({
+        ok: true,
+        ...result,
+        rate_limit_remaining: limit.remaining,
+        max_attempts: limit.max_attempts,
+        rate_limit_message: limit.message,
+      });
     } catch (err) {
       logError('Erreur résiliation', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
@@ -2222,16 +2231,50 @@ function createApp() {
         return res.status(429).json({
           ok: false,
           error: limit.error,
+          message: limit.message || limit.error,
           code: limit.code,
           retry_after_sec: limit.retry_after_sec,
           locked_until: limit.locked_until,
+          remaining: 0,
+          max_attempts: limit.max_attempts,
         });
       }
       const { enqueueVerifyIdentity } = require('./lib/membership');
       const result = await enqueueVerifyIdentity({ ...body, verify_mode: body.verify_mode || 'change' });
-      res.json({ ok: true, ...result, rate_limit_remaining: limit.remaining });
+      res.json({
+        ok: true,
+        ...result,
+        rate_limit_remaining: limit.remaining,
+        max_attempts: limit.max_attempts,
+        rate_limit_message: limit.message,
+      });
     } catch (err) {
       logError('Erreur verify identité', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/membership/rate-limit-status', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const scope = body.scope === 'cancel' ? 'cancel' : 'change';
+      if (!body.first_name || !body.last_name || !body.birthdate) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Identité incomplète pour consulter le quota.',
+        });
+      }
+      if (scope === 'cancel' && !body.phone) {
+        return res.status(400).json({ ok: false, error: 'Téléphone requis.' });
+      }
+      if (scope === 'change' && !body.email && !body.phone) {
+        return res.status(400).json({ ok: false, error: 'Email ou téléphone requis.' });
+      }
+      const { peekMembershipRateLimit } = require('./lib/membership-rate-limit');
+      const status = await peekMembershipRateLimit(body, scope);
+      res.json({ ok: true, ...status });
+    } catch (err) {
+      logError('Erreur rate-limit status', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });

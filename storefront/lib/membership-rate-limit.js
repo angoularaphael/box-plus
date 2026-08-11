@@ -52,6 +52,14 @@ function formatRetryMessage(retryAfterSec) {
   return `Trop de tentatives pour ces informations. Réessayez dans ${mins} minute${mins > 1 ? 's' : ''}.`;
 }
 
+function formatRemainingMessage(remaining, maxAttempts = MAX_ATTEMPTS) {
+  const left = Math.max(0, Number(remaining) || 0);
+  if (left <= 0) {
+    return `Plus aucune tentative disponible pour le moment (${maxAttempts}/${maxAttempts} utilisées).`;
+  }
+  return `Tentatives restantes : ${left} sur ${maxAttempts}.`;
+}
+
 async function loadBucket(orderId) {
   const { loadOrder } = require('./order-persistence');
   return loadOrder(orderId);
@@ -62,6 +70,72 @@ async function saveBucket(record) {
   if (!record.access_token) record.access_token = `rl-${record.order_id}`;
   record.updated_at = new Date().toISOString();
   await saveOrderAsync(record);
+}
+
+function statusFromRecord(record, scope, now = Date.now()) {
+  const maxAttempts = MAX_ATTEMPTS;
+  if (!record) {
+    return {
+      ok: true,
+      scope,
+      remaining: maxAttempts,
+      attempts: 0,
+      max_attempts: maxAttempts,
+      locked: false,
+      retry_after_sec: 0,
+      locked_until: null,
+      message: formatRemainingMessage(maxAttempts, maxAttempts),
+    };
+  }
+
+  const lockUntilMs = record.lock_until ? new Date(record.lock_until).getTime() : 0;
+  if (lockUntilMs && lockUntilMs > now) {
+    const retryAfterSec = Math.ceil((lockUntilMs - now) / 1000);
+    return {
+      ok: false,
+      scope,
+      remaining: 0,
+      attempts: Array.isArray(record.attempts) ? record.attempts.length : maxAttempts,
+      max_attempts: maxAttempts,
+      locked: true,
+      code: 'rate_limited',
+      retry_after_sec: retryAfterSec,
+      locked_until: record.lock_until,
+      error: formatRetryMessage(retryAfterSec),
+      message: formatRetryMessage(retryAfterSec),
+    };
+  }
+
+  const attempts =
+    lockUntilMs && lockUntilMs <= now
+      ? []
+      : Array.isArray(record.attempts)
+        ? record.attempts.filter(Boolean)
+        : [];
+  const remaining = Math.max(0, maxAttempts - attempts.length);
+  return {
+    ok: remaining > 0,
+    scope,
+    remaining,
+    attempts: attempts.length,
+    max_attempts: maxAttempts,
+    locked: false,
+    retry_after_sec: 0,
+    locked_until: null,
+    code: remaining > 0 ? undefined : 'rate_limited',
+    error: remaining > 0 ? undefined : formatRetryMessage(lockDurationMs(Number(record.lock_count || 0) + 1) / 1000),
+    message:
+      remaining > 0
+        ? formatRemainingMessage(remaining, maxAttempts)
+        : formatRetryMessage(lockDurationMs(Number(record.lock_count || 0) + 1) / 1000),
+  };
+}
+
+/** Lecture seule — ne consomme pas de tentative (survit au refresh via store). */
+async function peekMembershipRateLimit(body = {}, scope = 'change') {
+  const orderId = identityKey(body, scope);
+  const record = await loadBucket(orderId);
+  return statusFromRecord(record, scope);
 }
 
 /**
@@ -86,10 +160,12 @@ async function assertMembershipAttemptAllowed(body = {}, scope = 'change') {
     return {
       ok: false,
       error: formatRetryMessage(retryAfterSec),
+      message: formatRetryMessage(retryAfterSec),
       code: 'rate_limited',
       retry_after_sec: retryAfterSec,
       locked_until: record.lock_until,
       remaining: 0,
+      max_attempts: MAX_ATTEMPTS,
     };
   }
 
@@ -118,10 +194,12 @@ async function assertMembershipAttemptAllowed(body = {}, scope = 'change') {
     return {
       ok: false,
       error: formatRetryMessage(retryAfterSec),
+      message: formatRetryMessage(retryAfterSec),
       code: 'rate_limited',
       retry_after_sec: retryAfterSec,
       locked_until: lockedUntil,
       remaining: 0,
+      max_attempts: MAX_ATTEMPTS,
     };
   }
 
@@ -129,11 +207,13 @@ async function assertMembershipAttemptAllowed(body = {}, scope = 'change') {
   record.attempts = attempts;
   await saveBucket(record);
 
+  const remaining = Math.max(0, MAX_ATTEMPTS - attempts.length);
   return {
     ok: true,
-    remaining: Math.max(0, MAX_ATTEMPTS - attempts.length),
+    remaining,
     attempts: attempts.length,
     max_attempts: MAX_ATTEMPTS,
+    message: formatRemainingMessage(remaining),
   };
 }
 
@@ -143,6 +223,8 @@ module.exports = {
   identityKey,
   normalizeBirthdate,
   assertMembershipAttemptAllowed,
+  peekMembershipRateLimit,
   formatRetryMessage,
+  formatRemainingMessage,
   lockDurationMs,
 };

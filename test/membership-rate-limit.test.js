@@ -62,6 +62,18 @@ describe('membership rate-limit', () => {
     assert.match(blocked.error, /Réessayez dans/i);
   });
 
+  it('peek lit le quota sans consommer de tentative', async () => {
+    const body = { ...person, email: `peek-${Date.now()}@example.com` };
+    const { peekMembershipRateLimit } = require('../storefront/lib/membership-rate-limit');
+    const before = await peekMembershipRateLimit(body, 'change');
+    assert.equal(before.remaining, MAX_ATTEMPTS);
+    await assertMembershipAttemptAllowed(body, 'change');
+    const after = await peekMembershipRateLimit(body, 'change');
+    assert.equal(after.remaining, MAX_ATTEMPTS - 1);
+    const again = await peekMembershipRateLimit(body, 'change');
+    assert.equal(again.remaining, MAX_ATTEMPTS - 1, 'peek ne doit pas décrémenter');
+  });
+
   it('2e lock → 20 min', async () => {
     assert.equal(lockDurationMs(1), 10 * 60 * 1000);
     assert.equal(lockDurationMs(2), 20 * 60 * 1000);
@@ -75,7 +87,6 @@ describe('membership rate-limit', () => {
     assert.equal(firstLock.ok, false);
     assert.ok(firstLock.retry_after_sec <= 10 * 60);
 
-    // Simule fin du 1er lock
     const { loadOrder, saveOrderAsync } = require('../storefront/lib/order-persistence');
     const id = identityKey(body, 'cancel');
     const rec = await loadOrder(id);
