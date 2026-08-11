@@ -237,7 +237,7 @@
     }
     if (document.querySelector('script[data-chloe]')) return;
     const s = document.createElement('script');
-    s.src = A('/js/counselor-chloe.js?v=2');
+    s.src = A('/js/counselor-chloe.js?v=3');
     s.defer = true;
     s.dataset.chloe = '1';
     document.body.appendChild(s);

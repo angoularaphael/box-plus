@@ -4,6 +4,7 @@ const { chatCompletion, isAiEnabled } = require('./groq');
 const {
   WELCOME_KNOWLEDGE,
   matchManagerFromText,
+  pickVariant,
 } = require('./welcome-knowledge');
 
 const KNOWLEDGE = `
@@ -299,8 +300,47 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
   }
 }
 
-const WELCOME_FALLBACK =
-  'Je peux t’aider sur les offres **29,99 €** / **259 €**, les 5 salles, l’essai, les CGV ou le règlement — dis-moi juste ce que tu cherches.';
+const WELCOME_FALLBACKS = [
+  'Je peux t’aider sur les offres **29,99 €** / **259 €**, les 5 salles, l’essai, les CGV ou le règlement — dis-moi juste ce que tu cherches.',
+  'Offres, salles, essai ou docs légaux : je te guide. Tu veux partir sur quoi en premier ?',
+  'Dis-moi ce qui t’intéresse — formule, salle, séance d’essai ou formalités — et je te réponds direct.',
+];
+
+const WELCOME_FALLBACK = WELCOME_FALLBACKS[0];
+
+const REDIRECT_DAVID = [
+  'Pour résilier un abo **par prélèvement**, ouvre « Gérer mon abo » : **David** t’accompagne. Les formules **comptant** se voient avec le **manager** en salle.',
+  'Résiliation en ligne = parcours **David** (prélèvements sans engagement). Comptant / forfait → ton **manager** en présentiel via « Gérer mon abo ».',
+  'Je ne gère pas les résils ici. Passe par « Gérer mon abo » : **David** pour le prélèvement, **manager** pour le comptant.',
+];
+
+const FAQ_VARIANTS = {
+  offer29: [
+    'L’offre à **29,99 €** / 4 semaines : 1ʳᵉ échéance CB ou PayPal, puis prélèvement, **sans engagement** ni préavis. Accès aux **5 salles** et toutes les disciplines.',
+    '**29,99 €** toutes les 4 semaines, sans engagement : tu paies la 1ʳᵉ fois (CB/PayPal), puis prélèvement. Multi-salles + toutes disciplines.',
+    'Formule flexible : **29,99 €** / 4 sem., résiliable sans préavis. Accès libre aux 5 clubs Boxing Center.',
+  ],
+  offer259: [
+    'L’offre à **259 €** / 12 mois : en **1×** ou **4× sans frais** (**64,75 €**). Pas de prélèvement mensuel — accès illimité aux 5 salles.',
+    '**259 €** pour 12 mois, paiement **1×** ou **4×** (**64,75 €**, sans frais). Forfait comptant, pas de mensualité après.',
+    'Saison à **259 €** : un an d’accès 5 salles, en une fois ou en 4 échéances égales sans frais.',
+  ],
+  gyms: [
+    '5 salles : **Minimes**, **Ramonville**, **St-Cyprien**, **Portet**, **États-Unis**. Accès libre ~**10h–21h30**, 7j/7. Managers : Medhi, Pascal, Daddy, Valentin, Sébastien.',
+    'Tu as le choix entre Minimes, Ramonville, St-Cyprien, Portet et États-Unis — accès libre ~10h–21h30. Quelle zone te parle ?',
+    'Réseau toulousain : 5 clubs, même abo multi-salles selon formule. Dis-moi ton quartier, je te pointe la plus pratique.',
+  ],
+  legal: [
+    'Tenue de sport + eau pour démarrer. **Gants perso** OK sur rings/sacs (désinfecter). Docs : CGV, règlement intérieur et déclaration médicale en ligne / à l’inscription.',
+    'Pour démarrer : tenue propre, eau, et les docs (CGV, règlement, attestation médicale) sont sur la boutique. Gants perso autorisés si désinfectés.',
+    'Côté formalités : CGV + règlement + déclaration médicale. En salle, tenue de sport ; gants perso OK sur sacs/rings après désinfection.',
+  ],
+  trial: [
+    'Oui, les **débutants** sont les bienvenus. Tu peux réserver une **séance d’essai** en ligne : un coach t’accueille, pas besoin d’expérience ni de gros matériel.',
+    'Pas d’expérience requise — réserve un **essai** en ligne, un coach te prend en charge. Tu arrives en tenue, c’est tout.',
+    'Essai possible avant de t’engager : inscription courte en ligne, ambiance loisir, débutants OK.',
+  ],
+};
 
 function cleanWelcomeReply(content, fallback) {
   let reply = cleanReply(content, fallback);
@@ -317,14 +357,44 @@ function cleanWelcomeReply(content, fallback) {
   return reply || fallback;
 }
 
+function welcomeFallbackReply(lastUser, lastBot) {
+  const pick = (key) => {
+    const variants = FAQ_VARIANTS[key] || WELCOME_FALLBACKS;
+    let reply = pickVariant(variants);
+    if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
+      const alt = variants.find((v) => similarityScore(v, lastBot) < 0.55);
+      if (alt) reply = alt;
+    }
+    return reply;
+  };
+  if (/29|sans engagement|4 semaines|pr[eé]l[eè]vement/i.test(lastUser)) {
+    return { reply: pick('offer29'), source: 'faq' };
+  }
+  if (/259|12 mois|4x|4×|comptant/i.test(lastUser)) {
+    return { reply: pick('offer259'), source: 'faq' };
+  }
+  if (/salle|minimes|ramonville|portet|cyprien|[eé]tats/i.test(lastUser)) {
+    return { reply: pick('gyms'), source: 'faq' };
+  }
+  if (/cgv|r[eè]glement|m[eé]dical|attestation|gants|mat[eé]riel/i.test(lastUser)) {
+    return { reply: pick('legal'), source: 'faq' };
+  }
+  if (/essai|gratuit|d[eé]butant/i.test(lastUser)) {
+    return { reply: pick('trial'), source: 'faq' };
+  }
+  return { reply: pickVariant(WELCOME_FALLBACKS), source: 'template' };
+}
+
 async function guideWelcome({ freeText, messages = [] } = {}) {
   const lastUser = lastMemberMessage(messages, freeText);
+  const lastBot = lastAssistantMessage(messages);
+
   if (/résili|resili|annul.*abo|arrêter.*abo|arreter.*abo/i.test(lastUser)) {
-    return {
-      reply:
-        'Pour résilier un abonnement **par prélèvement**, ouvre « Gérer mon abo » : **David** t’accompagne. Les formules comptant se voient avec le **manager** en salle.',
-      source: 'redirect-david',
-    };
+    let reply = pickVariant(REDIRECT_DAVID);
+    if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
+      reply = REDIRECT_DAVID.find((v) => similarityScore(v, lastBot) < 0.55) || reply;
+    }
+    return { reply, source: 'redirect-david' };
   }
 
   const managerReply = matchManagerFromText(lastUser);
@@ -332,44 +402,9 @@ async function guideWelcome({ freeText, messages = [] } = {}) {
     return { reply: managerReply, source: 'managers' };
   }
 
-  const fallback = WELCOME_FALLBACK;
+  const fallback = pickVariant(WELCOME_FALLBACKS);
   if (!isAiEnabled()) {
-    if (/29|sans engagement|4 semaines|pr[eé]l[eè]vement/i.test(lastUser)) {
-      return {
-        reply:
-          'L’offre à **29,99 €** / 4 semaines : 1ʳᵉ échéance CB ou PayPal, puis prélèvement, **sans engagement** ni préavis. Accès aux **5 salles** et toutes les disciplines.',
-        source: 'faq',
-      };
-    }
-    if (/259|12 mois|4x|4×|comptant/i.test(lastUser)) {
-      return {
-        reply:
-          'L’offre à **259 €** / 12 mois : en **1×** ou **4× sans frais** (**64,75 €**). Pas de prélèvement mensuel — accès illimité aux 5 salles.',
-        source: 'faq',
-      };
-    }
-    if (/salle|minimes|ramonville|portet|cyprien|[eé]tats/i.test(lastUser)) {
-      return {
-        reply:
-          '5 salles : **Minimes**, **Ramonville**, **St-Cyprien**, **Portet**, **États-Unis**. Accès libre ~**10h–21h30**, 7j/7. Managers : Medhi, Pascal, Daddy, Valentin, Sébastien.',
-        source: 'faq',
-      };
-    }
-    if (/cgv|r[eè]glement|m[eé]dical|attestation|gants|mat[eé]riel/i.test(lastUser)) {
-      return {
-        reply:
-          'Tenue de sport + eau pour démarrer. **Gants perso** OK sur rings/sacs (désinfecter). Docs : CGV, règlement intérieur et déclaration médicale en ligne / à l’inscription.',
-        source: 'faq',
-      };
-    }
-    if (/essai|gratuit|d[eé]butant/i.test(lastUser)) {
-      return {
-        reply:
-          'Oui, les **débutants** sont les bienvenus. Tu peux réserver une **séance d’essai** en ligne : un coach t’accueille, pas besoin d’expérience ni de gros matériel.',
-        source: 'faq',
-      };
-    }
-    return { reply: fallback, source: 'template' };
+    return welcomeFallbackReply(lastUser, lastBot);
   }
 
   try {
@@ -381,19 +416,28 @@ async function guideWelcome({ freeText, messages = [] } = {}) {
           role: 'user',
           content: [
             'Réponds au visiteur boutique. Réponse directe, factuelle, sans formule de fin. Si managers : noms exacts de la base.',
+            'Rédige une réponse utile et **différente** de ta précédente (autre angle / autre formulation).',
             transcript ? `Conversation:\n${transcript}` : '',
+            lastBot ? `Ta dernière réponse (à NE PAS répéter) : ${lastBot.slice(0, 500)}` : '',
             lastUser ? `Dernier message: ${lastUser}` : '',
           ]
             .filter(Boolean)
             .join('\n'),
         },
       ],
-      { maxTokens: 320, temperature: 0.45 }
+      { maxTokens: 320, temperature: 0.75 }
     );
-    const reply = cleanWelcomeReply(content, fallback).replace(/29 €/g, '29,99 €');
+    let reply = cleanWelcomeReply(content, fallback).replace(/29 €/g, '29,99 €');
+
+    if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
+      const alt = welcomeFallbackReply(lastUser, lastBot);
+      reply = alt.reply;
+      return { reply, source: 'dedup' };
+    }
+
     return { reply: reply || fallback, source: 'groq' };
   } catch (err) {
-    return { reply: fallback, source: 'template-fallback', error: err.message };
+    return { ...welcomeFallbackReply(lastUser, lastBot), source: 'template-fallback', error: err.message };
   }
 }
 

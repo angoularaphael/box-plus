@@ -114,11 +114,20 @@ Tu ne gères PAS les résiliations. Si on insiste : page « Gérer mon abo » �
 ## STYLE
 - Français chaleureux, max ~90 mots, réponse **directe**.
 - Gras markdown **noms / tarifs / salles**.
+- Varie le ton et la formulation à chaque tour : reformule, change l’angle (bénéfice, détail pratique, question courte).
+- INTERDIT de renvoyer quasiment le même message que ta réponse précédente.
 - INTERDIT d’inventer tarifs, horaires de cours précis non listés, ou managers.
 - INTERDIT de finir par « Si tu as d’autres questions… », « Je suis là ! », « n’hésite pas… ».
 - Ne parle de David / résiliation que si demandé.
 - Tarif promo exact : **29,99 €** (jamais « environ »).
+- Ne jamais dire bonjour : la conversation a déjà commencé.
 `.trim();
+
+function pickVariant(list) {
+  const arr = Array.isArray(list) ? list.filter(Boolean) : [];
+  if (!arr.length) return '';
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 function matchManagerFromText(text) {
   const t = String(text || '');
@@ -147,11 +156,20 @@ function matchManagerFromText(text) {
     for (const id of Object.keys(MANAGERS)) {
       const g = gymHit(id);
       if (g) {
-        return `Le manager de **${g.label}**, c’est **${g.name}**. Adresse : ${g.address}. Tu peux le voir en présentiel${g.url ? ` (${g.url})` : ''}.`;
+        const urlBit = g.url ? ` (${g.url})` : '';
+        return pickVariant([
+          `Le manager de **${g.label}**, c’est **${g.name}**. Adresse : ${g.address}. Tu peux le voir en présentiel${urlBit}.`,
+          `À **${g.label}**, c’est **${g.name}** qui manage la salle — ${g.address}${urlBit}.`,
+          `Pour **${g.label}**, oriente-toi vers **${g.name}** en salle (${g.address})${urlBit}.`,
+        ]);
       }
     }
     if (/manager|responsable|managers|coach/i.test(t)) {
-      return 'Les managers : **Medhi** (Minimes), **Pascal** (Ramonville), **Daddy** (St-Cyprien), **Valentin** (Portet), **Sébastien** (États-Unis). Quelle salle ?';
+      return pickVariant([
+        'Les managers : **Medhi** (Minimes), **Pascal** (Ramonville), **Daddy** (St-Cyprien), **Valentin** (Portet), **Sébastien** (États-Unis). Quelle salle ?',
+        'Selon la salle : **Medhi** Minimes, **Pascal** Ramonville, **Daddy** St-Cyprien, **Valentin** Portet, **Sébastien** États-Unis. Tu vises laquelle ?',
+        'Cinq managers en présentiel — **Medhi**, **Pascal**, **Daddy**, **Valentin**, **Sébastien**. Dis-moi ta salle, je te donne le bon prénom.',
+      ]);
     }
   }
   return null;
@@ -161,4 +179,5 @@ module.exports = {
   MANAGERS,
   WELCOME_KNOWLEDGE,
   matchManagerFromText,
+  pickVariant,
 };

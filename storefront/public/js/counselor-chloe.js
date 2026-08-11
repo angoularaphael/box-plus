@@ -152,10 +152,14 @@ window.BCChloe = (function () {
         paint();
         setTimeout(() => {
           history.pop();
+          const greets = [
+            'Hey ! Moi c’est <strong>Chloée</strong> 👋 Bienvenue chez Boxing Center. Je peux t’aider à choisir une offre, trouver ta salle ou préparer ton essai — tu veux partir sur quoi ?',
+            'Salut, <strong>Chloée</strong> ici 👋 Offres, salles, essai… dis-moi ce que tu cherches, je te guide.',
+            'Bienvenue ! Je suis <strong>Chloée</strong>. Tu vises plutôt une formule, une salle près de chez toi, ou un essai pour commencer ?',
+          ];
           history.push({
             role: 'bot',
-            html:
-              'Hey ! Moi c’est <strong>Chloée</strong> 👋 Bienvenue chez Boxing Center. Je peux t’aider à choisir une offre, trouver ta salle ou préparer ton essai — tu veux partir sur quoi ?',
+            html: greets[Math.floor(Math.random() * greets.length)],
           });
           busy = false;
           paint();
