@@ -1114,9 +1114,11 @@ input:focus, select:focus, textarea:focus {
   position: fixed;
   right: 22px;
   bottom: 22px;
+  top: auto;
   z-index: 70;
   width: min(400px, calc(100vw - 24px));
-  height: min(620px, calc(100vh - 48px));
+  height: min(620px, calc(100dvh - 100px));
+  max-height: calc(100dvh - 96px);
 }
 
 .chat-widget-panel {
@@ -1499,10 +1501,16 @@ input:focus, select:focus, textarea:focus {
 @media (max-width: 640px) {
   .chat-widget {
     right: 0;
+    left: 0;
     bottom: 0;
+    top: auto;
     width: 100vw;
-    height: 100vh;
-    border-radius: 0;
+    /* Laisse le header sticky visible — ne pas passer en plein écran sous la topbar */
+    height: calc(100dvh - 64px);
+    max-height: calc(100dvh - 64px);
+    border-radius: 16px 16px 0 0;
   }
-  .chat-widget-panel { border-radius: 0; }
+  .chat-widget-panel {
+    border-radius: 16px 16px 0 0;
+  }
 }
