@@ -2145,9 +2145,20 @@ function createApp() {
           error: 'Merci de renseigner le nom, le prénom, le téléphone et la date de naissance.',
         });
       }
+      const { assertMembershipAttemptAllowed } = require('./lib/membership-rate-limit');
+      const limit = await assertMembershipAttemptAllowed(body, 'cancel');
+      if (!limit.ok) {
+        return res.status(429).json({
+          ok: false,
+          error: limit.error,
+          code: limit.code,
+          retry_after_sec: limit.retry_after_sec,
+          locked_until: limit.locked_until,
+        });
+      }
       const { enqueueCancelRequest } = require('./lib/membership');
       const result = await enqueueCancelRequest(body);
-      res.json({ ok: true, ...result });
+      res.json({ ok: true, ...result, rate_limit_remaining: limit.remaining });
     } catch (err) {
       logError('Erreur résiliation', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
@@ -2205,9 +2216,20 @@ function createApp() {
           error: 'Merci de renseigner un email ou un téléphone pour retrouver votre fiche.',
         });
       }
+      const { assertMembershipAttemptAllowed } = require('./lib/membership-rate-limit');
+      const limit = await assertMembershipAttemptAllowed(body, 'change');
+      if (!limit.ok) {
+        return res.status(429).json({
+          ok: false,
+          error: limit.error,
+          code: limit.code,
+          retry_after_sec: limit.retry_after_sec,
+          locked_until: limit.locked_until,
+        });
+      }
       const { enqueueVerifyIdentity } = require('./lib/membership');
       const result = await enqueueVerifyIdentity({ ...body, verify_mode: body.verify_mode || 'change' });
-      res.json({ ok: true, ...result });
+      res.json({ ok: true, ...result, rate_limit_remaining: limit.remaining });
     } catch (err) {
       logError('Erreur verify identité', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
