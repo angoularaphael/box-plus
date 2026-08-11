@@ -61,9 +61,9 @@ const FALLBACKS = {
 };
 
 const PIVOT_FALLBACKS = [
-  'Compris. Dans ce cas, qu’est-ce qui vous aiderait le plus : contacter votre manager, changer de formule via la boutique, ou le parcours de résiliation ?',
-  'OK, on laisse ça de côté. Vous préférez qu’on regarde les créneaux / salles, le tarif, ou le parcours de résiliation ?',
-  'Très bien. Dites-moi juste ce que vous voulez faire maintenant et je vous oriente clairement.',
+  'Compris. Si vous souhaitez rester, cliquez sur « Je reste — merci pour les infos » juste en bas. Sinon vous pouvez contacter votre manager ou continuer vers la résiliation.',
+  'OK. Pour clôturer sans résilier, cliquez sur « Je reste — merci pour les infos ». Sinon : manager de salle, ou parcours de résiliation.',
+  'Très bien. Cliquez sur « Je reste — merci pour les infos » si ça vous suffit, ou choisissez manager / résiliation en bas.',
 ];
 
 function normalizeText(s) {
@@ -167,8 +167,11 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
 
   // Réponses courtes : ne pas régénérer le même pitch
   if (lastBot && isShortRefusal(lastUser)) {
-    const pivot = PIVOT_FALLBACKS[Math.floor(Math.random() * PIVOT_FALLBACKS.length)];
-    return { reply: pivot, source: 'pivot-refusal' };
+    return {
+      reply:
+        'Compris. Si vous préférez rester, cliquez sur « Je reste — merci pour les infos » juste en bas. Sinon vous pouvez contacter votre manager ou continuer vers la résiliation.',
+      source: 'pivot-refusal',
+    };
   }
   if (lastBot && isShortAccept(lastUser) && /suspend|pause|manager/i.test(lastBot)) {
     return {
