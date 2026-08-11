@@ -63,22 +63,27 @@
     return { ok: false, status: 'timeout', mismatch_fields: [] };
   }
 
-  function showChangeCongrats() {
-    if (document.getElementById('changeCongrats')) return;
+  function showConfirmBox({
+    title = 'Félicitations !',
+    lead = '',
+    cta = 'Continuer',
+    id = 'manageConfirmBox',
+  } = {}) {
+    if (document.getElementById(id)) return;
     const root = document.createElement('div');
-    root.id = 'changeCongrats';
+    root.id = id;
     root.className = 'change-congrats';
     root.setAttribute('role', 'dialog');
     root.setAttribute('aria-modal', 'true');
-    root.setAttribute('aria-labelledby', 'changeCongratsTitle');
+    root.setAttribute('aria-labelledby', `${id}Title`);
     root.innerHTML = `
       <div class="change-congrats__panel">
         <button type="button" class="change-congrats__close" data-congrats-close aria-label="Fermer">×</button>
         <div class="change-congrats__burst" aria-hidden="true"></div>
         <p class="change-congrats__kicker">Boxing Center</p>
-        <h2 class="change-congrats__title" id="changeCongratsTitle">Félicitations !</h2>
-        <p class="change-congrats__lead">Votre bascule en abonnement comptant est enregistrée. Elle sera active dans quelques minutes — un e-mail de confirmation suivra.</p>
-        <button type="button" class="btn change-congrats__cta" data-congrats-close>Continuer</button>
+        <h2 class="change-congrats__title" id="${id}Title">${title}</h2>
+        <p class="change-congrats__lead">${lead}</p>
+        <button type="button" class="btn change-congrats__cta" data-congrats-close>${cta}</button>
       </div>`;
     document.body.appendChild(root);
     document.body.classList.add('change-congrats-lock');
@@ -106,6 +111,24 @@
       },
       { passive: true }
     );
+  }
+
+  function showChangeCongrats() {
+    showConfirmBox({
+      id: 'changeCongrats',
+      title: 'Félicitations !',
+      lead: 'Votre bascule en abonnement comptant est enregistrée. Elle sera active dans quelques minutes — un e-mail de confirmation suivra.',
+      cta: 'Continuer',
+    });
+  }
+
+  function showCancelCongrats() {
+    showConfirmBox({
+      id: 'cancelCongrats',
+      title: 'Demande enregistrée',
+      lead: 'Votre résiliation est prise en charge. Elle sera effective sous 72 heures — une confirmation vous sera envoyée par e-mail.',
+      cta: 'Compris',
+    });
   }
 
   function openChat() {
@@ -170,6 +193,7 @@
             '<strong>Votre résiliation sera traitée.</strong><br/>Les informations correspondent : la demande est prise en charge. Elle sera effective sous 72 heures ; une confirmation vous sera envoyée par e-mail.';
           msgEl.className = 'form-msg';
           if (submitBtn) submitBtn.disabled = false;
+          showCancelCongrats();
           return;
         }
         if (s.ok && (s.status === 'error' || s.status === 'manual_review')) {
@@ -183,6 +207,7 @@
           '<strong>Votre résiliation sera traitée.</strong><br/>Demande bien reçue. Notre équipe la finalise et vous enverra une confirmation par e-mail.';
         msgEl.className = 'form-msg';
         if (submitBtn) submitBtn.disabled = false;
+        showCancelCongrats();
       });
     }
   }
