@@ -38,36 +38,44 @@
     }
   }
 
-  function rateLimitLine(data) {
+  function rateLimitLine(data, { onlyOnFail = true } = {}) {
     if (!data) return '';
     if (data.code === 'rate_limited' || data.locked) {
       return data.message || data.error || 'Trop de tentatives. Réessayez plus tard.';
     }
-    if (typeof data.rate_limit_remaining === 'number') {
-      const max = data.max_attempts || 5;
-      return data.rate_limit_message || `Tentatives restantes : ${data.rate_limit_remaining} sur ${max}.`;
-    }
-    if (typeof data.remaining === 'number') {
-      return data.message || `Tentatives restantes : ${data.remaining} sur ${data.max_attempts || 5}.`;
-    }
-    return data.message || '';
+    // Quota restant : uniquement après un échec (mismatch / erreur), pas après succès
+    if (onlyOnFail && data.ok === true && !data.failed) return '';
+    const remaining =
+      typeof data.rate_limit_remaining === 'number'
+        ? data.rate_limit_remaining
+        : typeof data.remaining === 'number'
+          ? data.remaining
+          : null;
+    if (remaining == null) return '';
+    const max = data.max_attempts || 5;
+    return `Tentatives restantes : ${remaining} sur ${max}.`;
   }
 
-  function setChangeRateHint(data) {
+  function setChangeRateHint(data, { failed = false } = {}) {
     if (!changeRateHint) return;
-    const line = rateLimitLine(data);
-    if (!line) {
+    const locked = Boolean(data?.locked || data?.code === 'rate_limited');
+    if (!failed && !locked) {
+      changeRateHint.hidden = true;
+      changeRateHint.textContent = '';
+      return;
+    }
+    const show = rateLimitLine({ ...data, failed: true }, { onlyOnFail: false });
+    if (!show) {
       changeRateHint.hidden = true;
       changeRateHint.textContent = '';
       return;
     }
     changeRateHint.hidden = false;
-    changeRateHint.textContent = line;
-    changeRateHint.className =
-      data?.locked || data?.code === 'rate_limited' ? 'form-hint form-hint--warn' : 'form-hint';
+    changeRateHint.textContent = show;
+    changeRateHint.className = 'form-hint form-hint--warn';
   }
 
-  async function refreshChangeRateHint(body) {
+  async function refreshChangeRateHint(body, { failed = false } = {}) {
     if (!body?.first_name || !body?.last_name || !body?.birthdate) return;
     if (!body.email && !body.phone) return;
     try {
@@ -77,24 +85,20 @@
         body: JSON.stringify({ ...body, scope: 'change' }),
       });
       const data = await res.json();
-      if (data.ok || data.code === 'rate_limited') setChangeRateHint(data);
+      if (data.locked || data.code === 'rate_limited') {
+        setChangeRateHint(data, { failed: true });
+      } else if (failed) {
+        setChangeRateHint(data, { failed: true });
+      } else {
+        setChangeRateHint(null);
+      }
     } catch {
       /* ignore */
     }
   }
 
   function bindChangeRateWatchers() {
-    const fields = ['c_first', 'c_last', 'c_birth', 'c_email', 'c_phone'];
-    const sync = () => {
-      const body = Object.fromEntries(new FormData(changeForm).entries());
-      void refreshChangeRateHint(body);
-    };
-    fields.forEach((id) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener('change', sync);
-      el.addEventListener('blur', sync);
-    });
+    // Pas d’affichage proactif du quota : seulement après échec / lock
   }
 
   gymList.innerHTML = GYMS.map(
@@ -240,14 +244,9 @@
         }
         if (!data.ok) {
           if (submitBtn) submitBtn.disabled = false;
-          const limitLine = rateLimitLine(data);
-          msgEl.textContent =
-            data.error ||
-            limitLine ||
-            "Je suis désolé, mais nous n'avons pas pu trouver d'abonnement correspondant à ces informations.";
-          if (limitLine && data.error && data.error !== limitLine) {
-            msgEl.textContent = `${data.error} ${limitLine}`;
-          }
+          const limitLine = rateLimitLine({ ...data, failed: true }, { onlyOnFail: false });
+          msgEl.textContent = [data.error, limitLine].filter(Boolean).join(' ')
+            || "Je suis désolé, mais nous n'avons pas pu trouver d'abonnement correspondant à ces informations.";
           msgEl.className = 'form-msg err';
           return;
         }
@@ -259,20 +258,26 @@
           const fields = Array.isArray(s.mismatch_fields) ? s.mismatch_fields : [];
           markErrors(fields);
           const labels = fields.map((f) => FIELD_LABELS[f]).filter(Boolean);
-          msgEl.textContent = labels.length
-            ? `Ces informations ne correspondent pas à votre fiche adhérent : ${labels.join(', ')}. Corrigez les champs en rouge puis renvoyez la demande.`
-            : 'Nous n’avons pas trouvé de fiche adhérent correspondant à ces informations. Vérifiez téléphone, nom, prénom et date de naissance, puis renvoyez la demande.';
+          const left = rateLimitLine(
+            { ...data, failed: true, rate_limit_remaining: data.rate_limit_remaining },
+            { onlyOnFail: false }
+          );
+          msgEl.textContent = [
+            labels.length
+              ? `Ces informations ne correspondent pas à votre fiche adhérent : ${labels.join(', ')}. Corrigez les champs en rouge puis renvoyez la demande.`
+              : 'Nous n’avons pas trouvé de fiche adhérent correspondant à ces informations. Vérifiez téléphone, nom, prénom et date de naissance, puis renvoyez la demande.',
+            left,
+          ]
+            .filter(Boolean)
+            .join(' ');
           msgEl.className = 'form-msg err';
           if (submitBtn) submitBtn.disabled = false;
           return;
         }
         // Dès que l’identité est OK (verified) — pas besoin d’attendre la fin Deciplus
         if (s.ok && (s.status === 'verified' || s.status === 'done')) {
-          const left = rateLimitLine(data);
           msgEl.innerHTML =
-            `<strong>Votre résiliation sera traitée.</strong><br/>Les informations correspondent : la demande est prise en charge. Elle sera effective sous 72 heures ; une confirmation vous sera envoyée par e-mail.${
-              left ? `<br/><span class="rate-limit-note">${left}</span>` : ''
-            }`;
+            '<strong>Votre résiliation sera traitée.</strong><br/>Les informations correspondent : la demande est prise en charge. Elle sera effective sous 72 heures ; une confirmation vous sera envoyée par e-mail.';
           msgEl.className = 'form-msg';
           if (submitBtn) submitBtn.disabled = false;
           showCancelCongrats();
@@ -435,9 +440,11 @@
       verify = {};
     }
     if (!verify.ok || !verify.order_id) {
-      changeMsg.textContent = [verify.error, rateLimitLine(verify)].filter(Boolean).join(' ') || 'Vérification impossible';
+      const limitLine = rateLimitLine({ ...verify, failed: true }, { onlyOnFail: false });
+      changeMsg.textContent =
+        [verify.error, limitLine].filter(Boolean).join(' ') || 'Vérification impossible';
       changeMsg.className = 'form-msg err';
-      setChangeRateHint(verify);
+      setChangeRateHint(verify, { failed: true });
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
@@ -447,17 +454,32 @@
       const fields = Array.isArray(status.mismatch_fields) ? status.mismatch_fields : [];
       markFormErrors(changeForm, fields);
       const labels = fields.map((f) => FIELD_LABELS[f]).filter(Boolean);
-      changeMsg.textContent = labels.length
-        ? `Ces informations ne correspondent pas à votre fiche adhérent : ${labels.join(', ')}. Corrigez les champs en rouge.`
-        : 'Nous n’avons pas trouvé de fiche adhérent correspondant à ces informations.';
+      const left = rateLimitLine(
+        { ...verify, failed: true },
+        { onlyOnFail: false }
+      );
+      changeMsg.textContent = [
+        labels.length
+          ? `Ces informations ne correspondent pas à votre fiche adhérent : ${labels.join(', ')}. Corrigez les champs en rouge.`
+          : 'Nous n’avons pas trouvé de fiche adhérent correspondant à ces informations.',
+        left,
+      ]
+        .filter(Boolean)
+        .join(' ');
       changeMsg.className = 'form-msg err';
+      setChangeRateHint(verify, { failed: true });
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
     if (!(status.ok && status.status === 'verified')) {
-      changeMsg.textContent =
-        'La vérification n’a pas pu aboutir. Réessayez ou contactez votre salle.';
+      changeMsg.textContent = [
+        'La vérification n’a pas pu aboutir. Réessayez ou contactez votre salle.',
+        rateLimitLine({ ...verify, failed: true }, { onlyOnFail: false }),
+      ]
+        .filter(Boolean)
+        .join(' ');
       changeMsg.className = 'form-msg err';
+      setChangeRateHint(verify, { failed: true });
       if (submitBtn) submitBtn.disabled = false;
       return;
     }
@@ -473,10 +495,7 @@
       product: productHint,
       verifyOrderId: verify.order_id,
     });
-    setChangeRateHint(verify);
-    if (verify.rate_limit_message) {
-      changeMsg.textContent = `Identité confirmée — choisissez votre mode de paiement. ${verify.rate_limit_message}`;
-    }
+    setChangeRateHint(null);
     if (submitBtn) submitBtn.disabled = false;
   };
 
