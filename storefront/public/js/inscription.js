@@ -1466,10 +1466,10 @@
       </div>
       <div class="consent-box">
         <label><input type="checkbox" id="consent_medical" required />
-          <span class="consent-text">J'atteste sur l'honneur l'absence de contre-indication à la pratique sportive et prends connaissance qu'un <a class="legal-link" href="${LEGAL.medical}" target="_blank" rel="noopener">certificat médical de non contre-indication</a> me sera demandé *</span></label>
+          <span class="consent-text">J'atteste sur l'honneur l'absence de contre-indication à la pratique sportive et j'ai pris connaissance de la <a class="legal-link" href="${LEGAL.medical}" target="_blank" rel="noopener">déclaration médicale</a> *</span></label>
       </div>
       <button type="button" class="btn block" id="signBtn">Valider</button>
-      <button type="button" class="btn secondary block" id="previewContractBtn" style="margin-top:12px">Prévisualiser le contrat</button>
+      <button type="button" class="btn secondary block" id="previewContractBtn" style="margin-top:12px">Prévisualiser la facture</button>
       ${backButton('← Retour', 6)}`;
 
     const pad = initSignaturePad(document.getElementById('sigPad'));
@@ -1487,7 +1487,7 @@
         !document.getElementById('consent_reglement').checked ||
         !document.getElementById('consent_medical').checked
       ) {
-        setMsg('Veuillez accepter les conditions et l\'attestation médicale.', 'err');
+        setMsg('Veuillez accepter les conditions et la déclaration médicale.', 'err');
         return;
       }
       if (!pad.hasInk()) {
@@ -1547,7 +1547,7 @@
     clearCacheAfterConfirm();
     const p = state.product;
     const emailNote = state.emailWarning
-      ? `<div class="notice-important" style="margin-top:16px;text-align:left"><strong>Email non envoyé</strong><p>Votre inscription est bien enregistrée. L'email de confirmation n'a pas pu être envoyé (${esc(state.emailWarning)}). Téléchargez votre contrat ci-dessous ou contactez le club.</p></div>`
+      ? `<div class="notice-important" style="margin-top:16px;text-align:left"><strong>Email non envoyé</strong><p>Votre inscription est bien enregistrée. L'email de confirmation n'a pas pu être envoyé (${esc(state.emailWarning)}). Téléchargez votre facture ci-dessous ou contactez le club.</p></div>`
       : '';
     const dispatchNote = state.dispatchError
       ? `<div class="notice-important" style="margin-top:12px;text-align:left"><strong>Traitement club en attente</strong><p>Votre paiement est OK. L'enregistrement automatique au club a échoué (${esc(state.dispatchError)}). Le club va finaliser votre dossier — gardez votre référence.</p></div>`
@@ -1577,7 +1577,7 @@
         </div>
         <div class="success-actions" style="display:flex;flex-direction:column;gap:12px;margin-top:24px">
           <a href="${homeHref}" class="btn block" id="confirmHomeBtn">Retour à l'accueil</a>
-          <button type="button" class="btn secondary block" id="downloadContractBtn">Télécharger mon contrat</button>
+          <button type="button" class="btn secondary block" id="downloadContractBtn">Télécharger ma facture</button>
         </div>
       </div>`;
     document.getElementById('confirmHomeBtn')?.addEventListener('click', () => {

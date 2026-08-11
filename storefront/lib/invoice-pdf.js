@@ -270,6 +270,20 @@ async function writePdf(renderFn, order, suffix) {
   return { filepath, filename };
 }
 
+function inscriptionInvoiceFilename(order) {
+  return `facture-${order.order_id}.pdf`;
+}
+
+function streamInscriptionInvoicePdf(order, res) {
+  const filename = order.documents?.invoice_filename || inscriptionInvoiceFilename(order);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+  const doc = new PDFDocument({ margin: 48, size: 'A4' });
+  doc.pipe(res);
+  renderInscriptionInvoice(doc, order);
+  doc.end();
+}
+
 async function generateInscriptionInvoicePdf(order) {
   return writePdf(renderInscriptionInvoice, order, order.order_id);
 }
@@ -281,5 +295,7 @@ async function generateMaterielInvoicePdf(order) {
 module.exports = {
   generateInscriptionInvoicePdf,
   generateMaterielInvoicePdf,
+  streamInscriptionInvoicePdf,
+  inscriptionInvoiceFilename,
   DOCS_DIR,
 };

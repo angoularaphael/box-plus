@@ -128,10 +128,30 @@ const {
   deleteOrderAsync,
   toAdminSummary,
 } = require('./lib/order-lifecycle');
-const { generateContractPdf, streamContractPdf } = require('./lib/contract-pdf');
-const { generateMaterielInvoicePdf } = require('./lib/invoice-pdf');
+const { streamContractPdf } = require('./lib/contract-pdf');
+const {
+  generateInscriptionInvoicePdf,
+  generateMaterielInvoicePdf,
+  streamInscriptionInvoicePdf,
+} = require('./lib/invoice-pdf');
 const { upsertClientFromInscription, upsertMaterielClient } = require('./lib/client-sync');
 const { insertTunnelLead, tunnelFromProductId } = require('./lib/tunnel-lead');
+
+function streamOrderFacturePdf(order, res) {
+  const stored = order.documents?.invoice_pdf || order.documents?.contract_pdf;
+  const storedName = order.documents?.invoice_filename || order.documents?.contract_filename || 'facture.pdf';
+  if (stored && fs.existsSync(stored)) {
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${storedName}"`);
+    fs.createReadStream(stored).pipe(res);
+    return;
+  }
+  if (order.signature?.signed_at) {
+    streamInscriptionInvoicePdf(order, res);
+    return;
+  }
+  streamContractPdf(order, res);
+}
 
 async function syncInscriptionClient(order) {
   const result = await upsertClientFromInscription(order);
@@ -1254,7 +1274,7 @@ function createApp() {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const order = await loadOrderAsync(req.params.id);
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
-    streamContractPdf(order, res);
+    streamOrderFacturePdf(order, res);
   });
 
   app.delete('/api/admin/orders/:id', async (req, res) => {
@@ -1292,8 +1312,9 @@ function createApp() {
 
       let email = { sent: Boolean(order.email_sent_at || order.email_sent) };
       if (req.body?.resend_email !== false && !email.sent) {
-        const pdfPath = order.documents?.contract_pdf;
-        const pdfName = order.documents?.contract_filename || 'contrat.pdf';
+        const pdfPath = order.documents?.invoice_pdf || order.documents?.contract_pdf;
+        const pdfName =
+          order.documents?.invoice_filename || order.documents?.contract_filename || 'facture.pdf';
         const attachments =
           pdfPath && fs.existsSync(pdfPath) ? [{ filepath: pdfPath, filename: pdfName }] : [];
         email = await sendConfirmationEmail(order, attachments);
@@ -1762,8 +1783,14 @@ function createApp() {
         method: 'canvas',
       });
 
-      const { filepath, filename } = await generateContractPdf(signed);
-      signed.documents = { ...(signed.documents || {}), contract_pdf: filepath, contract_filename: filename };
+      const { filepath, filename } = await generateInscriptionInvoicePdf(signed);
+      signed.documents = {
+        ...(signed.documents || {}),
+        invoice_pdf: filepath,
+        invoice_filename: filename,
+        contract_pdf: filepath,
+        contract_filename: filename,
+      };
       const { saveOrderAsync } = require('./lib/order-lifecycle');
       await saveOrderAsync(signed);
 
@@ -1778,9 +1805,7 @@ function createApp() {
         });
       }
 
-      const emailResult = await sendConfirmationEmail(signed, [
-        { filepath, filename },
-      ]);
+      const emailResult = await sendConfirmationEmail(signed);
       if (emailResult.sent) await markEmailSent(signed.order_id);
 
       const clientResult = await syncInscriptionClient(signed);
@@ -1818,7 +1843,7 @@ function createApp() {
     if (!verifyAccess(order, req.query.token)) {
       return res.status(403).json({ ok: false, error: 'forbidden' });
     }
-    streamContractPdf(order, res);
+    streamOrderFacturePdf(order, res);
   });
 
   app.post('/api/orders/:id/pay', async (req, res) => {

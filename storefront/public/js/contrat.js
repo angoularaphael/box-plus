@@ -32,13 +32,13 @@
           res.status === 403
             ? 'Accès refusé — vérifiez votre lien d\'inscription.'
             : res.status === 404
-              ? 'Contrat introuvable — complétez d\'abord votre dossier.'
-              : 'Impossible d\'afficher le contrat pour le moment.';
+              ? 'Facture introuvable — complétez d\'abord votre dossier.'
+              : 'Impossible d\'afficher la facture pour le moment.';
       }
     })
     .catch(() => {
       errEl.hidden = false;
-      errEl.textContent = 'Impossible de charger le contrat.';
+      errEl.textContent = 'Impossible de charger la facture.';
     });
 
   document.getElementById('downloadBtn').onclick = async () => {
@@ -51,7 +51,7 @@
       a.href = url;
       const cd = res.headers.get('content-disposition') || '';
       const match = cd.match(/filename="?([^"]+)"?/i);
-      a.download = match?.[1] || `Contrat-Boxing-Center-${orderId}.pdf`;
+      a.download = match?.[1] || `Facture-Boxing-Center-${orderId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {

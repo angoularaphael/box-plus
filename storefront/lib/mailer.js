@@ -1,6 +1,7 @@
 const fs = require('fs');
 const { logInfo, logWarn } = require('../../lib/logger');
 const { readLegal } = require('./contract-pdf');
+const { declarationMedicalePdfPath } = require('./legal-docs');
 const { getMailFrom, CGV_URL, REGLEMENT_URL, SITE_URL } = require('./branding');
 const {
   generateInscriptionInvoicePdf,
@@ -31,7 +32,7 @@ function buildConfirmationHtml(order) {
     <li>Pas besoin d'expérience — nos coachs vous accueillent</li>
     <li>Votre abonnement donne accès à nos 5 salles</li>
   </ul>
-  <p>Vous trouverez en pièces jointes votre <strong>contrat d'adhésion Boxing Center</strong> au nom de ${short.first_name || ''} ${short.last_name || ''}, votre <strong>facture</strong>, les <strong>CGV</strong>, le <strong>règlement intérieur</strong> et l'<strong>attestation médicale</strong>.</p>
+  <p>Vous trouverez en pièces jointes votre <strong>facture Boxing Center</strong> au nom de ${short.first_name || ''} ${short.last_name || ''}, les <strong>CGV</strong>, le <strong>règlement intérieur</strong> et la <strong>déclaration médicale</strong>.</p>
   <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="${SITE_URL}" style="color:#2EC4C6">${SITE_URL.replace('https://', '')}</a></p>
 </body>
 </html>`;
@@ -41,24 +42,26 @@ async function buildInscriptionAttachments(order, extra = []) {
   const attachments = [];
   const cgv = readLegal('cgv.md');
   const reglement = readLegal('reglement.md');
-  const medical = readLegal('attestation-medicale.md');
   if (cgv) {
     attachments.push({ filename: 'CGV-Boxing-Center.txt', content: cgv });
   }
   if (reglement) {
     attachments.push({ filename: 'Reglement-interieur.txt', content: reglement });
   }
-  if (medical) {
-    attachments.push({ filename: 'Attestation-medicale.txt', content: medical });
+  const declPdf = declarationMedicalePdfPath();
+  if (fs.existsSync(declPdf)) {
+    attachments.push({ filename: 'Declaration-medicale-Boxing-Center.pdf', path: declPdf });
   }
+  const seenPaths = new Set();
   for (const att of extra) {
-    if (att.filepath && fs.existsSync(att.filepath)) {
+    if (att.filepath && fs.existsSync(att.filepath) && !seenPaths.has(att.filepath)) {
+      seenPaths.add(att.filepath);
       attachments.push({ filename: att.filename, path: att.filepath });
     }
   }
   try {
     const invoice = await generateInscriptionInvoicePdf(order);
-    if (invoice?.filepath) {
+    if (invoice?.filepath && !seenPaths.has(invoice.filepath)) {
       attachments.push({ filename: invoice.filename, path: invoice.filepath });
     }
   } catch (err) {

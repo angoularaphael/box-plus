@@ -35,11 +35,6 @@ function htmlToMd(htmlPath, title) {
 const jobs = [
   ['public/cgv.html', 'cgv.md', 'Conditions Générales de Vente — Boxing Center'],
   ['public/reglement-interieur.html', 'reglement.md', 'Règlement intérieur — Boxing Center'],
-  [
-    'public/attestation-medicale.html',
-    'attestation-medicale.md',
-    'Attestation médicale — Boxing Center',
-  ],
 ];
 
 for (const [src, dest, title] of jobs) {

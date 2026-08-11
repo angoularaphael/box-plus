@@ -1,16 +1,34 @@
 /**
- * Entrée boutique — cadeau qui s'ouvre sur l'offre 29 € (offre-duo).
+ * Entrée boutique — cadeau qui s'ouvre sur les offres promo (29 € ou 259 €).
  * Une fois par session navigateur.
  */
 (function () {
   'use strict';
 
-  const STORAGE_KEY = 'bc_gift29_seen';
-  const PRODUCT_ID = 'offre-duo';
+  const STORAGE_KEY = 'bc_gift_promo_seen';
   const DELAY_MS = 700;
 
+  const OFFERS = [
+    {
+      id: 'offre-duo',
+      price: '29',
+      title: '29 € / 4 semaines',
+      lead: '1ʳᵉ échéance CB · sans engagement · 5 salles',
+      href: '/offre/29',
+      track: 'gift_promo_cta_29',
+    },
+    {
+      id: 'offre-saison-259',
+      price: '259',
+      title: '259 € / 12 mois',
+      lead: '1× ou 4× sans frais · tarif annuel · 5 salles',
+      href: '/offre/259',
+      track: 'gift_promo_cta_259',
+    },
+  ];
+
   const SKIP_PATH =
-    /inscription|checkout|panier|success|contrat|mon-inscription|gerer-abonnement|attestation|admin|confidentialite|cgv|reglement/i;
+    /inscription|checkout|panier|success|contrat|mon-inscription|gerer-abonnement|attestation|admin|confidentialite|cgv|reglement|offre/i;
 
   function path() {
     if (window.BCLayout?.currentPath) return window.BCLayout.currentPath();
@@ -23,7 +41,7 @@
 
   function alreadySeen() {
     try {
-      return sessionStorage.getItem(STORAGE_KEY) === '1';
+      return sessionStorage.getItem(STORAGE_KEY) === '1' || sessionStorage.getItem('bc_gift29_seen') === '1';
     } catch {
       return false;
     }
@@ -37,16 +55,16 @@
     }
   }
 
-  function track(name) {
+  function track(name, props = {}) {
     if (typeof window.BCTrack?.track === 'function') {
-      window.BCTrack.track(name, { product: PRODUCT_ID });
+      window.BCTrack.track(name, props);
       return;
     }
     try {
       const body = JSON.stringify({
         type: 'event',
         name,
-        props: { product: PRODUCT_ID },
+        props,
         path: location.pathname,
       });
       if (navigator.sendBeacon) {
@@ -55,6 +73,18 @@
     } catch {
       /* ignore */
     }
+  }
+
+  function offerCardsHtml() {
+    return OFFERS.map(
+      (o) => `
+        <a class="gift-promo__offer" href="${link(o.href)}" data-track="${o.track}" data-offer="${o.id}">
+          <span class="gift-promo__offer-price">${o.price}<span>€</span></span>
+          <span class="gift-promo__offer-title">${o.title}</span>
+          <span class="gift-promo__offer-lead">${o.lead}</span>
+          <span class="gift-promo__offer-cta">Choisir cette offre</span>
+        </a>`
+    ).join('');
   }
 
   function build() {
@@ -90,13 +120,11 @@
         </div>
         <p class="gift-promo__hint">Un cadeau t’attend — ouvre-le</p>
         <div class="gift-promo__reveal">
-          <span class="gift-promo__eyebrow">Offre limitée</span>
-          <h2 class="gift-promo__title" id="giftPromoTitle">Offre à 29 €</h2>
-          <p class="gift-promo__price">29<span>€</span></p>
-          <p class="gift-promo__lead">1ʳᵉ échéance CB / prélèvement · 29 € / 4 semaines · 5 salles</p>
-          <a class="gift-promo__cta" href="${link('/offre/29')}" data-track="gift_promo_cta">
-            J’en profite
-          </a>
+          <span class="gift-promo__eyebrow">Offres promo</span>
+          <h2 class="gift-promo__title" id="giftPromoTitle">Choisis ton offre</h2>
+          <p class="gift-promo__lead">Deux formules · accès illimité aux 5 salles Boxing Center</p>
+          <div class="gift-promo__offers">${offerCardsHtml()}</div>
+          <a class="gift-promo__all" href="${link('/offres-speciales')}" data-track="gift_promo_all">Comparer les deux offres</a>
           <button type="button" class="gift-promo__skip" data-gift-close>Plus tard</button>
         </div>
       </div>`;
@@ -107,8 +135,8 @@
     if (root.classList.contains('is-opened')) return;
     root.classList.add('is-opened');
     track('gift_promo_open');
-    const cta = root.querySelector('.gift-promo__cta');
-    if (cta) setTimeout(() => cta.focus({ preventScroll: true }), 400);
+    const first = root.querySelector('.gift-promo__offer');
+    if (first) setTimeout(() => first.focus({ preventScroll: true }), 400);
   }
 
   function dismiss(root) {
@@ -141,10 +169,15 @@
     root.addEventListener('click', (e) => {
       if (e.target === root) dismiss(root);
     });
-    root.querySelector('.gift-promo__cta')?.addEventListener('click', () => {
-      markSeen();
-      track('gift_promo_cta');
+    root.querySelectorAll('[data-track^="gift_promo_cta"]').forEach((el) => {
+      el.addEventListener('click', () => {
+        markSeen();
+        track(el.getAttribute('data-track') || 'gift_promo_cta', {
+          product: el.getAttribute('data-offer') || null,
+        });
+      });
     });
+    root.querySelector('[data-track="gift_promo_all"]')?.addEventListener('click', () => markSeen());
 
     document.addEventListener(
       'keydown',

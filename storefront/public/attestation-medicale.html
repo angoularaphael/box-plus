@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Attestation médicale | Boxing Center</title>
+  <title>Déclaration médicale | Boxing Center</title>
   <meta name="robots" content="noindex,follow" />
   <script src="/js/boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -11,51 +11,28 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/css/boutique.css" />
   <link rel="stylesheet" href="/css/components.css" />
+  <style>
+    .decl-view-body { margin: 0; background: #f5f6f8; min-height: 100vh; display: flex; flex-direction: column; }
+    .decl-view-toolbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 16px; background: #fff; border-bottom: 1px solid #e5e7eb;
+      position: sticky; top: 0; z-index: 2;
+    }
+    .decl-view-toolbar h1 { font-size: 16px; color: var(--bc-navy, #0B1F3A); margin: 0; }
+    .decl-view-spacer { width: 120px; }
+    .decl-view-frame { flex: 1; width: 100%; min-height: calc(100vh - 56px); border: 0; background: #525659; }
+    @media (max-width: 640px) {
+      .decl-view-spacer { display: none; }
+      .decl-view-toolbar { flex-wrap: wrap; justify-content: center; text-align: center; }
+    }
+  </style>
 </head>
-<body>
-  <div id="site-header"></div>
-
-  <div class="page-hero">
-    <div class="page-hero-inner">
-      <div class="breadcrumb"><a href="/">Accueil</a> / Attestation médicale</div>
-      <h1>Attestation sur l'honneur &amp; certificat médical</h1>
-      <p>Pratique sportive au Boxing Center</p>
-    </div>
-  </div>
-
-  <main class="section legal-page">
-    <h2>Attestation sur l'honneur</h2>
-    <p>
-      Je soussigné(e), atteste sur l'honneur que mon état de santé me permet de pratiquer un sport,
-      et qu'aucun empêchement médical ne m'interdit de participer aux activités proposées par Boxing Center
-      (cours collectifs, accès libre musculation / cardio / boxe, stages et événements).
-    </p>
-    <p>
-      Je déclare notamment n'avoir connaissance d'aucune contre-indication liée à un accident cardio-vasculaire,
-      une pathologie cardiaque, respiratoire, articulaire ou toute autre affection qui rendrait dangereuse
-      la pratique d'une activité physique intense. Si mon état de santé évolue, je m'engage à en informer
-      immédiatement le club et à interrompre la pratique jusqu'à avis médical favorable.
-    </p>
-    <p>
-      Je reconnais que la pratique de la boxe et des disciplines associées comporte des risques inhérents
-      à l'activité sportive (chocs, efforts, contacts éventuels selon la discipline). Je m'engage à respecter
-      les consignes de sécurité, le règlement intérieur et les indications des coachs.
-    </p>
-
-    <h2>Certificat médical de non contre-indication</h2>
-    <p>
-      Je prends connaissance du fait qu'<strong>il me sera demandé un Certificat médical de non contre-indication
-      à la pratique sportive</strong>, que je pourrai télécharger / transmettre par la suite au club
-      (ou via mon manager de salle). L'absence de certificat à jour pourra limiter l'accès à certains cours
-      ou événements (Boxing Center Trophy, Anglaise, Pieds-Poing, stages, etc.).
-    </p>
-    <p>
-      En cochant la case correspondante lors de mon inscription, je valide cette attestation sur l'honneur
-      et confirme avoir lu l'intégralité du présent document.
-    </p>
-  </main>
-
-  <div id="site-footer"></div>
-  <script src="/js/layout.js"></script>
+<body class="decl-view-body">
+  <header class="decl-view-toolbar">
+    <span class="decl-view-spacer" aria-hidden="true"></span>
+    <h1>Déclaration médicale</h1>
+    <a class="btn sm" id="downloadBtn" href="/documents/declaration-medicale.pdf" download="Declaration-medicale-Boxing-Center.pdf">Télécharger le PDF</a>
+  </header>
+  <iframe id="pdfFrame" class="decl-view-frame" title="Déclaration médicale PDF" src="/documents/declaration-medicale.pdf"></iframe>
 </body>
 </html>
