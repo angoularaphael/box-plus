@@ -77,8 +77,8 @@
 
   function offerCardsHtml() {
     return OFFERS.map(
-      (o) => `
-        <a class="gift-promo__offer" href="${link(o.href)}" data-track="${o.track}" data-offer="${o.id}">
+      (o, i) => `
+        <a class="gift-promo__offer" href="${link(o.href)}" data-track="${o.track}" data-offer="${o.id}" style="--i:${i}">
           <span class="gift-promo__offer-price">${o.price}<span>€</span></span>
           <span class="gift-promo__offer-title">${o.title}</span>
           <span class="gift-promo__offer-lead">${o.lead}</span>
