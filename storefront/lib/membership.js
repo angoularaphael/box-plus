@@ -217,17 +217,100 @@ async function sendCancelMismatchEmail(identity = {}, mismatchFields = []) {
   }
 }
 
-async function enqueueChangeAfterPayment({
+function changeBaseIdFromPayment(paymentRef) {
+  const ref = String(paymentRef || '').trim();
+  if (!ref) return `CHANGE-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+  const slug = ref.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 72);
+  return `CHANGE-${slug}`;
+}
+
+async function resolveDeciplusMemberId(meta = {}, getCancelStatusFn) {
+  let deciplusMemberId = meta.deciplus_member_id || null;
+  if (deciplusMemberId || !meta.verify_order_id) return deciplusMemberId;
+  try {
+    const { loadOrder } = require('./order-persistence');
+    const verified = await loadOrder(meta.verify_order_id);
+    if (verified?.deciplus_member_id) return verified.deciplus_member_id;
+    if (getCancelStatusFn) {
+      const st = await getCancelStatusFn(meta.verify_order_id);
+      if (st?.deciplus_member_id) return st.deciplus_member_id;
+    }
+  } catch {
+    /* ignore */
+  }
+  return deciplusMemberId;
+}
+
+async function confirmMembershipChangeOnce({
   identity,
   targetProductId,
   stripeSessionId,
   deciplusMemberId = null,
 }) {
+  const baseId = changeBaseIdFromPayment(stripeSessionId);
+  const lockId = `${baseId}-lock`;
+  const { loadOrder, saveOrderAsync } = require('./order-persistence');
+  const existing = await loadOrder(lockId);
+  if (existing?.change_status === 'queued' || existing?.change_status === 'processing') {
+    logInfo('Changement abo déjà en file (idempotent)', {
+      payment_ref: stripeSessionId,
+      order_id: existing.change_order_id || baseId,
+    });
+    return {
+      already_processed: true,
+      order_id: existing.change_order_id || baseId,
+      cancel: existing.cancel_dispatch || { queued: false, reason: 'already_processed' },
+      sale: existing.sale_dispatch || { queued: false, reason: 'already_processed' },
+    };
+  }
+
+  await saveOrderAsync({
+    order_id: lockId,
+    access_token: `change-lock-${baseId}`,
+    action: 'membership_change_lock',
+    change_order_id: baseId,
+    payment_ref: stripeSessionId,
+    change_status: 'processing',
+    customer: identity,
+    created_at: new Date().toISOString(),
+  });
+
+  const result = await enqueueChangeAfterPayment({
+    identity,
+    targetProductId,
+    stripeSessionId,
+    deciplusMemberId,
+    baseId,
+  });
+
+  await saveOrderAsync({
+    order_id: lockId,
+    access_token: `change-lock-${baseId}`,
+    action: 'membership_change_lock',
+    change_order_id: baseId,
+    payment_ref: stripeSessionId,
+    change_status: 'queued',
+    customer: identity,
+    cancel_dispatch: result.cancel,
+    sale_dispatch: result.sale,
+    updated_at: new Date().toISOString(),
+  });
+
+  return { already_processed: false, ...result };
+}
+
+async function enqueueChangeAfterPayment({
+  identity,
+  targetProductId,
+  stripeSessionId,
+  deciplusMemberId = null,
+  baseId: baseIdIn = null,
+}) {
   const product = findEnrichedProduct(targetProductId);
   if (!product || !isComptantStyleProduct(product)) {
     throw new Error('Offre comptant cible invalide');
   }
-  const baseId = `CHANGE-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+  const baseId = baseIdIn || changeBaseIdFromPayment(stripeSessionId);
   const today = new Date().toISOString().slice(0, 10);
   const memberId = deciplusMemberId || identity.deciplus_member_id || null;
   // member_id déjà vérifié → le bot saute la re-recherche identité (beaucoup plus rapide)
@@ -325,6 +408,9 @@ module.exports = {
   enqueueCancelRequest,
   enqueueVerifyIdentity,
   enqueueChangeAfterPayment,
+  confirmMembershipChangeOnce,
+  resolveDeciplusMemberId,
+  changeBaseIdFromPayment,
   sendCancelMismatchEmail,
   sendChangeConfirmationEmail,
   updateCancelStatus,

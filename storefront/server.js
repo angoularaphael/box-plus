@@ -2284,7 +2284,11 @@ function createApp() {
     try {
       const paymentId = req.body?.payment_id || req.body?.payplug_payment_id;
       const sessionId = req.body?.session_id;
-      const { enqueueChangeAfterPayment, getCancelStatus } = require('./lib/membership');
+      const {
+        confirmMembershipChangeOnce,
+        resolveDeciplusMemberId,
+        getCancelStatus,
+      } = require('./lib/membership');
 
       if (paymentId && isPayplugEnabled()) {
         const payment = await retrievePayment(paymentId);
@@ -2292,20 +2296,8 @@ function createApp() {
           return res.status(402).json({ ok: false, error: 'paiement non confirmé' });
         }
         const meta = payment.metadata || {};
-        let deciplusMemberId = meta.deciplus_member_id || null;
-        if (!deciplusMemberId && meta.verify_order_id) {
-          try {
-            const verified = await loadOrderAsync(meta.verify_order_id);
-            if (verified?.deciplus_member_id) deciplusMemberId = verified.deciplus_member_id;
-            else {
-              const st = await getCancelStatus(meta.verify_order_id);
-              if (st?.deciplus_member_id) deciplusMemberId = st.deciplus_member_id;
-            }
-          } catch {
-            /* ignore */
-          }
-        }
-        const result = await enqueueChangeAfterPayment({
+        const deciplusMemberId = await resolveDeciplusMemberId(meta, getCancelStatus);
+        const result = await confirmMembershipChangeOnce({
           identity: {
             first_name: meta.first_name,
             last_name: meta.last_name,
@@ -2346,7 +2338,7 @@ function createApp() {
           /* re-vérif côté bot si besoin */
         }
       }
-      const result = await enqueueChangeAfterPayment({
+      const result = await confirmMembershipChangeOnce({
         identity: {
           first_name: meta.first_name,
           last_name: meta.last_name,
@@ -2643,8 +2635,13 @@ function createApp() {
 
       // Changement d’abo (pas de lifecycle order)
       if (meta.order_type === 'membership_change' && isPayplugPaymentPaid(payment)) {
-        const { enqueueChangeAfterPayment } = require('./lib/membership');
-        await enqueueChangeAfterPayment({
+        const {
+          confirmMembershipChangeOnce,
+          resolveDeciplusMemberId,
+          getCancelStatus,
+        } = require('./lib/membership');
+        const deciplusMemberId = await resolveDeciplusMemberId(meta, getCancelStatus);
+        const result = await confirmMembershipChangeOnce({
           identity: {
             first_name: meta.first_name,
             last_name: meta.last_name,
@@ -2655,10 +2652,14 @@ function createApp() {
           },
           targetProductId: meta.target_product_id,
           stripeSessionId: `payplug_${payment.id}`,
-          deciplusMemberId: meta.deciplus_member_id || null,
+          deciplusMemberId,
         });
-        logInfo('PayPlug changement abo confirmé', { payment_id: paymentId });
-        return res.json({ ok: true, membership_change: true });
+        logInfo('PayPlug changement abo confirmé', {
+          payment_id: paymentId,
+          already_processed: Boolean(result.already_processed),
+          order_id: result.order_id,
+        });
+        return res.json({ ok: true, membership_change: true, already_processed: Boolean(result.already_processed) });
       }
 
       // Matériel

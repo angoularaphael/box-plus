@@ -318,6 +318,16 @@
     const sessionId = params.get('session_id') || '';
     if (!paymentId && !sessionId) return;
 
+    const confirmKey = `bc_change_done_${paymentId || sessionId}`;
+    if (sessionStorage.getItem(confirmKey) === '1') {
+      changeMsg.hidden = false;
+      changeMsg.className = 'form-msg';
+      changeMsg.textContent =
+        'Votre abonnement comptant a bien été enregistré. Il prendra effet dans quelques minutes. Un e-mail de confirmation vous sera envoyé dès que c’est actif.';
+      showChangeCongrats();
+      return;
+    }
+
     changeMsg.hidden = false;
     changeMsg.textContent = 'Confirmation du paiement…';
     changeMsg.className = 'form-msg';
@@ -336,7 +346,10 @@
         : data.error || 'Confirmation impossible';
       sessionStorage.removeItem('bc_change_payplug_id');
       document.getElementById('changer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      if (data.ok) showChangeCongrats();
+      if (data.ok) {
+        sessionStorage.setItem(confirmKey, '1');
+        showChangeCongrats();
+      }
     } catch {
       changeMsg.className = 'form-msg err';
       changeMsg.textContent = 'Confirmation impossible';
