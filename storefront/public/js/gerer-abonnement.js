@@ -308,8 +308,14 @@
         changePayBtn.disabled = false;
         return;
       }
-      if (data.payment_id) sessionStorage.setItem('bc_change_payplug_id', data.payment_id);
-      if (data.paypal_order_id) sessionStorage.setItem('bc_change_paypal_id', data.paypal_order_id);
+      if (data.payment_id) {
+        sessionStorage.setItem('bc_change_payplug_id', data.payment_id);
+        sessionStorage.removeItem('bc_change_paypal_id');
+      }
+      if (data.paypal_order_id) {
+        sessionStorage.setItem('bc_change_paypal_id', data.paypal_order_id);
+        sessionStorage.removeItem('bc_change_payplug_id');
+      }
       if (data.url) {
         window.location.href = data.url;
         return;
@@ -397,16 +403,27 @@
   const params = new URLSearchParams(location.search);
   async function confirmChangePayment() {
     if (params.get('change') !== '1') return;
-    const paymentId =
-      params.get('payment_id') || sessionStorage.getItem('bc_change_payplug_id') || '';
-    const paypalOrderId =
-      params.get('paypal_order_id') ||
-      params.get('token') ||
-      sessionStorage.getItem('bc_change_paypal_id') ||
-      '';
-    const sessionId = params.get('session_id') || '';
     const fromPaypal = params.get('paypal_return') === '1';
-    if (!paymentId && !sessionId && !(fromPaypal && paypalOrderId)) return;
+    const fromPayplug = params.get('payplug_return') === '1';
+    // PayPal renvoie souvent ?token=ORDER_ID — ne pas laisser un vieux payplug_id passer devant
+    const paypalOrderId = fromPaypal
+      ? params.get('paypal_order_id') ||
+        params.get('token') ||
+        sessionStorage.getItem('bc_change_paypal_id') ||
+        ''
+      : params.get('paypal_order_id') || sessionStorage.getItem('bc_change_paypal_id') || '';
+    const paymentId = fromPaypal
+      ? ''
+      : params.get('payment_id') || sessionStorage.getItem('bc_change_payplug_id') || '';
+    const sessionId = fromPaypal || fromPayplug ? '' : params.get('session_id') || '';
+    if (!paymentId && !sessionId && !paypalOrderId) return;
+    if (fromPaypal && !paypalOrderId) {
+      changeMsg.hidden = false;
+      changeMsg.className = 'form-msg err';
+      changeMsg.textContent =
+        'Retour PayPal incomplet (identifiant manquant). Réessayez le paiement PayPal.';
+      return;
+    }
 
     const confirmKey = `bc_change_done_${paymentId || paypalOrderId || sessionId}`;
     if (sessionStorage.getItem(confirmKey) === '1') {
@@ -422,11 +439,12 @@
     changeMsg.textContent = 'Confirmation du paiement…';
     changeMsg.className = 'form-msg';
     try {
-      const payload = paymentId
-        ? { payment_id: paymentId }
-        : fromPaypal && paypalOrderId
+      const payload =
+        fromPaypal || (!paymentId && paypalOrderId)
           ? { paypal_order_id: paypalOrderId }
-          : { session_id: sessionId };
+          : paymentId
+            ? { payment_id: paymentId }
+            : { session_id: sessionId };
       const res = await fetch('/api/membership/change/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

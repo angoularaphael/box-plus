@@ -2282,8 +2282,8 @@ function createApp() {
             order_id: body.verify_order_id || `chg-${Date.now()}`,
             verify_order_id: body.verify_order_id || '',
           },
-          returnUrl: `${baseUrl}/gerer-abonnement?change=1&paypal_return=1#changer`,
-          cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled#changer`,
+          returnUrl: `${baseUrl}/gerer-abonnement?change=1&paypal_return=1`,
+          cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled`,
         });
         if (!ppOrder.approve_url) {
           return res.status(502).json({ ok: false, error: 'paypal_url_missing' });
@@ -2318,8 +2318,8 @@ function createApp() {
           email: body.email,
           phone: body.phone,
         },
-        returnUrl: `${baseUrl}/gerer-abonnement?change=1&payplug_return=1#changer`,
-        cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled#changer`,
+        returnUrl: `${baseUrl}/gerer-abonnement?change=1&payplug_return=1`,
+        cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled`,
       });
       const url = hostedPaymentUrl(payment);
       if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
@@ -2361,10 +2361,20 @@ function createApp() {
       if (paypalOrderId && isPaypalEnabled()) {
         let captured = await retrievePaypalOrder(paypalOrderId);
         if (!isPaypalOrderPaid(captured)) {
-          captured = await capturePaypalOrder(paypalOrderId);
+          try {
+            captured = await capturePaypalOrder(paypalOrderId);
+          } catch (capErr) {
+            // Déjà capturé / course webhook → relecture
+            logWarn('PayPal change capture', { error: capErr.message, paypal_order_id: paypalOrderId });
+            captured = await retrievePaypalOrder(paypalOrderId);
+          }
         }
         if (!isPaypalOrderPaid(captured)) {
-          return res.status(402).json({ ok: false, error: 'paiement non confirmé' });
+          return res.status(402).json({
+            ok: false,
+            error: 'paiement non confirmé',
+            paypal_status: captured?.status || null,
+          });
         }
         const pending = await loadMembershipChangePending(paypalOrderId);
         if (!pending?.target_product_id) {
