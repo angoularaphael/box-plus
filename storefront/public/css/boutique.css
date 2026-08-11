@@ -1060,23 +1060,6 @@ input:focus, select:focus, textarea:focus {
   background: #1a3a5c;
 }
 
-.chat-fab-icon--chloe,
-.chat-avatar--chloe {
-  background: linear-gradient(145deg, #c8902f, #a67120);
-  color: #fff;
-  font-family: var(--font-display, 'Barlow Condensed', sans-serif);
-  font-weight: 700;
-  font-size: 1.1rem;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-}
-
-.chat-avatar--chloe {
-  width: 40px;
-  height: 40px;
-}
-
 .chat-fab-icon {
   position: relative;
   display: grid;

@@ -2,6 +2,8 @@
  * Chloée — chat d’accueil boutique (FAQ / légal / offres). Pas de résiliation.
  */
 window.BCChloe = (function () {
+  const AVATAR = '/img/chloe-conseillere-avatar.png';
+
   function bubble(role, html) {
     const extra = role === 'typing' ? ' typing' : '';
     return `<div class="chat-row ${role}${extra}"><div class="chat-bubble chat-bubble-enter">${html}</div></div>`;
@@ -17,8 +19,20 @@ window.BCChloe = (function () {
     return d.innerHTML;
   }
 
+  function formatBotHtml(text) {
+    let s = esc(String(text || ''));
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+    s = s.replace(/\n/g, '<br>');
+    return s;
+  }
+
   function link(path) {
     return window.BCPaths?.link(path) || path;
+  }
+
+  function asset(path) {
+    return window.BCPaths?.asset?.(path) || window.BCLayout?.A?.(path) || path;
   }
 
   function mount() {
@@ -28,12 +42,16 @@ window.BCChloe = (function () {
       return;
     }
 
+    const photo = asset(AVATAR);
     const root = document.createElement('div');
     root.innerHTML = `
       <div id="chloeWidget" class="chat-widget chloe-widget" hidden>
         <div class="chat-widget-panel">
           <header class="chat-widget-header">
-            <div class="chat-avatar chat-avatar--chloe" aria-hidden="true"><span>C</span></div>
+            <div class="chat-avatar" aria-hidden="true">
+              <span class="chat-avatar-ring"></span>
+              <img class="chat-avatar-photo" src="${photo}" alt="" />
+            </div>
             <div>
               <strong>Chloée</strong>
               <span class="chat-status"><span class="chat-online-dot"></span> Accueil boutique · en ligne</span>
@@ -44,7 +62,10 @@ window.BCChloe = (function () {
         </div>
       </div>
       <button type="button" class="chat-fab chat-fab--chloe" id="chloeFab" aria-label="Discuter avec Chloée">
-        <span class="chat-fab-icon chat-fab-icon--chloe" aria-hidden="true"><span>C</span><span class="chat-fab-pulse"></span></span>
+        <span class="chat-fab-icon" aria-hidden="true">
+          <img class="chat-fab-photo" src="${photo}" alt="" />
+          <span class="chat-fab-pulse"></span>
+        </span>
         <span class="chat-fab-label">Chloée</span>
       </button>`;
     document.body.appendChild(root);
@@ -82,7 +103,7 @@ window.BCChloe = (function () {
           history.push({ role: 'typing', html: typingHtml() });
           paint();
           let reply =
-            'Je peux t’aider sur les offres, salles, CGV ou essai. Pour une résiliation, passe par « Gérer mon abo » (David).';
+            'Je suis là pour les offres, les salles, les documents ou l’essai — dis-moi ce dont tu as besoin.';
           try {
             const payload = {
               free_text: msg,
@@ -109,7 +130,7 @@ window.BCChloe = (function () {
             /* fallback */
           }
           history.pop();
-          history.push({ role: 'bot', html: esc(reply) });
+          history.push({ role: 'bot', html: formatBotHtml(reply) });
           busy = false;
           paint();
         };
@@ -129,7 +150,7 @@ window.BCChloe = (function () {
           history.push({
             role: 'bot',
             html:
-              'Salut, je suis <strong>Chloée</strong> ! Questions sur les offres 29,99&nbsp;€ / 259&nbsp;€, les salles, les CGV ou l’essai ? Je suis là. Pour résilier, David t’attend sur « Gérer mon abo ».',
+              'Hey ! Moi c’est <strong>Chloée</strong> 👋 Bienvenue chez Boxing Center. Je peux t’aider à choisir une offre, trouver ta salle ou préparer ton essai — tu veux partir sur quoi ?',
           });
           busy = false;
           paint();

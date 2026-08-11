@@ -31,6 +31,7 @@ IDENTITÉ
 
 CONNAISSANCES CLUB
 - 5 salles : Minimes (12 rue de Fenouillet, 31200), Ramonville (33 rue des Ormes, 31530), Portet, États-Unis (388 avenue des États-Unis, 31200), St-Cyprien (11 Rue Sainte-Lucie, 31300).
+- Managers (EXACT) : Minimes = Medhi, Ramonville = Pascal, St-Cyprien = Daddy, Portet = Valentin, États-Unis = Sébastien. Ne jamais inventer un autre prénom.
 - Accès multi-salles selon formule ; accès libre 6j/7 environ 10h–21h.
 - Séance d’essai et offres (29,99 € / 259 €) via la boutique.
 - Résiliation web : uniquement les formules par prélèvement (pas les comptants / forfaits).
@@ -307,6 +308,14 @@ OFFRES CLÉS
 - Portet : paiement PayPal uniquement.
 - Séance d’essai gratuite disponible.
 
+MANAGERS DE SALLE (noms EXACTS — ne jamais inventer un autre prénom)
+- Minimes → Medhi
+- Ramonville → Pascal
+- St-Cyprien → Daddy
+- Portet → Valentin
+- États-Unis → Sébastien
+Si on te demande le manager / responsable d’une salle, réponds UNIQUEMENT avec ce nom. Pas de coach inventé, pas d’horaires inventés.
+
 PAGES UTILES
 - Offres : /offres-speciales, /offre/29, /offre/259
 - Inscription : /inscription
@@ -316,27 +325,67 @@ PAGES UTILES
 - FAQ : /faq
 
 RÉSILATION
-- Tu ne gères PAS les résiliations. Oriente vers David sur /gerer-abonnement (prélèvements uniquement).
+- Tu ne gères PAS les résiliations. Oriente vers David sur /gerer-abonnement (prélèvements uniquement) seulement si on te parle explicitement de résilier.
 
 RÈGLES
-- Français, chaleureux, max ~90 mots. Pas de markdown lourd.
+- Français, chaleureux, max ~80 mots.
+- Tu PEUX utiliser du gras markdown **comme ceci** pour les noms importants (managers, tarifs).
 - Ne dis pas bonjour à chaque message.
+- INTERDIT de terminer par une phrase type « Si tu as d’autres questions… », « Besoin d’autre chose… », « Je suis là ! », « n’hésite pas… » — réponds au sujet et stop.
 - Ne promets pas de modifier un abo / suspendre / rembourser.
 - Ne mentionne pas Deciplus, bots, IA.
 - Tarif exact : 29,99 € (jamais « environ »).
+- Ne parle de résiliation / David que si le visiteur le demande.
 `.trim();
 
 const WELCOME_FALLBACK =
-  'Je peux t’aider sur les offres 29,99 € / 259 €, les salles, l’essai gratuit, les CGV ou le règlement. Pour une résiliation, ouvre « Gérer mon abo » et discute avec David.';
+  'Je peux t’aider sur les offres 29,99 € / 259 €, les salles, l’essai gratuit, les CGV ou le règlement.';
+
+const MANAGERS_BY_GYM = [
+  { keys: [/minimes/i], name: 'Medhi', label: 'Minimes' },
+  { keys: [/ramonville/i], name: 'Pascal', label: 'Ramonville' },
+  { keys: [/st[-\s]?cyprien|saint[-\s]?cyprien/i], name: 'Daddy', label: 'St-Cyprien' },
+  { keys: [/portet/i], name: 'Valentin', label: 'Portet' },
+  { keys: [/[eé]tats[-\s]?unis|etats[-\s]?unis/i], name: 'Sébastien', label: 'États-Unis' },
+];
+
+function matchManagerQuestion(text) {
+  const t = String(text || '');
+  if (!/manager|responsable|qui\s+(g[eè]re|dirige)|coach\s+de\s+salle/i.test(t)) return null;
+  for (const g of MANAGERS_BY_GYM) {
+    if (g.keys.some((re) => re.test(t))) {
+      return `Le manager de la salle **${g.label}**, c’est **${g.name}**. Tu peux le voir en présentiel à la salle.`;
+    }
+  }
+  return 'Les managers : **Medhi** (Minimes), **Pascal** (Ramonville), **Daddy** (St-Cyprien), **Valentin** (Portet), **Sébastien** (États-Unis). Tu parles de quelle salle ?';
+}
+
+function cleanWelcomeReply(content, fallback) {
+  let reply = cleanReply(content, fallback);
+  reply = reply
+    .replace(/\s*(Si tu as d['’]autres questions[^.]*(?:\.|$))/gi, '')
+    .replace(/\s*(Besoin d['’](?:un|une|autre|d['’]autres)[^?]+\?)\s*$/gi, '')
+    .replace(/\s*(N['’]hésite pas[^.!]*[.!]?)\s*$/gi, '')
+    .replace(/\s*(Je suis l[àa]\s*!?)\s*$/gi, '')
+    .replace(/\s*(Fais[- ]le moi savoir[!]?)\s*$/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+  return reply || fallback;
+}
 
 async function guideWelcome({ freeText, messages = [] } = {}) {
   const lastUser = lastMemberMessage(messages, freeText);
   if (/résili|resili|annul.*abo|arrêter.*abo|arreter.*abo/i.test(lastUser)) {
     return {
       reply:
-        'Pour une résiliation d’abonnement par prélèvement, ouvre la page « Gérer mon abo » et discute avec David, notre conseiller. Je reste dispo pour les offres et infos boutique.',
+        'Pour résilier un abonnement par prélèvement, ouvre « Gérer mon abo » : David t’accompagne là-bas. Moi je reste sur les offres et infos boutique.',
       source: 'redirect-david',
     };
+  }
+
+  const managerReply = matchManagerQuestion(lastUser);
+  if (managerReply) {
+    return { reply: managerReply, source: 'managers' };
   }
 
   const fallback = WELCOME_FALLBACK;
@@ -344,21 +393,21 @@ async function guideWelcome({ freeText, messages = [] } = {}) {
     if (/29|sans engagement|4 semaines|pr[eé]l[eè]vement/i.test(lastUser)) {
       return {
         reply:
-          'L’offre à 29,99 € : 1ʳᵉ échéance CB ou PayPal, puis prélèvement toutes les 4 semaines, sans engagement. Accès aux 5 salles. Tu peux t’inscrire via /offre/29.',
+          'L’offre à **29,99 €** : 1ʳᵉ échéance CB ou PayPal, puis prélèvement toutes les 4 semaines, sans engagement. Accès aux 5 salles.',
         source: 'faq',
       };
     }
     if (/259|12 mois|4x|4×|comptant/i.test(lastUser)) {
       return {
         reply:
-          'L’offre à 259 € couvre 12 mois : en 1× ou en 4× sans frais (64,75 €). Pas de prélèvement mensuel. Voir /offre/259.',
+          'L’offre à **259 €** couvre 12 mois : en 1× ou en 4× sans frais (**64,75 €**). Pas de prélèvement mensuel.',
         source: 'faq',
       };
     }
-    if (/cgv|r[eè]glement|m[eé]dical|attestation/i.test(lastUser)) {
+    if (/cgv|r[eè]glement|m[eé]dical|attestation|gants/i.test(lastUser)) {
       return {
         reply:
-          'Les documents sont en ligne : CGV (/cgv), règlement intérieur (/reglement-interieur) et déclaration médicale (/attestation-medicale). Tu les signes aussi à l’inscription.',
+          'Oui pour les gants perso sur rings et sacs (pense à les désinfecter). Documents : CGV, règlement intérieur et déclaration médicale sont en ligne et signés à l’inscription.',
         source: 'faq',
       };
     }
@@ -373,7 +422,7 @@ async function guideWelcome({ freeText, messages = [] } = {}) {
         {
           role: 'user',
           content: [
-            'Réponds au visiteur boutique (accueil info).',
+            'Réponds au visiteur boutique (accueil info). Réponse directe, sans formule de fin.',
             transcript ? `Conversation:\n${transcript}` : '',
             lastUser ? `Dernier message: ${lastUser}` : '',
           ]
@@ -381,9 +430,9 @@ async function guideWelcome({ freeText, messages = [] } = {}) {
             .join('\n'),
         },
       ],
-      { maxTokens: 260, temperature: 0.7 }
+      { maxTokens: 220, temperature: 0.55 }
     );
-    const reply = cleanReply(content, fallback).replace(/29 €/g, '29,99 €');
+    const reply = cleanWelcomeReply(content, fallback).replace(/29 €/g, '29,99 €');
     return { reply: reply || fallback, source: 'groq' };
   } catch (err) {
     return { reply: fallback, source: 'template-fallback', error: err.message };
