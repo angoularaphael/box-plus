@@ -274,7 +274,7 @@ async function dispatchOrder(rawPayload) {
     throw new Error(`Validation BOXPLUS: ${errors.join(', ')}`);
   }
 
-  if (process.env.BOXPLUS_BOT_URL) {
+  if (process.env.BOXPLUS_BOT_URL || process.env.BOXPLUS_BOT_URL_OPS) {
     const { forwardJobToBot } = require('../../lib/bot-forward');
     const result = await forwardJobToBot(order);
     return { queued: result.queued !== false, forwarded: true, ...result };
