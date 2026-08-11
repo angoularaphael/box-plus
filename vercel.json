@@ -4,7 +4,7 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 30,
-      "includeFiles": "storefront/**,data/storefront/**,lib/**,config/**"
+      "includeFiles": "{storefront/**,data/storefront/**,lib/**,config/**}"
     }
   },
   "crons": [

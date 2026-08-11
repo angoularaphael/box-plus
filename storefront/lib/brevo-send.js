@@ -44,16 +44,18 @@ function onVercel() {
 function normalizeAttachments(attachments = []) {
   const out = [];
   for (const att of attachments) {
+    const name = att.filename || att.name || 'piece-jointe.pdf';
     if (att.content != null) {
-      const buf = Buffer.isBuffer(att.content) ? att.content : Buffer.from(String(att.content));
-      out.push({ name: att.filename || att.name || 'piece-jointe', content: buf });
+      let buf;
+      if (Buffer.isBuffer(att.content)) buf = att.content;
+      else if (typeof att.content === 'string') buf = Buffer.from(att.content, 'utf8');
+      else buf = Buffer.from(att.content);
+      if (buf.length >= 500) out.push({ name, content: buf });
       continue;
     }
     if (att.path && fs.existsSync(att.path)) {
-      out.push({
-        name: att.filename || att.name || require('path').basename(att.path),
-        content: fs.readFileSync(att.path),
-      });
+      const buf = fs.readFileSync(att.path);
+      if (buf.length >= 500) out.push({ name, content: buf });
     }
   }
   return out;

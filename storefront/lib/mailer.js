@@ -8,21 +8,27 @@ const {
 const { generateInscriptionLegalPdfs } = require('./legal-pdf');
 const { sendEmailViaBrevo, isConfigured, defaultReplyTo } = require('./brevo-send');
 
-function buildConfirmationHtml(order) {
+function buildConfirmationHtml(order, attachmentNames = []) {
   const short = order.customer_short || {};
   const product = order.product_snapshot || {};
   const gym = order.customer_full?.gym || '—';
+  const pjList =
+    attachmentNames.length > 0
+      ? `<p style="font-size:13px;color:#334155"><strong>Pièces jointes (${attachmentNames.length}) :</strong> ${attachmentNames
+          .map((n) => escapeHtml(n))
+          .join(', ')}</p>`
+      : '';
   return `<!DOCTYPE html>
 <html lang="fr">
 <head><meta charset="UTF-8"><title>Confirmation Boxing Center</title></head>
 <body style="font-family:Arial,sans-serif;color:#1A1A2E;max-width:600px;margin:0 auto;padding:24px">
   <h1 style="color:#0B1F3A">Bienvenue chez Boxing Center !</h1>
-  <p>Bonjour ${short.first_name || ''},</p>
+  <p>Bonjour ${escapeHtml(short.first_name || '')},</p>
   <p>Votre inscription est confirmée. Voici le récapitulatif :</p>
   <table style="width:100%;border-collapse:collapse;margin:20px 0">
-    <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Offre</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${product.display_name || product.name}</td></tr>
-    <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Référence</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${order.order_id}</td></tr>
-    <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Salle principale</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${gym}</td></tr>
+    <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Offre</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(product.display_name || product.name || '')}</td></tr>
+    <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Référence</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(order.order_id || '')}</td></tr>
+    <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Salle principale</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(gym)}</td></tr>
   </table>
   <p><strong>Pour bien démarrer :</strong></p>
   <ul>
@@ -31,48 +37,67 @@ function buildConfirmationHtml(order) {
     <li>Pas besoin d'expérience — nos coachs vous accueillent</li>
     <li>Votre abonnement donne accès à nos 5 salles</li>
   </ul>
-  <p>Vous trouverez en pièces jointes votre <strong>facture Boxing Center</strong> au nom de ${short.first_name || ''} ${short.last_name || ''}, les <strong>CGV</strong>, le <strong>règlement intérieur</strong> et la <strong>déclaration médicale</strong>.</p>
+  <p>Vous trouverez en pièces jointes votre <strong>facture Boxing Center</strong> au nom de ${escapeHtml(short.first_name || '')} ${escapeHtml(short.last_name || '')}, les <strong>CGV</strong>, le <strong>règlement intérieur</strong> et la <strong>déclaration médicale</strong>.</p>
+  ${pjList}
   <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="${SITE_URL}" style="color:#2EC4C6">${SITE_URL.replace('https://', '')}</a></p>
 </body>
 </html>`;
 }
 
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 async function buildInscriptionAttachments(order, extra = []) {
   const attachments = [];
-  const seenPaths = new Set();
   const seenNames = new Set();
 
-  const pushFile = (filename, filepath) => {
-    if (!filepath || !fs.existsSync(filepath) || seenPaths.has(filepath) || seenNames.has(filename)) {
-      return false;
-    }
-    const size = fs.statSync(filepath).size;
-    if (size < 500) return false;
-    seenPaths.add(filepath);
+  const pushBuffer = (filename, content, filepath = null) => {
+    if (!filename || !content || !Buffer.isBuffer(content) || content.length < 500) return false;
+    if (seenNames.has(filename)) return false;
     seenNames.add(filename);
-    // Buffer en mémoire : fiable sur Vercel (/tmp) + Brevo REST
-    attachments.push({
-      filename,
-      path: filepath,
-      content: fs.readFileSync(filepath),
-    });
+    attachments.push({ filename, content, path: filepath || undefined });
     return true;
   };
 
+  const pushFile = (filename, filepath) => {
+    if (!filepath || !fs.existsSync(filepath)) return false;
+    try {
+      return pushBuffer(filename, fs.readFileSync(filepath), filepath);
+    } catch {
+      return false;
+    }
+  };
+
   try {
-    const { pdfs: legalPdfs, errors } = await generateInscriptionLegalPdfs(order);
+    const { pdfs: legalPdfs, errors, legalDir } = await generateInscriptionLegalPdfs(order);
     for (const pdf of legalPdfs) {
-      pushFile(pdf.filename, pdf.filepath);
+      const ok = pushFile(pdf.filename, pdf.filepath);
+      if (!ok) {
+        logWarn('PJ légale non ajoutée', { filename: pdf.filename, filepath: pdf.filepath });
+      }
     }
     if (errors?.length) {
-      logWarn('PDF légaux partiels', { order_id: order.order_id, errors });
+      logWarn('PDF légaux partiels', { order_id: order.order_id, errors, legalDir });
     }
   } catch (err) {
-    logWarn('PDF légaux inscription non générés', { order_id: order.order_id, error: err.message });
+    logWarn('PDF légaux inscription non générés', {
+      order_id: order.order_id,
+      error: err.message,
+      stack: err.stack,
+    });
   }
 
   for (const att of extra) {
-    pushFile(att.filename, att.filepath || att.path);
+    if (att.content && Buffer.isBuffer(att.content)) {
+      pushBuffer(att.filename, att.content, att.filepath || att.path);
+    } else {
+      pushFile(att.filename, att.filepath || att.path);
+    }
   }
 
   try {
@@ -85,14 +110,21 @@ async function buildInscriptionAttachments(order, extra = []) {
   }
 
   const names = attachments.map((a) => a.filename);
+  const totalBytes = attachments.reduce((n, a) => n + (a.content?.length || 0), 0);
   if (attachments.length < 4) {
     logWarn('PJ inscription incomplètes (attendu: 4)', {
       order_id: order.order_id,
       count: attachments.length,
       attachments: names,
+      totalBytes,
     });
   } else {
-    logInfo('PJ inscription prêtes', { order_id: order.order_id, count: attachments.length, attachments: names });
+    logInfo('PJ inscription prêtes', {
+      order_id: order.order_id,
+      count: attachments.length,
+      attachments: names,
+      totalBytes,
+    });
   }
 
   return attachments;
@@ -105,16 +137,18 @@ async function sendConfirmationEmail(order, attachments = []) {
     return { sent: false, reason: 'no_email' };
   }
 
-  const html = buildConfirmationHtml(order);
   const mailAttachments = await buildInscriptionAttachments(order, attachments);
+  const attachmentNames = mailAttachments.map((a) => a.filename);
+  const html = buildConfirmationHtml(order, attachmentNames);
 
   if (!isConfigured()) {
-    logInfo('Email confirmation (mode log)', { to, order_id: order.order_id });
+    logInfo('Email confirmation (mode log)', { to, order_id: order.order_id, attachments: attachmentNames });
     return {
       sent: false,
       reason: 'brevo_not_configured',
       error: 'Service email non configuré (BREVO_API_KEY manquant sur Vercel)',
       preview: html,
+      attachments: attachmentNames,
     };
   }
 
@@ -131,18 +165,23 @@ async function sendConfirmationEmail(order, attachments = []) {
         sent: false,
         reason: 'brevo_not_configured',
         error: 'Envoi email impossible — BREVO_API_KEY requis en production',
+        attachments: attachmentNames,
       };
     }
     logInfo('Email confirmation envoyé', {
       to,
       order_id: order.order_id,
       via: result.via,
-      attachments: mailAttachments.map((a) => a.filename),
+      attachments: attachmentNames,
     });
-    return { sent: true, via: result.via };
+    return { sent: true, via: result.via, attachments: attachmentNames };
   } catch (err) {
-    logWarn('Email confirmation échoué', { order_id: order.order_id, error: err.message });
-    return { sent: false, reason: 'brevo_error', error: err.message };
+    logWarn('Email confirmation échoué', {
+      order_id: order.order_id,
+      error: err.message,
+      attachments: attachmentNames,
+    });
+    return { sent: false, reason: 'brevo_error', error: err.message, attachments: attachmentNames };
   }
 }
 

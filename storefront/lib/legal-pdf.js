@@ -1,31 +1,33 @@
 const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
-const { ROOT, ensureDir } = require('../../lib/utils');
+const { ensureDir } = require('../../lib/utils');
 const { CLUB, NAVY, MUTED, drawPageFooter } = require('./pdf-layout');
 
-const LEGAL_DIR = path.join(ROOT, 'storefront', 'legal');
+/** Toujours relatif à ce fichier — fiable sur Vercel (pas de dépendance à process.cwd). */
+const LEGAL_DIR = path.join(__dirname, '..', 'legal');
 const DOCS_DIR =
   process.env.BOXPLUS_DOCS_DIR ||
-  (process.env.VERCEL ? '/tmp/boxplus-documents' : path.join(ROOT, 'data', 'storefront', 'documents'));
+  (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
+    ? path.join('/tmp', 'boxplus-documents')
+    : path.join(__dirname, '..', '..', 'data', 'storefront', 'documents'));
 
-/** Docs joints à chaque email d'inscription (ordre stable). */
 const LEGAL_PDFS = [
   {
+    key: 'cgv',
     md: 'cgv.md',
-    staticPdf: 'CGV-Boxing-Center.pdf',
     filename: 'CGV-Boxing-Center.pdf',
     title: 'Conditions Générales de Vente et d’Abonnement',
   },
   {
+    key: 'reglement',
     md: 'reglement.md',
-    staticPdf: 'Reglement-interieur-Boxing-Center.pdf',
     filename: 'Reglement-interieur-Boxing-Center.pdf',
     title: 'Règlement intérieur',
   },
   {
+    key: 'medical',
     md: 'attestation-medicale.md',
-    staticPdf: 'Declaration-medicale-Boxing-Center.pdf',
     filename: 'Declaration-medicale-Boxing-Center.pdf',
     title: 'Déclaration relative à l’état de santé et à l’aptitude à la pratique sportive',
   },
@@ -147,60 +149,6 @@ function renderLegalPdf(doc, { title, md }) {
   drawPageFooter(doc);
 }
 
-function resolveStaticPdf(spec) {
-  if (!spec.staticPdf) return null;
-  const filepath = path.join(LEGAL_DIR, spec.staticPdf);
-  if (!fs.existsSync(filepath)) return null;
-  const size = fs.statSync(filepath).size;
-  // Ignore tiny placeholders / corrupt files
-  if (size < 4000) return null;
-  return { filepath, filename: spec.filename, source: 'static' };
-}
-
-async function writeLegalPdf(spec, { mdOverride = null, filenameOverride = null } = {}) {
-  ensureDir(DOCS_DIR);
-
-  if (!mdOverride) {
-    const staticPdf = resolveStaticPdf(spec);
-    if (staticPdf) return staticPdf;
-  }
-
-  const mdPath = path.join(LEGAL_DIR, spec.md);
-  if (!mdOverride && !fs.existsSync(mdPath)) {
-    return null;
-  }
-
-  const filename = filenameOverride || spec.filename;
-  const filepath = path.join(DOCS_DIR, filename);
-
-  if (!mdOverride) {
-    const mdStat = fs.statSync(mdPath);
-    if (fs.existsSync(filepath)) {
-      const pdfStat = fs.statSync(filepath);
-      if (pdfStat.mtimeMs >= mdStat.mtimeMs && pdfStat.size > 4000) {
-        return { filepath, filename, source: 'cache' };
-      }
-    }
-  }
-
-  const md = mdOverride || fs.readFileSync(mdPath, 'utf8');
-  const doc = new PDFDocument({
-    size: 'A4',
-    margins: { top: 48, bottom: 56, left: 48, right: 48 },
-    bufferPages: true,
-    autoFirstPage: true,
-  });
-  const stream = fs.createWriteStream(filepath);
-  doc.pipe(stream);
-  renderLegalPdf(doc, { title: spec.title, md });
-  doc.end();
-  await new Promise((resolve, reject) => {
-    stream.on('finish', resolve);
-    stream.on('error', reject);
-  });
-  return { filepath, filename, source: mdOverride ? 'personalized' : 'generated' };
-}
-
 function signerFullName(order) {
   const short = order?.customer_short || {};
   const full = order?.customer_full || {};
@@ -213,12 +161,8 @@ function personalizeMedicalMarkdown(md, fullName) {
   const name = String(fullName || '').trim();
   if (!name) return md;
   let out = String(md || '');
-  // "Je soussigné(e), déclare" → "Je soussigné(e) Jean Dupont, déclare"
-  out = out.replace(
-    /Je soussigné\(e\),\s*/g,
-    `Je soussigné(e) ${name}, `
-  );
-  if (!/Fait (à|pour)/i.test(out) && !/Signataire\s*:/i.test(out)) {
+  out = out.replace(/Je soussigné\(e\),\s*/g, `Je soussigné(e) ${name}, `);
+  if (!/Signataire/i.test(out)) {
     const date = new Date().toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: 'long',
@@ -229,15 +173,63 @@ function personalizeMedicalMarkdown(md, fullName) {
   return out;
 }
 
+function readLegalMarkdown(spec) {
+  const candidates = [
+    path.join(LEGAL_DIR, spec.md),
+    path.join(process.cwd(), 'storefront', 'legal', spec.md),
+    path.join(process.cwd(), 'legal', spec.md),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return { path: p, md: fs.readFileSync(p, 'utf8') };
+  }
+  return null;
+}
+
+async function renderMdToPdfFile(title, md, filepath) {
+  ensureDir(path.dirname(filepath));
+  const doc = new PDFDocument({
+    size: 'A4',
+    margins: { top: 48, bottom: 56, left: 48, right: 48 },
+    bufferPages: true,
+    autoFirstPage: true,
+  });
+  const stream = fs.createWriteStream(filepath);
+  doc.pipe(stream);
+  renderLegalPdf(doc, { title, md });
+  doc.end();
+  await new Promise((resolve, reject) => {
+    stream.on('finish', resolve);
+    stream.on('error', reject);
+  });
+  return filepath;
+}
+
+async function writeLegalPdf(spec, { mdOverride = null, filenameOverride = null } = {}) {
+  ensureDir(DOCS_DIR);
+  const filename = filenameOverride || spec.filename;
+  const filepath = path.join(DOCS_DIR, filename);
+
+  let md = mdOverride;
+  if (!md) {
+    const loaded = readLegalMarkdown(spec);
+    if (!loaded) return null;
+    md = loaded.md;
+  }
+
+  await renderMdToPdfFile(spec.title, md, filepath);
+  const size = fs.statSync(filepath).size;
+  if (size < 500) return null;
+  return { filepath, filename, source: mdOverride ? 'personalized' : 'generated', size };
+}
+
 async function generatePersonalizedMedicalPdf(order) {
-  const spec = LEGAL_PDFS.find((s) => s.md === 'attestation-medicale.md');
+  const spec = LEGAL_PDFS.find((s) => s.key === 'medical');
   if (!spec) return null;
-  const mdPath = path.join(LEGAL_DIR, spec.md);
-  if (!fs.existsSync(mdPath)) return null;
+  const loaded = readLegalMarkdown(spec);
+  if (!loaded) return null;
 
   const name = signerFullName(order);
-  const raw = fs.readFileSync(mdPath, 'utf8');
-  const md = personalizeMedicalMarkdown(raw, name);
+  const md = personalizeMedicalMarkdown(loaded.md, name);
   const safeId = String(order?.order_id || 'adh')
     .replace(/[^a-zA-Z0-9_-]+/g, '-')
     .slice(0, 80);
@@ -245,24 +237,30 @@ async function generatePersonalizedMedicalPdf(order) {
   return writeLegalPdf(spec, { mdOverride: md, filenameOverride: filename });
 }
 
+/**
+ * Génère toujours les PDF depuis les .md (dans /tmp sur Vercel).
+ * La déclaration médicale est personnalisée avec le nom du client.
+ */
 async function generateInscriptionLegalPdfs(order = null) {
   const out = [];
   const errors = [];
   for (const spec of LEGAL_PDFS) {
     try {
       let pdf = null;
-      if (spec.md === 'attestation-medicale.md' && order) {
-        pdf = await generatePersonalizedMedicalPdf(order);
+      if (spec.key === 'medical') {
+        pdf = order
+          ? await generatePersonalizedMedicalPdf(order)
+          : await writeLegalPdf(spec);
       } else {
         pdf = await writeLegalPdf(spec);
       }
       if (pdf) out.push(pdf);
-      else errors.push(`${spec.filename}: fichier introuvable`);
+      else errors.push(`${spec.filename}: markdown introuvable (${LEGAL_DIR})`);
     } catch (err) {
       errors.push(`${spec.filename}: ${err.message}`);
     }
   }
-  return { pdfs: out, errors };
+  return { pdfs: out, errors, legalDir: LEGAL_DIR, docsDir: DOCS_DIR };
 }
 
 module.exports = {
