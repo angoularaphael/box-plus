@@ -2133,10 +2133,24 @@ function createApp() {
     try {
       const body = req.body || {};
       const { guideRetention } = require('./lib/counselor-ai');
+      const messages = Array.isArray(body.messages)
+        ? body.messages
+            .slice(-16)
+            .map((m) => ({
+              role: m.role === 'bot' || m.role === 'assistant' ? 'assistant' : 'user',
+              content: String(m.content || m.text || m.html || '')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 600),
+            }))
+            .filter((m) => m.content)
+        : [];
       const result = await guideRetention({
         reasonId: body.reason_id || body.reason || 'other',
         reasonLabel: body.reason_label || '',
         freeText: body.free_text || body.message || '',
+        messages,
       });
       res.json({ ok: true, reply: result.reply, source: result.source });
     } catch (err) {

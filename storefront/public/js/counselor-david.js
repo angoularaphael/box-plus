@@ -166,6 +166,16 @@ window.BCCounselor = (function () {
       let reply =
         'Merci pour ces précisions. Avant de décider, un échange avec votre manager de salle peut souvent aider. Que souhaitez-vous faire ?';
       try {
+        const messages = history
+          .filter((h) => h.role === 'user' || h.role === 'bot')
+          .map((h) => ({
+            role: h.role === 'bot' ? 'assistant' : 'user',
+            content: String(h.html || '')
+              .replace(/<[^>]+>/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim(),
+          }))
+          .filter((m) => m.content);
         const res = await fetch('/api/membership/counsel', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -173,6 +183,7 @@ window.BCCounselor = (function () {
             reason_id: reasonId,
             reason_label: reasonLabel,
             free_text: freeText,
+            messages,
           }),
         });
         const data = await res.json().catch(() => ({}));
