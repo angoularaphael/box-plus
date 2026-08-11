@@ -1,11 +1,11 @@
 const fs = require('fs');
 const { logInfo, logWarn } = require('../../lib/logger');
-const { readLegal } = require('./contract-pdf');
 const { getMailFrom, CGV_URL, REGLEMENT_URL, SITE_URL } = require('./branding');
 const {
   generateInscriptionInvoicePdf,
   generateMaterielInvoicePdf,
 } = require('./invoice-pdf');
+const { generateInscriptionLegalPdfs } = require('./legal-pdf');
 const { sendEmailViaBrevo, isConfigured, defaultReplyTo } = require('./brevo-send');
 
 function buildConfirmationHtml(order) {
@@ -39,33 +39,40 @@ function buildConfirmationHtml(order) {
 
 async function buildInscriptionAttachments(order, extra = []) {
   const attachments = [];
-  const cgv = readLegal('cgv.md');
-  const reglement = readLegal('reglement.md');
-  const declaration = readLegal('attestation-medicale.md');
-  if (cgv) {
-    attachments.push({ filename: 'CGV-Boxing-Center.txt', content: cgv });
-  }
-  if (reglement) {
-    attachments.push({ filename: 'Reglement-interieur.txt', content: reglement });
-  }
-  if (declaration) {
-    attachments.push({ filename: 'Declaration-medicale-Boxing-Center.txt', content: declaration });
-  }
   const seenPaths = new Set();
-  for (const att of extra) {
-    if (att.filepath && fs.existsSync(att.filepath) && !seenPaths.has(att.filepath)) {
-      seenPaths.add(att.filepath);
-      attachments.push({ filename: att.filename, path: att.filepath });
+  const seenNames = new Set();
+
+  const pushFile = (filename, filepath) => {
+    if (!filepath || !fs.existsSync(filepath) || seenPaths.has(filepath) || seenNames.has(filename)) {
+      return;
     }
+    seenPaths.add(filepath);
+    seenNames.add(filename);
+    attachments.push({ filename, path: filepath });
+  };
+
+  try {
+    const legalPdfs = await generateInscriptionLegalPdfs();
+    for (const pdf of legalPdfs) {
+      pushFile(pdf.filename, pdf.filepath);
+    }
+  } catch (err) {
+    logWarn('PDF légaux inscription non générés', { order_id: order.order_id, error: err.message });
   }
+
+  for (const att of extra) {
+    pushFile(att.filename, att.filepath);
+  }
+
   try {
     const invoice = await generateInscriptionInvoicePdf(order);
-    if (invoice?.filepath && !seenPaths.has(invoice.filepath)) {
-      attachments.push({ filename: invoice.filename, path: invoice.filepath });
+    if (invoice?.filepath) {
+      pushFile(invoice.filename, invoice.filepath);
     }
   } catch (err) {
     logWarn('Facture inscription non générée', { order_id: order.order_id, error: err.message });
   }
+
   return attachments;
 }
 
@@ -104,7 +111,12 @@ async function sendConfirmationEmail(order, attachments = []) {
         error: 'Envoi email impossible — BREVO_API_KEY requis en production',
       };
     }
-    logInfo('Email confirmation envoyé', { to, order_id: order.order_id, via: result.via });
+    logInfo('Email confirmation envoyé', {
+      to,
+      order_id: order.order_id,
+      via: result.via,
+      attachments: mailAttachments.map((a) => a.filename),
+    });
     return { sent: true, via: result.via };
   } catch (err) {
     logWarn('Email confirmation échoué', { order_id: order.order_id, error: err.message });
