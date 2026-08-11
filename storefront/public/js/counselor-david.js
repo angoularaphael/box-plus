@@ -404,7 +404,7 @@ window.BCCounselor = (function () {
       history.pop();
       push(
         'bot',
-        'Je suis David, conseiller virtuel de Boxing Center. Je peux vous accompagner pour résilier un abonnement <strong>par prélèvement</strong> (sans engagement). Les formules comptant / forfait ne passent pas par ce tunnel — votre manager de salle pourra vous aider en présentiel.'
+        'Je suis David, conseiller virtuel de Boxing Center. Je peux vous accompagner pour résilier un abonnement <strong>par prélèvement</strong> (sans engagement).'
       );
       busy = false;
       paint();
