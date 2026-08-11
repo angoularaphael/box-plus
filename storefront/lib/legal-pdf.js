@@ -9,21 +9,25 @@ const DOCS_DIR =
   process.env.BOXPLUS_DOCS_DIR ||
   (process.env.VERCEL ? '/tmp/boxplus-documents' : path.join(ROOT, 'data', 'storefront', 'documents'));
 
+/** Docs joints à chaque email d'inscription (ordre stable). */
 const LEGAL_PDFS = [
   {
     md: 'cgv.md',
+    staticPdf: 'CGV-Boxing-Center.pdf',
     filename: 'CGV-Boxing-Center.pdf',
     title: 'Conditions Générales de Vente et d’Abonnement',
   },
   {
     md: 'reglement.md',
+    staticPdf: 'Reglement-interieur-Boxing-Center.pdf',
     filename: 'Reglement-interieur-Boxing-Center.pdf',
     title: 'Règlement intérieur',
   },
   {
     md: 'attestation-medicale.md',
+    staticPdf: 'Declaration-medicale-Boxing-Center.pdf',
     filename: 'Declaration-medicale-Boxing-Center.pdf',
-    title: 'Déclaration médicale',
+    title: 'Déclaration relative à l’état de santé et à l’aptitude à la pratique sportive',
   },
 ];
 
@@ -143,7 +147,20 @@ function renderLegalPdf(doc, { title, md }) {
   drawPageFooter(doc);
 }
 
+function resolveStaticPdf(spec) {
+  if (!spec.staticPdf) return null;
+  const filepath = path.join(LEGAL_DIR, spec.staticPdf);
+  if (!fs.existsSync(filepath)) return null;
+  const size = fs.statSync(filepath).size;
+  // Ignore tiny placeholders / corrupt files
+  if (size < 4000) return null;
+  return { filepath, filename: spec.filename, source: 'static' };
+}
+
 async function writeLegalPdf(spec) {
+  const staticPdf = resolveStaticPdf(spec);
+  if (staticPdf) return staticPdf;
+
   ensureDir(DOCS_DIR);
   const mdPath = path.join(LEGAL_DIR, spec.md);
   if (!fs.existsSync(mdPath)) {
@@ -153,8 +170,8 @@ async function writeLegalPdf(spec) {
   const filepath = path.join(DOCS_DIR, spec.filename);
   if (fs.existsSync(filepath)) {
     const pdfStat = fs.statSync(filepath);
-    if (pdfStat.mtimeMs >= mdStat.mtimeMs && pdfStat.size > 500) {
-      return { filepath, filename: spec.filename };
+    if (pdfStat.mtimeMs >= mdStat.mtimeMs && pdfStat.size > 4000) {
+      return { filepath, filename: spec.filename, source: 'cache' };
     }
   }
 
@@ -173,20 +190,28 @@ async function writeLegalPdf(spec) {
     stream.on('finish', resolve);
     stream.on('error', reject);
   });
-  return { filepath, filename: spec.filename };
+  return { filepath, filename: spec.filename, source: 'generated' };
 }
 
 async function generateInscriptionLegalPdfs() {
   const out = [];
+  const errors = [];
   for (const spec of LEGAL_PDFS) {
-    const pdf = await writeLegalPdf(spec);
-    if (pdf) out.push(pdf);
+    try {
+      const pdf = await writeLegalPdf(spec);
+      if (pdf) out.push(pdf);
+      else errors.push(`${spec.filename}: fichier introuvable`);
+    } catch (err) {
+      errors.push(`${spec.filename}: ${err.message}`);
+    }
   }
-  return out;
+  return { pdfs: out, errors };
 }
 
 module.exports = {
   LEGAL_PDFS,
+  LEGAL_DIR,
+  DOCS_DIR,
   generateInscriptionLegalPdfs,
   writeLegalPdf,
 };

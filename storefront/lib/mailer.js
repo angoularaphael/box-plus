@@ -44,24 +44,35 @@ async function buildInscriptionAttachments(order, extra = []) {
 
   const pushFile = (filename, filepath) => {
     if (!filepath || !fs.existsSync(filepath) || seenPaths.has(filepath) || seenNames.has(filename)) {
-      return;
+      return false;
     }
+    const size = fs.statSync(filepath).size;
+    if (size < 500) return false;
     seenPaths.add(filepath);
     seenNames.add(filename);
-    attachments.push({ filename, path: filepath });
+    // Buffer en mémoire : fiable sur Vercel (/tmp) + Brevo REST
+    attachments.push({
+      filename,
+      path: filepath,
+      content: fs.readFileSync(filepath),
+    });
+    return true;
   };
 
   try {
-    const legalPdfs = await generateInscriptionLegalPdfs();
+    const { pdfs: legalPdfs, errors } = await generateInscriptionLegalPdfs();
     for (const pdf of legalPdfs) {
       pushFile(pdf.filename, pdf.filepath);
+    }
+    if (errors?.length) {
+      logWarn('PDF légaux partiels', { order_id: order.order_id, errors });
     }
   } catch (err) {
     logWarn('PDF légaux inscription non générés', { order_id: order.order_id, error: err.message });
   }
 
   for (const att of extra) {
-    pushFile(att.filename, att.filepath);
+    pushFile(att.filename, att.filepath || att.path);
   }
 
   try {
@@ -71,6 +82,17 @@ async function buildInscriptionAttachments(order, extra = []) {
     }
   } catch (err) {
     logWarn('Facture inscription non générée', { order_id: order.order_id, error: err.message });
+  }
+
+  const names = attachments.map((a) => a.filename);
+  if (attachments.length < 4) {
+    logWarn('PJ inscription incomplètes (attendu: 4)', {
+      order_id: order.order_id,
+      count: attachments.length,
+      attachments: names,
+    });
+  } else {
+    logInfo('PJ inscription prêtes', { order_id: order.order_id, count: attachments.length, attachments: names });
   }
 
   return attachments;
@@ -370,5 +392,6 @@ module.exports = {
   sendNewMemberAdminEmail,
   buildConfirmationHtml,
   buildMaterielConfirmationHtml,
+  buildInscriptionAttachments,
   getMailFrom,
 };
