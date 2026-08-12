@@ -98,22 +98,68 @@ const OFFERS = [
   },
   {
     key: 'essai',
+    product_id: 'seance-essai',
     product_name: "SEANCE D'ESSAI",
     offer: 'seance-essai',
+    deciplus_product_search: 'essai',
+    sale_type: 'carte',
     matched: null,
     amount: 10,
     method: 'payplug',
     expect: { trial: false, carte: true, comptant: true, badge: false, iban: false },
+  },
+  {
+    key: '55',
+    product_id: 'coaching-1',
+    product_name: 'COACHING PRIVE 1 SEANCE',
+    offer: 'coaching-1',
+    deciplus_product_search: 'coaching',
+    sale_type: 'carte',
+    matched: null,
+    amount: 55,
+    method: 'payplug',
+    expect: { carte: true, comptant: true, badge: false, iban: false },
+  },
+  {
+    key: '250',
+    product_id: 'coaching-5',
+    product_name: 'COACHING PRIVE 5 SEANCES',
+    offer: 'coaching-5',
+    deciplus_product_search: 'coaching',
+    sale_type: 'carte',
+    matched: null,
+    amount: 250,
+    method: 'payplug',
+    expect: { carte: true, comptant: true, badge: false, iban: false },
+  },
+  {
+    key: '450',
+    product_id: 'coaching-10',
+    product_name: 'COACHING PRIVE 10 SEANCES',
+    offer: 'coaching-10',
+    deciplus_product_search: 'coaching',
+    sale_type: 'carte',
+    matched: null,
+    amount: 450,
+    method: 'payplug',
+    expect: { carte: true, comptant: true, badge: false, iban: false },
   },
 ];
 
 function buildOrder(offer, idx) {
   const customer = uniqueTestCustomer(`mx-${offer.key}`);
   customer.gym = 'minimes';
+  const carte = Boolean(offer.expect.carte);
   return {
     order_id: `MX-${offer.key}-${runId}-${idx}`,
+    product_id: offer.product_id || offer.offer || null,
     product_name: offer.product_name,
     offer: offer.offer,
+    sale_type: offer.sale_type || (carte ? 'carte' : null),
+    deciplus_product_name: offer.product_name,
+    deciplus_product_search: offer.deciplus_product_search || null,
+    requires_iban: offer.expect.iban ? true : false,
+    paiement_comptant: offer.expect.comptant === true ? true : undefined,
     gym: 'minimes',
     customer,
     payment: {
@@ -139,6 +185,9 @@ function assertConfig(offer) {
     if (cfg.sale_type !== 'carte') throw new Error(`carte sale_type=${cfg.sale_type}`);
     if (Boolean(cfg.paiement_comptant) !== Boolean(offer.expect.comptant)) {
       throw new Error(`comptant got ${cfg.paiement_comptant} want ${offer.expect.comptant}`);
+    }
+    if (Boolean(cfg.auto_badge) !== Boolean(offer.expect.badge)) {
+      throw new Error(`auto_badge got ${cfg.auto_badge} want ${offer.expect.badge}`);
     }
     return { ok: true, cfg };
   }

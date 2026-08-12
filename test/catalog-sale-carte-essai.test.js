@@ -1,5 +1,5 @@
 /**
- * Essai 10€ + packs coaching → vente Deciplus « Achat carte » (pas abonnement / pas trial_only).
+ * Essai 10€ + packs coaching → vente Deciplus « Achat carte » comptant (pas badge).
  */
 const assert = require('assert');
 const {
@@ -7,6 +7,7 @@ const {
   isCarteMerchOrder,
   buildProductConfig,
 } = require('../lib/catalog-sale');
+const { isBadgeSale } = require('../bot/sale');
 
 const essaiMatched = {
   id: 77,
@@ -44,32 +45,47 @@ function run() {
   assert.strictEqual(cfgNoMatch.create_sale, true);
   assert.strictEqual(cfgNoMatch.paiement_comptant, true);
   assert.strictEqual(cfgNoMatch.requires_iban, false);
+  assert.strictEqual(cfgNoMatch.auto_badge, false);
+  assert.strictEqual(isBadgeSale(cfgNoMatch), false, 'essai n’est pas une vente Badge');
 
   // Even if Deciplus catalog types the product as abo, keep Achat carte.
   const cfgMatched = buildProductConfig(paid, essaiMatched);
   assert.strictEqual(cfgMatched.sale_type, 'carte', 'matched essai typed abo → still carte');
   assert.strictEqual(cfgMatched.paiement_comptant, true);
   assert.strictEqual(cfgMatched.auto_badge, false);
+  assert.strictEqual(isBadgeSale(cfgMatched), false);
 
-  for (const id of ['coaching-1', 'coaching-5', 'coaching-10']) {
+  for (const [id, amount, title] of [
+    ['coaching-1', 55, 'COACHING PRIVE 1 SEANCE'],
+    ['coaching-5', 250, 'COACHING PRIVE 5 SEANCES'],
+    ['coaching-10', 450, 'COACHING PRIVE 10 SEANCES'],
+  ]) {
     const order = {
       product_id: id,
-      product_name: `Coaching ${id}`,
+      product_name: title,
       sale_type: 'carte',
       deciplus_product_search: 'coaching',
-      payment: { amount: 55, method: 'payplug', status: 'paid' },
+      payment: { amount, method: 'payplug', status: 'paid' },
     };
     assert.strictEqual(isTrialOrder(order), false, `${id} not trial`);
     const cfg = buildProductConfig(order, {
       id: 99,
-      title: 'COACHING',
-      price: 55,
+      title,
+      price: amount,
       type: 'abo',
       categoryId: 'abo',
     });
     assert.strictEqual(cfg.sale_type, 'carte', `${id} → carte`);
     assert.strictEqual(cfg.paiement_comptant, true, `${id} comptant`);
+    assert.strictEqual(cfg.auto_badge, false, `${id} no auto_badge`);
+    assert.strictEqual(isBadgeSale(cfg), false, `${id} pas modale Badge`);
   }
+
+  assert.strictEqual(
+    isBadgeSale({ label: 'Badge', sale_type: 'carte', deciplus_product_name: 'Badge' }),
+    true,
+    'produit Badge reste isBadgeSale'
+  );
 
   // Regression: offre duo PayPlug rib stays abonnement (not forced carte).
   const duo = buildProductConfig(
@@ -84,7 +100,7 @@ function run() {
   assert.strictEqual(duo.sale_type, 'abonnement', 'duo stays abonnement');
   assert.strictEqual(duo.paiement_comptant, false, 'duo not comptant');
 
-  console.log('ok — essai/coaching carte sale_type');
+  console.log('ok — essai/coaching carte comptant sans badge');
 }
 
 run();

@@ -11,11 +11,13 @@ const { ensureDeciplusSaleZone, isChooseZoneScreen } = require('./deciplus-zone'
 const { dismissJqueryUiOverlay } = require('./ui');
 const { buildDeciplusProductSearch, buildSearchTokens, normalizeText } = require('./catalog');
 
+/** Vrai uniquement pour le produit Badge Deciplus (~34,99 €), pas essai/coaching « Achat carte ». */
 function isBadgeSale(productConfig) {
-  return (
-    productConfig.sale_type === 'carte' ||
-    /badge/i.test(String(productConfig.label || productConfig.deciplus_product_name || ''))
+  const name = String(
+    productConfig.label || productConfig.deciplus_product_name || productConfig.key || ''
   );
+  if (/essai|coaching/i.test(name)) return false;
+  return /\bbadge\b/i.test(name);
 }
 
 function formatFrDate(date) {
@@ -2302,7 +2304,8 @@ async function buyCarteBadge(page, productConfig, gymConfig, memberId = null) {
   await applyConfigModal(page, productConfig, memberId);
   await finalizePayment(page, productConfig);
 
-  return { action: 'carte_badge_created', sale_type: 'carte' };
+  const action = isBadgeSale(productConfig) ? 'carte_badge_created' : 'carte_created';
+  return { action, sale_type: 'carte' };
 }
 
 async function annotateMember(page, order, productConfig, memberId = null) {
@@ -2414,19 +2417,32 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
 
   if (productConfig.sale_type === 'carte') {
     result = await buyCarteBadge(page, productConfig, gymConfig, memberId);
-    const badgeContract = await verifyCreatedContract(page, memberId, {
-      badge: true,
-      label: productConfig.name || productConfig.title || 'Badge',
-    });
-    result.sale_id = badgeContract.idc;
-    const enforce = await enforceBadgeEcheance(page, memberId, productConfig).catch((err) => ({
-      ok: false,
-      reason: err.message,
-    }));
-    result.badge_echeance_ok = enforce.ok;
-    if (!enforce.ok) {
-      result.manual_review = true;
-      result.badge_error = `Échéance badge J+${resolveBadgePrelevementDelayDays(productConfig)} non confirmée (${enforce.reason || 'inconnue'})`;
+    if (isBadgeSale(productConfig)) {
+      const badgeContract = await verifyCreatedContract(page, memberId, {
+        badge: true,
+        label: productConfig.name || productConfig.title || 'Badge',
+      });
+      result.sale_id = badgeContract.idc;
+      const enforce = await enforceBadgeEcheance(page, memberId, productConfig).catch((err) => ({
+        ok: false,
+        reason: err.message,
+      }));
+      result.badge_echeance_ok = enforce.ok;
+      if (!enforce.ok) {
+        result.manual_review = true;
+        result.badge_error = `Échéance badge J+${resolveBadgePrelevementDelayDays(productConfig)} non confirmée (${enforce.reason || 'inconnue'})`;
+      }
+    } else {
+      // Essai / coaching : prestation carte, pas le contrat Badge
+      const carteContract = await verifyCreatedContract(page, memberId, {
+        badge: false,
+        label:
+          productConfig.label ||
+          productConfig.deciplus_product_name ||
+          productConfig.name ||
+          order.product_name,
+      });
+      result.sale_id = carteContract.idc;
     }
   } else if (productConfig.sale_type === 'abonnement') {
     result = await buyAbonnement(page, productConfig, gymConfig);
@@ -2669,4 +2685,5 @@ module.exports = {
   cancelSale: cancelSaleOnMember,
   buyAbonnement,
   buyCarteBadge,
+  isBadgeSale,
 };
