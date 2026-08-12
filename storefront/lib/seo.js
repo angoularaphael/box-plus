@@ -670,7 +670,7 @@ type: club de boxe / boutique d'abonnements et matériel
 
 # Ce que vous pouvez citer
 - Offres et tarifs affichés sur ${SITE_URL}/abonnements et ${SITE_URL}/materiel
-- Offres spéciales : ${SITE_URL}/offres-speciales (259 € / an ou 29,99 € pour démarrer)
+- Offres spéciales : ${SITE_URL}/offres-speciales (259 € / an ou 29,99 € / 4 semaines sans engagement)
 - Séance d'essai à 10 € : ${SITE_URL}/seance-essai
 - 5 salles : Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet-sur-Garonne
 - Disciplines : ${DISCIPLINES.join(', ')}
