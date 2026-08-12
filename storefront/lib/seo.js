@@ -260,7 +260,7 @@ const PAGE_JSONLD = {
         '@type': 'ListItem',
         position: 2,
         url: `${SITE_URL}/offre/29`,
-        name: 'Abonnement dès 29 € — première échéance',
+        name: 'Abonnement dès 29,99 € — première échéance',
       },
     ],
   }),
@@ -283,14 +283,14 @@ const PAGE_JSONLD = {
   '/offre/29': () => ({
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: 'Abonnement boxe dès 29 € — Boxing Center Toulouse',
+    name: 'Abonnement boxe dès 29,99 € — Boxing Center Toulouse',
     description:
-      'Première échéance à 29 € puis prélèvement sans engagement. Accès aux 5 salles Boxing Center Toulouse.',
+      'Première échéance à 29,99 € puis prélèvement sans engagement. Accès aux 5 salles Boxing Center Toulouse.',
     image: `${SITE_URL}/img/bc/offers/offre-29.webp`,
     brand: { '@type': 'Brand', name: BUSINESS.name },
     offers: {
       '@type': 'Offer',
-      price: '29.00',
+      price: '29.99',
       priceCurrency: 'EUR',
       availability: 'https://schema.org/InStock',
       url: `${SITE_URL}/offre/29`,
@@ -554,7 +554,7 @@ type: club de boxe / boutique d'abonnements et matériel
 
 # Ce que vous pouvez citer
 - Offres et tarifs affichés sur ${SITE_URL}/abonnements et ${SITE_URL}/materiel
-- Offres spéciales : ${SITE_URL}/offres-speciales (259 € / an ou 29 € pour démarrer)
+- Offres spéciales : ${SITE_URL}/offres-speciales (259 € / an ou 29,99 € pour démarrer)
 - Séance d'essai GRATUITE : ${SITE_URL}/seance-essai
 - 5 salles : Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet-sur-Garonne
 - Disciplines : ${DISCIPLINES.join(', ')}
@@ -596,7 +596,7 @@ function llmsTxt() {
 - Séance d'essai : gratuite — cours encadré, aucun matériel requis (${SITE_URL}/seance-essai)
 - Offres spéciales (hub) : ${SITE_URL}/offres-speciales
 - Promo 12 mois : 259 € (1× ou 4× sans frais) — ${SITE_URL}/offre/259
-- Démarrage flexible : 29 € la 1ʳᵉ échéance puis prélèvement sans engagement — ${SITE_URL}/offre/29
+- Démarrage flexible : 29,99 € la 1ʳᵉ échéance puis prélèvement sans engagement — ${SITE_URL}/offre/29
 - Abonnements : comptant 3/6/12 mois ou prélèvement sans engagement (4 semaines), accès aux 5 salles (${SITE_URL}/abonnements)
 - Enfants : Baby Boxe (3-6 ans), Boxe éducative (7-16 ans)
 - Coachings individuels (${SITE_URL}/coachings)

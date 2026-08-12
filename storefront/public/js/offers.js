@@ -37,7 +37,7 @@
       return 'Paiement unique — pas de prélèvement';
     }
     if (product.supports_billing_choice) {
-      return 'Sans engagement — carte ou prélèvement';
+      return '29,99 € toutes les 4 semaines — 1ʳᵉ échéance CB puis prélèvement';
     }
     if (/4\s*[x×]\s*sans\s*frais/i.test(product.badge || '') || /sans\s*frais/i.test(product.badge || '')) {
       return 'Paiement en 4× sans frais';

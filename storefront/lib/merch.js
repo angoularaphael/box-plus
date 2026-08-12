@@ -236,6 +236,16 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
     }
   }
 
+  // Garde-fou : price_cents 2999 doit toujours afficher 29,99 € (Deciplus renvoie parfois 29,00)
+  if (Number(enriched.price_cents) === 2999) {
+    enriched.price_label = '29,99 €';
+    if (!enriched.stripe_price_label || enriched.stripe_price_label === '29,00 €') {
+      enriched.stripe_price_label = '29,99 €';
+    }
+    if (!enriched.pay_today_label || enriched.pay_today_label === '29,00 €') {
+      enriched.pay_today_label = '29,99 €';
+    }
+  }
   enriched.supports_billing_choice = productSupportsBillingChoice(enriched);
   enriched.supports_installment_choice = productSupportsInstallmentChoice(enriched);
   if (enriched.supports_installment_choice) {
