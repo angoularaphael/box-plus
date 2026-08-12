@@ -160,7 +160,7 @@
 
 .offer-card__title-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: baseline;
   gap: 8px 12px;
   margin-bottom: 8px;
@@ -169,7 +169,7 @@
 
 .offer-card__title-row h3 {
   margin: 0;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
 }
 
