@@ -148,6 +148,7 @@
 
     return `
       <article class="offer-card ${featured ? 'featured' : ''}" data-id="${esc(product.id)}"${reveal}>
+        ${product.image ? `<div class="offer-card__media"><img src="${esc(product.image)}" alt="" loading="lazy" width="640" height="400" /></div>` : ''}
         ${featured ? '<span class="offer-badge">Populaire</span>' : ''}
         ${product.badge ? `<span class="offer-tag">${esc(product.badge)}</span>` : ''}
         <h3>${esc(displayName)}</h3>

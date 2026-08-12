@@ -252,7 +252,8 @@
       "paiement_comptant": true,
       "manual": true,
       "sort_order": 1,
-      "active": true
+      "active": true,
+      "image": "/img/bc/disc/boxing-training.webp"
     },
     "coaching-5": {
       "tab": "coachings",
@@ -272,7 +273,8 @@
       "manual": true,
       "sort_order": 2,
       "active": true,
-      "badge": "Économique"
+      "badge": "Économique",
+      "image": "/img/bc/disc/boxe-anglaise.webp"
     },
     "coaching-10": {
       "tab": "coachings",
@@ -291,7 +293,8 @@
       "paiement_comptant": true,
       "manual": true,
       "sort_order": 3,
-      "active": true
+      "active": true,
+      "image": "/img/bc/disc/mma.webp"
     }
   },
   "materiel_overrides": {}

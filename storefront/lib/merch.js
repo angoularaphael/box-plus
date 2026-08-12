@@ -295,11 +295,36 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
   return enriched;
 }
 
+function loadBundledMerchProducts() {
+  try {
+    return require('../storefront-merch.json').products || {};
+  } catch {
+    return {};
+  }
+}
+
+/** Sur Vercel le merch remote peut être ancien — on réinjecte les packs manuels du bundle. */
+function mergeManualBundledProducts(merch) {
+  const bundled = loadBundledMerchProducts();
+  const products = { ...(merch.products || {}) };
+  for (const [id, entry] of Object.entries(bundled)) {
+    if (!entry?.manual) continue;
+    if (!products[id]) {
+      products[id] = entry;
+      continue;
+    }
+    if (!products[id].image && entry.image) {
+      products[id] = { ...products[id], image: entry.image };
+    }
+  }
+  return { ...merch, products };
+}
+
 function getEnrichedProducts(options = {}) {
   const { tab, subsection, featured, activeOnly = true } = options;
   const { getStoreProducts } = require('./deciplus-sync');
   const catalog = getStoreProducts();
-  const merch = loadMerch();
+  const merch = mergeManualBundledProducts(loadMerch());
   const results = [];
   const seen = new Set();
 
