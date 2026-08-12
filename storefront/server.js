@@ -3220,15 +3220,25 @@ function createApp() {
 
   for (const [route, file] of Object.entries(pageRoutes)) {
     app.get(route, (_req, res) => {
+      res.type('text/html; charset=utf-8');
       res.sendFile(path.join(PUBLIC_DIR, file));
     });
   }
 
   app.get('/', (_req, res) => {
+    res.type('text/html; charset=utf-8');
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
   });
 
-  app.use(express.static(PUBLIC_DIR));
+  app.use(
+    express.static(PUBLIC_DIR, {
+      setHeaders(res, filePath) {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        }
+      },
+    })
+  );
 
   app.use((err, _req, res, _next) => {
     logError('Erreur Express', { error: err.message });

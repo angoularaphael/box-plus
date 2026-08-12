@@ -713,7 +713,7 @@ function registerSeo(app, publicDir) {
         `<script>window.__PRODUCT_ID__=${JSON.stringify(String(p.id))};</script>`,
       ].join('\n  '),
     });
-    res.type('html').send(inject(html, tags));
+    res.type('text/html; charset=utf-8').send(inject(html, tags));
   });
 
   // Crawlable no-JS fallback for the catalog page: AI crawlers (GPTBot,
@@ -744,7 +744,7 @@ function registerSeo(app, publicDir) {
       );
       if (route === '/materiel') html = html.replace('</body>', `${materielNoscript}\n</body>`);
       if (route === '/') html = html.replace('</body>', `${homeNoscript}\n</body>`);
-      res.type('html').send(html);
+      res.type('text/html; charset=utf-8').send(html);
     });
   }
 }
