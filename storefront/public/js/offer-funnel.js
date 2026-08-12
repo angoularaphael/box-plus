@@ -17,7 +17,16 @@
   var form = document.getElementById('offerLeadForm');
   var celebrate = document.getElementById('offerLeadCelebrate');
   var errEl = document.getElementById('offerLeadError');
+  var tarifEl = document.getElementById('offerLeadTarif');
   var skipBtn = document.getElementById('offerLeadSkip');
+
+  function setTarifLabel(unlocked) {
+    if (!tarifEl) return;
+    tarifEl.classList.toggle('is-unlocked', Boolean(unlocked));
+    tarifEl.innerHTML = unlocked
+      ? 'Tarif actuel&nbsp;: <strong>29,99&nbsp;€</strong>'
+      : 'Tarif actuel&nbsp;: <strong>44,99&nbsp;€</strong>';
+  }
 
   function openModal(e) {
     if (e) e.preventDefault();
@@ -36,6 +45,7 @@
       celebrate.hidden = true;
       celebrate.classList.remove('is-revealed');
     }
+    setTarifLabel(false);
     if (errEl) errEl.textContent = '';
     var first = form && form.querySelector('input[name="prenom"]');
     if (first) first.focus();
@@ -64,6 +74,7 @@
 
   function runFriendCelebrate() {
     if (!celebrate) return Promise.resolve();
+    setTarifLabel(true);
     if (form) form.hidden = true;
     celebrate.hidden = false;
     celebrate.classList.add('is-revealed');

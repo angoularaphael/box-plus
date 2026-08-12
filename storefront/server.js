@@ -1368,8 +1368,12 @@ function createApp() {
     try {
       const result = await insertTunnelLead(req.body || {});
       if (!result.ok) {
-        const status = result.error === 'supabase_not_configured' ? 503 : 400;
-        return res.status(status).json({ ok: false, error: result.error || 'lead_failed' });
+        const msg = result.error || 'lead_failed';
+        const status =
+          result.error === 'supabase_not_configured' || /tunnel_leads absente/i.test(msg)
+            ? 503
+            : 400;
+        return res.status(status).json({ ok: false, error: msg });
       }
       res.json({ ok: true, lead_id: result.lead_id });
     } catch (err) {
@@ -3216,15 +3220,25 @@ function createApp() {
 
   for (const [route, file] of Object.entries(pageRoutes)) {
     app.get(route, (_req, res) => {
+      res.type('text/html; charset=utf-8');
       res.sendFile(path.join(PUBLIC_DIR, file));
     });
   }
 
   app.get('/', (_req, res) => {
+    res.type('text/html; charset=utf-8');
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
   });
 
-  app.use(express.static(PUBLIC_DIR));
+  app.use(
+    express.static(PUBLIC_DIR, {
+      setHeaders(res, filePath) {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        }
+      },
+    })
+  );
 
   app.use((err, _req, res, _next) => {
     logError('Erreur Express', { error: err.message });

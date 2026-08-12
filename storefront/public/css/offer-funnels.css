@@ -609,6 +609,20 @@
   border-radius: 10px;
   font: inherit;
 }
+.offer-lead-tarif {
+  margin: 4px 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bc-navy);
+  text-align: center;
+}
+.offer-lead-tarif strong {
+  font-weight: 700;
+  color: var(--bc-navy);
+}
+.offer-lead-tarif.is-unlocked strong {
+  color: #c9a227;
+}
 .offer-lead-modal__actions {
   display: flex;
   flex-direction: column;

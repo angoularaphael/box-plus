@@ -93,6 +93,17 @@ async function insertTunnelLead(input = {}) {
 
     if (error) {
       logWarn('tunnel_leads insert échoué', { tunnel, error: error.message });
+      const missingTable =
+        /Could not find the table .*tunnel_leads/i.test(error.message) ||
+        /relation ["']?public\.?tunnel_leads["']? does not exist/i.test(error.message) ||
+        /schema cache/i.test(error.message);
+      if (missingTable) {
+        return {
+          ok: false,
+          error:
+            'Table tunnel_leads absente — exécuter BOXPLUS/supabase/004_tunnel_leads.sql (ou gestion-manager/supabase/015_tunnel_leads.sql) dans le SQL Editor Supabase, puis réessayer.',
+        };
+      }
       return { ok: false, error: error.message };
     }
 

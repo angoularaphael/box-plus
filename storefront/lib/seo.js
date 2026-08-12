@@ -54,14 +54,9 @@ const SALLES = [
   { name: 'Ramonville', street: '33 rue des Ormes', postal: '31520', city: 'Ramonville-Saint-Agne', image: '/img/bc/gym/gym-06.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/' },
   { name: 'États-Unis', street: '388 avenue des États-Unis', postal: '31200', city: 'Toulouse', image: '/img/bc/gym/gym-11.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/' },
   { name: 'Saint-Cyprien', street: '11 rue Sainte-Lucie', postal: '31300', city: 'Toulouse', image: '/img/bc/gym/gym-16.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/' },
-  /* Portet : la rue manquait (AMÉLIORATIONS.md § 3, « demander au club »).
-     Le club l'a écrite lui-même sur son site — src/content.json, clé
-     site.address — et Portet est la seule salle à publier SON PROPRE
-     numéro, différent de celui du réseau. Google recoupe ces informations
-     d'une source à l'autre : une adresse absente et un téléphone qui ne
-     correspond pas à ce qu'affiche le site de la salle affaiblissent la
-     fiche locale au lieu de la nourrir. */
-  { name: 'Portet', street: '61 route d’Espagne', postal: '31120', city: 'Portet-sur-Garonne', telephone: '+33687900216', image: '/img/bc/gym/portet-exterior.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/' },
+  /* Portet : adresse canonique (aussi gym-mapping / welcome-knowledge).
+     Portet publie son propre numéro, distinct du réseau. */
+  { name: 'Portet', street: '61 route d\'Espagne', postal: '31120', city: 'Portet-sur-Garonne', telephone: '+33687900216', image: '/img/bc/gym/portet-exterior.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/' },
 ];
 
 const DISCIPLINES = [
@@ -327,6 +322,116 @@ const INDEXABLE = {
   '/politique-confidentialite': { file: 'legal/confidentialite.html', priority: '0.3', changefreq: 'yearly' },
 };
 
+/* ── Vidéos indexables : VideoObject + sitemap vidéo + og:video ────────
+ *
+ * Google ne REGARDE pas une vidéo : il lit ce qu'on écrit autour d'elle.
+ * Poser un <video> dans une page n'apporte donc rien au référencement
+ * tant que trois choses ne disent pas la même :
+ *   1. un VideoObject dans le JSON-LD de la page qui la porte,
+ *   2. une entrée <video:video> dans le sitemap,
+ *   3. une miniature servie en 200, non bloquée par robots.txt.
+ *
+ * `uploadDate` est OBLIGATOIRE côté Google — sans elle, aucun résultat
+ * enrichi. Au sens de schema.org c'est la date de mise en ligne SUR CE
+ * SITE : on écrit donc la date de publication ici, pas celle de YouTube,
+ * qu'on n'a de toute façon aucun moyen de vérifier depuis le fichier
+ * (YouTube réencode et efface `creation_time`).
+ *
+ * Une entrée reste INERTE tant que son fichier n'est pas sur le disque.
+ * Déclarer une vidéo absente ferait indexer un 404 : c'est plus coûteux
+ * que de ne rien déclarer du tout.
+ *
+ * Champs : file (dans public/media/), poster (chemin absolu du site),
+ * name (≤ 100 car., contrainte sitemap), description, seconds, width,
+ * height, uploadDate (AAAA-MM-JJ).
+ *
+ * Recette d'encodage, à garder identique d'une vidéo à l'autre :
+ *   ffmpeg -ss <départ> -i "source.mp4" \
+ *     -vf "scale=720:-2:flags=lanczos,fps=30" \
+ *     -c:v libx264 -preset slow -crf 23 -pix_fmt yuv420p -profile:v high \
+ *     -c:a aac -b:a 112k -movflags +faststart "sortie.mp4"
+ *   (+faststart déplace l'index en tête : la lecture démarre avant la fin
+ *    du téléchargement. Sans lui, le visiteur attend le fichier entier.)
+ */
+const VIDEOS = {
+  '/offre/259': {
+    file: 'boxing-center-trophy-toulouse.mp4',
+    poster: '/img/bc/video/boxing-center-trophy-toulouse.jpg',
+    name: 'Boxing Center Trophy — la soirée de combats du club, à Toulouse',
+    description:
+      "Le Boxing Center Trophy, la soirée de combats organisée par le club à Toulouse : la préparation "
+      + "au vestiaire, l'entrée des boxeurs, les assauts sur le ring et le public venu en famille. "
+      + "Ceux qui montent sont les licenciés qui s'entraînent toute l'année dans les salles Boxing Center "
+      + 'de Toulouse et de son agglomération.',
+    seconds: 108,
+    width: 1280,
+    height: 720,
+    uploadDate: '2026-08-12',
+  },
+};
+
+/* Durée ISO 8601 : Google refuse la valeur en secondes dans le JSON-LD. */
+function iso8601Duration(seconds) {
+  const s = Math.max(1, Math.round(seconds));
+  const m = Math.floor(s / 60);
+  return `PT${m ? `${m}M` : ''}${s % 60}S`;
+}
+
+function videoFor(route, publicDir) {
+  const v = VIDEOS[route];
+  if (!v) return null;
+  try {
+    fs.statSync(path.join(publicDir, 'media', v.file));
+  } catch (_) {
+    return null; // fichier absent : on ne déclare rien
+  }
+  return v;
+}
+
+function videoJsonLd(v) {
+  return {
+    '@type': 'VideoObject',
+    name: v.name,
+    description: v.description,
+    thumbnailUrl: [`${SITE_URL}${v.poster}`],
+    uploadDate: v.uploadDate,
+    duration: iso8601Duration(v.seconds),
+    contentUrl: `${SITE_URL}/media/${v.file}`,
+    width: v.width,
+    height: v.height,
+    inLanguage: 'fr-FR',
+    isFamilyFriendly: true,
+    publisher: {
+      '@type': 'Organization',
+      name: BUSINESS.name,
+      url: SITE_URL,
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}${DEFAULT_OG_IMAGE}` },
+    },
+    /* La vidéo montre les salles : on la rattache au lieu, c'est ce qui
+       la fait remonter sur les requêtes locales (« salle de boxe Toulouse »). */
+    contentLocation: { '@type': 'City', name: 'Toulouse' },
+  };
+}
+
+/* Extension vidéo du sitemap. Contraintes Google respectées ici :
+   titre ≤ 100 caractères, description ≤ 2048, durée entre 1 et 28800 s. */
+function videoSitemapBlock(v) {
+  return [
+    '',
+    '    <video:video>',
+    `      <video:thumbnail_loc>${esc(SITE_URL + v.poster)}</video:thumbnail_loc>`,
+    `      <video:title>${esc(v.name.slice(0, 100))}</video:title>`,
+    `      <video:description>${esc(v.description.slice(0, 2048))}</video:description>`,
+    `      <video:content_loc>${esc(`${SITE_URL}/media/${v.file}`)}</video:content_loc>`,
+    `      <video:duration>${Math.max(1, Math.round(v.seconds))}</video:duration>`,
+    `      <video:publication_date>${v.uploadDate}</video:publication_date>`,
+    '      <video:family_friendly>yes</video:family_friendly>',
+    '      <video:live>no</video:live>',
+    '    </video:video>',
+    '  ',
+  ].join('\n');
+}
+
 const HTML_REDIRECTS = {
   '/index.html': '/',
   '/abonnements.html': '/abonnements',
@@ -383,7 +488,7 @@ function setMeta(html, attr, key, value) {
   return html.replace(re, `$1${esc(value)}$2`);
 }
 
-function headTags(route, { ogImage, ogImageAlt, jsonLd, extra, noindex } = {}) {
+function headTags(route, { ogImage, ogImageAlt, jsonLd, video, extra, noindex } = {}) {
   const url = `${SITE_URL}${route === '/' ? '/' : route}`;
   const imgPath = ogImage || DEFAULT_OG_IMAGE;
   const img = `${SITE_URL}${imgPath}`;
@@ -416,6 +521,17 @@ function headTags(route, { ogImage, ogImageAlt, jsonLd, extra, noindex } = {}) {
   }
   parts.push(`<meta property="og:image:alt" content="${esc(ogImageAlt || 'Salle Boxing Center à Toulouse — entraînement de boxe')}" />`);
   parts.push(`<meta name="twitter:image" content="${img}" />`);
+  /* Partage social : sans ces balises, un lien collé dans une conversation
+     ne montre qu'une image fixe. On ne touche PAS à og:type, qui reste
+     celui de la page (une offre) — la vidéo l'illustre, elle ne la remplace pas. */
+  if (video) {
+    const src = `${SITE_URL}/media/${video.file}`;
+    parts.push(`<meta property="og:video" content="${src}" />`);
+    parts.push(`<meta property="og:video:secure_url" content="${src}" />`);
+    parts.push('<meta property="og:video:type" content="video/mp4" />');
+    parts.push(`<meta property="og:video:width" content="${video.width}" />`);
+    parts.push(`<meta property="og:video:height" content="${video.height}" />`);
+  }
   if (extra) parts.push(extra);
   if (jsonLd) parts.push(`<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`);
   return `  ${parts.join('\n  ')}\n`;
@@ -602,6 +718,11 @@ function llmsTxt() {
 - Coachings individuels (${SITE_URL}/coachings)
 - Matériel et équipement de boxe : ${CATALOG.length} produits, retrait en salle (${SITE_URL}/materiel)
 
+## Vidéos
+${Object.entries(VIDEOS)
+  .map(([route, v]) => `- ${v.name} (${iso8601Duration(v.seconds)}, ${SITE_URL}${route}) — ${v.description}`)
+  .join('\n')}
+
 ## Salles (NAP)
 ${salles}
 
@@ -636,7 +757,8 @@ function sitemapXml(publicDir) {
     try {
       lastmod = new Date(fs.statSync(path.join(publicDir, cfg.file)).mtimeMs).toISOString().slice(0, 10);
     } catch (_) { /* keep today */ }
-    urls.push(`  <url><loc>${SITE_URL}${route === '/' ? '/' : route}</loc><lastmod>${lastmod}</lastmod><changefreq>${cfg.changefreq}</changefreq><priority>${cfg.priority}</priority></url>`);
+    const v = videoFor(route, publicDir);
+    urls.push(`  <url><loc>${SITE_URL}${route === '/' ? '/' : route}</loc><lastmod>${lastmod}</lastmod><changefreq>${cfg.changefreq}</changefreq><priority>${cfg.priority}</priority>${v ? videoSitemapBlock(v) : ''}</url>`);
   }
   let catalogMod = today;
   try {
@@ -645,7 +767,9 @@ function sitemapXml(publicDir) {
   for (const p of CATALOG) {
     urls.push(`  <url><loc>${esc(productUrl(p))}</loc><lastmod>${catalogMod}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>`);
   }
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`;
+  /* Le préfixe video: doit être déclaré sur <urlset>, sinon le sitemap est
+     invalide dans son ENSEMBLE et Google le rejette — pages comprises. */
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n${urls.join('\n')}\n</urlset>\n`;
 }
 
 /* ── registration ─────────────────────────────────────────────────── */
@@ -718,7 +842,7 @@ function registerSeo(app, publicDir) {
         `<script>window.__PRODUCT_ID__=${JSON.stringify(String(p.id))};</script>`,
       ].join('\n  '),
     });
-    res.type('html').send(inject(html, tags));
+    res.type('text/html; charset=utf-8').send(inject(html, tags));
   });
 
   // Crawlable no-JS fallback for the catalog page: AI crawlers (GPTBot,
@@ -738,18 +862,30 @@ function registerSeo(app, publicDir) {
   for (const [route, cfg] of Object.entries(INDEXABLE)) {
     app.get(route, (_req, res) => {
       const abs = path.join(publicDir, cfg.file);
-      const jsonLd = PAGE_JSONLD[route] ? PAGE_JSONLD[route]() : null;
+      let jsonLd = PAGE_JSONLD[route] ? PAGE_JSONLD[route]() : null;
+      const video = videoFor(route, publicDir);
+      if (video) {
+        /* Deux entités distinctes sur la même page (l'offre ET la vidéo) :
+           @graph est la seule forme que Google lit sans en perdre une. */
+        const node = jsonLd ? { ...jsonLd } : null;
+        if (node) delete node['@context'];
+        jsonLd = {
+          '@context': 'https://schema.org',
+          '@graph': [node, videoJsonLd(video)].filter(Boolean),
+        };
+      }
       let html = inject(
         readHtml(abs),
         headTags(route, {
           jsonLd,
+          video,
           ogImage: cfg.ogImage,
           ogImageAlt: cfg.ogImageAlt,
         })
       );
       if (route === '/materiel') html = html.replace('</body>', `${materielNoscript}\n</body>`);
       if (route === '/') html = html.replace('</body>', `${homeNoscript}\n</body>`);
-      res.type('html').send(html);
+      res.type('text/html; charset=utf-8').send(html);
     });
   }
 }

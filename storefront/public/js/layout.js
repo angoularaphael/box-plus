@@ -214,17 +214,16 @@
   }
 
   function ensureGiftPromo() {
+    // Cadeau d’entrée : uniquement sur l’accueil (pas les autres pages)
     const p = currentPath();
-    if (/inscription|checkout|panier|success|contrat|mon-inscription|gerer-abonnement|attestation|admin|confidentialite|cgv|reglement/i.test(p)) {
-      return;
-    }
+    if (p !== '/' && !p.endsWith('index.html')) return;
     if (document.querySelector('script[data-gift-promo]')) return;
     const css = document.createElement('link');
     css.rel = 'stylesheet';
     css.href = A('/css/gift-promo.css');
     document.head.appendChild(css);
     const s = document.createElement('script');
-    s.src = A('/js/gift-promo.js?v=31');
+    s.src = A('/js/gift-promo.js?v=32');
     s.defer = true;
     s.dataset.giftPromo = '1';
     document.body.appendChild(s);
