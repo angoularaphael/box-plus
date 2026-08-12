@@ -142,21 +142,35 @@
   }
 
   function initAmbientVideo() {
-    var vids = document.querySelectorAll('video[data-ambient]');
+    var vids = document.querySelectorAll(
+      'video[data-ambient], .hero__video, .page-hero__video, .offer-sheet__bg video, .offer-editorial__hero-img'
+    );
     if (!vids.length) return;
     vids.forEach(function (v) {
+      if (v.id === 'webcamPreview' || v.hasAttribute('data-scrub-video')) return;
+      v.removeAttribute('poster');
+      v.setAttribute('preload', 'auto');
+      v.classList.add('bg-video');
       if (reduce) {
         v.removeAttribute('autoplay');
         v.pause();
+        v.classList.add('is-playing');
         return;
       }
       v.muted = true;
       v.playsInline = true;
+      var reveal = function () {
+        v.classList.add('is-playing');
+      };
+      if (!v.paused && v.readyState >= 2) reveal();
+      v.addEventListener('playing', reveal);
       var tryPlay = function () {
-        v.play().catch(function () {});
+        var p = v.play();
+        if (p && typeof p.then === 'function') p.then(reveal).catch(function () {});
       };
       tryPlay();
       v.addEventListener('loadeddata', tryPlay, { once: true });
+      v.addEventListener('canplay', tryPlay, { once: true });
     });
     if (!('IntersectionObserver' in window)) return;
     var io = new IntersectionObserver(function (entries) {
@@ -170,7 +184,7 @@
       });
     }, { threshold: 0.05 });
     vids.forEach(function (v) {
-      if (!reduce) io.observe(v);
+      if (!reduce && v.id !== 'webcamPreview' && !v.hasAttribute('data-scrub-video')) io.observe(v);
     });
   }
 
