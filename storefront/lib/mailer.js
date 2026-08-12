@@ -371,38 +371,8 @@ async function sendUnpaidSubscriptionEmail(
   }
 }
 
-async function sendNewMemberAdminEmail(payload = {}) {
-  if (/@boxplus-test\.local$/i.test(String(payload.email || ''))) {
-    return { sent: false, reason: 'test_email_skipped' };
-  }
-  const adminTo =
-    process.env.ADMIN_EMAIL || process.env.SUPER_ADMIN_EMAIL || process.env.ALERT_EMAIL || '';
-  if (!adminTo) return { sent: false, reason: 'no_admin_email' };
-  const html = `<!DOCTYPE html><html lang="fr"><body style="font-family:Arial,sans-serif;padding:24px">
-    <h2>Nouveau membre créé dans Deciplus</h2>
-    <p><strong>Commande :</strong> ${payload.order_id || '—'}</p>
-    <p><strong>Membre Deciplus :</strong> ${payload.member_id || '—'}</p>
-    <p><strong>Nom :</strong> ${payload.first_name || ''} ${payload.last_name || ''}</p>
-    <p><strong>Email :</strong> ${payload.email || '—'}</p>
-    <p><strong>Salle :</strong> ${payload.gym || '—'}</p>
-    <p><strong>Offre :</strong> ${payload.product_name || '—'}</p>
-  </body></html>`;
-  if (!isConfigured()) {
-    logInfo('Email nouveau membre (mode log)', { adminTo, order_id: payload.order_id });
-    return { sent: false, reason: 'brevo_not_configured' };
-  }
-  try {
-    await sendEmailViaBrevo({
-      to: adminTo,
-      subject: `[Nouveau membre] ${payload.first_name || ''} ${payload.last_name || ''} — ${payload.order_id || ''}`.trim(),
-      html,
-      replyTo: defaultReplyTo(),
-    });
-    return { sent: true };
-  } catch (err) {
-    logWarn('Email nouveau membre échoué', { error: err.message });
-    return { sent: false, reason: 'brevo_error', error: err.message };
-  }
+async function sendNewMemberAdminEmail() {
+  return { sent: false, reason: 'disabled' };
 }
 
 module.exports = {
