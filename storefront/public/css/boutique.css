@@ -785,7 +785,7 @@ input:focus, select:focus, textarea:focus {
 .page-hero--coach { --page-hero-img: url('../img/bc/disc/mma.webp'); }
 .page-hero--materiel { --page-hero-img: url('../img/bc/disc/cross.webp'); }
 .page-hero--faq { --page-hero-img: url('../img/bc/gym/gym-06.jpg'); }
-.page-hero--manage { --page-hero-img: url('../img/bc/gym/gym-03.jpg'); }
+.page-hero--manage { --page-hero-img: url('../img/bc/gym/manage-hero.jpg'); }
 
 .page-hero--essai::before {
   background-position: center 15%;
