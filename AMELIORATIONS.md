@@ -51,8 +51,8 @@ salle de boxe / matériel de boxe + Toulouse », et **cité par les moteurs IA**
 - [ ] **Avis multi-salles** : les 6 témoignages actuels sont de vrais avis
   Google (Minimes). Récolter des avis des 4 autres salles pour équilibrer
   (`storefront/public/data/testimonials.json`).
-- [ ] **Adresse exacte de Portet** : la rue manque dans le schéma ExerciseGym
-  (`storefront/lib/seo.js` → `SALLES`) — demander au club.
+- [x] **Adresse exacte de Portet** : `61 route d'Espagne, 31120 Portet-sur-Garonne`
+  (`storefront/lib/seo.js` → `SALLES`, gym-mapping, change-abo, chatbot).
 - [ ] **Avis first-party** : à terme, collecter des avis directement sur la
   boutique (post-achat) → permet un `aggregateRating` légitime dans le schéma
   (interdit avec des avis copiés de Google).

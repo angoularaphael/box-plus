@@ -54,14 +54,9 @@ const SALLES = [
   { name: 'Ramonville', street: '33 rue des Ormes', postal: '31520', city: 'Ramonville-Saint-Agne', image: '/img/bc/gym/gym-06.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/' },
   { name: 'États-Unis', street: '388 avenue des États-Unis', postal: '31200', city: 'Toulouse', image: '/img/bc/gym/gym-11.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/' },
   { name: 'Saint-Cyprien', street: '11 rue Sainte-Lucie', postal: '31300', city: 'Toulouse', image: '/img/bc/gym/gym-16.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/' },
-  /* Portet : la rue manquait (AMÉLIORATIONS.md § 3, « demander au club »).
-     Le club l'a écrite lui-même sur son site — src/content.json, clé
-     site.address — et Portet est la seule salle à publier SON PROPRE
-     numéro, différent de celui du réseau. Google recoupe ces informations
-     d'une source à l'autre : une adresse absente et un téléphone qui ne
-     correspond pas à ce qu'affiche le site de la salle affaiblissent la
-     fiche locale au lieu de la nourrir. */
-  { name: 'Portet', street: '61 route d’Espagne', postal: '31120', city: 'Portet-sur-Garonne', telephone: '+33687900216', image: '/img/bc/gym/portet-exterior.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/' },
+  /* Portet : adresse canonique (aussi gym-mapping / welcome-knowledge).
+     Portet publie son propre numéro, distinct du réseau. */
+  { name: 'Portet', street: '61 route d\'Espagne', postal: '31120', city: 'Portet-sur-Garonne', telephone: '+33687900216', image: '/img/bc/gym/portet-exterior.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/' },
 ];
 
 const DISCIPLINES = [
