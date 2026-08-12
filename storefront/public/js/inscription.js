@@ -1081,10 +1081,8 @@
           ${payMode ? `<div><strong>Paiement :</strong> ${esc(payMode)}</div>` : ''}
       </div>
       </div>
-      <button type="button" class="btn block" id="toStep2">Continuer</button>
-      <a href="/abonnements" class="btn secondary block" id="chooseOtherOffer" style="margin-top:12px">← Choisir une autre offre</a>`;
+      <button type="button" class="btn block" id="toStep2">Continuer</button>`;
     document.getElementById('toStep2').onclick = () => goToStep(2);
-    document.getElementById('chooseOtherOffer').onclick = leaveToChooseAnotherOffer;
   }
 
   function renderStep2() {
