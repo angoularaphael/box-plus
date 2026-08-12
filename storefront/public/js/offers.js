@@ -46,7 +46,7 @@
       return '29,99 € toutes les 4 semaines — 1ʳᵉ échéance par CB puis prélèvements';
     }
     if (product.requires_iban) return '1ʳᵉ échéance par carte · prélèvement sans engagement';
-    return 'Paiement sécurisé par carte';
+    return 'Carte bancaire ou PayPal';
   }
 
   function formatDuration(product) {
@@ -92,13 +92,13 @@
   }
 
   function isFeaturedOffer(product, opts = {}) {
-    // Une seule carte « Populaire » : la 1ʳᵉ de la une (pas toutes les featured)
+    // Toutes les cartes de la une (featured_home) portent « Populaire »
     const ids = opts.featuredIds || [];
-    const primary = opts.popularId || ids[0] || null;
-    if (primary) {
-      return product.id === primary || product.legacy_id === primary;
+    if (ids.length) {
+      return ids.includes(product.id) || (product.legacy_id && ids.includes(product.legacy_id));
     }
-    return Boolean(product.featured) && product.featured_home !== true;
+    if (product.featured_home === true) return true;
+    return Boolean(product.featured);
   }
 
   function formatFrDate(d) {

@@ -337,6 +337,23 @@
     return String(gym || '').trim().toLowerCase() === 'portet';
   }
 
+  function paymentLogosHtml(kind) {
+    if (kind === 'paypal') {
+      return `<span class="pay-logos" aria-hidden="true">
+        <img src="https://up.yimg.com/ib/th/id/OIP.h_nvZo9_TUEbrpVqSdXsGAHaHa?pid=Api&rs=1&c=1&qlt=95&w=122&h=122" alt="PayPal" height="28" />
+      </span>`;
+    }
+    if (kind === 'payplug') {
+      return `<span class="pay-logos" aria-hidden="true">
+        <img src="https://www.onatureshop.com/img/cms/Payplug-logo.png" alt="Paiement en 4× sans frais" height="32" style="background:#111;border-radius:6px;padding:2px 6px" />
+      </span>`;
+    }
+    return `<span class="pay-logos" aria-hidden="true">
+      <img src="https://tse1.mm.bing.net/th/id/OIP.i6EmD8Ol2FWxjgKeOSjh1wHaDo?r=0&pid=Api&h=220&P=0" alt="CB Visa Mastercard" height="28" />
+      <img src="https://tse2.mm.bing.net/th/id/OIP.aejxZDH8dT3Q7pQ8GBLV_AHaHa?r=0&pid=Api&h=220&P=0" alt="American Express" height="28" />
+    </span>`;
+  }
+
   function renderChangePayChoices({ product, gym }) {
     const portet = isPortetGym(gym);
     const cents = Number(product?.price_cents || 0);
@@ -346,12 +363,13 @@
       product?.id === 'offre-saison' ||
       /259|12\s*mois|baby|educative|éducative/i.test(String(product?.name || product?.id || ''));
 
-    const methodRow = (name, value, checked, title, small) => `
+    const methodRow = (name, value, checked, title, small, logoKind) => `
       <label class="billing-choice">
         <input type="radio" name="${name}" value="${value}" ${checked ? 'checked' : ''} />
         <span class="billing-choice-text">
           <strong>${title}</strong>
           <small>${small}</small>
+          ${logoKind ? paymentLogosHtml(logoKind) : ''}
         </span>
       </label>`;
 
@@ -371,17 +389,17 @@
         <div id="changeOnceMethods" class="billing-choice-row">
           ${
             portet
-              ? methodRow('change_pay_method_once', 'paypal', true, 'PayPal', 'Obligatoire à Portet')
-              : `${methodRow('change_pay_method_once', 'payplug', true, 'Carte bancaire', 'PayPlug')}
-                 ${methodRow('change_pay_method_once', 'paypal', false, 'PayPal', 'Paiement sécurisé')}`
+              ? methodRow('change_pay_method_once', 'paypal', true, 'PayPal', 'Obligatoire à Portet', 'paypal')
+              : `${methodRow('change_pay_method_once', 'payplug', true, 'Carte bancaire', 'PayPlug', 'card')}
+                 ${methodRow('change_pay_method_once', 'paypal', false, 'PayPal', 'Paiement sécurisé', 'paypal')}`
           }
         </div>
         <div id="changeFourMethods" class="billing-choice-row" style="display:none">
           ${
             portet
-              ? methodRow('change_pay_method_4x', 'paypal', true, 'PayPal', '4× PayPal si éligible')
-              : `${methodRow('change_pay_method_4x', 'payplug', true, '4× sans frais', 'Carte PayPlug')}
-                 ${methodRow('change_pay_method_4x', 'paypal', false, 'PayPal', '4× PayPal si éligible')}`
+              ? methodRow('change_pay_method_4x', 'paypal', true, 'PayPal', '4× PayPal si éligible', 'paypal')
+              : `${methodRow('change_pay_method_4x', 'payplug', true, '4× sans frais', 'Carte PayPlug', 'payplug')}
+                 ${methodRow('change_pay_method_4x', 'paypal', false, 'PayPal', '4× PayPal si éligible', 'paypal')}`
           }
         </div>
         ${
@@ -399,9 +417,9 @@
         <div class="billing-choice-row" role="radiogroup" aria-label="Moyen de paiement">
           ${
             portet
-              ? methodRow('change_pay_method', 'paypal', true, 'PayPal', 'Obligatoire à Portet')
-              : `${methodRow('change_pay_method', 'payplug', true, 'Carte bancaire', 'PayPlug')}
-                 ${methodRow('change_pay_method', 'paypal', false, 'PayPal', 'Paiement sécurisé')}`
+              ? methodRow('change_pay_method', 'paypal', true, 'PayPal', 'Obligatoire à Portet', 'paypal')
+              : `${methodRow('change_pay_method', 'payplug', true, 'Carte bancaire', 'PayPlug', 'card')}
+                 ${methodRow('change_pay_method', 'paypal', false, 'PayPal', 'Paiement sécurisé', 'paypal')}`
           }
         </div>`;
     }

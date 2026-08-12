@@ -702,6 +702,11 @@
       !isComptantLike &&
       !installmentChoice &&
       (Boolean(p?.requires_iban) || Boolean(p?.supports_billing_choice));
+    /* Essai / coaching / carte (et tout one-shot payant hors prélèvement / 4×) */
+    const isOneShotPaid =
+      !installmentChoice &&
+      !isPrelevement &&
+      orderRequiresPayment({ product_snapshot: p });
     const savedPlan = state.order?.payment?.billing_plan === 'paypal' ? 'paypal' : 'rib';
     const savedInstallment =
       state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
@@ -846,7 +851,13 @@
             </label>
           </div>
         </div>`;
-    } else if (isComptantLike) {
+    } else if (isComptantLike || isOneShotPaid) {
+      const savedOneShot =
+        portetPaypalOnly || state.order?.payment?.preferred_checkout === 'paypal'
+          ? 'paypal'
+          : state.order?.payment?.billing_plan === 'paypal'
+            ? 'paypal'
+            : 'card';
       billingHtml = portetPaypalOnly
         ? `
         <div class="full billing-plan-block">
@@ -866,7 +877,7 @@
         <div class="full billing-plan-block">
           <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
             <label class="billing-choice">
-              <input type="radio" name="billing_plan" value="card" checked />
+              <input type="radio" name="billing_plan" value="card" ${savedOneShot !== 'paypal' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>Carte bancaire</strong>
                 <small>En une seule fois</small>
@@ -874,7 +885,7 @@
               </span>
             </label>
             <label class="billing-choice">
-              <input type="radio" name="billing_plan" value="paypal" />
+              <input type="radio" name="billing_plan" value="paypal" ${savedOneShot === 'paypal' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>PayPal</strong>
                 <small>En une seule fois</small>
@@ -975,8 +986,10 @@
           body.pay_method = onceMethod;
           body.billing_plan = onceMethod === 'paypal' ? 'paypal' : null;
         }
-      } else if (isComptantLike) {
-        body.billing_plan = planInput?.value === 'paypal' ? 'paypal' : null;
+      } else if (isComptantLike || isOneShotPaid) {
+        const method = planInput?.value === 'paypal' ? 'paypal' : 'card';
+        body.billing_plan = method === 'paypal' ? 'paypal' : null;
+        body.pay_method = method;
       } else if (planInput) {
         body.billing_plan = planInput.value;
       } else if (isPrelevement) {
