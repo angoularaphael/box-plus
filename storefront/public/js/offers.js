@@ -149,6 +149,7 @@
     const retainNote = isDuo
       ? '29,99 € toutes les 4 semaines, sans engagement et sans préavis en cas de résiliation, accès aux 5 salles et à toutes les disciplines'
       : '';
+    const priceSubtitle = isDuo ? '29,99 € — première échéance' : product.price_subtitle;
 
     return `
       <article class="offer-card ${featured ? 'featured' : ''}" data-id="${esc(product.id)}"${reveal}>
@@ -162,7 +163,7 @@
           ${priceWas ? `<span class="offer-price-was">${esc(priceWas)}</span>` : ''}
           <span class="offer-price-now">${esc(price)}</span>
         </div>
-        ${product.price_subtitle ? `<div class="offer-price-sub">${esc(product.price_subtitle)}</div>` : ''}
+        ${priceSubtitle ? `<div class="offer-price-sub">${esc(priceSubtitle)}</div>` : ''}
         ${product.installments_note ? `<div class="offer-price-sub">${esc(product.installments_note)}</div>` : ''}
         ${offerDescription(product) ? `<p class="offer-desc">${esc(offerDescription(product))}</p>` : ''}
         ${fourXSchedulePreview(product)}
