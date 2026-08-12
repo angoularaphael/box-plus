@@ -716,6 +716,17 @@
   color: #ffb4b4;
 }
 
+/* Promo scarcity card (same as homepage offer-card-v2) on offer sheet heroes */
+.offer-sheet .offer-card-v2--sheet {
+  width: 100%;
+  max-width: 320px;
+  margin: 8px 0 28px;
+  cursor: default;
+}
+.offer-sheet .offer-card-v2--sheet:hover {
+  transform: none;
+}
+
 body.offer-modal-open {
   overflow: hidden;
 }
