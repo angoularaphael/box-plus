@@ -364,8 +364,8 @@ const VIDEOS = {
       + "Ceux qui montent sont les licenciés qui s'entraînent toute l'année dans les salles Boxing Center "
       + 'de Toulouse et de son agglomération.',
     seconds: 108,
-    width: 640,
-    height: 360,
+    width: 1280,
+    height: 720,
     uploadDate: '2026-08-12',
   },
 };
