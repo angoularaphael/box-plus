@@ -37,13 +37,13 @@
       return 'Paiement unique — pas de prélèvement';
     }
     if (product.supports_billing_choice) {
-      return '29,99 € toutes les 4 semaines — 1ʳᵉ échéance CB puis prélèvement';
+      return '29,99 € toutes les 4 semaines — 1ʳᵉ échéance par CB puis prélèvements';
     }
     if (/4\s*[x×]\s*sans\s*frais/i.test(product.badge || '') || /sans\s*frais/i.test(product.badge || '')) {
       return 'Paiement en 4× sans frais';
     }
     if (product.id === 'offre-duo' || /offre\s*a\s*29/i.test(product.name || '')) {
-      return '29,99 € toutes les 4 semaines — 1ʳᵉ échéance CB puis prélèvement';
+      return '29,99 € toutes les 4 semaines — 1ʳᵉ échéance par CB puis prélèvements';
     }
     if (product.requires_iban) return '1ʳᵉ échéance par carte · prélèvement sans engagement';
     return 'Paiement sécurisé par carte';
@@ -67,8 +67,11 @@
   }
 
   function offerDescription(product) {
-    if (product.description) return product.description;
     const n = String(product.name || '');
+    if (product.id === 'offre-duo' || /offre\s*a\s*29/i.test(n)) {
+      return 'Paiement CB à la première échéance, puis 29,99 € toutes les 4 semaines.';
+    }
+    if (product.description) return product.description;
     if (/baby\s*boxe/i.test(n)) {
       return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison. Paiement comptant en 1× ou 4× sans frais.';
     }
@@ -81,9 +84,6 @@
         return `Réglez en une fois ou en 4× sans frais pour ${dur} : accès illimité, sans prélèvement mensuel.`;
       }
       return `Réglez une seule fois et entraînez-vous pendant ${dur} : accès illimité aux salles et à toutes les disciplines, sans aucun prélèvement mensuel.`;
-    }
-    if (product.id === 'offre-duo' || /offre\s*a\s*29/i.test(n)) {
-      return '29,99 € toutes les 4 semaines, sans engagement et sans préavis en cas de résiliation. Accès aux 5 salles et à toutes les disciplines.';
     }
     if (/4\s*semaines/i.test(n) || product.requires_iban) {
       return 'Formule flexible : 1ʳᵉ échéance par carte, puis prélèvement sans engagement toutes les 4 semaines. Accès illimité aux salles et disciplines.';
