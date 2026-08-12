@@ -29,12 +29,15 @@
     },
   ];
 
-  const SKIP_PATH =
-    /inscription|checkout|panier|success|contrat|mon-inscription|gerer-abonnement|attestation|admin|confidentialite|cgv|reglement|offre/i;
-
   function path() {
     if (window.BCLayout?.currentPath) return window.BCLayout.currentPath();
     return location.pathname.replace(/\/$/, '') || '/';
+  }
+
+  /** Affiché uniquement sur l’index / accueil */
+  function isHome() {
+    const p = path();
+    return p === '/' || p.endsWith('index.html');
   }
 
   function link(p) {
@@ -153,7 +156,7 @@
   }
 
   function show() {
-    if (alreadySeen() || SKIP_PATH.test(path())) return;
+    if (alreadySeen() || !isHome()) return;
 
     const root = build();
     document.body.appendChild(root);
@@ -197,7 +200,7 @@
   }
 
   function boot() {
-    if (alreadySeen() || SKIP_PATH.test(path())) return;
+    if (alreadySeen() || !isHome()) return;
     setTimeout(show, DELAY_MS);
   }
 
