@@ -133,36 +133,12 @@
     <a href="/inscription?product=offre-saison" class="btn" data-offer-cta data-track="offer259_sticky">Je m'inscris</a>
   </div>
 
-  <div id="offerLeadModal" class="offer-lead-modal" hidden>
-    <div class="offer-lead-modal__panel" role="dialog" aria-labelledby="offerLeadTitle259">
-      <h2 id="offerLeadTitle259">Ta place à 259&nbsp;€</h2>
-      <p>Coordonnées pour ouvrir le dossier — ensuite l'inscription.</p>
-      <form id="offerLeadForm">
-        <label for="prenom259">Prénom *</label>
-        <input id="prenom259" name="prenom" required autocomplete="given-name" />
-        <label for="nom259">Nom</label>
-        <input id="nom259" name="nom" autocomplete="family-name" />
-        <label for="tel259">Téléphone *</label>
-        <input id="tel259" name="telephone" type="tel" required autocomplete="tel" inputmode="tel" />
-        <label for="email259">Email</label>
-        <input id="email259" name="email" type="email" autocomplete="email" />
-        <p id="offerLeadError" class="offer-lead-error" role="alert"></p>
-        <div class="offer-lead-modal__actions">
-          <button type="submit" class="btn btn--lg">Je profite</button>
-          <button type="button" class="offer-lead-modal__skip" id="offerLeadSkip">Passer</button>
-        </div>
-      </form>
-    </div>
-  </div>
-  <div id="offerFunnelConfig" hidden data-product="offre-saison" data-tunnel="offre_259" data-inscription="/inscription?product=offre-saison"></div>
-
   <div id="site-footer"></div>
   <script src="/js/layout.js"></script>
   <script src="/js/motion.js"></script>
   <script src="/js/tracking.js"></script>
   <script src="/js/offer-sheet-motion.js"></script>
   <script src="/js/faq.js"></script>
-  <script src="/js/offer-funnel.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       if (window.BCTrack) window.BCTrack.track('funnel_view', { tunnel: 'offre_259' });
