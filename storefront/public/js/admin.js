@@ -152,6 +152,10 @@
     const filter = document.getElementById('ordersFilter')?.value || 'all';
     return orders.filter((o) => {
       if (isCoachingOrder(o)) return false;
+      const hasVisibleContent = [o.name, o.email, o.product].some(
+        (v) => String(v || '').trim() && String(v || '').trim() !== '—'
+      );
+      if (!hasVisibleContent) return false;
       if (filter === 'signed' && !o.signed) return false;
       if (filter === 'progress' && o.signed) return false;
       if (filter === 'unpaid' && o.payment_status !== 'past_due' && !o.access_blocked) return false;

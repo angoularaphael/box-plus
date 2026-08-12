@@ -236,7 +236,15 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
     }
   }
 
-  // Garde-fou : price_cents 2999 doit toujours afficher 29,99 € (Deciplus renvoie parfois 29,00)
+  const isOffer29 =
+    enriched.id === 'offre-duo' ||
+    enriched.legacy_id === 'offre-duo' ||
+    /offre\s*a\s*29/i.test(String(enriched.name || enriched.display_name || ''));
+  // Garde-fou : l'offre 29 doit toujours rester à 29,99 € / 2999 cents,
+  // même si la sync Deciplus remonte 29,00 côté paiement initial.
+  if (isOffer29 && Number(staticP.price_cents) > 0) {
+    enriched.price_cents = Number(staticP.price_cents);
+  }
   if (Number(enriched.price_cents) === 2999) {
     enriched.price_label = '29,99 €';
     if (!enriched.stripe_price_label || enriched.stripe_price_label === '29,00 €') {
