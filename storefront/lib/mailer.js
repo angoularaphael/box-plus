@@ -2,9 +2,10 @@ const fs = require('fs');
 const { logInfo, logWarn } = require('../../lib/logger');
 const { getMailFrom, CGV_URL, REGLEMENT_URL, SITE_URL } = require('./branding');
 const {
+  generateInscriptionInvoicePdf,
   generateMaterielInvoicePdf,
 } = require('./invoice-pdf');
-const { generateInscriptionDossierPdf } = require('./legal-pdf');
+const { generateInscriptionLegalPdfs } = require('./legal-pdf');
 const { sendEmailViaBrevo, isConfigured, defaultReplyTo } = require('./brevo-send');
 
 function buildConfirmationHtml(order, attachmentNames = []) {
@@ -36,7 +37,7 @@ function buildConfirmationHtml(order, attachmentNames = []) {
     <li>Pas besoin d'expérience — nos coachs vous accueillent</li>
     <li>Votre abonnement donne accès à nos 5 salles</li>
   </ul>
-  <p>Vous trouverez en pièce jointe votre <strong>dossier d'inscription</strong> (CGV, règlement intérieur, déclaration médicale signés + facture) au nom de ${escapeHtml(short.first_name || '')} ${escapeHtml(short.last_name || '')}.</p>
+  <p>Vous trouverez en pièces jointes vos documents d'inscription au nom de ${escapeHtml(short.first_name || '')} ${escapeHtml(short.last_name || '')} : <strong>CGV</strong>, <strong>règlement intérieur</strong>, <strong>déclaration médicale</strong> signés, ainsi que votre <strong>facture</strong>.</p>
   ${pjList}
   <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="${SITE_URL}" style="color:#2EC4C6">${SITE_URL.replace('https://', '')}</a></p>
 </body>
@@ -73,12 +74,25 @@ async function buildInscriptionAttachments(order, extra = []) {
   };
 
   try {
-    const dossier = await generateInscriptionDossierPdf(order);
-    if (dossier?.filepath) {
-      pushFile(dossier.filename, dossier.filepath);
+    const legal = await generateInscriptionLegalPdfs(order);
+    for (const pdf of legal?.pdfs || []) {
+      if (pdf?.filepath) pushFile(pdf.filename, pdf.filepath);
     }
   } catch (err) {
-    logWarn('Dossier inscription PDF non généré', {
+    logWarn('PDF légaux inscription non générés', {
+      order_id: order.order_id,
+      error: err.message,
+      stack: err.stack,
+    });
+  }
+
+  try {
+    const invoice = await generateInscriptionInvoicePdf(order);
+    if (invoice?.filepath) {
+      pushFile(invoice.filename, invoice.filepath);
+    }
+  } catch (err) {
+    logWarn('Facture inscription PDF non générée', {
       order_id: order.order_id,
       error: err.message,
       stack: err.stack,

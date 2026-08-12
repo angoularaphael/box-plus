@@ -138,8 +138,9 @@ function stampSignature(doc, order, { title = 'Signature électronique' } = {}) 
     doc.moveDown(0.3);
     const y = doc.y;
     try {
-      if (img.type === 'path') doc.image(img.value, left, y, { width: 180, height: 70, fit: true });
-      else doc.image(img.value, left, y, { width: 180, height: 70, fit: true });
+      const fit = [180, 70];
+      if (img.type === 'path') doc.image(img.value, left, y, { fit, align: 'left', valign: 'center' });
+      else doc.image(img.value, left, y, { fit, align: 'left', valign: 'center' });
       doc.y = y + 78;
     } catch {
       doc.fontSize(8).fillColor(MUTED).text('(Signature manuscrite)', { width });
