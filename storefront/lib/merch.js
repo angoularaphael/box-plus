@@ -411,7 +411,8 @@ function normalizeFeaturedIds(ids) {
     canonical.set(p.id, p.id);
     if (p.legacy_id) canonical.set(p.legacy_id, p.id);
   }
-  return [...new Set((ids || []).map((id) => canonical.get(id) || id).filter(Boolean))];
+  // Drop orphans that don't resolve to a real product
+  return [...new Set((ids || []).map((id) => canonical.get(id)).filter(Boolean))];
 }
 
 function setFeaturedHome(ids) {

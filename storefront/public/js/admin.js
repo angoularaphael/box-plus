@@ -108,11 +108,16 @@
       canonical.set(p.id, p.id);
       if (p.legacy_id) canonical.set(p.legacy_id, p.id);
     }
-    return [...new Set(ids.map((id) => canonical.get(id) || id).filter(Boolean))].slice(0, 3);
+    // Drop unknown / orphan ids — they inflate "3/3" with no checkbox
+    return [...new Set((ids || []).map((id) => canonical.get(id)).filter(Boolean))].slice(0, 3);
   }
 
   function isFeaturedProduct(p) {
-    return featuredHome.includes(p.id);
+    return featuredHome.includes(p.id) || (p.legacy_id && featuredHome.includes(p.legacy_id));
+  }
+
+  function visibleFeaturedCount() {
+    return products.filter((p) => isFeaturedProduct(p)).length;
   }
 
   async function loadOrders() {
@@ -386,7 +391,8 @@
   function renderFeatured() {
     const el = document.getElementById('featuredList');
     const countEl = document.getElementById('featuredCount');
-    if (countEl) countEl.textContent = `${featuredHome.length} / 3`;
+    featuredHome = resolveFeaturedIds(featuredHome);
+    if (countEl) countEl.textContent = `${visibleFeaturedCount()} / 3`;
 
     if (!products.length) {
       el.innerHTML = '<p class="admin-empty">Aucune offre dans le catalogue.</p>';
@@ -417,12 +423,13 @@
   function toggleFeatured(id, checked, inputEl) {
     const pid = resolveFeaturedIds([id])[0] || id;
     if (checked) {
-      if (featuredHome.length >= 3) {
+      if (visibleFeaturedCount() >= 3 && !isFeaturedProduct({ id: pid })) {
         alert('Maximum 3 offres à la une');
         if (inputEl) inputEl.checked = false;
         return;
       }
       if (!featuredHome.includes(pid)) featuredHome.push(pid);
+      featuredHome = resolveFeaturedIds(featuredHome);
     } else {
       featuredHome = featuredHome.filter((x) => x !== pid);
     }
