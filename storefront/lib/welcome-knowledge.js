@@ -31,7 +31,7 @@ const MANAGERS = {
   portet: {
     name: 'Valentin',
     label: 'Portet',
-    address: '61 route d’Espagne, 31120 Portet-sur-Garonne',
+    address: '61 route d\'Espagne, 31120 Portet-sur-Garonne',
     url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/',
     specialty: 'Boxe & Cross Training — grande salle',
   },
@@ -61,7 +61,7 @@ Ce sont les responsables à voir **en présentiel** :
 - **Minimes** → **Medhi** — 12 rue de Fenouillet, 31200 — ${MANAGERS.minimes.url}
 - **Ramonville** → **Pascal** — 33 rue des Ormes, 31520 — ${MANAGERS.ramonville.url}
 - **St-Cyprien** → **Daddy** — 11 Rue Sainte-Lucie, 31300 — ${MANAGERS['st-cyprien'].url}
-- **Portet** → **Valentin** — 61 route d’Espagne, 31120 — ${MANAGERS.portet.url}
+- **Portet** → **Valentin** — 61 route d'Espagne, 31120 — ${MANAGERS.portet.url}
 - **États-Unis** → **Sébastien** — 388 avenue des États-Unis, 31200 — ${MANAGERS['etats-unis'].url}
 Si on demande « manager / responsable / qui gère / coach de salle » + une salle → répondre avec CE prénom uniquement. Pas Sophie, Thomas, ni autre inventé.
 

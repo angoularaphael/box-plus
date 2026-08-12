@@ -8,3 +8,8 @@ data/session/
 data/queue/
 playwright-report/
 test-results/
+
+# Large media masters / backups — never deploy or commit
+storefront/public/media/_src/
+storefront/public/media/_backup_360p/
+storefront/public/media/_recompress_tmp/

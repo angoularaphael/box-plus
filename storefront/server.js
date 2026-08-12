@@ -1368,8 +1368,12 @@ function createApp() {
     try {
       const result = await insertTunnelLead(req.body || {});
       if (!result.ok) {
-        const status = result.error === 'supabase_not_configured' ? 503 : 400;
-        return res.status(status).json({ ok: false, error: result.error || 'lead_failed' });
+        const msg = result.error || 'lead_failed';
+        const status =
+          result.error === 'supabase_not_configured' || /tunnel_leads absente/i.test(msg)
+            ? 503
+            : 400;
+        return res.status(status).json({ ok: false, error: msg });
       }
       res.json({ ok: true, lead_id: result.lead_id });
     } catch (err) {
