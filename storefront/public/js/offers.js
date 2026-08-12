@@ -92,9 +92,13 @@
   }
 
   function isFeaturedOffer(product, opts = {}) {
-    if (product.featured_home) return true;
+    // Une seule carte « Populaire » : la 1ʳᵉ de la une (pas toutes les featured)
     const ids = opts.featuredIds || [];
-    return ids.includes(product.id) || (product.legacy_id && ids.includes(product.legacy_id));
+    const primary = opts.popularId || ids[0] || null;
+    if (primary) {
+      return product.id === primary || product.legacy_id === primary;
+    }
+    return Boolean(product.featured) && product.featured_home !== true;
   }
 
   function formatFrDate(d) {

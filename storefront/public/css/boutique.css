@@ -803,7 +803,8 @@ input:focus, select:focus, textarea:focus {
   pointer-events: none;
 }
 .page-hero__video-wrap iframe,
-.page-hero__video-wrap img {
+.page-hero__video-wrap img,
+.page-hero__video-wrap video {
   position: absolute;
   top: 50%;
   left: 50%;

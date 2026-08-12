@@ -1366,7 +1366,8 @@ body.offer-page--sheet .topbar:not(.scrolled) .nav-toggle span { background: #ff
   pointer-events: none;
 }
 .offer-sheet__bg--video iframe,
-.offer-sheet__bg--video img {
+.offer-sheet__bg--video img,
+.offer-sheet__bg--video video {
   position: absolute;
   top: 50%;
   left: 50%;

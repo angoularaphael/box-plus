@@ -15,6 +15,7 @@
       if (offersSection) offersSection.hidden = false;
       BCOffers.renderOfferGrid(products, featuredEl, {
         featuredIds: data.featured_home || [],
+        popularId: (data.featured_home || [])[0] || products[0]?.id,
         animate: true,
       });
     }
