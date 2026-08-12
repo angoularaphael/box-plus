@@ -17,6 +17,7 @@ const {
 } = require('./pdf-layout');
 const { paymentModeLabel, invoiceTypeLabel, isComptantStyleProduct } = require('../../lib/billing-plan');
 const { BADGE_FEE_AMOUNT } = require('./storefront-copy');
+const { formatPickupLine } = require('./gym-pickup');
 
 const DOCS_DIR =
   process.env.BOXPLUS_DOCS_DIR ||
@@ -249,6 +250,10 @@ function renderMaterielInvoice(doc, order) {
     { label: 'Conditions de règlement', value: 'À réception' },
     { label: 'Mode de règlement', value: paymentLabel(order) },
     { label: 'Statut', value: 'Paiement acquitté' },
+    {
+      label: 'Salle de retrait',
+      value: formatPickupLine(order.pickup_gym || order.customer?.pickup_gym),
+    },
   ]);
 
   drawPageFooter(doc);

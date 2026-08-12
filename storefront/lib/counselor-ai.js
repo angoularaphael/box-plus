@@ -336,9 +336,19 @@ const FAQ_VARIANTS = {
     'Côté formalités : CGV + règlement + déclaration médicale. En salle, tenue de sport ; gants perso OK sur sacs/rings après désinfection.',
   ],
   trial: [
-    'Oui, les **débutants** sont les bienvenus. Tu peux réserver une **séance d’essai** en ligne : un coach t’accueille, pas besoin d’expérience ni de gros matériel.',
-    'Pas d’expérience requise — réserve un **essai** en ligne, un coach te prend en charge. Tu arrives en tenue, c’est tout.',
-    'Essai possible avant de t’engager : inscription courte en ligne, ambiance loisir, débutants OK.',
+    'Les **débutants** sont les bienvenus. Réserve une **séance d’essai à 10 €** en ligne : un coach t’accueille, pas besoin d’expérience ni de gros matériel.',
+    'Pas d’expérience requise — réserve un **essai à 10 €** en ligne, un coach te prend en charge. Tu arrives en tenue, c’est tout.',
+    'Essai possible avant de t’engager : **10 €** la séance, inscription courte en ligne, ambiance loisir, débutants OK.',
+  ],
+  badgeRefund: [
+    'Non — le **badge (~34,99 €) n’est pas remboursé** si tu résilies : c’est **ton** support d’accès (pas une caution du club).',
+    'Le badge reste **ta propriété** ; le montant badge n’est pas restitué en cas d’arrêt d’abonnement.',
+    'Pas de remboursement badge à la résiliation : tu conserves le badge, le prélèvement badge correspond à la fourniture/activation.',
+  ],
+  longTerm: [
+    'Sur **12 mois**, le plus économique reste **259 €** (1× ou 4× sans frais) — bien moins cher que 29,99 € / 4 sem. sur la durée. Je te conseille cette formule si tu es sûr(e) de t’entraîner.',
+    'Pour le **long terme**, prends **259 € / 12 mois** : meilleur prix annuel. Le **29,99 € / 4 sem.** convient si tu veux rester **sans engagement**.',
+    'Mon conseil économique : **259 €** pour l’année. Le 29,99 € / 4 sem., c’est la flexibilité — plus coûteux sur 12 mois.',
   ],
 };
 
@@ -379,7 +389,13 @@ function welcomeFallbackReply(lastUser, lastBot) {
   if (/cgv|r[eè]glement|m[eé]dical|attestation|gants|mat[eé]riel/i.test(lastUser)) {
     return { reply: pick('legal'), source: 'faq' };
   }
-  if (/essai|gratuit|d[eé]butant/i.test(lastUser)) {
+  if (/badge.*(rembours|rendre|restitu)|rembours.*badge|rendre.*badge/i.test(lastUser)) {
+    return { reply: pick('badgeRefund'), source: 'faq' };
+  }
+  if (/moins cher|économ|long terme|longue dur[eé]e|sur la dur[eé]e|meilleur prix/i.test(lastUser)) {
+    return { reply: pick('longTerm'), source: 'faq' };
+  }
+  if (/essai|10\s*€|d[eé]butant/i.test(lastUser)) {
     return { reply: pick('trial'), source: 'faq' };
   }
   return { reply: pickVariant(WELCOME_FALLBACKS), source: 'template' };
@@ -402,13 +418,20 @@ async function guideWelcome({ freeText, messages = [] } = {}) {
     return { reply: managerReply, source: 'managers' };
   }
 
+  if (/badge.*(rembours|rendre|restitu)|rembours.*badge/i.test(lastUser)) {
+    return { reply: pickVariant(FAQ_VARIANTS.badgeRefund), source: 'faq-badge' };
+  }
+  if (/moins cher|économ|long terme|longue dur[eé]e|sur la dur[eé]e|meilleur prix/i.test(lastUser)) {
+    return { reply: pickVariant(FAQ_VARIANTS.longTerm), source: 'faq-longterm' };
+  }
+
   const fallback = pickVariant(WELCOME_FALLBACKS);
   if (!isAiEnabled()) {
     return welcomeFallbackReply(lastUser, lastBot);
   }
 
   try {
-    const transcript = buildTranscript(messages, freeText).replace(/David:/g, 'Chloée:');
+    const transcript = buildTranscript(messages, freeText).replace(/David:/g, 'Chloe:');
     const { content } = await chatCompletion(
       [
         { role: 'system', content: WELCOME_KNOWLEDGE },

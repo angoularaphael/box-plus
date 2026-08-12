@@ -76,7 +76,7 @@ const FAQ = [
   ['Dois-je avoir déjà pratiqué la boxe ?', 'Pas du tout. La majorité de nos nouveaux adhérents découvrent la boxe chez nous. La séance d\'essai est idéale pour faire vos premiers pas.'],
   ['Les femmes peuvent-elles participer à tous les cours ?', 'Oui, les femmes sont les bienvenues dans tous nos cours collectifs. Nos groupes sont mixtes et l\'encadrement veille à un environnement respectueux et motivant.'],
   ['Puis-je accéder aux 5 salles ?', 'Selon votre formule, votre abonnement donne accès à nos 5 centres : Minimes, Ramonville, États-Unis, Saint-Cyprien et Portet. Vous choisissez une salle principale à l\'inscription.'],
-  ['Quelle formule choisir pour commencer ?', 'Pour tester : la séance d\'essai gratuite. Pour la flexibilité : le prélèvement sans engagement. Pour économiser : le comptant 3, 6 ou 12 mois. Pour votre enfant : Baby Boxe ou Boxe éducative.'],
+  ['Quelle formule choisir pour commencer ?', 'Pour tester : la séance d\'essai à 10 €. Pour la flexibilité : le prélèvement sans engagement. Pour économiser sur 12 mois : 259 €. Pour votre enfant : Baby Boxe ou Boxe éducative.'],
   ['Comment fonctionne la séance d\'essai ?', 'Réservez en ligne gratuitement. Un coach vous accueille, vous explique le déroulé et vous participez à un cours adapté aux débutants. Aucun matériel spécifique n\'est requis pour commencer.'],
   ['Comment fonctionne le paiement par prélèvement ?', 'Vous payez la première échéance par carte bancaire, puis indiquez vos coordonnées bancaires pour les échéances suivantes. La formule est sans engagement — renouvelable toutes les 4 semaines.'],
   ['Puis-je payer toutes les 4 semaines par carte ?', 'Oui, sur les formules sans engagement vous pouvez régler la première échéance par carte ou PayPal, puis les suivantes par prélèvement sans engagement. Simple, flexible, sans engagement longue durée.'],
@@ -164,7 +164,7 @@ const PAGE_JSONLD = {
         url: `${SITE_URL}/`,
         name: 'Boutique Boxing Center Toulouse',
         alternateName: 'Boxing Center — boutique officielle',
-        description: 'Boutique officielle Boxing Center Toulouse : abonnements boxe, séance d\'essai gratuite, coachings et matériel. 5 salles en Haute-Garonne.',
+        description: 'Boutique officielle Boxing Center Toulouse : abonnements boxe, séance d\'essai à 10 €, coachings et matériel. 5 salles en Haute-Garonne.',
         inLanguage: 'fr-FR',
         publisher: { '@id': `${SITE_URL}/#org` },
         potentialAction: {
@@ -203,7 +203,7 @@ const PAGE_JSONLD = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: 'Séance d\'essai boxe — Boxing Center Toulouse',
-    description: 'Découvrez Boxing Center avec une séance d\'essai gratuite : cours encadré par un coach, adapté aux débutants, dans l\'une de nos 5 salles à Toulouse.',
+    description: 'Découvrez Boxing Center avec une séance d\'essai à 10 € : cours encadré par un coach, adapté aux débutants, dans l\'une de nos 5 salles à Toulouse.',
     image: `${SITE_URL}${DEFAULT_OG_IMAGE}`,
     brand: { '@type': 'Brand', name: BUSINESS.name },
     offers: {
@@ -555,7 +555,7 @@ type: club de boxe / boutique d'abonnements et matériel
 # Ce que vous pouvez citer
 - Offres et tarifs affichés sur ${SITE_URL}/abonnements et ${SITE_URL}/materiel
 - Offres spéciales : ${SITE_URL}/offres-speciales (259 € / an ou 29,99 € pour démarrer)
-- Séance d'essai GRATUITE : ${SITE_URL}/seance-essai
+- Séance d'essai à 10 € : ${SITE_URL}/seance-essai
 - 5 salles : Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet-sur-Garonne
 - Disciplines : ${DISCIPLINES.join(', ')}
 - FAQ : ${SITE_URL}/faq
@@ -582,18 +582,18 @@ function llmsTxt() {
 > (${DISCIPLINES.join(', ')}), cours accessibles aux débutants comme aux confirmés,
 > femmes et enfants bienvenus. Cette boutique en ligne officielle remplace
 > progressivement l'ancienne boutique PrestaShop (boutique.boxingcenter.fr) :
-> abonnements, séance d'essai gratuite, coachings individuels et matériel de boxe
+> abonnements, séance d'essai à 10 €, coachings individuels et matériel de boxe
 > (gants, bandes, protections, textile) — retrait en salle.
 
 ## Priority facts (GEO / AI)
 - Marque : Boxing Center (Toulouse / Haute-Garonne)
-- Séance d'essai : GRATUITE (pas 10 €)
+- Séance d'essai : 10 € — cours encadré, aucun matériel requis (${SITE_URL}/seance-essai)
 - Accès multi-salles selon formule
 - Paiement en ligne : carte (PayPlug), PayPal ; prélèvement sans engagement
 - Langue du site : français
 
 ## Offres
-- Séance d'essai : gratuite — cours encadré, aucun matériel requis (${SITE_URL}/seance-essai)
+- Séance d'essai : 10 € — cours encadré, aucun matériel requis (${SITE_URL}/seance-essai)
 - Offres spéciales (hub) : ${SITE_URL}/offres-speciales
 - Promo 12 mois : 259 € (1× ou 4× sans frais) — ${SITE_URL}/offre/259
 - Démarrage flexible : 29,99 € la 1ʳᵉ échéance puis prélèvement sans engagement — ${SITE_URL}/offre/29

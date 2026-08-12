@@ -49,7 +49,6 @@ function buildOrderPayload(input, product) {
   const isFree =
     product.requires_payment === false ||
     Number(product.price_cents || 0) <= 0 ||
-    product.id === 'seance-essai' ||
     product.sale_type === 'none';
   const amount = isFree ? 0 : Number(product.price_cents || 0) / 100;
   const paymentMethod = isFree

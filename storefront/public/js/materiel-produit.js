@@ -42,6 +42,7 @@
           <div class="materiel-price" id="productPrice">${p.price_label}</div>
           <p id="productStock" class="stock-ok"></p>
           ${hasVariants ? `<label>Variante<select id="variantSelect">${combos.map((c) => `<option value="${c.id}" data-price="${c.price_cents}" data-label="${c.price_label}" data-stock="${c.stock}">${c.label}</option>`).join('')}</select></label>` : ''}
+          <p class="product-pickup"><strong>Salle de retrait :</strong> choisissez votre salle au panier — retrait en club uniquement.</p>
           <label>Quantité<input type="number" id="qtyInput" min="1" value="1" max="99" /></label>
           <button type="button" class="btn block" id="addBtn">Ajouter au panier</button>
           <a href="${L('/panier')}" class="btn secondary block" style="margin-top:8px">Voir le panier</a>

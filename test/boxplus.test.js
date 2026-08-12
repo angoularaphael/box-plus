@@ -121,6 +121,7 @@ test('résolution automatique produit Deciplus', () => {
   );
   assert.equal(trial.sale_type, 'none');
   assert.equal(isTrialOrder(normalizeOrder({ product_name: 'essai gratuit', payment: { amount: 0 } })), true);
+  assert.equal(isTrialOrder(normalizeOrder({ product_name: "SEANCE D'ESSAI", payment: { amount: 10 } })), false);
 
   const gym = getGymConfig('st-cyprien');
   assert.equal(gym.deciplus_label, 'St-Cyprien');

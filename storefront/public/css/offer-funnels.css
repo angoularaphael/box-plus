@@ -640,6 +640,82 @@
   text-decoration: underline;
 }
 
+/* Friend referral unlock (offre 29) */
+.offer-lead-celebrate[hidden] { display: none !important; }
+.offer-lead-celebrate {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+.offer-lead-celebrate__prices {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 14px;
+  margin: 18px 0 14px;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+}
+.offer-lead-celebrate__was {
+  position: relative;
+  font-size: clamp(1.6rem, 6vw, 2.1rem);
+  color: #9aa3b2;
+  line-height: 1;
+}
+.offer-lead-celebrate__was::after {
+  content: '';
+  position: absolute;
+  left: -4%;
+  top: 52%;
+  width: 0;
+  height: 3px;
+  background: #e8001c;
+  transform: rotate(-8deg);
+  transform-origin: left center;
+  transition: width 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.offer-lead-celebrate.is-revealed .offer-lead-celebrate__was::after {
+  width: 108%;
+}
+.offer-lead-celebrate__now {
+  font-size: clamp(2.2rem, 8vw, 3rem);
+  color: var(--bc-navy);
+  line-height: 1;
+  opacity: 0;
+  transform: scale(0.85) translateY(8px);
+  transition: opacity 0.45s ease 0.35s, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.35s;
+}
+.offer-lead-celebrate.is-revealed .offer-lead-celebrate__now {
+  opacity: 1;
+  transform: none;
+  color: #c9a227;
+}
+.offer-lead-celebrate__msg {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--bc-navy);
+  margin: 0;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.4s ease 0.7s, transform 0.4s ease 0.7s;
+}
+.offer-lead-celebrate.is-revealed .offer-lead-celebrate__msg {
+  opacity: 1;
+  transform: none;
+}
+.offer-urgency-banner {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(232, 0, 28, 0.28);
+  background: rgba(232, 0, 28, 0.08);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 36rem;
+}
+.offer-urgency-banner strong {
+  color: #ffb4b4;
+}
+
 body.offer-modal-open {
   overflow: hidden;
 }
@@ -1289,7 +1365,8 @@ body.offer-page--sheet .topbar:not(.scrolled) .nav-toggle span { background: #ff
   overflow: hidden;
   pointer-events: none;
 }
-.offer-sheet__bg--video iframe {
+.offer-sheet__bg--video iframe,
+.offer-sheet__bg--video img {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -1299,6 +1376,7 @@ body.offer-page--sheet .topbar:not(.scrolled) .nav-toggle span { background: #ff
   min-width: 177.78vh; /* 16:9 */
   transform: translate(-50%, -50%);
   border: 0;
+  object-fit: cover;
 }
 .offer-sheet__veil {
   position: absolute;

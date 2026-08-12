@@ -120,16 +120,17 @@ function buildManualProduct(id, merch, entry) {
     id,
     name: entry.display_name || id,
     category: entry.tab === 'coachings' ? 'Coachings' : 'Essai',
-    // Essai = gratuit (priorité products.json / merch explicite)
-    price_cents: entry.price_cents ?? (isEssai ? 0 : 0),
-    price_label: entry.marketing_price_label || (isEssai ? 'Gratuit' : '—'),
-    stripe_price_label: entry.marketing_price_label || (isEssai ? 'Gratuit' : '—'),
-    pay_today_label: entry.marketing_price_label || (isEssai ? 'Gratuit' : '—'),
+    price_cents: entry.price_cents ?? (isEssai ? 1000 : 0),
+    price_label: entry.marketing_price_label || (isEssai ? '10,00 €' : '—'),
+    stripe_price_label: entry.marketing_price_label || (isEssai ? '10,00 €' : '—'),
+    pay_today_label: entry.marketing_price_label || (isEssai ? '10,00 €' : '—'),
     requires_iban: entry.requires_iban ?? false,
-    requires_payment: entry.requires_payment ?? (isEssai ? false : true),
-    sale_type: entry.sale_type || (isEssai ? 'none' : 'carte'),
+    requires_payment: entry.requires_payment ?? true,
+    sale_type: entry.sale_type || 'carte',
     manual: true,
-    deciplus_product_search: isEssai ? 'essai' : null,
+    deciplus_product_name: entry.deciplus_product_name || (isEssai ? "SEANCE D'ESSAI" : null),
+    deciplus_product_search: entry.deciplus_product_search || (isEssai ? 'essai' : null),
+    paiement_comptant: entry.paiement_comptant ?? (isEssai ? true : undefined),
     ...entry,
   };
 }
@@ -205,7 +206,7 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
       .replace(/\s*—\s*1ère échéance CB/i, ' — première échéance')
       .replace(/\bCB\b/g, 'carte');
   }
-  // Merch / essai gratuit : prix & paiement prioritaires
+  // Merch : prix & paiement prioritaires
   if (merchEntry.price_cents != null) {
     enriched.price_cents = Number(merchEntry.price_cents);
   }
@@ -215,25 +216,23 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
   if (merchEntry.requires_iban !== undefined) {
     enriched.requires_iban = Boolean(merchEntry.requires_iban);
   }
+  if (merchEntry.sale_type) {
+    enriched.sale_type = merchEntry.sale_type;
+  }
   if (merchEntry.marketing_price_label) {
     enriched.price_label = merchEntry.marketing_price_label;
     enriched.stripe_price_label = merchEntry.marketing_price_label;
     enriched.pay_today_label = merchEntry.marketing_price_label;
   }
-  if (
-    enriched.id === 'seance-essai' ||
-    Number(enriched.price_cents || 0) <= 0 ||
-    enriched.requires_payment === false
-  ) {
-    if (enriched.id === 'seance-essai' || Number(enriched.price_cents || 0) <= 0) {
-      enriched.price_cents = 0;
-      enriched.requires_payment = false;
-      enriched.requires_iban = false;
-      const freeLabel = merchEntry.marketing_price_label || staticP.price_label || 'Gratuit';
-      enriched.price_label = freeLabel;
-      enriched.stripe_price_label = freeLabel;
-      enriched.pay_today_label = freeLabel;
-    }
+  if (Number(enriched.price_cents || 0) <= 0) {
+    enriched.price_cents = 0;
+    enriched.requires_payment = false;
+    enriched.requires_iban = false;
+    enriched.sale_type = enriched.sale_type || 'none';
+    const freeLabel = merchEntry.marketing_price_label || staticP.price_label || 'Gratuit';
+    enriched.price_label = freeLabel;
+    enriched.stripe_price_label = freeLabel;
+    enriched.pay_today_label = freeLabel;
   }
 
   const isOffer29 =

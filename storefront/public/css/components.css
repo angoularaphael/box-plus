@@ -2317,7 +2317,8 @@ body:has(#adminPanel:not([hidden])) {
   overflow: hidden;
   pointer-events: none;
 }
-.scrub-band__video-wrap iframe {
+.scrub-band__video-wrap iframe,
+.scrub-band__video-wrap img {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -2327,6 +2328,8 @@ body:has(#adminPanel:not([hidden])) {
   min-width: 177.78vh; /* 16:9 */
   transform: translate(-50%, -50%);
   border: 0;
+  object-fit: cover;
+}
 }
 .scrub-band__veil {
   position: absolute;

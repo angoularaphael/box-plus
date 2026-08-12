@@ -7,6 +7,7 @@ const {
 } = require('./invoice-pdf');
 const { generateInscriptionLegalPdfs } = require('./legal-pdf');
 const { sendEmailViaBrevo, isConfigured, defaultReplyTo } = require('./brevo-send');
+const { formatPickupLine } = require('./gym-pickup');
 
 function buildConfirmationHtml(order, attachmentNames = []) {
   const short = order.customer_short || {};
@@ -238,7 +239,7 @@ function buildMaterielConfirmationHtml(order) {
       <td style="padding:8px;text-align:right;font-weight:bold">${formatEuros(order.total_cents)}</td>
     </tr>
   </table>
-  <p><strong>Lieu de retrait :</strong> ${order.pickup_gym || customer.pickup_gym || '—'}</p>
+  <p><strong>Salle de retrait :</strong> ${formatPickupLine(order.pickup_gym || customer.pickup_gym)}</p>
   <p><strong>Référence commande :</strong> ${order.order_id}</p>
   <p>Présentez cet email à l'accueil de la salle pour récupérer votre matériel.</p>
   <p>Votre facture est jointe à cet email.</p>

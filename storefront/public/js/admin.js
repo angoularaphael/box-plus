@@ -112,7 +112,7 @@
   }
 
   function isFeaturedProduct(p) {
-    return featuredHome.includes(p.id) || (p.legacy_id && featuredHome.includes(p.legacy_id));
+    return featuredHome.includes(p.id);
   }
 
   async function loadOrders() {

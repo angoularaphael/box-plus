@@ -206,12 +206,14 @@
   {
     "id": "seance-essai",
     "category": "Essai",
-    "name": "Séance d'essai gratuite",
+    "name": "SEANCE D'ESSAI",
     "tagline": "Séance d'essai",
     "description": "Venez découvrir le club : une séance pour tester l’ambiance, les coachs et la discipline qui vous attire.",
-    "price_cents": 0,
-    "price_label": "Gratuit",
+    "price_cents": 1000,
+    "price_label": "10,00 €",
     "requires_iban": false,
-    "requires_payment": false
+    "requires_payment": true,
+    "sale_type": "carte",
+    "deciplus_product_search": "essai"
   }
 ]

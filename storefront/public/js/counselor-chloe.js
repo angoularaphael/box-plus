@@ -1,5 +1,5 @@
 /**
- * Chloée — chat d’accueil boutique (FAQ / légal / offres). Pas de résiliation.
+ * Chloe — chat d’accueil boutique (FAQ / légal / offres). Pas de résiliation.
  */
 window.BCChloe = (function () {
   const AVATAR = '/img/chloe-conseillere-avatar.png';
@@ -58,7 +58,7 @@ window.BCChloe = (function () {
               <img class="chat-avatar-photo" src="${photo}" alt="" />
             </div>
             <div>
-              <strong>Chloée</strong>
+              <strong>Chloe</strong>
               <span class="chat-status"><span class="chat-online-dot"></span> Accueil boutique · en ligne</span>
             </div>
             <button type="button" class="chat-close" id="closeChloe" aria-label="Fermer">×</button>
@@ -66,12 +66,12 @@ window.BCChloe = (function () {
           <div class="chat-messages" id="chloeRoot" role="log" aria-live="polite"></div>
         </div>
       </div>
-      <button type="button" class="chat-fab chat-fab--chloe" id="chloeFab" aria-label="Discuter avec Chloée">
+      <button type="button" class="chat-fab chat-fab--chloe" id="chloeFab" aria-label="Discuter avec Chloe">
         <span class="chat-fab-icon" aria-hidden="true">
           <img class="chat-fab-photo" src="${photo}" alt="" />
           <span class="chat-fab-pulse"></span>
         </span>
-        <span class="chat-fab-label">Chloée</span>
+        <span class="chat-fab-label">Chloe</span>
       </button>`;
     document.body.appendChild(root);
 
@@ -153,9 +153,9 @@ window.BCChloe = (function () {
         setTimeout(() => {
           history.pop();
           const greets = [
-            'Hey ! Moi c’est <strong>Chloée</strong> 👋 Bienvenue chez Boxing Center. Je peux t’aider à choisir une offre, trouver ta salle ou préparer ton essai — tu veux partir sur quoi ?',
-            'Salut, <strong>Chloée</strong> ici 👋 Offres, salles, essai… dis-moi ce que tu cherches, je te guide.',
-            'Bienvenue ! Je suis <strong>Chloée</strong>. Tu vises plutôt une formule, une salle près de chez toi, ou un essai pour commencer ?',
+            'Hey ! Moi c’est <strong>Chloe</strong> 👋 Bienvenue chez Boxing Center. Je peux t’aider à choisir une offre, trouver ta salle ou préparer ton essai — tu veux partir sur quoi ?',
+            'Salut, <strong>Chloe</strong> ici 👋 Offres, salles, essai… dis-moi ce que tu cherches, je te guide.',
+            'Bienvenue ! Je suis <strong>Chloe</strong>. Tu vises plutôt une formule, une salle près de chez toi, ou un essai pour commencer ?',
           ];
           history.push({
             role: 'bot',

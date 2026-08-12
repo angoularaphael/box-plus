@@ -15,6 +15,7 @@ function isReasoningModel(model = MODEL) {
 function getApiKeys() {
   const keys = [
     process.env.GROQ_API_KEY,
+    process.env.GROQ_API_KEY_FALLBACK,
     process.env.GROQ_API_KEY_2,
     ...(process.env.GROQ_API_KEYS || '').split(','),
   ]

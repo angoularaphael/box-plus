@@ -1,6 +1,6 @@
 /**
  * Ancien mini-chat FAQ offres (bouton rouge « ? ») — désactivé.
- * Remplacé par Chloée (counselor-chloe.js).
+ * Remplacé par Chloe (counselor-chloe.js).
  */
 (function () {
   'use strict';

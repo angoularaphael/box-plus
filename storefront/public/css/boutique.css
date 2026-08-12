@@ -802,7 +802,8 @@ input:focus, select:focus, textarea:focus {
   overflow: hidden;
   pointer-events: none;
 }
-.page-hero__video-wrap iframe {
+.page-hero__video-wrap iframe,
+.page-hero__video-wrap img {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -812,6 +813,7 @@ input:focus, select:focus, textarea:focus {
   min-width: 177.78vh; /* 16:9 */
   transform: translate(-50%, -50%);
   border: 0;
+  object-fit: cover;
 }
 .page-hero__video-veil {
   position: absolute;

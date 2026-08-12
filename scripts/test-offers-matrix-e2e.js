@@ -98,12 +98,12 @@ const OFFERS = [
   },
   {
     key: 'essai',
-    product_name: "Séance d'essai gratuite",
+    product_name: "SEANCE D'ESSAI",
     offer: 'seance-essai',
     matched: null,
-    amount: 0,
-    method: 'free',
-    expect: { trial: true },
+    amount: 10,
+    method: 'payplug',
+    expect: { trial: false, carte: true, comptant: true, badge: false, iban: false },
   },
 ];
 
@@ -132,6 +132,14 @@ function assertConfig(offer) {
   if (offer.expect.trial) {
     const cfg = buildProductConfig(order, null);
     if (cfg.sale_type !== 'none') throw new Error(`essai sale_type=${cfg.sale_type}`);
+    return { ok: true, cfg };
+  }
+  if (offer.expect.carte && !offer.matched) {
+    const cfg = buildProductConfig(order, null);
+    if (cfg.sale_type !== 'carte') throw new Error(`carte sale_type=${cfg.sale_type}`);
+    if (Boolean(cfg.paiement_comptant) !== Boolean(offer.expect.comptant)) {
+      throw new Error(`comptant got ${cfg.paiement_comptant} want ${offer.expect.comptant}`);
+    }
     return { ok: true, cfg };
   }
   const cfg = buildProductConfig(order, offer.matched);

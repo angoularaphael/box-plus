@@ -95,6 +95,9 @@ test('chaque offre — checkout, validation BOXPLUS et résolution Deciplus', ()
       if (isTrialOrder(order) || product.price_cents === 0) {
         const cfg = resolveProductConfig(order, botCatalog);
         assert.equal(cfg.sale_type, 'none', `[resolveProductConfig essai] ${label}`);
+      } else if (product.manual || product.sale_type === 'carte') {
+        const cfg = resolveProductConfig(order, botCatalog);
+        assert.equal(cfg.sale_type, 'carte', `[resolveProductConfig carte] ${label}`);
       } else {
         assert.ok(product.deciplus_id, `[deciplus_id] ${label}`);
         const cfg = resolveProductConfig(order, botCatalog);

@@ -15,6 +15,7 @@
 
   var modal = document.getElementById('offerLeadModal');
   var form = document.getElementById('offerLeadForm');
+  var celebrate = document.getElementById('offerLeadCelebrate');
   var errEl = document.getElementById('offerLeadError');
   var skipBtn = document.getElementById('offerLeadSkip');
 
@@ -27,6 +28,15 @@
     modal.hidden = false;
     document.body.classList.add('offer-modal-open');
     modal.scrollTop = 0;
+    if (form) {
+      form.reset();
+      form.hidden = false;
+    }
+    if (celebrate) {
+      celebrate.hidden = true;
+      celebrate.classList.remove('is-revealed');
+    }
+    if (errEl) errEl.textContent = '';
     var first = form && form.querySelector('input[name="prenom"]');
     if (first) first.focus();
   }
@@ -52,6 +62,16 @@
     });
   }
 
+  function runFriendCelebrate() {
+    if (!celebrate) return Promise.resolve();
+    if (form) form.hidden = true;
+    celebrate.hidden = false;
+    celebrate.classList.add('is-revealed');
+    return new Promise(function (resolve) {
+      setTimeout(resolve, 1800);
+    });
+  }
+
   if (form) {
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
@@ -71,7 +91,7 @@
       if (!payload.prenom || !payload.telephone) {
         if (errEl) {
           errEl.textContent = isFriendLead
-            ? 'Prénom et téléphone de ton ami sont requis.'
+            ? 'Prénom et téléphone de ton ami ou amie sont requis.'
             : 'Prénom et téléphone sont requis.';
         }
         return;
@@ -88,11 +108,13 @@
         if (!res.ok) {
           throw new Error(data.error || 'Envoi impossible');
         }
-        // Ami ≠ inscrit : on ne préremplit pas l'inscription avec ses coords
+
         if (isFriendLead) {
+          await runFriendCelebrate();
           window.location.href = inscriptionUrl;
           return;
         }
+
         var q = new URLSearchParams();
         q.set('product', productId);
         if (payload.prenom) q.set('prenom', payload.prenom);

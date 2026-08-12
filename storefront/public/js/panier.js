@@ -12,16 +12,16 @@
   }
 
   const GYMS = [
-    'Toulouse St-Cyprien',
-    'Barrière de Paris - Minimes',
-    'Balma-Gramont',
-    'Ramonville',
-    'Portet-sur-Garonne',
+    { value: 'Toulouse St-Cyprien', label: 'Toulouse St-Cyprien' },
+    { value: 'Barrière de Paris - Minimes', label: 'Barrière de Paris - Minimes' },
+    { value: 'Ramonville', label: 'Ramonville' },
+    { value: 'Portet-sur-Garonne', label: 'Portet-sur-Garonne' },
+    { value: 'États-Unis', label: 'États-Unis' },
   ];
 
   pickupSelect.innerHTML =
     '<option value="">Choisir une salle</option>' +
-    GYMS.map((g) => `<option value="${g}">${g}</option>`).join('');
+    GYMS.map((g) => `<option value="${g.value}">${g.label}</option>`).join('');
 
   function render() {
     const lines = window.BCCart.read();

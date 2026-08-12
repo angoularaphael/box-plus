@@ -25,12 +25,14 @@
 
   <header class="offer-sheet offer-sheet--alt">
     <div class="offer-sheet__bg offer-sheet__bg--video" aria-hidden="true">
-      <iframe
-        src="https://www.youtube-nocookie.com/embed/XXkuDeW0nLc?autoplay=1&mute=1&loop=1&playlist=XXkuDeW0nLc&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&disablekb=1&iv_load_policy=3"
-        title=""
-        tabindex="-1"
-        allow="autoplay; encrypted-media"
-      ></iframe>
+      <img
+        src="/img/bc/offers/offre-29.webp"
+        alt=""
+        width="1600"
+        height="1000"
+        fetchpriority="high"
+        loading="eager"
+      />
     </div>
     <div class="offer-sheet__veil" aria-hidden="true"></div>
     <div class="offer-sheet__inner" data-reveal-group>
@@ -48,6 +50,19 @@
         29,99&nbsp;€ toutes les 4 semaines, sans engagement et sans préavis en cas de résiliation.
         Accès aux 5 salles et à toutes les disciplines. Alternative année : 259&nbsp;€ / 12 mois.
       </p>
+      <div class="offer-urgency-banner" data-reveal>
+        <strong>Dépêche-toi</strong> — tu as encore la possibilité de t’inscrire : quelques places disponibles.
+        <div class="slot-counter-assembly slot-counter-assembly--red" data-scarcity-reel="offre-duo" style="margin-top:10px;justify-content:flex-start">
+          <span class="arrow-indicator left">›</span>
+          <div class="reel-container">
+            <div class="reel-digit" data-digit-index="0"><span>0</span></div>
+            <div class="reel-digit" data-digit-index="1"><span>7</span></div>
+            <div class="reel-digit" data-digit-index="2"><span>0</span></div>
+          </div>
+          <span class="arrow-indicator right">‹</span>
+        </div>
+        <p class="scarcity-subtext" style="margin:8px 0 0">Plus que <strong class="red-text remaining-count-val" id="duo-sub-count">70</strong> places à <strong class="red-text">29,99 €</strong></p>
+      </div>
       <ul class="offer-sheet__stats" data-reveal>
         <li><strong>29,99&nbsp;€</strong><span>/ 4 semaines</span></li>
         <li><strong>CB</strong><span>1ʳᵉ échéance</span></li>
@@ -55,7 +70,7 @@
         <li><strong>5</strong><span>salles</span></li>
       </ul>
       <div class="offer-sheet__cta" data-reveal>
-        <a href="#inscrire" class="btn btn--lg" data-offer-cta data-magnetic="0.22" data-track="offer29_cta">Je commence — 29,99&nbsp;€</a>
+        <a href="#inscrire" class="btn btn--lg" data-offer-cta data-magnetic="0.22" data-track="offer29_cta">Je profite</a>
         <a href="/offre/259" class="btn on-dark" data-track="offer29_to_259">Voir 259&nbsp;€ / 12 mois</a>
       </div>
     </div>
@@ -118,12 +133,8 @@
 
     <section class="section" id="inscrire">
       <div class="offer-cta-block offer-cta-block--roomy" data-reveal>
-        <h2>Ouvre ton dossier</h2>
-        <p>Identité, paiement de la 1ʳᵉ échéance, puis IBAN pour la suite.</p>
-        <a href="/inscription?product=offre-duo" class="btn btn--lg" data-offer-cta data-track="offer29_inscrire">Continuer l'inscription</a>
-        <p class="offer-fineprint">
-          Montant payé aujourd’hui = 1ʳᵉ échéance (29,99&nbsp;€ / 4 semaines). Badge (34,99&nbsp;€) prélevé sur IBAN ~72&nbsp;h après.
-        </p>
+        <h2>Bénéficie dès maintenant de ton offre 29,99</h2>
+        <a href="/inscription?product=offre-duo" class="btn btn--lg" data-offer-cta data-track="offer29_inscrire">Je profite</a>
       </div>
     </section>
 
@@ -135,26 +146,32 @@
 
   <div class="offer-sticky-cta offer-sticky-cta--dark">
     <div class="offer-sticky-cta__copy">29,99&nbsp;€ / 4 semaines <span>1ʳᵉ échéance CB · prélèvement sans engagement</span></div>
-    <a href="/inscription?product=offre-duo" class="btn" data-offer-cta data-track="offer29_sticky">Je commence</a>
+    <a href="/inscription?product=offre-duo" class="btn" data-offer-cta data-track="offer29_sticky">Je profite</a>
   </div>
 
   <div id="offerLeadModal" class="offer-lead-modal" hidden>
     <div class="offer-lead-modal__panel" role="dialog" aria-labelledby="offerLeadTitle29">
-      <h2 id="offerLeadTitle29">C'est parti pour 29,99,99&nbsp;€</h2>
-      <p>Renseigne les coordonnées d'un ami qui pourrait aussi être intéressé — on pourra le recontacter.</p>
+      <h2 id="offerLeadTitle29">Passe de 44,99&nbsp;€ à 29,99&nbsp;€</h2>
+      <p>Indique le prénom, le nom et le téléphone d’un ami qui pourrait être intéressé. Après validation, ton tarif passe à <strong>29,99&nbsp;€</strong>.</p>
       <form id="offerLeadForm">
-        <label for="prenom29">Prénom de ton ami *</label>
+        <label for="prenom29">Prénom de ton ami ou amie *</label>
         <input id="prenom29" name="prenom" required autocomplete="off" />
-        <label for="nom29">Nom de ton ami</label>
+        <label for="nom29">Nom de ton ami ou amie</label>
         <input id="nom29" name="nom" autocomplete="off" />
-        <label for="tel29">Téléphone de ton ami *</label>
+        <label for="tel29">Téléphone de ton ami ou amie *</label>
         <input id="tel29" name="telephone" type="tel" required autocomplete="off" inputmode="tel" />
         <p id="offerLeadError" class="offer-lead-error" role="alert"></p>
         <div class="offer-lead-modal__actions">
-          <button type="submit" class="btn btn--lg">Continuer mon inscription</button>
-          <button type="button" class="offer-lead-modal__skip offer-lead-modal__skip--ghost" id="offerLeadSkip">Passer</button>
+          <button type="submit" class="btn btn--lg">Enregistrer les informations de mon amie/ami</button>
         </div>
       </form>
+      <div id="offerLeadCelebrate" class="offer-lead-celebrate" hidden>
+        <div class="offer-lead-celebrate__prices" aria-live="polite">
+          <span class="offer-lead-celebrate__was">44,99&nbsp;€</span>
+          <span class="offer-lead-celebrate__now">29,99&nbsp;€</span>
+        </div>
+        <p class="offer-lead-celebrate__msg">Félicitations, finalise maintenant ton inscription</p>
+      </div>
     </div>
   </div>
   <div id="offerFunnelConfig" hidden data-product="offre-duo" data-tunnel="offre_29" data-lead-mode="friend" data-inscription="/inscription?product=offre-duo"></div>
@@ -164,6 +181,7 @@
   <script src="/js/motion.js"></script>
   <script src="/js/tracking.js"></script>
   <script src="/js/offer-sheet-motion.js"></script>
+  <script src="/js/offers.js"></script>
   <script src="/js/faq.js"></script>
   <script src="/js/offer-funnel.js"></script>
   <script>

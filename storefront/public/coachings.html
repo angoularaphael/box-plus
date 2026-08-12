@@ -105,7 +105,7 @@
     (async function () {
       const res = await fetch('/api/products?tab=coachings');
       const data = await res.json();
-      BCOffers.renderOfferGrid(data.products || [], document.getElementById('offersGrid'), { cta: 'Réserver ce pack' });
+      BCOffers.renderOfferGrid(data.products || [], document.getElementById('offersGrid'), { cta: 'Je profite' });
     })();
   </script>
 </body>
