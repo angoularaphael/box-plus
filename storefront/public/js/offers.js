@@ -259,17 +259,187 @@
     }, 450);
   }
 
+  /** Places restantes : courbe hebdo locale (lundi 00h → dimanche 23h59), unique par navigateur. */
+  const SCARCITY_STORAGE = 'bc_scarcity_week_v2';
+  const SCARCITY_TZ = 'Europe/Paris';
+  const WEEKDAY_IDX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+
+  function hashSeed(str) {
+    let h = 2166136261;
+    for (let i = 0; i < String(str).length; i += 1) {
+      h ^= String(str).charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    return h >>> 0;
+  }
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function next() {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function parisParts(date = new Date()) {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat('en-GB', {
+        timeZone: SCARCITY_TZ,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        weekday: 'short',
+        hourCycle: 'h23',
+      })
+        .formatToParts(date)
+        .filter((p) => p.type !== 'literal')
+        .map((p) => [p.type, p.value])
+    );
+    return {
+      year: Number(parts.year),
+      month: Number(parts.month),
+      day: Number(parts.day),
+      hour: Number(parts.hour),
+      minute: Number(parts.minute),
+      second: Number(parts.second),
+      weekday: parts.weekday,
+      dayIndex: WEEKDAY_IDX[parts.weekday] ?? 0,
+    };
+  }
+
+  function mondayWeekKey(parts) {
+    const utc = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+    utc.setUTCDate(utc.getUTCDate() - parts.dayIndex);
+    return utc.toISOString().slice(0, 10);
+  }
+
+  function ensureVisitorState() {
+    let state = null;
+    try {
+      state = JSON.parse(localStorage.getItem(SCARCITY_STORAGE) || 'null');
+    } catch {
+      state = null;
+    }
+    if (!state || typeof state.seed !== 'number') {
+      let seed = Math.floor(Math.random() * 0xffffffff);
+      try {
+        const buf = new Uint32Array(1);
+        crypto.getRandomValues(buf);
+        seed = buf[0] || seed;
+      } catch {
+        /* ignore */
+      }
+      state = { seed };
+    }
+    const weekKey = mondayWeekKey(parisParts());
+    if (state.weekKey !== weekKey) {
+      state.weekKey = weekKey;
+      state.plans = {};
+    }
+    try {
+      localStorage.setItem(SCARCITY_STORAGE, JSON.stringify(state));
+    } catch {
+      /* private mode */
+    }
+    return state;
+  }
+
+  function buildWeekEndTargets(seed, weekKey, offerId, start, end) {
+    const rng = mulberry32(hashSeed(`${seed}:${weekKey}:${offerId}`));
+    const targets = [];
+    let current = start;
+    const minDrop = Math.max(8, Math.round((start - end) / 10));
+    const maxDrop = Math.max(minDrop + 4, Math.round((start - end) / 4.2));
+
+    for (let day = 0; day < 6; day += 1) {
+      const daysAfter = 6 - day;
+      const remainingDrop = current - end;
+      const avg = remainingDrop / (daysAfter + 1);
+      let drop = Math.round(avg + (rng() - 0.35) * (maxDrop - minDrop));
+      drop = Math.max(minDrop, Math.min(maxDrop, drop));
+      const maxAllowed = remainingDrop - minDrop * daysAfter;
+      drop = Math.min(drop, Math.max(minDrop, maxAllowed));
+      current = Math.max(end + minDrop * daysAfter, current - drop);
+      if (current >= (targets[targets.length - 1] ?? start)) {
+        current = Math.max(end + minDrop * daysAfter, (targets[targets.length - 1] ?? start) - minDrop);
+      }
+      targets.push(current);
+    }
+    targets.push(end);
+    return targets;
+  }
+
+  function getOfferPlan(state, offerId, start, end) {
+    if (!state.plans) state.plans = {};
+    if (!state.plans[offerId]) {
+      state.plans[offerId] = buildWeekEndTargets(state.seed, state.weekKey, offerId, start, end);
+      try {
+        localStorage.setItem(SCARCITY_STORAGE, JSON.stringify(state));
+      } catch {
+        /* ignore */
+      }
+    }
+    return state.plans[offerId];
+  }
+
+  function remainingFromPlan(plan, start, end, date = new Date()) {
+    const parts = parisParts(date);
+    const dayIndex = parts.dayIndex;
+    const dayStart = dayIndex === 0 ? start : plan[dayIndex - 1];
+    const dayEnd = plan[dayIndex];
+    const dayFraction = Math.min(
+      1,
+      Math.max(0, (parts.hour * 3600 + parts.minute * 60 + parts.second) / 86400)
+    );
+    // Légère accélération en fin de journée (pression)
+    const eased = dayFraction * dayFraction * (3 - 2 * dayFraction);
+    let value = dayStart + (dayEnd - dayStart) * eased;
+    // Micro-variation stable par créneau ~20 min (même user = même chiffre un moment)
+    const slot = Math.floor((parts.hour * 60 + parts.minute) / 20);
+    const wobble = mulberry32(hashSeed(`${plan.join(',')}:${dayIndex}:${slot}`))();
+    value -= wobble * Math.min(2.2, Math.max(0.4, (dayStart - dayEnd) / 18));
+    return Math.max(end, Math.min(start, Math.round(value)));
+  }
+
+  function computeWeeklyRemaining(offerId) {
+    const state = ensureVisitorState();
+    if (offerId === 'offre-saison' || offerId === 'offre-259' || offerId === 'saison') {
+      const start = 50;
+      const end = 3;
+      const plan = getOfferPlan(state, 'offre-saison', start, end);
+      return { restantes: remainingFromPlan(plan, start, end), quota: start };
+    }
+    const start = 100;
+    const end = 3;
+    const plan = getOfferPlan(state, 'offre-duo', start, end);
+    return { restantes: remainingFromPlan(plan, start, end), quota: start };
+  }
+
   async function initScarcity() {
     try {
-      const res = await fetch('/api/offre-rentree/places');
-      const data = await res.json();
-      if (!data.ok) return;
+      let duoSoldOut = false;
+      let saisonSoldOut = false;
+      try {
+        const res = await fetch('/api/offre-rentree/places');
+        const data = await res.json();
+        if (data?.ok) {
+          duoSoldOut = Boolean(data.offers?.['offre-duo']?.sold_out);
+          saisonSoldOut = Boolean(data.offers?.['offre-saison']?.sold_out);
+        }
+      } catch {
+        /* offline: courbe locale seule */
+      }
 
-      const duo = data.offers?.['offre-duo'] || { quota: 100, restantes: 100, regular_price: 44, promo_price: 29, sold_out: false };
-      const saison = data.offers?.['offre-saison'] || { quota: 50, restantes: 50, regular_price: 400, promo_price: 259, sold_out: false };
-
-      const targetDuo = (duo.restantes > 0 && duo.restantes < duo.quota) ? duo.restantes : 70;
-      const targetSaison = (saison.restantes > 0 && saison.restantes < saison.quota) ? saison.restantes : 25;
+      const duoWeekly = computeWeeklyRemaining('offre-duo');
+      const saisonWeekly = computeWeeklyRemaining('offre-saison');
+      const targetDuo = duoSoldOut ? 0 : duoWeekly.restantes;
+      const targetSaison = saisonSoldOut ? 0 : saisonWeekly.restantes;
 
       /* Déclencher l'animation de rature des prix d'origine */
       triggerPriceStrikeAnimation();
@@ -305,25 +475,29 @@
       document.querySelectorAll('[data-scarcity]').forEach((el) => {
         const target = el.getAttribute('data-scarcity');
         if (target === 'offre-duo' || target === 'offre-29' || target === 'duo') {
-          if (duo.sold_out) {
+          if (duoSoldOut) {
             el.innerHTML = '<span class="scarcity-pill scarcity-pill--soldout">❌ Rupture de stock</span>';
+          } else {
+            el.innerHTML = `<span class="scarcity-pill">Plus que <strong>${targetDuo}</strong> places</span>`;
           }
         } else if (target === 'offre-saison' || target === 'offre-259' || target === 'saison') {
-          if (saison.sold_out) {
+          if (saisonSoldOut) {
             el.innerHTML = '<span class="scarcity-pill scarcity-pill--soldout">❌ Rupture de stock</span>';
+          } else {
+            el.innerHTML = `<span class="scarcity-pill">Plus que <strong>${targetSaison}</strong> places</span>`;
           }
         }
       });
 
       /* Gérer la fermeture en cas de rupture de stock */
-      if (duo.sold_out) {
+      if (duoSoldOut) {
         document.querySelectorAll('[data-product="offre-duo"], [data-track="offer29_cta"], [data-track="hub_cta_29"]').forEach((btn) => {
           btn.classList.add('sold-out');
           btn.textContent = 'Offre Épuisée';
           btn.removeAttribute('href');
         });
       }
-      if (saison.sold_out) {
+      if (saisonSoldOut) {
         document.querySelectorAll('[data-product="offre-saison"], [data-track="offer259_cta"], [data-track="hub_cta_259"]').forEach((btn) => {
           btn.classList.add('sold-out');
           btn.textContent = 'Offre Épuisée';
@@ -352,5 +526,6 @@
     initScarcity,
     spinMechanicalReels,
     triggerPriceStrikeAnimation,
+    computeWeeklyRemaining,
   };
 })();
