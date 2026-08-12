@@ -153,7 +153,23 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--bc-cta);
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.offer-card__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
   margin-bottom: 8px;
+  min-height: 1.45rem;
+}
+
+.offer-card__title-row h3 {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .offer-card h3 {
