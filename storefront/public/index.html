@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Boxing Center Toulouse — Club de boxe : abonnements, cours & matériel</title>
-  <meta name="description" content="Club de boxe à Toulouse depuis 2016 : 5 salles, 8 disciplines, débutants bienvenus. Abonnements, séance d'essai gratuite, coachings et matériel de boxe en ligne." />
+  <meta name="description" content="Club de boxe à Toulouse depuis 2016 : 5 salles, 8 disciplines, débutants bienvenus. Abonnements, séance d'essai, coachings et matériel de boxe en ligne." />
   <script src="/js/boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,10 +16,10 @@
   <meta property="og:site_name" content="Boxing Center Toulouse" />
   <meta property="og:locale" content="fr_FR" />
   <meta property="og:title" content="Boxing Center Toulouse — Club de boxe : abonnements, cours &amp; matériel" />
-  <meta property="og:description" content="Club de boxe à Toulouse depuis 2016 : 5 salles, 8 disciplines, débutants bienvenus. Abonnements, séance d'essai gratuite, coachings et matériel de boxe en ligne." />
+  <meta property="og:description" content="Club de boxe à Toulouse depuis 2016 : 5 salles, 8 disciplines, débutants bienvenus. Abonnements, séance d'essai, coachings et matériel de boxe en ligne." />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Boxing Center Toulouse — Club de boxe : abonnements, cours &amp; matériel" />
-  <meta name="twitter:description" content="Club de boxe à Toulouse depuis 2016 : 5 salles, 8 disciplines, débutants bienvenus. Abonnements, séance d'essai gratuite, coachings et matériel de boxe en ligne." />
+  <meta name="twitter:description" content="Club de boxe à Toulouse depuis 2016 : 5 salles, 8 disciplines, débutants bienvenus. Abonnements, séance d'essai, coachings et matériel de boxe en ligne." />
   <meta name="theme-color" content="#20254B" />
 </head>
 <body class="home-cinema">
@@ -46,26 +46,102 @@
           <img src="/img/bc/logo/BC_Logo_Officiel_Transparent.png" alt="Boxing Center" width="214" height="100" />
         </p>
         <h1 class="hero__title">
-          <span data-reveal>La boxe,</span>
-          <span data-reveal>pour <em>tout le monde</em></span>
+          <span data-reveal>Les sports de combat,</span>
+          <span data-reveal>accessibles à <em>tout le monde</em></span>
         </h1>
         <p class="hero__lead" data-reveal>
           5 salles à Toulouse · débutants bienvenus. Offres du moment : 29&nbsp;€ pour démarrer, ou 259&nbsp;€ l'année.
         </p>
-        <div class="hero__offers" data-reveal aria-label="Offres du moment">
-          <a class="hero-offer-chip" href="/offre/29">
-            <span>Pour démarrer</span>
-            <strong>29&nbsp;€</strong>
-          </a>
-          <a class="hero-offer-chip" href="/offre/259">
-            <span>L'année</span>
-            <strong>259&nbsp;€</strong>
-          </a>
-          <a class="hero-offer-chip hero-offer-chip--ghost" href="/offres-speciales">Comparer</a>
+        <div class="exclusive-offers-wrapper" data-reveal aria-label="Offres du moment">
+          <div class="exclusive-offers-header">
+            <span class="exclusive-offers-kicker">✦ OFFRES LIMITÉES ✦</span>
+            <h2 class="exclusive-offers-title">2 OFFRES <span>EXCLUSIVES</span></h2>
+            <p class="exclusive-offers-sub">Profitez de tarifs exceptionnels avant qu’il ne soit trop tard.</p>
+          </div>
+
+          <div class="exclusive-offers-grid">
+            <!-- CARTE 1: RED THEME (29€) -->
+            <a class="offer-card-v2 offer-card-v2--red" href="/offre/29">
+              <div class="offer-card-v2__badge">POUR DÉMARRER</div>
+              <div class="offer-card-v2__price-row" data-offer-anim="offre-duo">
+                <div class="price-col price-col--normal">
+                  <span class="price-col__label">PRIX NORMAL</span>
+                  <div class="price-col__val price-old-anim">
+                    <span class="val-num">44</span><span class="val-unit">€</span>
+                    <svg class="strike-line-svg" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M5 15 L95 5" stroke="#ff3344" stroke-width="4" stroke-linecap="round" /></svg>
+                  </div>
+                </div>
+                <div class="price-divider"></div>
+                <div class="price-col price-col--promo">
+                  <span class="price-col__label">PRIX PROMO</span>
+                  <div class="price-col__val price-promo-anim">
+                    <span class="val-num">29</span><span class="val-unit">€</span>
+                  </div>
+                </div>
+              </div>
+              <div class="offer-card-v2__quota">
+                PLACES LIMITÉES : <strong class="quota-val">100</strong>
+              </div>
+              <div class="offer-card-v2__scarcity-box">
+                <span class="scarcity-title">PLACES RESTANTES</span>
+                <div class="slot-counter-assembly slot-counter-assembly--red" data-scarcity-reel="offre-duo">
+                  <span class="arrow-indicator left">›</span>
+                  <div class="reel-container">
+                    <div class="reel-digit" data-digit-index="0"><span>0</span></div>
+                    <div class="reel-digit" data-digit-index="1"><span>7</span></div>
+                    <div class="reel-digit" data-digit-index="2"><span>0</span></div>
+                  </div>
+                  <span class="arrow-indicator right">‹</span>
+                </div>
+                <p class="scarcity-subtext">Plus que <strong class="red-text remaining-count-val" id="duo-sub-count">70</strong> places à <strong class="red-text">29 €</strong></p>
+              </div>
+            </a>
+
+            <!-- CARTE 2: GOLD THEME (259€) -->
+            <a class="offer-card-v2 offer-card-v2--gold" href="/offre/259">
+              <div class="offer-card-v2__badge">L'ANNÉE COMPLÈTE</div>
+              <div class="offer-card-v2__price-row" data-offer-anim="offre-saison">
+                <div class="price-col price-col--normal">
+                  <span class="price-col__label">PRIX NORMAL</span>
+                  <div class="price-col__val price-old-anim">
+                    <span class="val-num">400</span><span class="val-unit">€</span>
+                    <svg class="strike-line-svg" viewBox="0 0 100 20" preserveAspectRatio="none"><path d="M5 15 L95 5" stroke="#dfb342" stroke-width="4" stroke-linecap="round" /></svg>
+                  </div>
+                </div>
+                <div class="price-divider"></div>
+                <div class="price-col price-col--promo">
+                  <span class="price-col__label">PRIX PROMO</span>
+                  <div class="price-col__val price-promo-anim">
+                    <span class="val-num">259</span><span class="val-unit">€</span>
+                  </div>
+                </div>
+              </div>
+              <div class="offer-card-v2__quota">
+                PLACES LIMITÉES : <strong class="quota-val">50</strong>
+              </div>
+              <div class="offer-card-v2__scarcity-box">
+                <span class="scarcity-title">PLACES RESTANTES</span>
+                <div class="slot-counter-assembly slot-counter-assembly--gold" data-scarcity-reel="offre-saison">
+                  <span class="arrow-indicator left">›</span>
+                  <div class="reel-container">
+                    <div class="reel-digit" data-digit-index="0"><span>0</span></div>
+                    <div class="reel-digit" data-digit-index="1"><span>2</span></div>
+                    <div class="reel-digit" data-digit-index="2"><span>5</span></div>
+                  </div>
+                  <span class="arrow-indicator right">‹</span>
+                </div>
+                <p class="scarcity-subtext">Plus que <strong class="gold-text remaining-count-val" id="saison-sub-count">25</strong> places à <strong class="gold-text">259 €</strong></p>
+              </div>
+            </a>
+          </div>
+
+          <div class="exclusive-offers-footer">
+            <span class="timer-icon">⏰</span> Dépêchez-vous, les places partent vite !
+          </div>
         </div>
-        <div class="hero__cta" data-reveal>
-          <a href="/offres-speciales" class="btn btn--lg" data-magnetic="0.28">Voir les offres</a>
-          <a href="/seance-essai" class="btn white btn--lg" data-magnetic="0.22">Séance d'essai · Gratuit</a>
+        <div class="hero__cta" data-reveal style="margin-top:16px">
+          <a href="/offres-speciales" class="btn" data-magnetic="0.28">Découvrir les offres en détail</a>
+          <a href="/offres-speciales" class="btn on-dark">Comparer</a>
         </div>
       </div>
     </section>
@@ -85,25 +161,15 @@
           <span class="qtile__arrow" aria-hidden="true">↗</span>
           <div class="qtile__label"><h3>Abonnements</h3><p>3, 6, 12 mois · sans engagement</p></div>
         </a>
-        <a class="qtile" href="/seance-essai" data-reveal>
-          <img src="/img/bc/disc/lady.webp" alt="" loading="lazy" />
-          <span class="qtile__arrow" aria-hidden="true">↗</span>
-          <div class="qtile__label"><h3>Séance d'essai</h3><p>Découvrez le club · Gratuit</p></div>
-        </a>
         <a class="qtile" href="/offres-speciales" data-reveal>
           <img src="/img/bc/disc/showcase-ring.webp" alt="" loading="lazy" />
           <span class="qtile__arrow" aria-hidden="true">↗</span>
-          <div class="qtile__label"><h3>Offres spéciales</h3><p>29,99 € · 259 € · comparer</p></div>
+          <div class="qtile__label"><h3>Promos spéciales</h3><p>29,99 € · 259 € · comparer</p></div>
         </a>
         <a class="qtile" href="/coachings" data-reveal>
           <img src="/img/bc/disc/mma.webp" alt="" loading="lazy" />
           <span class="qtile__arrow" aria-hidden="true">↗</span>
           <div class="qtile__label"><h3>Coachings</h3><p>Cours particuliers · packs 1 à 10</p></div>
-        </a>
-        <a class="qtile" href="/materiel" data-reveal>
-          <img src="/img/bc/disc/cross.webp" alt="" loading="lazy" />
-          <span class="qtile__arrow" aria-hidden="true">↗</span>
-          <div class="qtile__label"><h3>Matériel</h3><p>Gants, protections, textile club</p></div>
         </a>
       </div>
     </section>
@@ -149,8 +215,8 @@
             <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/boxe-anglaise.webp" alt="Boxe anglaise" loading="lazy"><span class="disc-tile__name">Boxe anglaise</span></a>
             <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/muay-thai.webp" alt="Boxe thaï" loading="lazy"><span class="disc-tile__name">Boxe thaï</span></a>
             <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/kick.webp" alt="Kickboxing" loading="lazy"><span class="disc-tile__name">Kickboxing</span></a>
-            <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/mma.webp" alt="MMA" loading="lazy"><span class="disc-tile__name">MMA</span></a>
-            <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/cross.webp" alt="Cross training" loading="lazy"><span class="disc-tile__name">Cross training</span></a>
+            <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/mma-cage.jpg" alt="MMA" loading="lazy"><span class="disc-tile__name">MMA</span></a>
+            <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/cross-training.jpg" alt="Cross training" loading="lazy"><span class="disc-tile__name">Cross training</span></a>
             <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/lady.webp" alt="Boxing Lady" loading="lazy"><span class="disc-tile__name">Boxing Lady</span></a>
             <a class="disc-tile" href="/abonnements#enfants"><img src="/img/bc/disc/educative.webp" alt="Boxe éducative" loading="lazy"><span class="disc-tile__name">Boxe éducative</span></a>
             <a class="disc-tile" href="/abonnements"><img src="/img/bc/disc/boxing-training.webp" alt="Fitness boxing" loading="lazy"><span class="disc-tile__name">Fitness boxing</span></a>
@@ -159,10 +225,15 @@
       </div>
     </section>
 
-    <section class="scrub-band" data-scrub aria-label="L'ambiance Boxing Center">
-      <video class="scrub-band__video" data-scrub-video muted playsinline preload="auto" poster="/img/bc/disc/showcase-ring.webp">
-        <source src="/media/scrub-ring.mp4" type="video/mp4" />
-      </video>
+    <section class="scrub-band" aria-label="L'ambiance Boxing Center">
+      <div class="scrub-band__video-wrap" aria-hidden="true">
+        <iframe
+          src="https://www.youtube-nocookie.com/embed/4PiVQVie3l0?autoplay=1&mute=1&loop=1&playlist=4PiVQVie3l0&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1&disablekb=1&iv_load_policy=3"
+          title=""
+          tabindex="-1"
+          allow="autoplay; encrypted-media"
+        ></iframe>
+      </div>
       <div class="scrub-band__veil" aria-hidden="true"></div>
       <div class="scrub-band__copy" data-reveal>
         <span class="kicker">L'ambiance</span>
@@ -252,7 +323,6 @@
       <p>Rejoignez un club où l'on progresse sereinement, quel que soit votre niveau.</p>
       <div class="hero-actions">
         <a href="/abonnements" class="btn" data-magnetic="0.25">Choisir mon abonnement</a>
-        <a href="/seance-essai" class="btn white" data-magnetic="0.22">Séance d'essai · Gratuit</a>
       </div>
     </section>
   </main>

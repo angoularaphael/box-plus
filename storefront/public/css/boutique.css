@@ -786,6 +786,36 @@ input:focus, select:focus, textarea:focus {
 .page-hero--materiel { --page-hero-img: url('../img/bc/disc/cross.webp'); }
 .page-hero--faq { --page-hero-img: url('../img/bc/gym/gym-06.jpg'); }
 
+.page-hero--video {
+  min-height: min(70vh, 620px);
+  display: flex;
+  align-items: flex-end;
+}
+.page-hero__video-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  overflow: hidden;
+  pointer-events: none;
+}
+.page-hero__video-wrap iframe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100vw;
+  height: 56.25vw; /* 16:9 */
+  min-height: 100%;
+  min-width: 177.78vh; /* 16:9 */
+  transform: translate(-50%, -50%);
+  border: 0;
+}
+.page-hero__video-veil {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(105deg, rgba(8, 12, 20, 0.88) 0%, rgba(8, 12, 20, 0.55) 55%, rgba(8, 12, 20, 0.35) 100%);
+}
+
 .page-hero-inner {
   position: relative;
   max-width: var(--max);

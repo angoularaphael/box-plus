@@ -53,26 +53,29 @@
       <div class="offer-editorial__hero-copy">
         <p class="offer-editorial__kicker">Boxing Center · Toulouse</p>
         <h1>Deux formules.<br /><span>Un même club.</span></h1>
-        <p>29&nbsp;€ / 4 semaines sans engagement, ou 259&nbsp;€ / 12 mois. Accès illimité aux 5 salles, cours illimités toutes disciplines.</p>
+        <p>29&nbsp;€ / 4 semaines (au lieu de 44&nbsp;€) sans engagement, ou 259&nbsp;€ / 12 mois (au lieu de 400&nbsp;€). Accès illimité aux 5 salles, cours illimités toutes disciplines.</p>
       </div>
     </section>
 
     <section class="offer-editorial__compare" data-reveal-group>
       <article class="offer-plan" data-reveal>
         <p class="offer-plan__label">Pour démarrer</p>
-        <p class="offer-plan__price">29&nbsp;€</p>
-        <p class="offer-plan__sub">1ʳᵉ échéance CB / prélèvement sans engagement · 29&nbsp;€ / 4 semaines</p>
+        <p class="offer-plan__price" data-strike-price="offre-duo"><del class="price-strike">44&nbsp;€</del> 29&nbsp;€</p>
+        <div data-scarcity="offre-duo" style="margin-bottom:12px"></div>
+        <p class="offer-plan__sub">1ʳᵉ échéance CB / puis prélèvement sans engagement · 29&nbsp;€ / 4 semaines</p>
         <ul class="offer-plan__list">
           <li>Abonnement sans engagement de durée</li>
           <li>Cours illimités toutes disciplines</li>
           <li>Accès illimités dans les 5 salles</li>
+          <li>Sans préavis en cas de résiliation</li>
         </ul>
         <a class="btn btn--lg" href="/offre/29" data-magnetic="0.2" data-track="hub_cta_29">Voir l'offre 29&nbsp;€</a>
       </article>
 
       <article class="offer-plan" data-reveal>
         <p class="offer-plan__label">Année complète</p>
-        <p class="offer-plan__price">259&nbsp;€</p>
+        <p class="offer-plan__price" data-strike-price="offre-saison"><del class="price-strike">400&nbsp;€</del> 259&nbsp;€</p>
+        <div data-scarcity="offre-saison" style="margin-bottom:12px"></div>
         <p class="offer-plan__sub">259&nbsp;€ / 12 mois · 1× ou 4× sans frais · moins cher en une fois</p>
         <ul class="offer-plan__list">
           <li>Votre abonnement à tarifs imbattables</li>
@@ -85,6 +88,57 @@
 
     <section class="offer-editorial__note">
       <p>Pas sûr&nbsp;? Commencez par une <a href="/seance-essai">séance d'essai gratuite</a>, puis choisissez votre formule.</p>
+    </section>
+
+    <section class="offer-value" data-reveal aria-labelledby="offerValueTitle">
+      <div class="offer-value__inner">
+        <div class="offer-value__head">
+          <p class="offer-editorial__kicker">Comparatif sur 12 mois</p>
+          <h2 id="offerValueTitle">259&nbsp;€ : le choix le plus rentable</h2>
+          <p class="offer-value__sub">Même accès aux 5 salles et à toutes les disciplines dans les deux formules — seul le coût sur l'année change.</p>
+        </div>
+
+        <div
+          class="offer-value__chart"
+          role="img"
+          aria-label="Coût total sur 12 mois : 377 euros pour l'offre à 29 euros toutes les 4 semaines, soit 13 prélèvements sur l'année, contre 259 euros pour l'offre annuelle. Écart de 118 euros en faveur de l'offre annuelle."
+        >
+          <div class="offer-value__row">
+            <div class="offer-value__row-label">
+              <span class="offer-value__row-name">29&nbsp;€ / 4 semaines</span>
+              <span class="offer-value__row-hint">≈ 31,42&nbsp;€/mois · 13 prélèvements sur l'année</span>
+            </div>
+            <div class="offer-value__bar-line">
+              <div class="offer-value__track">
+                <div class="offer-value__bar offer-value__bar--red" style="width:100%"></div>
+              </div>
+              <span class="offer-value__value">377&nbsp;€<small>/an</small></span>
+            </div>
+          </div>
+
+          <div class="offer-value__row">
+            <div class="offer-value__row-label">
+              <span class="offer-value__row-name">259&nbsp;€ / 12 mois <span class="offer-value__pill">Meilleur choix</span></span>
+              <span class="offer-value__row-hint">≈ 21,58&nbsp;€/mois · 1&nbsp;× ou 4&nbsp;× sans frais</span>
+            </div>
+            <div class="offer-value__bar-line">
+              <div class="offer-value__track">
+                <div class="offer-value__bar offer-value__bar--gold" style="width:68.7%"></div>
+              </div>
+              <span class="offer-value__value">259&nbsp;€<small>/an</small></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="offer-value__savings">
+          <span class="offer-value__savings-num">−118&nbsp;€</span>
+          <span class="offer-value__savings-label">économisés sur 12 mois en choisissant l'année complète</span>
+        </div>
+
+        <div class="offer-value__cta">
+          <a class="btn btn--lg" href="/offre/259" data-magnetic="0.2" data-track="hub_value_cta_259">Choisir l'année complète — 259&nbsp;€</a>
+        </div>
+      </div>
     </section>
   </main>
 

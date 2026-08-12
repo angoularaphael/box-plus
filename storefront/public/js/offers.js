@@ -184,6 +184,155 @@
     if (opts.animate && window.BCMotion?.refresh) window.BCMotion.refresh();
   }
 
+  function spinReelDigit(reelEl, finalDigit, spinDuration) {
+    const digitHeight = reelEl.offsetHeight || 38;
+    const stripLen = 16 + Math.floor(Math.random() * 6); // 16-21 crans avant l'arrêt
+    const digits = [];
+    for (let i = 0; i < stripLen - 1; i++) {
+      digits.push(Math.floor(Math.random() * 10));
+    }
+    digits.push(Number(finalDigit));
+
+    const strip = document.createElement('div');
+    strip.className = 'reel-strip';
+    digits.forEach((d) => {
+      const s = document.createElement('span');
+      s.textContent = d;
+      strip.appendChild(s);
+    });
+
+    reelEl.classList.add('spinning');
+    reelEl.innerHTML = '';
+    reelEl.appendChild(strip);
+
+    // Force le reflow avant de déclencher la transition
+    void strip.offsetHeight;
+    strip.style.transition = `transform ${spinDuration}ms cubic-bezier(0.13, 0.85, 0.22, 1)`;
+    requestAnimationFrame(() => {
+      strip.style.transform = `translateY(-${(digits.length - 1) * digitHeight}px)`;
+    });
+
+    strip.addEventListener(
+      'transitionend',
+      () => {
+        reelEl.classList.remove('spinning');
+        reelEl.innerHTML = `<span>${finalDigit}</span>`;
+      },
+      { once: true }
+    );
+  }
+
+  function spinMechanicalReels(assemblyEl, targetNum, subtextElId) {
+    if (!assemblyEl) return;
+    const digitsStr = String(targetNum).padStart(3, '0');
+    const reelEls = assemblyEl.querySelectorAll('.reel-digit');
+
+    // Chaque rouleau tourne comme une machine à sous, et se verrouille
+    // séquentiellement de gauche à droite pour l'effet casino.
+    reelEls.forEach((reel, idx) => {
+      const spinDuration = 900 + idx * 450;
+      spinReelDigit(reel, digitsStr[idx] || '0', spinDuration);
+    });
+
+    if (subtextElId) {
+      const lastSpin = 900 + (reelEls.length - 1) * 450;
+      setTimeout(() => {
+        const subEl = document.getElementById(subtextElId);
+        if (subEl) subEl.textContent = targetNum;
+      }, lastSpin);
+    }
+  }
+
+  function triggerPriceStrikeAnimation() {
+    setTimeout(() => {
+      document.querySelectorAll('.strike-line-svg').forEach((svg) => {
+        svg.classList.add('active');
+      });
+    }, 450);
+  }
+
+  async function initScarcity() {
+    try {
+      const res = await fetch('/api/offre-rentree/places');
+      const data = await res.json();
+      if (!data.ok) return;
+
+      const duo = data.offers?.['offre-duo'] || { quota: 100, restantes: 100, regular_price: 44, promo_price: 29, sold_out: false };
+      const saison = data.offers?.['offre-saison'] || { quota: 50, restantes: 50, regular_price: 400, promo_price: 259, sold_out: false };
+
+      const targetDuo = (duo.restantes > 0 && duo.restantes < duo.quota) ? duo.restantes : 70;
+      const targetSaison = (saison.restantes > 0 && saison.restantes < saison.quota) ? saison.restantes : 25;
+
+      /* Déclencher l'animation de rature des prix d'origine */
+      triggerPriceStrikeAnimation();
+
+      /* Déclencher l'animation des compteurs rouleaux métalliques 3D
+         au moment où l'utilisateur scroll jusqu'à eux (une seule fois). */
+      const runReelSpin = (assemblyEl) => {
+        const target = assemblyEl.getAttribute('data-scarcity-reel');
+        if (target === 'offre-duo' || target === 'offre-29' || target === 'duo') {
+          spinMechanicalReels(assemblyEl, targetDuo, 'duo-sub-count');
+        } else if (target === 'offre-saison' || target === 'offre-259' || target === 'saison') {
+          spinMechanicalReels(assemblyEl, targetSaison, 'saison-sub-count');
+        }
+      };
+
+      const reelAssemblies = document.querySelectorAll('[data-scarcity-reel]');
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (reduceMotion || !('IntersectionObserver' in window)) {
+        reelAssemblies.forEach(runReelSpin);
+      } else {
+        const reelObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            runReelSpin(entry.target);
+            reelObserver.unobserve(entry.target);
+          });
+        }, { threshold: 0.5 });
+        reelAssemblies.forEach((el) => reelObserver.observe(el));
+      }
+
+      /* Hydrater badges de places restantes secondaires si présents */
+      document.querySelectorAll('[data-scarcity]').forEach((el) => {
+        const target = el.getAttribute('data-scarcity');
+        if (target === 'offre-duo' || target === 'offre-29' || target === 'duo') {
+          if (duo.sold_out) {
+            el.innerHTML = '<span class="scarcity-pill scarcity-pill--soldout">❌ Rupture de stock</span>';
+          }
+        } else if (target === 'offre-saison' || target === 'offre-259' || target === 'saison') {
+          if (saison.sold_out) {
+            el.innerHTML = '<span class="scarcity-pill scarcity-pill--soldout">❌ Rupture de stock</span>';
+          }
+        }
+      });
+
+      /* Gérer la fermeture en cas de rupture de stock */
+      if (duo.sold_out) {
+        document.querySelectorAll('[data-product="offre-duo"], [data-track="offer29_cta"], [data-track="hub_cta_29"]').forEach((btn) => {
+          btn.classList.add('sold-out');
+          btn.textContent = 'Offre Épuisée';
+          btn.removeAttribute('href');
+        });
+      }
+      if (saison.sold_out) {
+        document.querySelectorAll('[data-product="offre-saison"], [data-track="offer259_cta"], [data-track="hub_cta_259"]').forEach((btn) => {
+          btn.classList.add('sold-out');
+          btn.textContent = 'Offre Épuisée';
+          btn.removeAttribute('href');
+        });
+      }
+    } catch (err) {
+      console.warn('Scarcity sync notice:', err.message);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initScarcity);
+  } else {
+    initScarcity();
+  }
+
   window.BCOffers = {
     renderOfferCard,
     renderOfferGrid,
@@ -192,5 +341,8 @@
     offerDescription,
     formatPaymentMode,
     formatDuration,
+    initScarcity,
+    spinMechanicalReels,
+    triggerPriceStrikeAnimation,
   };
 })();
