@@ -69,6 +69,7 @@ const {
   clearUnlockFails,
 } = require('./lib/dev-session');
 const { runPaymentContext, testPaymentsInfo } = require('./lib/test-env');
+const { corsMiddleware } = require('./lib/cors');
 const {
   getPaymentDisplay,
   setPaymentDisplay,
@@ -722,6 +723,10 @@ function createApp() {
       }
     }
   );
+
+  /* Le site vitrine WordPress consomme le chat Chloe et les places restantes :
+     sans en-tête CORS le navigateur bloquait la réponse (préflight en 404). */
+  app.use('/api', corsMiddleware());
 
   app.use(express.json({ limit: '2mb' }));
 
