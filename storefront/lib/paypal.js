@@ -2,15 +2,41 @@
 
 /**
  * PayPal natif (hors Stripe) — Orders API v2 + capture.
+ * Deux comptes possibles :
+ *   - Minimes / autres salles → PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET
+ *   - Portet                 → PAYPAL_PORTET_CLIENT_ID + PAYPAL_PORTET_CLIENT_SECRET
+ *     (si les clés Portet manquent, repli sur le compte Minimes)
  * Pay Later / 4× FR : proposé par PayPal si le compte + client sont éligibles
  * (enable-funding=paylater côté SDK ; ici flux redirect approve).
  */
 
-function isPaypalEnabled() {
-  return Boolean(
-    process.env.PAYPAL_CLIENT_ID &&
-      process.env.PAYPAL_CLIENT_SECRET
-  );
+function paypalAccountForGym(gym) {
+  return String(gym || '').trim().toLowerCase() === 'portet' ? 'portet' : 'minimes';
+}
+
+function resolvePaypalAccount({ gym, account } = {}) {
+  if (account === 'portet' || account === 'minimes') return account;
+  return paypalAccountForGym(gym);
+}
+
+function credentialsForAccount(account) {
+  if (account === 'portet') {
+    return {
+      account: 'portet',
+      clientId: process.env.PAYPAL_PORTET_CLIENT_ID || process.env.PAYPAL_CLIENT_ID || '',
+      secret: process.env.PAYPAL_PORTET_CLIENT_SECRET || process.env.PAYPAL_CLIENT_SECRET || '',
+    };
+  }
+  return {
+    account: 'minimes',
+    clientId: process.env.PAYPAL_CLIENT_ID || '',
+    secret: process.env.PAYPAL_CLIENT_SECRET || '',
+  };
+}
+
+function isPaypalEnabled(gym) {
+  const creds = credentialsForAccount(paypalAccountForGym(gym));
+  return Boolean(creds.clientId && creds.secret);
 }
 
 function paypalMode() {
@@ -29,21 +55,31 @@ function apiBase() {
     : 'https://api-m.sandbox.paypal.com';
 }
 
-function publicClientId() {
-  return process.env.PAYPAL_CLIENT_ID || '';
+function publicClientId(gym) {
+  return credentialsForAccount(paypalAccountForGym(gym)).clientId;
 }
 
-let cachedToken = { value: null, exp: 0 };
+const tokenCache = {
+  minimes: { value: null, exp: 0 },
+  portet: { value: null, exp: 0 },
+};
 
-async function getAccessToken() {
-  if (cachedToken.value && Date.now() < cachedToken.exp - 30_000) {
-    return cachedToken.value;
+async function getAccessToken(account = 'minimes') {
+  const key = account === 'portet' ? 'portet' : 'minimes';
+  const cached = tokenCache[key];
+  if (cached.value && Date.now() < cached.exp - 30_000) {
+    return cached.value;
   }
-  const id = process.env.PAYPAL_CLIENT_ID;
-  const secret = process.env.PAYPAL_CLIENT_SECRET;
-  if (!id || !secret) throw new Error('PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET manquants');
+  const { clientId, secret } = credentialsForAccount(key);
+  if (!clientId || !secret) {
+    throw new Error(
+      key === 'portet'
+        ? 'PAYPAL_PORTET_CLIENT_ID / PAYPAL_PORTET_CLIENT_SECRET manquants'
+        : 'PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET manquants'
+    );
+  }
 
-  const auth = Buffer.from(`${id}:${secret}`).toString('base64');
+  const auth = Buffer.from(`${clientId}:${secret}`).toString('base64');
   const res = await fetch(`${apiBase()}/v1/oauth2/token`, {
     method: 'POST',
     headers: {
@@ -56,15 +92,16 @@ async function getAccessToken() {
   if (!res.ok) {
     throw new Error(body.error_description || body.error || `PayPal OAuth ${res.status}`);
   }
-  cachedToken = {
+  tokenCache[key] = {
     value: body.access_token,
     exp: Date.now() + Number(body.expires_in || 300) * 1000,
   };
-  return cachedToken.value;
+  return tokenCache[key].value;
 }
 
-async function paypalRequest(path, { method = 'GET', body = null } = {}) {
-  const token = await getAccessToken();
+async function paypalRequest(path, { method = 'GET', body = null, gym, account } = {}) {
+  const acc = resolvePaypalAccount({ gym, account });
+  const token = await getAccessToken(acc);
   const res = await fetch(`${apiBase()}${path}`, {
     method,
     headers: {
@@ -117,9 +154,17 @@ async function createPaypalOrder({
   metadata = {},
   returnUrl = null,
   cancelUrl = null,
+  gym = null,
 }) {
   const amount = Number(amountCents || product?.price_cents || 0);
   if (!amount) throw new Error('Montant PayPal invalide');
+
+  const resolvedGym =
+    gym ||
+    order?.customer_full?.gym ||
+    metadata.gym ||
+    '';
+  const account = paypalAccountForGym(resolvedGym);
 
   const itemName = description || product?.display_name || product?.name || 'Boxing Center';
   const returnBase = order?.access_token
@@ -148,7 +193,7 @@ async function createPaypalOrder({
     payment_source: {
       paypal: {
         experience_context: {
-          brand_name: 'Boxing Center',
+          brand_name: account === 'portet' ? 'Boxing Center Portet' : 'Boxing Center',
           locale: 'fr-FR',
           landing_page: 'LOGIN',
           user_action: 'PAY_NOW',
@@ -164,6 +209,7 @@ async function createPaypalOrder({
   const created = await paypalRequest('/v2/checkout/orders', {
     method: 'POST',
     body: payload,
+    account,
   });
 
   return {
@@ -172,19 +218,24 @@ async function createPaypalOrder({
     approve_url: approveUrl(created),
     raw: created,
     payment_plan: paymentPlan,
+    paypal_account: account,
   };
 }
 
-async function capturePaypalOrder(paypalOrderId) {
+async function capturePaypalOrder(paypalOrderId, opts = {}) {
   return paypalRequest(`/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}/capture`, {
     method: 'POST',
     body: {},
+    gym: opts.gym,
+    account: opts.account,
   });
 }
 
-async function retrievePaypalOrder(paypalOrderId) {
+async function retrievePaypalOrder(paypalOrderId, opts = {}) {
   return paypalRequest(`/v2/checkout/orders/${encodeURIComponent(paypalOrderId)}`, {
     method: 'GET',
+    gym: opts.gym,
+    account: opts.account,
   });
 }
 
@@ -205,6 +256,9 @@ module.exports = {
   isPaypalEnabled,
   paypalMode,
   publicClientId,
+  paypalAccountForGym,
+  resolvePaypalAccount,
+  credentialsForAccount,
   createPaypalOrder,
   capturePaypalOrder,
   retrievePaypalOrder,

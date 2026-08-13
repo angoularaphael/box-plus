@@ -74,7 +74,7 @@ salle de boxe / matériel de boxe + Toulouse », et **cité par les moteurs IA**
 - [ ] Cache headers longs sur les assets statiques (config Vercel).
 - [ ] `srcset` responsive sur les images de la home (mobile télécharge
   aujourd'hui les images desktop).
-- [ ] Page 404 propre (actuellement réponse générique).
+- [x] Page 404 propre (actuellement réponse générique).
 
 ## 5. Suivi hebdomadaire (15 min)
 

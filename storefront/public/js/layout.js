@@ -46,6 +46,7 @@
         'reglement-interieur.html': '/reglement-interieur',
         'mon-inscription.html': '/mon-inscription',
         'gerer-abonnement.html': '/gerer-abonnement',
+        '404.html': '/404',
       };
       if (map[file]) return map[file];
       if (location.pathname.includes('/admin/')) return '/admin';
@@ -231,7 +232,7 @@
 
   function ensureChloe() {
     const p = currentPath();
-    if (/gerer-abonnement|inscription|checkout|panier|success|contrat|mon-inscription|admin|attestation/i.test(p)) {
+    if (/gerer-abonnement|inscription|checkout|panier|success|contrat|mon-inscription|admin|attestation|\/404/i.test(p)) {
       return;
     }
     if (document.querySelector('script[data-chloe]')) return;

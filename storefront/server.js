@@ -51,6 +51,7 @@ const {
 const {
   isPaypalEnabled,
   publicClientId: paypalPublicClientId,
+  paypalAccountForGym,
   createPaypalOrder,
   capturePaypalOrder,
   retrievePaypalOrder,
@@ -1971,7 +1972,7 @@ function createApp() {
       const baseUrl = getCheckoutBaseUrl(req);
       const planLabel = paymentPlan || (productSupportsInstallmentChoice(product) ? 'once' : 'once');
 
-      if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true' && !isPayplugEnabled() && !isPaypalEnabled()) {
+      if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true' && !isPayplugEnabled() && !isPaypalEnabled(gym)) {
         order = await markPaymentPaid(order.order_id, {
           method: 'demo',
           billing_plan: billingPlan,
@@ -1986,7 +1987,7 @@ function createApp() {
 
       // ——— PayPal natif (1× ou tentative Pay Later si éligible côté PayPal) ———
       if (preferredCheckout === 'paypal') {
-        if (!isPaypalEnabled()) {
+        if (!isPaypalEnabled(gym)) {
           return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
         }
         const ppOrder = await createPaypalOrder({
@@ -1995,6 +1996,7 @@ function createApp() {
           amountCents: product.price_cents,
           baseUrl,
           paymentPlan: planLabel === '4x' ? '4x' : 'once',
+          gym,
         });
         if (!ppOrder.approve_url) {
           return res.status(502).json({ ok: false, error: 'paypal_url_missing' });
@@ -2005,6 +2007,7 @@ function createApp() {
           preferred_checkout: 'paypal',
           payment_plan: planLabel === '4x' ? '4x' : 'once',
           paypal_order_id: ppOrder.id,
+          paypal_account: ppOrder.paypal_account || paypalAccountForGym(gym),
           status: 'pending',
         };
         await saveOrderAsync(order);
@@ -2376,7 +2379,7 @@ function createApp() {
           error: 'Pour la salle Portet, le paiement doit passer par PayPal.',
         });
       }
-      if (preferPaypal && !isPaypalEnabled()) {
+      if (preferPaypal && !isPaypalEnabled(gymNorm)) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
       }
       if (!preferPaypal && !isPayplugEnabled()) {
@@ -2425,9 +2428,11 @@ function createApp() {
           baseUrl,
           paymentPlan: paymentPlan === '4x' ? '4x' : 'once',
           description: product.display_name || product.name || 'Changement abo comptant',
+          gym: gymNorm,
           metadata: {
             order_id: body.verify_order_id || `chg-${Date.now()}`,
             verify_order_id: body.verify_order_id || '',
+            gym: gymNorm,
           },
           returnUrl: `${baseUrl}/gerer-abonnement?change=1&paypal_return=1`,
           cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled`,
@@ -2439,6 +2444,7 @@ function createApp() {
           ...meta,
           payment_method: 'paypal',
           paypal_order_id: ppOrder.id,
+          paypal_account: ppOrder.paypal_account || paypalAccountForGym(gymNorm),
         });
         return res.json({
           ok: true,
@@ -2567,15 +2573,23 @@ function createApp() {
         loadMembershipChangePending,
       } = require('./lib/membership');
 
-      if (paypalOrderId && isPaypalEnabled()) {
-        let captured = await retrievePaypalOrder(paypalOrderId);
+      if (paypalOrderId) {
+        const pending = await loadMembershipChangePending(paypalOrderId);
+        if (!isPaypalEnabled(pending?.paypal_account || pending?.gym)) {
+          return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
+        }
+        const paypalOpts = {
+          gym: pending?.gym,
+          account: pending?.paypal_account,
+        };
+        let captured = await retrievePaypalOrder(paypalOrderId, paypalOpts);
         if (!isPaypalOrderPaid(captured)) {
           try {
-            captured = await capturePaypalOrder(paypalOrderId);
+            captured = await capturePaypalOrder(paypalOrderId, paypalOpts);
           } catch (capErr) {
             // Déjà capturé / course webhook → relecture
             logWarn('PayPal change capture', { error: capErr.message, paypal_order_id: paypalOrderId });
-            captured = await retrievePaypalOrder(paypalOrderId);
+            captured = await retrievePaypalOrder(paypalOrderId, paypalOpts);
           }
         }
         if (!isPaypalOrderPaid(captured)) {
@@ -2585,7 +2599,6 @@ function createApp() {
             paypal_status: captured?.status || null,
           });
         }
-        const pending = await loadMembershipChangePending(paypalOrderId);
         if (!pending?.target_product_id) {
           return res.status(404).json({ ok: false, error: 'changement introuvable pour ce paiement' });
         }
@@ -2938,13 +2951,15 @@ function createApp() {
     return paid;
   }
 
-  app.get('/api/payments/config', (_req, res) => {
+  app.get('/api/payments/config', (req, res) => {
+    const gym = req.query.gym;
     res.json({
       ok: true,
       payplug: isPayplugEnabled(),
-      paypal: isPaypalEnabled(),
-      paypal_client_id: isPaypalEnabled() ? paypalPublicClientId() : null,
+      paypal: isPaypalEnabled(gym),
+      paypal_client_id: isPaypalEnabled(gym) ? paypalPublicClientId(gym) : null,
       paypal_mode: paypalMode(),
+      paypal_account: paypalAccountForGym(gym),
     });
   });
 
@@ -3132,15 +3147,19 @@ function createApp() {
           redirect: inscriptionRedirect(order),
         });
       }
-      if (!isPaypalEnabled()) {
+      if (!isPaypalEnabled(order.payment?.paypal_account || order.customer_full?.gym)) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
       }
       const id = paypalOrderId || order.payment?.paypal_order_id;
       if (!id) return res.status(400).json({ ok: false, error: 'paypal_order_id manquant' });
 
-      let captured = await retrievePaypalOrder(id);
+      const paypalOpts = {
+        gym: order.customer_full?.gym,
+        account: order.payment?.paypal_account,
+      };
+      let captured = await retrievePaypalOrder(id, paypalOpts);
       if (!isPaypalOrderPaid(captured)) {
-        captured = await capturePaypalOrder(id);
+        captured = await capturePaypalOrder(id, paypalOpts);
       }
       if (!isPaypalOrderPaid(captured)) {
         return res.status(402).json({
@@ -3230,6 +3249,13 @@ function createApp() {
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
   });
 
+  const sendNotFoundPage = (res) => {
+    res.status(404).type('text/html; charset=utf-8');
+    res.sendFile(path.join(PUBLIC_DIR, '404.html'));
+  };
+
+  app.get(['/404', '/404.html'], (_req, res) => sendNotFoundPage(res));
+
   app.use(
     express.static(PUBLIC_DIR, {
       setHeaders(res, filePath) {
@@ -3239,6 +3265,13 @@ function createApp() {
       },
     })
   );
+
+  app.use((req, res) => {
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ ok: false, error: 'not_found' });
+    }
+    return sendNotFoundPage(res);
+  });
 
   app.use((err, _req, res, _next) => {
     logError('Erreur Express', { error: err.message });

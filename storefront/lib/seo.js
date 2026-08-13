@@ -474,6 +474,8 @@ const NOINDEX_PATHS = [
   '/checkout.html',
   '/success.html',
   '/admin',
+  '/404',
+  '/404.html',
 ];
 
 /* ── helpers ──────────────────────────────────────────────────────── */

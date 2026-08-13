@@ -341,6 +341,10 @@
     if (state.weekKey !== weekKey) {
       state.weekKey = weekKey;
       state.plans = {};
+      state.lastShown = {};
+    }
+    if (!state.lastShown || typeof state.lastShown !== 'object') {
+      state.lastShown = {};
     }
     try {
       localStorage.setItem(SCARCITY_STORAGE, JSON.stringify(state));
@@ -397,14 +401,31 @@
       1,
       Math.max(0, (parts.hour * 3600 + parts.minute * 60 + parts.second) / 86400)
     );
-    // Légère accélération en fin de journée (pression)
+    // Légère accélération en fin de journée (pression) — courbe strictement descendante.
     const eased = dayFraction * dayFraction * (3 - 2 * dayFraction);
-    let value = dayStart + (dayEnd - dayStart) * eased;
-    // Micro-variation stable par créneau ~20 min (même user = même chiffre un moment)
-    const slot = Math.floor((parts.hour * 60 + parts.minute) / 20);
-    const wobble = mulberry32(hashSeed(`${plan.join(',')}:${dayIndex}:${slot}`))();
-    value -= wobble * Math.min(2.2, Math.max(0.4, (dayStart - dayEnd) / 18));
+    const value = dayStart + (dayEnd - dayStart) * eased;
     return Math.max(end, Math.min(start, Math.round(value)));
+  }
+
+  function persistState(state) {
+    try {
+      localStorage.setItem(SCARCITY_STORAGE, JSON.stringify(state));
+    } catch {
+      /* private mode */
+    }
+  }
+
+  function lockNeverIncrease(state, offerKey, restantes, floor) {
+    const prev = Number(state.lastShown[offerKey]);
+    let next = restantes;
+    if (Number.isFinite(prev) && prev >= floor) {
+      next = Math.min(next, prev);
+    }
+    if (state.lastShown[offerKey] !== next) {
+      state.lastShown[offerKey] = next;
+      persistState(state);
+    }
+    return next;
   }
 
   function computeWeeklyRemaining(offerId) {
@@ -413,12 +434,24 @@
       const start = 50;
       const end = 3;
       const plan = getOfferPlan(state, 'offre-saison', start, end);
-      return { restantes: remainingFromPlan(plan, start, end), quota: start };
+      const restantes = lockNeverIncrease(
+        state,
+        'offre-saison',
+        remainingFromPlan(plan, start, end),
+        end
+      );
+      return { restantes, quota: start };
     }
     const start = 100;
     const end = 3;
     const plan = getOfferPlan(state, 'offre-duo', start, end);
-    return { restantes: remainingFromPlan(plan, start, end), quota: start };
+    const restantes = lockNeverIncrease(
+      state,
+      'offre-duo',
+      remainingFromPlan(plan, start, end),
+      end
+    );
+    return { restantes, quota: start };
   }
 
   async function initScarcity() {

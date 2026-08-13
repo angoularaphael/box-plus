@@ -535,7 +535,9 @@
 
   async function loadPaypalMessaging(amountEuros) {
     try {
-      const res = await fetch('/api/payments/config');
+      const gym = state.order?.customer_full?.gym || state.gymDraft || '';
+      const qs = gym ? `?gym=${encodeURIComponent(gym)}` : '';
+      const res = await fetch(`/api/payments/config${qs}`);
       const cfg = await res.json().catch(() => ({}));
       if (!cfg.ok || !cfg.paypal_client_id) return;
       const renderMsg = () => {
