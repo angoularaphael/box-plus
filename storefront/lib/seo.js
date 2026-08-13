@@ -809,16 +809,17 @@ function registerSeo(app, publicDir) {
   let sitemapCache = null;
   let sitemapAt = 0;
   app.get('/sitemap.xml', (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600, s-maxage=3600');
     try {
       if (!sitemapCache || Date.now() - sitemapAt > 10 * 60 * 1000) {
         sitemapCache = sitemapXml(publicDir);
         sitemapAt = Date.now();
       }
-      res.type('application/xml').send(sitemapCache);
+      res.type('application/xml; charset=utf-8').send(sitemapCache);
     } catch (err) {
-      res.status(500).type('application/xml').send(
-        `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${SITE_URL}/</loc></url></urlset>`
-      );
+      /* Google traite un 500 comme « Impossible de récupérer ». Toujours 200. */
+      console.error('[sitemap]', err);
+      res.status(200).type('application/xml; charset=utf-8').send(FALLBACK_SITEMAP);
     }
   });
 
@@ -919,4 +920,15 @@ function registerSeo(app, publicDir) {
   }
 }
 
-module.exports = { registerSeo, SITE_URL };
+const FALLBACK_SITEMAP =
+  `<?xml version="1.0" encoding="UTF-8"?>\n` +
+  `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
+  `<url><loc>${SITE_URL}/</loc></url></urlset>\n`;
+
+module.exports = {
+  registerSeo,
+  SITE_URL,
+  buildSitemapXml: sitemapXml,
+  robotsTxt,
+  FALLBACK_SITEMAP,
+};

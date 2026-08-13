@@ -1,10 +1,20 @@
 {
   "version": 2,
-  "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
+  "rewrites": [
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    { "source": "/robots.txt", "destination": "/api/robots" },
+    { "source": "/(.*)", "destination": "/api" }
+  ],
   "functions": {
     "api/index.js": {
       "maxDuration": 30,
       "includeFiles": "{storefront/**,data/storefront/**,lib/**,config/**}"
+    },
+    "api/sitemap.js": {
+      "includeFiles": "{storefront/lib/seo.js,storefront/public/**,data/storefront/materiel-catalog.json}"
+    },
+    "api/robots.js": {
+      "includeFiles": "{storefront/lib/seo.js,data/storefront/materiel-catalog.json}"
     }
   },
   "crons": [
