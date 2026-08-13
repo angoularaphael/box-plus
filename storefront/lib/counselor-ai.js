@@ -87,6 +87,11 @@ function normalizeText(s) {
     .trim();
 }
 
+function isInternalUnlockPhrase(text) {
+  const t = normalizeText(text);
+  return t === 'mode developpement' || t === 'mode developpeur' || t === 'mode dev';
+}
+
 function similarityScore(a, b) {
   const wa = new Set(normalizeText(a).split(' ').filter((w) => w.length > 3));
   const wb = new Set(normalizeText(b).split(' ').filter((w) => w.length > 3));
@@ -468,6 +473,7 @@ module.exports = {
   guideRetention,
   guideWelcome,
   isAiEnabled,
+  isInternalUnlockPhrase,
   FALLBACKS,
   WELCOME_FALLBACK,
 };

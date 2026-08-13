@@ -59,6 +59,20 @@ const {
   paypalMode,
 } = require('./lib/paypal');
 const {
+  getDevSession,
+  setDevSessionCookie,
+  clearDevSessionCookie,
+  codesMatch,
+  unlockLocked,
+  recordUnlockFail,
+  clearUnlockFails,
+} = require('./lib/dev-session');
+const {
+  getPaymentDisplay,
+  setPaymentDisplay,
+  resolvePaymentDisplay,
+} = require('./lib/payment-display');
+const {
   getEnrichedProducts,
   getFeaturedProducts,
   getMaterielProducts,
@@ -732,6 +746,57 @@ function createApp() {
     const session = await getAdminSession(req);
     if (!session) return res.status(401).json({ ok: false, error: 'unauthorized' });
     res.json({ ok: true, user: session });
+  });
+
+  app.post('/api/studio/unlock', (req, res) => {
+    if (getDevSession(req)) {
+      return res.json({ ok: true, reply: 'C’est bon, j’ouvre l’espace.', url: '/dev' });
+    }
+    if (unlockLocked(req)) {
+      return res.status(429).json({
+        ok: false,
+        reply: 'Trop d’essais. Réessaie plus tard.',
+      });
+    }
+    if (!codesMatch(req.body?.code || req.body?.pin || '')) {
+      recordUnlockFail(req);
+      return res.status(403).json({
+        ok: false,
+        reply: 'Ce n’est pas le bon. Réessaie.',
+      });
+    }
+    clearUnlockFails(req);
+    setDevSessionCookie(res);
+    res.json({ ok: true, reply: 'C’est bon, j’ouvre l’espace.', url: '/dev' });
+  });
+
+  app.post('/api/studio/leave', (req, res) => {
+    clearDevSessionCookie(res);
+    res.json({ ok: true });
+  });
+
+  app.get('/api/studio/payments', async (req, res) => {
+    if (!getDevSession(req)) return res.status(404).json({ ok: false, error: 'not_found' });
+    try {
+      const prod = await getPaymentDisplay();
+      res.json({ ok: true, prod });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.put('/api/studio/payments', async (req, res) => {
+    if (!getDevSession(req)) return res.status(404).json({ ok: false, error: 'not_found' });
+    try {
+      const prod = await setPaymentDisplay(req.body || {});
+      logInfo('Affichage paiements mis à jour', prod);
+      res.json({ ok: true, prod });
+    } catch (err) {
+      res.status(err.code === 'need_one' ? 400 : 500).json({
+        ok: false,
+        error: err.message,
+      });
+    }
   });
 
   app.get('/api/health', (_req, res) => {
@@ -1930,12 +1995,22 @@ function createApp() {
       const payMethod = String(req.body.pay_method || '').toLowerCase();
       const gym = order.customer_full?.gym || req.body.gym || 'minimes';
       const gymNorm = String(gym).trim().toLowerCase();
-      const portetPaypalOnly = gymNorm === 'portet';
+      const display = await resolvePaymentDisplay(req, gymNorm, {
+        payplugReady: isPayplugEnabled(),
+        paypalReady: isPaypalEnabled(gymNorm),
+      });
+      const portetPaypalOnly = display.portetPaypalOnly;
       let preferredCheckout =
         payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
           ? 'paypal'
           : 'card';
       if (portetPaypalOnly) preferredCheckout = 'paypal';
+      if (preferredCheckout === 'paypal' && !display.show_paypal) {
+        return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
+      }
+      if (preferredCheckout !== 'paypal' && !display.show_payplug) {
+        return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
+      }
       const badgeTiming = 'deferred';
       const badgeMethod = 'iban';
 
@@ -2244,7 +2319,23 @@ function createApp() {
   app.post('/api/membership/welcome-counsel', async (req, res) => {
     try {
       const body = req.body || {};
-      const { guideWelcome } = require('./lib/counselor-ai');
+      const { guideWelcome, isInternalUnlockPhrase } = require('./lib/counselor-ai');
+      const freeText = body.free_text || body.message || '';
+      if (isInternalUnlockPhrase(freeText)) {
+        if (getDevSession(req)) {
+          return res.json({
+            ok: true,
+            reply: 'C’est bon, j’ouvre l’espace.',
+            next: 'open',
+            url: '/dev',
+          });
+        }
+        return res.json({
+          ok: true,
+          reply: 'Ok. Envoie-moi le code.',
+          next: 'code',
+        });
+      }
       const messages = Array.isArray(body.messages)
         ? body.messages
             .slice(-16)
@@ -2256,10 +2347,15 @@ function createApp() {
                 .trim()
                 .slice(0, 600),
             }))
-            .filter((m) => m.content)
+            .filter(
+              (m) =>
+                m.content &&
+                !isInternalUnlockPhrase(m.content) &&
+                !/^\d{4,8}$/.test(m.content)
+            )
         : [];
       const result = await guideWelcome({
-        freeText: body.free_text || body.message || '',
+        freeText,
         messages,
       });
       res.json({ ok: true, reply: result.reply, source: result.source });
@@ -2364,7 +2460,11 @@ function createApp() {
       }
       const method = String(body.payment_method || body.method || 'payplug').toLowerCase();
       const gymNorm = String(body.gym || '').trim().toLowerCase();
-      const portetPaypalOnly = gymNorm === 'portet';
+      const display = await resolvePaymentDisplay(req, gymNorm, {
+        payplugReady: isPayplugEnabled(),
+        paypalReady: isPaypalEnabled(gymNorm),
+      });
+      const portetPaypalOnly = display.portetPaypalOnly;
       let preferPaypal = method === 'paypal' || portetPaypalOnly;
       const {
         productSupportsInstallmentChoice,
@@ -2379,10 +2479,10 @@ function createApp() {
           error: 'Pour la salle Portet, le paiement doit passer par PayPal.',
         });
       }
-      if (preferPaypal && !isPaypalEnabled(gymNorm)) {
+      if (preferPaypal && !display.show_paypal) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
       }
-      if (!preferPaypal && !isPayplugEnabled()) {
+      if (!preferPaypal && !display.show_payplug) {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
 
@@ -2951,15 +3051,23 @@ function createApp() {
     return paid;
   }
 
-  app.get('/api/payments/config', (req, res) => {
+  app.get('/api/payments/config', async (req, res) => {
     const gym = req.query.gym;
+    const display = await resolvePaymentDisplay(req, gym, {
+      payplugReady: isPayplugEnabled(),
+      paypalReady: isPaypalEnabled(gym),
+    });
     res.json({
       ok: true,
       payplug: isPayplugEnabled(),
       paypal: isPaypalEnabled(gym),
-      paypal_client_id: isPaypalEnabled(gym) ? paypalPublicClientId(gym) : null,
+      paypal_client_id:
+        display.show_paypal && isPaypalEnabled(gym) ? paypalPublicClientId(gym) : null,
       paypal_mode: paypalMode(),
       paypal_account: paypalAccountForGym(gym),
+      show_payplug: display.show_payplug,
+      show_paypal: display.show_paypal,
+      preview: display.preview,
     });
   });
 
@@ -3253,6 +3361,14 @@ function createApp() {
     res.status(404).type('text/html; charset=utf-8');
     res.sendFile(path.join(PUBLIC_DIR, '404.html'));
   };
+
+  app.get(['/dev', '/dev/'], (req, res) => {
+    if (!getDevSession(req)) return sendNotFoundPage(res);
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    res.setHeader('Cache-Control', 'no-store');
+    res.type('text/html; charset=utf-8');
+    res.sendFile(path.join(__dirname, 'views', 'dev.html'));
+  });
 
   app.get(['/404', '/404.html'], (_req, res) => sendNotFoundPage(res));
 

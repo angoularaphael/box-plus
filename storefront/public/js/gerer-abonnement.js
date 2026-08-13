@@ -361,8 +361,28 @@
     </span>`;
   }
 
-  function renderChangePayChoices({ product, gym }) {
-    const portet = isPortetGym(gym);
+  let changePayFlags = { preview: false, showCard: true, showPaypal: true };
+
+  async function loadPayFlags(gym) {
+    try {
+      const qs = gym ? `?gym=${encodeURIComponent(gym)}` : '';
+      const res = await fetch(`/api/payments/config${qs}`);
+      const cfg = await res.json().catch(() => ({}));
+      return {
+        preview: Boolean(cfg.preview),
+        showCard: cfg.show_payplug !== false,
+        showPaypal: cfg.show_paypal !== false,
+      };
+    } catch {
+      return { preview: false, showCard: true, showPaypal: true };
+    }
+  }
+
+  async function renderChangePayChoices({ product, gym }) {
+    changePayFlags = await loadPayFlags(gym);
+    const portet = isPortetGym(gym) && !changePayFlags.preview && changePayFlags.showPaypal;
+    const showCard = changePayFlags.showCard && !portet;
+    const showPaypal = changePayFlags.showPaypal;
     const cents = Number(product?.price_cents || 0);
     const quart = cents > 0 ? (cents / 400).toFixed(2).replace('.', ',') : '';
     const installment =
@@ -380,9 +400,24 @@
         </span>
       </label>`;
 
+    const methods = (name, cardVal, paypalVal, cardTitle, cardSmall, cardLogo, paypalSmall) => {
+      const preferPaypal = showPaypal && !showCard;
+      let out = '';
+      if (showCard) {
+        out += methodRow(name, cardVal, !preferPaypal, cardTitle, cardSmall, cardLogo);
+      }
+      if (showPaypal) {
+        out += methodRow(name, paypalVal, preferPaypal, 'PayPal', paypalSmall, 'paypal');
+      }
+      return out || '<p class="portet-pay-notice">Paiement temporairement indisponible.</p>';
+    };
+
     let html = '';
     if (portet) {
       html += `<p class="portet-pay-notice">À <strong>Portet</strong>, vous ne pourrez payer <strong>que par PayPal</strong>. Si vous voulez payer par <strong>carte bancaire</strong>, choisissez une autre salle (Minimes, Ramonville, États-Unis ou Saint-Cyprien).</p>`;
+    }
+    if (changePayFlags.preview) {
+      html += `<p class="portet-pay-notice">Studio : tous les moyens branchés s’affichent. Les visiteurs verront les cases enregistrées après déconnexion.</p>`;
     }
     if (installment) {
       html += `
@@ -394,40 +429,25 @@
         <div id="changeFourXSchedule" class="fourx-schedule" style="display:none;margin-top:10px"></div>
         <p class="sub" style="margin:16px 0 8px">Étape 2 — Moyen de paiement</p>
         <div id="changeOnceMethods" class="billing-choice-row">
-          ${
-            portet
-              ? methodRow('change_pay_method_once', 'paypal', true, 'PayPal', 'Obligatoire à Portet', 'paypal')
-              : `${methodRow('change_pay_method_once', 'payplug', true, 'Carte bancaire', 'PayPlug', 'card')}
-                 ${methodRow('change_pay_method_once', 'paypal', false, 'PayPal', 'Paiement sécurisé', 'paypal')}`
-          }
+          ${methods('change_pay_method_once', 'payplug', 'paypal', 'Carte bancaire', 'PayPlug', 'card', portet ? 'Obligatoire à Portet' : 'Paiement sécurisé')}
         </div>
         <div id="changeFourMethods" class="billing-choice-row" style="display:none">
-          ${
-            portet
-              ? methodRow('change_pay_method_4x', 'paypal', true, 'PayPal', '4× PayPal si éligible', 'paypal')
-              : `${methodRow('change_pay_method_4x', 'payplug', true, '4× sans frais', 'Carte PayPlug', 'payplug')}
-                 ${methodRow('change_pay_method_4x', 'paypal', false, 'PayPal', '4× PayPal si éligible', 'paypal')}`
-          }
+          ${methods('change_pay_method_4x', 'payplug', 'paypal', '4× sans frais', 'Carte PayPlug', 'payplug', '4× PayPal si éligible')}
         </div>
         ${
-          portet
-            ? ''
-            : `<div id="changeFourAddress" class="form-grid" style="display:none;margin-top:12px">
+          showCard
+            ? `<div id="changeFourAddress" class="form-grid" style="display:none;margin-top:12px">
             <p class="sub full" style="margin:0 0 8px">Adresse requise pour le 4× carte :</p>
             <div class="full"><label>Adresse *</label><input name="address" id="chg_address" /></div>
             <div><label>Code postal *</label><input name="postal_code" id="chg_postal" /></div>
             <div><label>Ville *</label><input name="city" id="chg_city" /></div>
           </div>`
+            : ''
         }`;
     } else {
       html += `
         <div class="billing-choice-row" role="radiogroup" aria-label="Moyen de paiement">
-          ${
-            portet
-              ? methodRow('change_pay_method', 'paypal', true, 'PayPal', 'Obligatoire à Portet', 'paypal')
-              : `${methodRow('change_pay_method', 'payplug', true, 'Carte bancaire', 'PayPlug', 'card')}
-                 ${methodRow('change_pay_method', 'paypal', false, 'PayPal', 'Paiement sécurisé', 'paypal')}`
-          }
+          ${methods('change_pay_method', 'payplug', 'paypal', 'Carte bancaire', 'PayPlug', 'card', portet ? 'Obligatoire à Portet' : 'Paiement sécurisé')}
         </div>`;
     }
     changePayChoices.innerHTML = html;
@@ -459,8 +479,9 @@
           }
         }
         const fourMethod =
-          document.querySelector('input[name="change_pay_method_4x"]:checked')?.value || 'payplug';
-        if (addr) addr.style.display = plan === '4x' && fourMethod === 'payplug' && !portet ? '' : 'none';
+          document.querySelector('input[name="change_pay_method_4x"]:checked')?.value ||
+          (showPaypal && !showCard ? 'paypal' : 'payplug');
+        if (addr) addr.style.display = plan === '4x' && fourMethod === 'payplug' && showCard ? '' : 'none';
       };
       changePayChoices
         .querySelectorAll('input[name="change_payment_plan"], input[name="change_pay_method_4x"]')
@@ -469,7 +490,7 @@
     }
   }
 
-  function showChangePayStep({ body, product, verifyOrderId }) {
+  async function showChangePayStep({ body, product, verifyOrderId }) {
     changeCheckoutBody = {
       ...body,
       verify_order_id: verifyOrderId,
@@ -492,11 +513,14 @@
       changeProductSummary?.name ||
       targetSelect?.selectedOptions?.[0]?.textContent ||
       'abonnement comptant';
-    const portet = isPortetGym(body.gym);
+    await renderChangePayChoices({ product: changeProductSummary, gym: body.gym });
+    const portetNotice =
+      isPortetGym(body.gym) && !changePayFlags.preview && changePayFlags.showPaypal;
     changePayLead.textContent = label
-      ? `Identité confirmée. Montant : ${label} (${name}). À Portet, le paiement se fait uniquement par PayPal — pour la carte bancaire, choisissez une autre salle.`
+      ? portetNotice
+        ? `Identité confirmée. Montant : ${label} (${name}). À Portet, le paiement se fait uniquement par PayPal — pour la carte bancaire, choisissez une autre salle.`
+        : `Identité confirmée. Montant : ${label} (${name}).`
       : `Identité confirmée. Choisissez votre mode de paiement.`;
-    renderChangePayChoices({ product: changeProductSummary, gym: body.gym });
     changeForm.hidden = true;
     changePayPanel.hidden = false;
     changeMsg.hidden = false;
@@ -522,7 +546,10 @@
       changeMsg.textContent = 'Recommencez la vérification de vos informations.';
       return;
     }
-    const portet = isPortetGym(changeCheckoutBody.gym);
+    const portetForced =
+      isPortetGym(changeCheckoutBody.gym) &&
+      !changePayFlags.preview &&
+      changePayFlags.showPaypal;
     const installment =
       changeProductSummary?.supports_installment_choice ||
       document.querySelector('input[name="change_payment_plan"]');
@@ -534,8 +561,9 @@
         document.querySelector('input[name="change_payment_plan"]:checked')?.value || 'once';
       if (paymentPlan === '4x') {
         paymentMethod =
-          document.querySelector('input[name="change_pay_method_4x"]:checked')?.value || 'payplug';
-        if (paymentMethod === 'payplug' && !portet) {
+          document.querySelector('input[name="change_pay_method_4x"]:checked')?.value ||
+          (changePayFlags.showPaypal && !changePayFlags.showCard ? 'paypal' : 'payplug');
+        if (paymentMethod === 'payplug' && !portetForced) {
           extra.address = document.getElementById('chg_address')?.value?.trim() || '';
           extra.postal_code = document.getElementById('chg_postal')?.value?.trim() || '';
           extra.city = document.getElementById('chg_city')?.value?.trim() || '';
@@ -548,13 +576,15 @@
         }
       } else {
         paymentMethod =
-          document.querySelector('input[name="change_pay_method_once"]:checked')?.value || 'payplug';
+          document.querySelector('input[name="change_pay_method_once"]:checked')?.value ||
+          (changePayFlags.showPaypal && !changePayFlags.showCard ? 'paypal' : 'payplug');
       }
     } else {
       paymentMethod =
-        document.querySelector('input[name="change_pay_method"]:checked')?.value || 'payplug';
+        document.querySelector('input[name="change_pay_method"]:checked')?.value ||
+        (changePayFlags.showPaypal && !changePayFlags.showCard ? 'paypal' : 'payplug');
     }
-    if (portet) paymentMethod = 'paypal';
+    if (portetForced) paymentMethod = 'paypal';
 
     changePayBtn.disabled = true;
     changeMsg.hidden = false;
@@ -683,7 +713,7 @@
       supports_installment_choice:
         fromList?.supports_installment_choice || selectedOpt?.dataset?.installment === '1',
     };
-    showChangePayStep({
+    await showChangePayStep({
       body,
       product: productHint,
       verifyOrderId: verify.order_id,

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Réglages — Boxing Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/boutique.css" />
+  <style>
+    body.dev-body {
+      background: var(--bc-navy-deep);
+      color: #f4f5f7;
+      min-height: 100vh;
+    }
+    .dev-wrap {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 32px 20px 80px;
+    }
+    .dev-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .dev-top h1 {
+      color: #fff;
+      font-size: clamp(28px, 5vw, 40px);
+      margin: 6px 0 0;
+    }
+    .dev-banner {
+      background: rgba(200, 144, 47, 0.16);
+      border: 1px solid rgba(200, 144, 47, 0.45);
+      color: #f3d9a0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 14px;
+      margin-bottom: 22px;
+    }
+    .dev-card {
+      background: #fff;
+      color: var(--bc-text);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: var(--shadow-lg);
+    }
+    .dev-card h2 {
+      font-size: 26px;
+      margin-bottom: 6px;
+    }
+    .dev-card p.sub {
+      color: var(--bc-muted);
+      font-size: 14px;
+      margin-bottom: 18px;
+    }
+    .dev-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 12px;
+      border: 1px solid var(--bc-border);
+      border-radius: 12px;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+    .dev-row input {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--bc-red);
+    }
+    .dev-row strong { display: block; }
+    .dev-row small { color: var(--bc-muted); }
+    .dev-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+    .dev-msg { margin-top: 12px; font-size: 14px; min-height: 1.2em; }
+    .dev-msg.ok { color: var(--bc-success); }
+    .dev-msg.err { color: var(--bc-error); }
+  </style>
+</head>
+<body class="dev-body">
+  <div class="dev-wrap">
+    <div class="dev-top">
+      <div>
+        <span class="eyebrow" style="color:var(--bc-gold)">Studio</span>
+        <h1>Moyens de paiement</h1>
+      </div>
+      <button type="button" class="btn secondary sm" id="logoutBtn">Déconnexion</button>
+    </div>
+
+    <p class="dev-banner">
+      Tant que tu es connecté ici, <strong>tous</strong> les moyens branchés s’affichent sur le site (y compris à Portet). Les cases ci-dessous s’appliquent aux visiteurs dès que tu te déconnectes.
+    </p>
+
+    <div class="dev-card">
+      <h2>Afficher en production</h2>
+      <p class="sub">Décoche pour masquer un moyen aux clients. Il faut en laisser au moins un.</p>
+      <label class="dev-row">
+        <input type="checkbox" id="optPayplug" />
+        <span>
+          <strong>Carte bancaire</strong>
+          <small>PayPlug — Visa, Mastercard, Amex</small>
+        </span>
+      </label>
+      <label class="dev-row">
+        <input type="checkbox" id="optPaypal" />
+        <span>
+          <strong>PayPal</strong>
+          <small>Compte PayPal / Pay Later</small>
+        </span>
+      </label>
+      <div class="dev-actions">
+        <button type="button" class="btn" id="saveBtn">Enregistrer</button>
+        <a class="btn secondary" href="/inscription">Tester l’inscription</a>
+      </div>
+      <p class="dev-msg" id="msg"></p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const payplug = document.getElementById('optPayplug');
+      const paypal = document.getElementById('optPaypal');
+      const msg = document.getElementById('msg');
+      const saveBtn = document.getElementById('saveBtn');
+
+      function setMsg(text, kind) {
+        msg.textContent = text || '';
+        msg.className = 'dev-msg' + (kind ? ' ' + kind : '');
+      }
+
+      async function load() {
+        const res = await fetch('/api/studio/payments', { credentials: 'same-origin' });
+        if (res.status === 404) {
+          location.replace('/');
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!data.ok) {
+          setMsg(data.error || 'Impossible de charger.', 'err');
+          return;
+        }
+        payplug.checked = data.prod.payplug !== false;
+        paypal.checked = data.prod.paypal !== false;
+      }
+
+      saveBtn.onclick = async () => {
+        setMsg('Enregistrement…');
+        const res = await fetch('/api/studio/payments', {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payplug: payplug.checked, paypal: paypal.checked }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!data.ok) {
+          setMsg(data.error || 'Erreur', 'err');
+          return;
+        }
+        payplug.checked = data.prod.payplug !== false;
+        paypal.checked = data.prod.paypal !== false;
+        setMsg('Enregistré — les visiteurs verront ça dès ta déconnexion.', 'ok');
+      };
+
+      document.getElementById('logoutBtn').onclick = async () => {
+        await fetch('/api/studio/leave', { method: 'POST', credentials: 'same-origin' });
+        location.replace('/');
+      };
+
+      load().catch(() => setMsg('Erreur de chargement.', 'err'));
+    })();
+  </script>
+</body>
+</html>

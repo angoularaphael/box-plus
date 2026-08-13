@@ -232,12 +232,12 @@
 
   function ensureChloe() {
     const p = currentPath();
-    if (/gerer-abonnement|inscription|checkout|panier|success|contrat|mon-inscription|admin|attestation|\/404/i.test(p)) {
+    if (/gerer-abonnement|inscription|checkout|panier|success|contrat|mon-inscription|admin|attestation|\/404|\/dev/i.test(p)) {
       return;
     }
     if (document.querySelector('script[data-chloe]')) return;
     const s = document.createElement('script');
-    s.src = A('/js/counselor-chloe.js?v=3');
+    s.src = A('/js/counselor-chloe.js?v=4');
     s.defer = true;
     s.dataset.chloe = '1';
     document.body.appendChild(s);

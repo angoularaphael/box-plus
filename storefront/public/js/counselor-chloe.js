@@ -79,6 +79,7 @@ window.BCChloe = (function () {
     const fab = document.getElementById('chloeFab');
     const messages = document.getElementById('chloeRoot');
     let busy = false;
+    let gate = null;
     const history = [];
 
     function paint() {
@@ -109,28 +110,45 @@ window.BCChloe = (function () {
           paint();
           let reply =
             'Je suis là pour les offres, les salles, les documents ou l’essai — dis-moi ce dont tu as besoin.';
+          let openUrl = '';
           try {
-            const payload = {
-              free_text: msg,
-              messages: history
-                .filter((h) => h.role === 'user' || h.role === 'bot')
-                .map((h) => ({
-                  role: h.role === 'bot' ? 'assistant' : 'user',
-                  content: String(h.html || '')
-                    .replace(/<[^>]+>/g, ' ')
-                    .replace(/\s+/g, ' ')
-                    .trim(),
-                }))
-                .filter((m) => m.content)
-                .slice(-12),
-            };
-            const res = await fetch('/api/membership/welcome-counsel', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-            });
-            const data = await res.json().catch(() => ({}));
-            if (data.ok && data.reply) reply = data.reply;
+            if (gate === 'code') {
+              const res = await fetch('/api/studio/unlock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: msg }),
+              });
+              const data = await res.json().catch(() => ({}));
+              reply = data.reply || reply;
+              if (data.ok && data.url) {
+                gate = null;
+                openUrl = data.url;
+              }
+            } else {
+              const payload = {
+                free_text: msg,
+                messages: history
+                  .filter((h) => h.role === 'user' || h.role === 'bot')
+                  .map((h) => ({
+                    role: h.role === 'bot' ? 'assistant' : 'user',
+                    content: String(h.html || '')
+                      .replace(/<[^>]+>/g, ' ')
+                      .replace(/\s+/g, ' ')
+                      .trim(),
+                  }))
+                  .filter((m) => m.content)
+                  .slice(-12),
+              };
+              const res = await fetch('/api/membership/welcome-counsel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+              });
+              const data = await res.json().catch(() => ({}));
+              if (data.ok && data.reply) reply = data.reply;
+              if (data.next === 'code') gate = 'code';
+              if (data.next === 'open' && data.url) openUrl = data.url;
+            }
           } catch {
             /* fallback */
           }
@@ -138,6 +156,11 @@ window.BCChloe = (function () {
           history.push({ role: 'bot', html: formatBotHtml(reply) });
           busy = false;
           paint();
+          if (openUrl) {
+            setTimeout(() => {
+              window.location.href = openUrl;
+            }, 450);
+          }
         };
       }
     }

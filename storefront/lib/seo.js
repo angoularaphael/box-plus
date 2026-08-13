@@ -485,6 +485,7 @@ const NOINDEX_PATHS = [
   '/checkout.html',
   '/success.html',
   '/admin',
+  '/dev',
   '/404',
   '/404.html',
 ];
@@ -613,6 +614,7 @@ function productJsonLd(p) {
 function robotsTxt() {
   const privatePaths = [
     'Disallow: /admin',
+    'Disallow: /dev',
     'Disallow: /api/',
     'Disallow: /panier',
     'Disallow: /checkout.html',
