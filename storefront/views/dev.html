@@ -95,8 +95,8 @@
       <button type="button" class="btn secondary sm" id="logoutBtn">Déconnexion</button>
     </div>
 
-    <p class="dev-banner">
-      Tant que tu es connecté ici, <strong>tous</strong> les moyens branchés s’affichent sur le site (y compris à Portet). Les cases ci-dessous s’appliquent aux visiteurs dès que tu te déconnectes.
+    <p class="dev-banner" id="payBanner">
+      Tant que tu es connecté ici, <strong>tous</strong> les moyens branchés s’affichent sur le site (y compris à Portet), et les paiements passent par <strong>env.test</strong> (sandbox). Les cases ci-dessous s’appliquent aux visiteurs dès que tu te déconnectes — eux restent en Live.
     </p>
 
     <div class="dev-card">
@@ -148,6 +148,17 @@
         }
         payplug.checked = data.prod.payplug !== false;
         paypal.checked = data.prod.paypal !== false;
+        const banner = document.getElementById('payBanner');
+        const sb = data.sandbox || {};
+        if (banner && sb.configured === false) {
+          banner.textContent =
+            'Mode studio OK, mais env.test / PAYPAL_TEST_* introuvable sur ce serveur. Les paiements resteraient en Live — ajoute les clés sandbox sur Vercel.';
+        } else if (banner && sb.has_paypal) {
+          banner.innerHTML =
+            'Tant que tu es connecté, les paiements utilisent <strong>PayPal sandbox</strong> (env.test)' +
+            (sb.has_payplug ? ' et <strong>PayPlug test</strong>' : '') +
+            '. Les visiteurs, eux, restent en Live. Les cases ci-dessous s’appliquent après déconnexion.';
+        }
       }
 
       saveBtn.onclick = async () => {

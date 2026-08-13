@@ -3,12 +3,14 @@
 const API_BASE = 'https://api.payplug.com/v1';
 const API_VERSION = process.env.PAYPLUG_API_VERSION || '2019-08-06';
 
+const { paymentVar } = require('./test-env');
+
 function isPayplugEnabled() {
-  return Boolean(process.env.PAYPLUG_SECRET_KEY);
+  return Boolean(paymentVar('PAYPLUG_SECRET_KEY'));
 }
 
 function headers() {
-  const key = process.env.PAYPLUG_SECRET_KEY;
+  const key = paymentVar('PAYPLUG_SECRET_KEY');
   if (!key) throw new Error('PAYPLUG_SECRET_KEY manquante');
   return {
     Authorization: `Bearer ${key}`,

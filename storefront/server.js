@@ -67,6 +67,7 @@ const {
   recordUnlockFail,
   clearUnlockFails,
 } = require('./lib/dev-session');
+const { runPaymentContext, testPaymentsInfo } = require('./lib/test-env');
 const {
   getPaymentDisplay,
   setPaymentDisplay,
@@ -723,6 +724,10 @@ function createApp() {
 
   app.use(express.json({ limit: '2mb' }));
 
+  app.use((req, _res, next) => {
+    runPaymentContext({ test: Boolean(getDevSession(req)) }, () => next());
+  });
+
   app.post('/api/auth/login', async (req, res) => {
     try {
       const { email, password } = req.body || {};
@@ -779,7 +784,7 @@ function createApp() {
     if (!getDevSession(req)) return res.status(404).json({ ok: false, error: 'not_found' });
     try {
       const prod = await getPaymentDisplay();
-      res.json({ ok: true, prod });
+      res.json({ ok: true, prod, sandbox: testPaymentsInfo() });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
@@ -3068,6 +3073,7 @@ function createApp() {
       show_payplug: display.show_payplug,
       show_paypal: display.show_paypal,
       preview: display.preview,
+      sandbox: Boolean(display.preview),
     });
   });
 
@@ -3078,7 +3084,12 @@ function createApp() {
       if (!paymentId) return res.status(400).json({ ok: false, error: 'payment_id manquant' });
       if (!isPayplugEnabled()) return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
 
-      const payment = await retrievePayment(paymentId);
+      let payment;
+      try {
+        payment = await retrievePayment(paymentId);
+      } catch (err) {
+        payment = await runPaymentContext({ test: true }, () => retrievePayment(paymentId));
+      }
       const meta = payment.metadata || {};
 
       // Changement d’abo (pas de lifecycle order)

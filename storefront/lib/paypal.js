@@ -8,7 +8,10 @@
  *     (si les clés Portet manquent, repli sur le compte Minimes)
  * Pay Later / 4× FR : proposé par PayPal si le compte + client sont éligibles
  * (enable-funding=paylater côté SDK ; ici flux redirect approve).
+ * Mode studio (cookie) : overlay env.test / PAYPAL_TEST_* → sandbox.
  */
+
+const { paymentVar } = require('./test-env');
 
 function paypalAccountForGym(gym) {
   return String(gym || '').trim().toLowerCase() === 'portet' ? 'portet' : 'minimes';
@@ -23,14 +26,14 @@ function credentialsForAccount(account) {
   if (account === 'portet') {
     return {
       account: 'portet',
-      clientId: process.env.PAYPAL_PORTET_CLIENT_ID || process.env.PAYPAL_CLIENT_ID || '',
-      secret: process.env.PAYPAL_PORTET_CLIENT_SECRET || process.env.PAYPAL_CLIENT_SECRET || '',
+      clientId: paymentVar('PAYPAL_PORTET_CLIENT_ID') || paymentVar('PAYPAL_CLIENT_ID') || '',
+      secret: paymentVar('PAYPAL_PORTET_CLIENT_SECRET') || paymentVar('PAYPAL_CLIENT_SECRET') || '',
     };
   }
   return {
     account: 'minimes',
-    clientId: process.env.PAYPAL_CLIENT_ID || '',
-    secret: process.env.PAYPAL_CLIENT_SECRET || '',
+    clientId: paymentVar('PAYPAL_CLIENT_ID') || '',
+    secret: paymentVar('PAYPAL_CLIENT_SECRET') || '',
   };
 }
 
@@ -40,13 +43,13 @@ function isPaypalEnabled(gym) {
 }
 
 function paypalMode() {
-  const mode = String(process.env.PAYPAL_MODE || '').toLowerCase();
+  const mode = String(paymentVar('PAYPAL_MODE') || '').toLowerCase();
+  if (mode === 'sandbox' || mode === 'test') return 'sandbox';
   if (mode === 'live' || mode === 'production') return 'live';
-  if (String(process.env.PAYPAL_CLIENT_ID || '').startsWith('A') && process.env.PAYPAL_LIVE === '1') {
+  if (String(paymentVar('PAYPAL_CLIENT_ID') || '').startsWith('A') && process.env.PAYPAL_LIVE === '1') {
     return 'live';
   }
-  // sandbox par défaut si sk/client sandbox, sinon live si PAYPAL_MODE=live
-  return mode === 'sandbox' || !mode ? 'sandbox' : 'live';
+  return !mode ? 'sandbox' : 'live';
 }
 
 function apiBase() {
@@ -59,21 +62,19 @@ function publicClientId(gym) {
   return credentialsForAccount(paypalAccountForGym(gym)).clientId;
 }
 
-const tokenCache = {
-  minimes: { value: null, exp: 0 },
-  portet: { value: null, exp: 0 },
-};
+const tokenCache = {};
 
 async function getAccessToken(account = 'minimes') {
-  const key = account === 'portet' ? 'portet' : 'minimes';
-  const cached = tokenCache[key];
-  if (cached.value && Date.now() < cached.exp - 30_000) {
+  const acc = account === 'portet' ? 'portet' : 'minimes';
+  const cacheKey = `${acc}:${paypalMode()}`;
+  const cached = tokenCache[cacheKey];
+  if (cached?.value && Date.now() < cached.exp - 30_000) {
     return cached.value;
   }
-  const { clientId, secret } = credentialsForAccount(key);
+  const { clientId, secret } = credentialsForAccount(acc);
   if (!clientId || !secret) {
     throw new Error(
-      key === 'portet'
+      acc === 'portet'
         ? 'PAYPAL_PORTET_CLIENT_ID / PAYPAL_PORTET_CLIENT_SECRET manquants'
         : 'PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET manquants'
     );
@@ -92,11 +93,11 @@ async function getAccessToken(account = 'minimes') {
   if (!res.ok) {
     throw new Error(body.error_description || body.error || `PayPal OAuth ${res.status}`);
   }
-  tokenCache[key] = {
+  tokenCache[cacheKey] = {
     value: body.access_token,
     exp: Date.now() + Number(body.expires_in || 300) * 1000,
   };
-  return tokenCache[key].value;
+  return tokenCache[cacheKey].value;
 }
 
 async function paypalRequest(path, { method = 'GET', body = null, gym, account } = {}) {
