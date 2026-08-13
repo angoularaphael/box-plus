@@ -1428,14 +1428,21 @@
       return;
     }
     const existingIban = state.order?.payment?.iban || state.order?.customer_full?.iban || '';
+    const ibanFrMessage =
+      'Seuls les IBAN français commençant par FR sont acceptés. Si vous n’en avez pas, rapprochez-vous du manager de votre salle.';
     stepContent.innerHTML = `
       ${roundClockHtml()}
       <h1>Coordonnées bancaires</h1>
       <p class="sub">Indiquez votre IBAN pour les prochaines échéances — prélèvement sans engagement, sans surprise.</p>
+      <div class="notice-important" style="margin-bottom:20px">
+        <strong>IBAN français uniquement</strong>
+        <p>Seuls les IBAN commençant par FR sont acceptés. Si vous n’avez pas de compte bancaire français, rapprochez-vous du manager de votre salle.</p>
+      </div>
       <form id="ibanForm" class="form-grid">
         <div class="full">
-          <label for="iban">IBAN *</label>
-          <input id="iban" name="iban" required placeholder="FR76 3000 6000 0112 3456 7890 189" value="${existingIban}" />
+          <label for="iban">IBAN français (commence par FR) *</label>
+          <input id="iban" name="iban" required placeholder="FR76 3000 6000 0112 3456 7890 189" autocomplete="off" spellcheck="false" value="${esc(existingIban)}" />
+          <p class="iban-fr-hint">Exemple : FR76 … — les IBAN étrangers (DE, ES, BE…) ne passent pas.</p>
         </div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
         <div class="full">${backButton('← Retour au paiement', 4)}</div>
@@ -1443,8 +1450,13 @@
     bindBackButtons();
     document.getElementById('ibanForm').onsubmit = async (e) => {
       e.preventDefault();
-      setMsg('Enregistrement…');
       const iban = document.getElementById('iban').value;
+      const compact = String(iban || '').replace(/\s+/g, '').toUpperCase();
+      if (!compact.startsWith('FR')) {
+        setMsg(ibanFrMessage, 'err');
+        return;
+      }
+      setMsg('Enregistrement…');
       const res = await fetch(`/api/orders/${state.orderId}/iban`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

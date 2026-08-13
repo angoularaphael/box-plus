@@ -197,7 +197,11 @@ function validateIbanForm(input, product = {}) {
   const billingPlan = normalizeBillingPlan(input.billing_plan, product);
   if (requiresIbanForPlan(product, billingPlan)) {
     if (!input.iban) errors.push('IBAN requis pour le prélèvement');
-    else if (!isValidFrenchIban(input.iban)) errors.push('IBAN français invalide');
+    else if (!isValidFrenchIban(input.iban)) {
+      errors.push(
+        'Seuls les IBAN français commençant par FR sont acceptés. Si vous n’en avez pas, rapprochez-vous du manager de votre salle.'
+      );
+    }
   }
   return errors;
 }

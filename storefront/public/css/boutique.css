@@ -383,6 +383,18 @@ input:focus, select:focus, textarea:focus {
   color: #7a6520;
 }
 
+.notice-important p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.iban-fr-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--bc-muted);
+  line-height: 1.4;
+}
+
 /* Choix RIB / CB — étape paiement inscription */
 .billing-plan-block .billing-plan-title {
   margin-top: 0;
