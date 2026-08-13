@@ -1541,29 +1541,13 @@ input:focus, select:focus, textarea:focus {
   background: #0d0d0d;
   color: #fff;
 }
-.page-404 #site-header .topbar {
-  background: rgba(8, 8, 8, 0.72);
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-}
-.page-404 .topbar .logo img {
-  filter: brightness(0) invert(1);
-}
-.page-404 .nav-toggle span {
-  background: #fff;
-}
-@media (min-width: 900px) {
-  .page-404 .nav-cart,
-  .page-404 .main-nav a {
-    color: #fff;
-  }
-}
 .page-404__main {
   position: relative;
   min-height: calc(100vh - 80px);
   display: grid;
   place-items: center;
   overflow: hidden;
-  padding: clamp(48px, 8vw, 96px) 20px;
+  padding: clamp(110px, 16vh, 160px) 20px clamp(48px, 8vw, 96px);
 }
 .page-404__bg {
   position: absolute;
