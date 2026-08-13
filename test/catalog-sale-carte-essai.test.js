@@ -55,6 +55,18 @@ function run() {
   assert.strictEqual(cfgMatched.auto_badge, false);
   assert.strictEqual(isBadgeSale(cfgMatched), false);
 
+  const badgeTrap = {
+    id: 12,
+    title: 'Badge',
+    price: 34.99,
+    type: 'decipass',
+    categoryId: 'decipass',
+  };
+  const cfgNotBadge = buildProductConfig(paid, badgeTrap);
+  assert.strictEqual(cfgNotBadge.label, "SEANCE D'ESSAI", 'ne pas garder le titre Badge');
+  assert.strictEqual(isBadgeSale(cfgNotBadge), false, 'essai ne devient pas Badge même si le catalogue a matché Badge');
+  assert.strictEqual(cfgNotBadge.auto_badge, false);
+
   for (const [id, amount, title] of [
     ['coaching-1', 55, 'COACHING PRIVE 1 SEANCE'],
     ['coaching-5', 250, 'COACHING PRIVE 5 SEANCES'],
@@ -99,6 +111,18 @@ function run() {
   );
   assert.strictEqual(duo.sale_type, 'abonnement', 'duo stays abonnement');
   assert.strictEqual(duo.paiement_comptant, false, 'duo not comptant');
+
+  const { resolveProductConfig, findProductInCatalog } = require('../bot/catalog');
+  const catalog = [
+    { id: 12, title: 'Badge', price: 34.99, type: 'decipass' },
+    { id: 88, title: '44,99€/4 semaines Sans Engagement', price: 44.99, type: 'abo' },
+  ];
+  const matched = findProductInCatalog(catalog, paid);
+  assert.ok(!matched || !/\bbadge\b/i.test(matched.title), 'findProductInCatalog ne doit pas renvoyer Badge pour un essai');
+  const resolved = resolveProductConfig(paid, catalog);
+  assert.strictEqual(isBadgeSale(resolved), false);
+  assert.strictEqual(resolved.sale_type, 'carte');
+  assert.match(String(resolved.label), /essai/i);
 
   console.log('ok — essai/coaching carte comptant sans badge');
 }

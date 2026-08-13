@@ -11,12 +11,21 @@ const { ensureDeciplusSaleZone, isChooseZoneScreen } = require('./deciplus-zone'
 const { dismissJqueryUiOverlay } = require('./ui');
 const { buildDeciplusProductSearch, buildSearchTokens, normalizeText } = require('./catalog');
 
-/** Vrai uniquement pour le produit Badge Deciplus (~34,99 €), pas essai/coaching « Achat carte ». */
+/** Vrai uniquement pour le produit Badge Deciplus (~34,99 €), jamais essai/coaching. */
 function isBadgeSale(productConfig) {
   const name = String(
     productConfig.label || productConfig.deciplus_product_name || productConfig.key || ''
   );
-  if (/essai|coaching/i.test(name)) return false;
+  const id = String(productConfig.product_id || productConfig.key || '').toLowerCase();
+  const search = String(productConfig.deciplus_product_search || '').toLowerCase();
+  if (
+    /essai|coaching/i.test(name) ||
+    /essai|coaching/.test(search) ||
+    id.includes('seance-essai') ||
+    id.startsWith('coaching-')
+  ) {
+    return false;
+  }
   return /\bbadge\b/i.test(name);
 }
 
@@ -102,6 +111,10 @@ function buildSearchCandidates(productConfig) {
 }
 
 async function openProductCategory(page, productConfig) {
+  // Essai / coaching : ne pas filtrer « Cartes » (la séance d’essai est souvent hors Decipass).
+  if (!isBadgeSale(productConfig) && productConfig.sale_type === 'carte') {
+    return false;
+  }
   const isCarte =
     productConfig.sale_type === 'carte' ||
     /badge|decipass|carte/i.test(String(productConfig.label || productConfig.deciplus_product_name || ''));
@@ -183,6 +196,9 @@ async function clickProductResult(page, productConfig) {
     if (!(await tile.isVisible().catch(() => false))) continue;
     const text = (await tile.innerText().catch(() => '')).trim();
     if (!text) continue;
+    if (!isBadgeSale(productConfig) && /\bbadge\b/i.test(text) && !/essai|coaching/i.test(text)) {
+      continue;
+    }
     const score = await scoreProductTile(text, productConfig);
     if (score > bestScore) {
       bestScore = score;
@@ -2175,6 +2191,13 @@ async function openSaleFlow(page, productConfig, gymConfig, saleKind) {
 }
 
 async function applyConfigModal(page, productConfig, memberId = null) {
+  logInfo('Vente Deciplus — configuration', {
+    sale_type: productConfig.sale_type,
+    label: productConfig.label || productConfig.deciplus_product_name,
+    search: productConfig.deciplus_product_search,
+    is_badge: isBadgeSale(productConfig),
+    paiement_comptant: productConfig.paiement_comptant,
+  });
   if (isBadgeSale(productConfig)) {
     return applyBadgeConfigModal(page, productConfig, memberId);
   }
