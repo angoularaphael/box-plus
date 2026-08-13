@@ -12,11 +12,10 @@ salle de boxe / matériel de boxe + Toulouse », et **cité par les moteurs IA**
 
 ## 1. Actions immédiates (humaines, cette semaine) — le plus gros levier
 
-- [ ] **Google Search Console** — <https://search.google.com/search-console>
-  1. Ajouter la propriété `https://box-plus.vercel.app` (méthode « balise HTML »)
-  2. Copier le token dans Vercel → Settings → Environment Variables →
-     `GOOGLE_SITE_VERIFICATION` → redéployer → « Vérifier »
-  3. Soumettre le sitemap : `https://box-plus.vercel.app/sitemap.xml`
+- [x] **Google Search Console** — <https://search.google.com/search-console>
+  1. Ajouter la propriété `https://boutique.boxingcenter.fr` (méthode « balise HTML »)
+  2. Token dans le code (`GOOGLE_SITE_VERIFICATION`) — redéployer puis « Vérifier »
+  3. Soumettre le sitemap : `https://boutique.boxingcenter.fr/sitemap.xml`
   4. Demander l'indexation manuelle de `/`, `/abonnements`, `/materiel`
 - [ ] **Bing Webmaster Tools** — <https://www.bing.com/webmasters>
   (alimente aussi ChatGPT/Copilot) — même procédé avec `BING_SITE_VERIFICATION`,
@@ -113,7 +112,7 @@ salle de boxe / matériel de boxe + Toulouse », et **cité par les moteurs IA**
 
 | Variable | Rôle | Valeur actuelle |
 |---|---|---|
-| `SITE_URL` | Domaine canonique (tout en découle) | `https://box-plus.vercel.app` (défaut) |
-| `GOOGLE_SITE_VERIFICATION` | Balise Search Console | à renseigner |
+| `SITE_URL` | Domaine canonique (tout en découle) | `https://boutique.boxingcenter.fr` |
+| `GOOGLE_SITE_VERIFICATION` | Balise Search Console | `Sj5BIvO9a0RVKSbAHlP2…` |
 | `BING_SITE_VERIFICATION` | Balise Bing Webmaster | à renseigner |
 | `INDEXNOW_KEY` | Clé IndexNow (rotation possible) | `a7c31f2b…` (défaut) |

@@ -29,6 +29,8 @@ const SITE_URL = (() => {
 // IndexNow (Bing/Yandex instant indexing — also feeds ChatGPT/Copilot search).
 // The key file must be served at /<key>.txt; override via env if rotated.
 const INDEXNOW_KEY = process.env.INDEXNOW_KEY || 'a7c31f2b9e584d06b8a2c94f7d1e6503';
+const GOOGLE_SITE_VERIFICATION =
+  process.env.GOOGLE_SITE_VERIFICATION || 'Sj5BIvO9a0RVKSbAHlP2_I1EzK9-WZwhhw_w60H89ec';
 
 // Static require so Vercel's file tracing bundles the catalog.
 const RAW_CATALOG = require('../../data/storefront/materiel-catalog.json');
@@ -524,8 +526,8 @@ function headTags(route, { ogImage, ogImageAlt, jsonLd, video, extra, noindex } 
     parts.push('<meta property="og:image:width" content="1200" />');
     parts.push('<meta property="og:image:height" content="630" />');
   }
-  if (process.env.GOOGLE_SITE_VERIFICATION) {
-    parts.push(`<meta name="google-site-verification" content="${esc(process.env.GOOGLE_SITE_VERIFICATION)}" />`);
+  if (GOOGLE_SITE_VERIFICATION) {
+    parts.push(`<meta name="google-site-verification" content="${esc(GOOGLE_SITE_VERIFICATION)}" />`);
   }
   if (process.env.BING_SITE_VERIFICATION) {
     parts.push(`<meta name="msvalidate.01" content="${esc(process.env.BING_SITE_VERIFICATION)}" />`);
