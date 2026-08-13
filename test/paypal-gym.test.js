@@ -9,6 +9,8 @@ const {
   credentialsForAccount,
   isPaypalEnabled,
   publicClientId,
+  formatPaypalError,
+  looksLikePaypalClientId,
 } = require('../storefront/lib/paypal');
 
 test('paypalAccountForGym sépare Portet et Minimes', () => {
@@ -23,6 +25,15 @@ test('resolvePaypalAccount privilégie le compte stocké', () => {
   assert.equal(resolvePaypalAccount({ gym: 'minimes', account: 'portet' }), 'portet');
   assert.equal(resolvePaypalAccount({ gym: 'portet' }), 'portet');
   assert.equal(resolvePaypalAccount({}), 'minimes');
+});
+
+test('formatPaypalError traduit Client Authentication failed', () => {
+  assert.match(
+    formatPaypalError({ message: 'Client Authentication failed' }, { gym: 'portet' }),
+    /PayPal Portet/
+  );
+  assert.equal(looksLikePaypalClientId('4Lhfbs1AmukDG6nx8ILdOHB'), false);
+  assert.equal(looksLikePaypalClientId('A'.repeat(80)), true);
 });
 
 test('credentialsForAccount : Portet a ses clés, sinon repli Minimes', () => {

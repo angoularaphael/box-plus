@@ -42,6 +42,21 @@ function isPaypalEnabled(gym) {
   return Boolean(creds.clientId && creds.secret);
 }
 
+function looksLikePaypalClientId(id) {
+  return String(id || '').trim().length >= 60;
+}
+
+function formatPaypalError(err, { gym } = {}) {
+  const raw = String(err?.message || err?.body?.error_description || err?.body?.error || '');
+  const portet = String(gym || '').trim().toLowerCase() === 'portet';
+  if (/client authentication failed|invalid_client/i.test(raw) || /CLIENT_ID.*invalide/i.test(raw)) {
+    return portet
+      ? 'PayPal Portet est mal configuré (identifiants). Choisissez une autre salle pour payer par carte, ou réessayez plus tard.'
+      : 'PayPal est mal configuré (identifiants). Réessayez, ou payez par carte.';
+  }
+  return raw || 'Erreur PayPal';
+}
+
 function paypalMode() {
   const mode = String(paymentVar('PAYPAL_MODE') || '').toLowerCase();
   if (mode === 'sandbox' || mode === 'test') return 'sandbox';
@@ -78,6 +93,15 @@ async function getAccessToken(account = 'minimes') {
         ? 'PAYPAL_PORTET_CLIENT_ID / PAYPAL_PORTET_CLIENT_SECRET manquants'
         : 'PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET manquants'
     );
+  }
+  if (!looksLikePaypalClientId(clientId)) {
+    const err = new Error(
+      acc === 'portet'
+        ? 'PAYPAL_PORTET_CLIENT_ID invalide (trop court — coller le Client ID Live complet)'
+        : 'PAYPAL_CLIENT_ID invalide (trop court — coller le Client ID Live complet)'
+    );
+    err.code = 'paypal_client_id_invalid';
+    throw err;
   }
 
   const auth = Buffer.from(`${clientId}:${secret}`).toString('base64');
@@ -264,6 +288,6 @@ module.exports = {
   capturePaypalOrder,
   retrievePaypalOrder,
   isPaypalOrderPaid,
-  approveUrl,
-  eurosFromCents,
+  formatPaypalError,
+  looksLikePaypalClientId,
 };

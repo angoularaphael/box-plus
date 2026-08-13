@@ -61,6 +61,7 @@ const {
   retrievePaypalOrder,
   isPaypalOrderPaid,
   paypalMode,
+  formatPaypalError,
 } = require('./lib/paypal');
 const {
   getDevSession,
@@ -2214,8 +2215,11 @@ function createApp() {
         });
       }
     } catch (err) {
-      logError('Erreur pay order', { error: err.message });
-      res.status(500).json({ ok: false, error: err.message });
+      logError('Erreur pay order', { error: err.message, gym: req.body?.gym });
+      res.status(500).json({
+        ok: false,
+        error: formatPaypalError(err, { gym: req.body?.gym || '' }) || err.message,
+      });
     }
   });
 

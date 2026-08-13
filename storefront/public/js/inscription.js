@@ -699,6 +699,12 @@
     if (data.error === 'paypal_not_configured') {
       return 'PayPal temporairement indisponible. Choisissez la carte, ou contactez le club.';
     }
+    if (/PayPal Portet est mal configuré|Client Authentication failed/i.test(String(data.error || ''))) {
+      return (
+        data.error ||
+        'PayPal Portet est mal configuré. Choisissez une autre salle pour payer par carte, ou réessayez plus tard.'
+      );
+    }
     if (data.error === 'paypal_url_missing') {
       return 'Impossible d\'ouvrir PayPal. Réessayez ou choisissez la carte.';
     }
