@@ -18,7 +18,13 @@
 const fs = require('fs');
 const path = require('path');
 
-const SITE_URL = (process.env.SITE_URL || 'https://box-plus.vercel.app').replace(/\/+$/, '');
+const SITE_URL = (() => {
+  const env = (process.env.SITE_URL || '').replace(/\/+$/, '');
+  if (!env || /box-plus\.vercel\.app/i.test(env)) {
+    return 'https://boutique.boxingcenter.fr';
+  }
+  return env;
+})();
 
 // IndexNow (Bing/Yandex instant indexing — also feeds ChatGPT/Copilot search).
 // The key file must be served at /<key>.txt; override via env if rotated.
@@ -346,16 +352,16 @@ const INDEXABLE = {
  * height, uploadDate (AAAA-MM-JJ).
  *
  * Recette d'encodage, à garder identique d'une vidéo à l'autre :
- *   ffmpeg -ss <départ> -i "source.mp4" \
- *     -vf "scale=720:-2:flags=lanczos,fps=30" \
- *     -c:v libx264 -preset slow -crf 23 -pix_fmt yuv420p -profile:v high \
- *     -c:a aac -b:a 112k -movflags +faststart "sortie.mp4"
- *   (+faststart déplace l'index en tête : la lecture démarre avant la fin
- *    du téléchargement. Sans lui, le visiteur attend le fichier entier.)
+ *   Desktop : 960px, 10–12 s, CRF 20, sans audio, +faststart
+ *   Mobile  : 640px, 8 s, CRF 26
+ *   ffmpeg -ss <départ> -t 12 -i "source.mp4" -an \
+ *     -vf "scale=960:-2:flags=lanczos,unsharp=5:5:0.55:5:5:0.0,fps=30" \
+ *     -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -profile:v high \
+ *     -movflags +faststart "sortie.mp4"
  */
 const VIDEOS = {
   '/offre/259': {
-    file: 'boxing-center-trophy-toulouse.mp4',
+    file: 'boxing-center-trophy-loop.mp4',
     poster: '/img/bc/video/boxing-center-trophy-toulouse.jpg',
     name: 'Boxing Center Trophy — la soirée de combats du club, à Toulouse',
     description:
@@ -363,7 +369,7 @@ const VIDEOS = {
       + "au vestiaire, l'entrée des boxeurs, les assauts sur le ring et le public venu en famille. "
       + "Ceux qui montent sont les licenciés qui s'entraînent toute l'année dans les salles Boxing Center "
       + 'de Toulouse et de son agglomération.',
-    seconds: 108,
+    seconds: 12,
     width: 1280,
     height: 720,
     uploadDate: '2026-08-12',
@@ -463,6 +469,9 @@ const PRESTASHOP_REDIRECTS = {
   '/identite': '/mon-inscription',
   '/adresse': '/mon-inscription',
   '/module/ps_emailsubscription/subscription': '/',
+  '/10-abonnements': '/abonnements',
+  '/12-cours-enfants-ados': '/abonnements',
+  '/materiel-de-boxe': '/materiel',
 };
 
 const NOINDEX_PATHS = [
@@ -612,8 +621,7 @@ function robotsTxt() {
     'Disallow: /gerer-abonnement',
   ];
   return [
-    '# Boxing Center Toulouse — boutique officielle',
-    '# Remplace progressivement https://boutique.boxingcenter.fr/ (PrestaShop)',
+    '# Boxing Center Toulouse — boutique officielle https://boutique.boxingcenter.fr',
     '# IA / GEO : /llms.txt · /llms-full.txt · /ai.txt',
     '',
     'User-agent: *',
@@ -757,7 +765,8 @@ function sitemapXml(publicDir) {
   for (const [route, cfg] of Object.entries(INDEXABLE)) {
     let lastmod = today;
     try {
-      lastmod = new Date(fs.statSync(path.join(publicDir, cfg.file)).mtimeMs).toISOString().slice(0, 10);
+      const mtime = new Date(fs.statSync(path.join(publicDir, cfg.file)).mtimeMs);
+      if (mtime.getFullYear() >= 2026) lastmod = mtime.toISOString().slice(0, 10);
     } catch (_) { /* keep today */ }
     const v = videoFor(route, publicDir);
     urls.push(`  <url><loc>${SITE_URL}${route === '/' ? '/' : route}</loc><lastmod>${lastmod}</lastmod><changefreq>${cfg.changefreq}</changefreq><priority>${cfg.priority}</priority>${v ? videoSitemapBlock(v) : ''}</url>`);
@@ -795,11 +804,17 @@ function registerSeo(app, publicDir) {
   let sitemapCache = null;
   let sitemapAt = 0;
   app.get('/sitemap.xml', (_req, res) => {
-    if (!sitemapCache || Date.now() - sitemapAt > 10 * 60 * 1000) {
-      sitemapCache = sitemapXml(publicDir);
-      sitemapAt = Date.now();
+    try {
+      if (!sitemapCache || Date.now() - sitemapAt > 10 * 60 * 1000) {
+        sitemapCache = sitemapXml(publicDir);
+        sitemapAt = Date.now();
+      }
+      res.type('application/xml').send(sitemapCache);
+    } catch (err) {
+      res.status(500).type('application/xml').send(
+        `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${SITE_URL}/</loc></url></urlset>`
+      );
     }
-    res.type('application/xml').send(sitemapCache);
   });
 
   // Legacy .html paths → clean URLs (single canonical version of every page).
@@ -810,6 +825,13 @@ function registerSeo(app, publicDir) {
   for (const [from, to] of Object.entries(PRESTASHOP_REDIRECTS)) {
     app.get(from, (_req, res) => res.redirect(301, to));
   }
+  app.get('/abonnements/:legacyHtml', (req, res, next) => {
+    const slug = String(req.params.legacyHtml || '');
+    if (!/^\d+-/.test(slug) && !/\.html$/i.test(slug)) return next();
+    if (/essai/i.test(slug)) return res.redirect(301, '/seance-essai');
+    return res.redirect(301, '/abonnements');
+  });
+  app.get('/materiel-de-boxe/:legacy?', (_req, res) => res.redirect(301, '/materiel'));
 
   // Legacy query-string product URL → slug URL; bare/unknown → catalog page
   // (never serve the empty "Chargement…" template on a crawlable URL).

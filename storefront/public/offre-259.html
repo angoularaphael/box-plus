@@ -25,8 +25,9 @@
 
   <header class="offer-sheet">
     <div class="offer-sheet__bg offer-sheet__bg--video" aria-hidden="true">
-      <video muted loop playsinline autoplay preload="auto">
-        <source src="/media/boxing-center-trophy-toulouse.mp4" type="video/mp4" />
+      <video muted loop playsinline autoplay preload="metadata" poster="/img/bc/video/boxing-center-trophy-toulouse.jpg">
+        <source src="/media/boxing-center-trophy-loop-mobile.mp4" type="video/mp4" media="(max-width: 700px)" />
+        <source src="/media/boxing-center-trophy-loop.mp4" type="video/mp4" />
       </video>
     </div>
     <div class="offer-sheet__veil" aria-hidden="true"></div>

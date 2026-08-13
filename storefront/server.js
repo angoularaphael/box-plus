@@ -3261,6 +3261,8 @@ function createApp() {
       setHeaders(res, filePath) {
         if (filePath.endsWith('.html')) {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        } else if (/\.(mp4|webm|jpg|jpeg|png|webp|woff2)$/i.test(filePath)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         }
       },
     })

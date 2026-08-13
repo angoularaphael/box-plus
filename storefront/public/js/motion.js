@@ -143,13 +143,11 @@
 
   function initAmbientVideo() {
     var vids = document.querySelectorAll(
-      'video[data-ambient], .hero__video, .page-hero__video, .offer-sheet__bg video, .offer-editorial__hero-img'
+      'video[data-ambient], .hero__video, .page-hero__video, .offer-sheet__bg video, .offer-editorial__hero-img, .scrub-band__video'
     );
     if (!vids.length) return;
     vids.forEach(function (v) {
       if (v.id === 'webcamPreview' || v.hasAttribute('data-scrub-video')) return;
-      v.removeAttribute('poster');
-      v.setAttribute('preload', 'auto');
       v.classList.add('bg-video');
       if (reduce) {
         v.removeAttribute('autoplay');
@@ -168,9 +166,12 @@
         var p = v.play();
         if (p && typeof p.then === 'function') p.then(reveal).catch(function () {});
       };
-      tryPlay();
-      v.addEventListener('loadeddata', tryPlay, { once: true });
-      v.addEventListener('canplay', tryPlay, { once: true });
+      var preload = String(v.getAttribute('preload') || 'metadata').toLowerCase();
+      if (preload !== 'none') {
+        tryPlay();
+        v.addEventListener('loadeddata', tryPlay, { once: true });
+        v.addEventListener('canplay', tryPlay, { once: true });
+      }
     });
     if (!('IntersectionObserver' in window)) return;
     var io = new IntersectionObserver(function (entries) {

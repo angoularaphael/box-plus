@@ -35,8 +35,10 @@
           loop
           playsinline
           autoplay
-          preload="auto"
+          preload="metadata"
+          poster="/img/bc/video/hero-ambient.jpg"
         >
+          <source src="/media/hero-ambient-mobile.mp4" type="video/mp4" media="(max-width: 700px)" />
           <source src="/media/hero-ambient.mp4" type="video/mp4" />
         </video>
       </div>
@@ -231,7 +233,8 @@
 
     <section class="scrub-band" aria-label="L'ambiance Boxing Center">
       <div class="scrub-band__video-wrap" aria-hidden="true">
-        <video class="scrub-band__video" muted loop playsinline autoplay preload="metadata">
+        <video class="scrub-band__video" muted loop playsinline preload="none" poster="/img/bc/video/scrub-ambiance.jpg">
+          <source src="/media/scrub-ambiance-mobile.mp4" type="video/mp4" media="(max-width: 700px)" />
           <source src="/media/scrub-ambiance.mp4" type="video/mp4" />
         </video>
       </div>
