@@ -47,6 +47,7 @@ const {
   isPayplugPaymentPending,
   isPayplugEnabled,
   hostedPaymentUrl,
+  formatPayplugError,
 } = require('./lib/payplug');
 const {
   isPaypalEnabled,
@@ -2108,7 +2109,7 @@ function createApp() {
         address: req.body.address || order.customer_full?.address,
         postal_code: req.body.postal_code || order.customer_full?.postal_code,
         city: req.body.city || order.customer_full?.city,
-        gender: req.body.gender || order.customer_full?.gender || 'M',
+        gender: req.body.gender || order.customer_full?.gender,
         phone: req.body.phone || short?.phone,
       };
 
@@ -2178,7 +2179,15 @@ function createApp() {
             missing: err.missing || [],
           });
         }
-        throw err;
+        logError('Erreur PayPlug checkout', {
+          error: err.message,
+          body: err.body || null,
+          order_id: order.order_id,
+        });
+        return res.status(502).json({
+          ok: false,
+          error: formatPayplugError(err) || err.message,
+        });
       }
     } catch (err) {
       logError('Erreur pay order', { error: err.message });
@@ -2584,7 +2593,7 @@ function createApp() {
             address: body.address,
             postal_code: body.postal_code,
             city: body.city,
-            gender: body.gender || 'M',
+            gender: body.gender,
           },
         };
         const payment = await createFourTimesPayment({
@@ -2599,10 +2608,11 @@ function createApp() {
             address: body.address,
             postal_code: body.postal_code,
             city: body.city,
-            gender: body.gender || 'M',
+            gender: body.gender,
           },
           returnUrl: `${baseUrl}/gerer-abonnement?change=1&payplug_return=1`,
           cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled`,
+          metadata: { order_type: 'membership_change' },
         });
         const url = hostedPaymentUrl(payment);
         if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
@@ -2661,8 +2671,15 @@ function createApp() {
         },
       });
     } catch (err) {
-      logError('Erreur change checkout', { error: err.message });
-      res.status(500).json({ ok: false, error: err.message });
+      if (err.code === 'payplug_customer_incomplete') {
+        return res.status(400).json({
+          ok: false,
+          error: err.message,
+          missing: err.missing || [],
+        });
+      }
+      logError('Erreur change checkout', { error: err.message, body: err.body || null });
+      res.status(500).json({ ok: false, error: formatPayplugError(err) || err.message });
     }
   });
 

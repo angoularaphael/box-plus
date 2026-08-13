@@ -196,7 +196,7 @@ async function createPaypalOrder({
         experience_context: {
           brand_name: account === 'portet' ? 'Boxing Center Portet' : 'Boxing Center',
           locale: 'fr-FR',
-          landing_page: 'LOGIN',
+          landing_page: paymentPlan === '4x' ? 'NO_PREFERENCE' : 'LOGIN',
           user_action: 'PAY_NOW',
           return_url: resolvedReturn,
           cancel_url: resolvedCancel,

@@ -424,7 +424,7 @@
         <p class="sub" style="margin:0 0 8px">Étape 1 — Comment souhaitez-vous régler ?</p>
         <div class="billing-choice-row" role="radiogroup" aria-label="Type de paiement">
           ${methodRow('change_payment_plan', 'once', true, 'En une seule fois', product?.price_label || '')}
-          ${methodRow('change_payment_plan', '4x', false, 'En 4× sans frais', quart ? `Paiement immédiat de ${quart} €` : '4 échéances sans frais')}
+          ${methodRow('change_payment_plan', '4x', false, 'En 4× sans frais', quart ? `Carte : ${quart} € tout de suite · PayPal : total si éligible` : '4 échéances')}
         </div>
         <div id="changeFourXSchedule" class="fourx-schedule" style="display:none;margin-top:10px"></div>
         <p class="sub" style="margin:16px 0 8px">Étape 2 — Moyen de paiement</p>
@@ -432,14 +432,22 @@
           ${methods('change_pay_method_once', 'payplug', 'paypal', 'Carte bancaire', 'PayPlug', 'card', portet ? 'Obligatoire à Portet' : 'Paiement sécurisé')}
         </div>
         <div id="changeFourMethods" class="billing-choice-row" style="display:none">
-          ${methods('change_pay_method_4x', 'payplug', 'paypal', '4× sans frais', 'Carte PayPlug', 'payplug', '4× PayPal si éligible')}
+          ${methods('change_pay_method_4x', 'payplug', 'paypal', '4× sans frais', 'Carte PayPlug / Oney', 'payplug', 'Pay Later si éligible — sinon montant total')}
         </div>
         ${
           showCard
             ? `<div id="changeFourAddress" class="form-grid" style="display:none;margin-top:12px">
-            <p class="sub full" style="margin:0 0 8px">Adresse requise pour le 4× carte :</p>
+            <p class="sub full" style="margin:0 0 8px">Adresse et civilité requises pour le 4× carte :</p>
+            <div>
+              <label>Civilité *</label>
+              <select name="gender" id="chg_gender">
+                <option value="">—</option>
+                <option value="M">Homme</option>
+                <option value="F">Femme</option>
+              </select>
+            </div>
             <div class="full"><label>Adresse *</label><input name="address" id="chg_address" /></div>
-            <div><label>Code postal *</label><input name="postal_code" id="chg_postal" /></div>
+            <div><label>Code postal *</label><input name="postal_code" id="chg_postal" inputmode="numeric" maxlength="5" pattern="\\d{5}" /></div>
             <div><label>Ville *</label><input name="city" id="chg_city" /></div>
           </div>`
             : ''
@@ -567,10 +575,17 @@
           extra.address = document.getElementById('chg_address')?.value?.trim() || '';
           extra.postal_code = document.getElementById('chg_postal')?.value?.trim() || '';
           extra.city = document.getElementById('chg_city')?.value?.trim() || '';
-          if (!extra.address || !extra.postal_code || !extra.city) {
+          extra.gender = document.getElementById('chg_gender')?.value || '';
+          if (!extra.gender) {
             changeMsg.hidden = false;
             changeMsg.className = 'form-msg err';
-            changeMsg.textContent = 'Adresse complète requise pour le paiement en 4×.';
+            changeMsg.textContent = 'Civilité requise pour le paiement en 4× carte.';
+            return;
+          }
+          if (!extra.address || !extra.city || !/^\d{5}$/.test(extra.postal_code)) {
+            changeMsg.hidden = false;
+            changeMsg.className = 'form-msg err';
+            changeMsg.textContent = 'Adresse complète et code postal à 5 chiffres requis pour le 4× carte.';
             return;
           }
         }

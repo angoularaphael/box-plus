@@ -214,6 +214,7 @@
     "requires_iban": false,
     "requires_payment": true,
     "sale_type": "carte",
+    "auto_badge": false,
     "deciplus_product_search": "essai"
   },
   {
@@ -227,6 +228,7 @@
     "requires_iban": false,
     "requires_payment": true,
     "sale_type": "carte",
+    "auto_badge": false,
     "deciplus_product_search": "coaching",
     "image": "/img/bc/disc/boxing-training.webp"
   },
@@ -241,6 +243,7 @@
     "requires_iban": false,
     "requires_payment": true,
     "sale_type": "carte",
+    "auto_badge": false,
     "deciplus_product_search": "coaching",
     "image": "/img/bc/disc/boxe-anglaise.webp"
   },
@@ -255,6 +258,7 @@
     "requires_iban": false,
     "requires_payment": true,
     "sale_type": "carte",
+    "auto_badge": false,
     "deciplus_product_search": "coaching",
     "image": "/img/bc/disc/mma.webp"
   }

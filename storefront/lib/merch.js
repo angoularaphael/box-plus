@@ -132,6 +132,7 @@ function buildManualProduct(id, merch, entry) {
     deciplus_product_search: entry.deciplus_product_search || (isEssai ? 'essai' : null),
     paiement_comptant: entry.paiement_comptant ?? (isEssai ? true : undefined),
     ...entry,
+    auto_badge: false,
   };
 }
 

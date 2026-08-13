@@ -296,16 +296,23 @@
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   }
 
-  function buildFourXScheduleHtml(quartLabel) {
+  function buildFourXScheduleHtml(quartLabel, paypal = false) {
     const today = new Date();
     const dates = [0, 30, 60, 90].map((days) => {
       const d = new Date(today);
       d.setDate(d.getDate() + days);
       return formatFrDate(d);
     });
+    if (paypal) {
+      return `
+      <div class="fourx-schedule__inner">
+        <p class="fourx-schedule__title">PayPal 4× — si vous êtes éligible</p>
+        <p class="fourx-schedule__note">PayPal affiche le <strong>montant total</strong>. Le 4× n’apparaît que si votre compte PayPal est éligible (Pay Later). Sinon le paiement se fait en une fois.</p>
+      </div>`;
+    }
     return `
       <div class="fourx-schedule__inner">
-        <p class="fourx-schedule__title">Calendrier indicatif 4× sans frais</p>
+        <p class="fourx-schedule__title">Calendrier 4× sans frais (carte Oney)</p>
         <ul>
           <li><strong>Aujourd’hui</strong> — paiement immédiat de <strong>${quartLabel}&nbsp;€</strong></li>
           <li><strong>${dates[1]}</strong> — 2ᵉ échéance ${quartLabel}&nbsp;€</li>
@@ -826,8 +833,8 @@
           cardSmall: 'Carte · sans frais supplémentaires',
           paypalTitle: 'PayPal',
           paypalSmall: portetPaypalOnly
-            ? '4× PayPal si éligible — obligatoire à Portet'
-            : 'PayPal — Paiement en 4X si éligible',
+            ? '4× PayPal si éligible — obligatoire à Portet (montant total)'
+            : 'Pay Later si éligible — sinon paiement du montant total',
           cardLogo: 'payplug',
         }) + paypalMsgHtml;
       billingHtml = `
@@ -851,7 +858,7 @@
               <input type="radio" name="payment_plan" value="4x" ${savedInstallment === '4x' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>En 4× sans frais</strong>
-                <small>Paiement immédiat de ${quart}&nbsp;€, puis 3 échéances de ${quart}&nbsp;€</small>
+                <small>Carte PayPlug/Oney : ${quart}&nbsp;€ tout de suite, puis 3 échéances. PayPal : montant total, 4× seulement si éligible.</small>
               </span>
             </label>
           </div>
@@ -860,9 +867,17 @@
           <div id="onceMethods" class="billing-choice-row">${onceMethods || emptyPayHtml}</div>
           <div id="fourXMethods" class="billing-choice-row" style="display:none">${fourMethods || emptyPayHtml}</div>
           <div id="fourXAddress" class="form-grid" style="display:none;margin-top:12px">
-            <p class="sub full" style="margin:0 0 8px">Adresse requise pour valider le paiement en 4× :</p>
+            <p class="sub full" style="margin:0 0 8px">Adresse et civilité requises pour le 4× carte (Oney) :</p>
+            <div>
+              <label>Civilité *</label>
+              <select name="gender">
+                <option value="">—</option>
+                <option value="M" ${full.gender === 'M' ? 'selected' : ''}>Homme</option>
+                <option value="F" ${full.gender === 'F' ? 'selected' : ''}>Femme</option>
+              </select>
+            </div>
             <div class="full"><label>Adresse *</label><input name="address" value="${esc(full.address || '')}" /></div>
-            <div><label>Code postal *</label><input name="postal_code" value="${esc(full.postal_code || '')}" /></div>
+            <div><label>Code postal *</label><input name="postal_code" inputmode="numeric" maxlength="5" pattern="\\d{5}" value="${esc(full.postal_code || '')}" /></div>
             <div><label>Ville *</label><input name="city" value="${esc(full.city || '')}" /></div>
           </div>
         </div>`;
@@ -954,7 +969,7 @@
         if (fourBox) fourBox.style.display = plan === '4x' ? '' : 'none';
         if (schedule) {
           schedule.style.display = plan === '4x' ? '' : 'none';
-          if (plan === '4x') schedule.innerHTML = buildFourXScheduleHtml(quart);
+          if (plan === '4x') schedule.innerHTML = buildFourXScheduleHtml(quart, fourMethod === 'paypal');
         }
         const needAddress = plan === '4x' && fourMethod === 'payplug' && !portetPaypalOnly;
         if (addrBox) {
@@ -964,10 +979,11 @@
           });
         }
         if (payBtn) {
+          const totalLabel = priceLabel(p);
           payBtn.textContent =
             plan === '4x'
               ? fourMethod === 'paypal'
-                ? `Payer ${quart} € maintenant (4× PayPal)`
+                ? `Payer ${totalLabel} via PayPal (4× si éligible)`
                 : `Payer ${quart} € maintenant (4× sans frais)`
               : 'Payer en une fois';
         }
@@ -1010,8 +1026,13 @@
               .querySelector('#fourXAddress input[name="postal_code"]')
               ?.value?.trim();
             body.city = document.querySelector('#fourXAddress input[name="city"]')?.value?.trim();
-            if (!body.address || !body.postal_code || !body.city) {
-              setMsg('Adresse complète requise pour le paiement en 4×.', 'err');
+            body.gender = document.querySelector('#fourXAddress select[name="gender"]')?.value;
+            if (!body.gender) {
+              setMsg('Civilité requise pour le paiement en 4× carte.', 'err');
+              return;
+            }
+            if (!body.address || !body.city || !/^\d{5}$/.test(body.postal_code || '')) {
+              setMsg('Adresse complète et code postal à 5 chiffres requis pour le 4× carte.', 'err');
               return;
             }
           }

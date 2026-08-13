@@ -46,18 +46,19 @@ function customerDetails(order, overrides = {}) {
     ...(order.customer || {}),
     ...overrides,
   };
-  const title = String(customer.gender || '').toUpperCase() === 'F' ? 'mrs' : 'mr';
+  const genderRaw = String(customer.gender || '').toUpperCase();
+  const title = genderRaw === 'F' ? 'mrs' : genderRaw === 'M' ? 'mr' : '';
   const common = {
-    title,
     first_name: customer.first_name || '',
     last_name: customer.last_name || '',
     email: customer.email || '',
-    address1: customer.address || '',
-    postcode: customer.postal_code || '',
+    address1: customer.address || customer.address1 || '',
+    postcode: String(customer.postal_code || customer.postcode || '').replace(/\s+/g, ''),
     city: customer.city || '',
     country: 'FR',
     language: 'fr',
   };
+  if (title) common.title = title;
   const mobile = phoneE164(customer.phone);
   if (mobile) common.mobile_phone_number = mobile;
   return common;
@@ -68,13 +69,25 @@ function validateOneyCustomer(details) {
   if (!details.first_name) missing.push('prénom');
   if (!details.last_name) missing.push('nom');
   if (!details.email) missing.push('email');
+  if (!details.title) missing.push('civilité');
   if (!details.mobile_phone_number || !isFrenchMobileE164(details.mobile_phone_number)) {
     missing.push('téléphone mobile FR (06/07…)');
   }
   if (!details.address1) missing.push('adresse');
-  if (!details.postcode) missing.push('code postal');
+  if (!/^\d{5}$/.test(String(details.postcode || ''))) missing.push('code postal (5 chiffres)');
   if (!details.city) missing.push('ville');
   return missing;
+}
+
+function formatPayplugError(err) {
+  const body = err?.body || {};
+  const details = Array.isArray(body.details)
+    ? body.details
+        .map((d) => d.message || d.field || d.description)
+        .filter(Boolean)
+        .join(' ; ')
+    : '';
+  return [err?.message || body.message || body.error, details].filter(Boolean).join(' — ');
 }
 
 async function request(path, options = {}) {
@@ -90,7 +103,13 @@ async function request(path, options = {}) {
     body = { message: text };
   }
   if (!response.ok) {
-    const message = body.message || body.error || `Payplug HTTP ${response.status}`;
+    const details = Array.isArray(body.details)
+      ? body.details.map((d) => d.message || d.field).filter(Boolean).join(' ; ')
+      : '';
+    const message =
+      [body.message || body.error || `Payplug HTTP ${response.status}`, details]
+        .filter(Boolean)
+        .join(' — ') || `Payplug HTTP ${response.status}`;
     const err = new Error(message);
     err.status = response.status;
     err.body = body;
@@ -120,6 +139,7 @@ async function createFourTimesPayment({
   customerOverrides = {},
   returnUrl = null,
   cancelUrl = null,
+  metadata = {},
 }) {
   const customer = customerDetails(order, customerOverrides);
   const missing = validateOneyCustomer(customer);
@@ -170,10 +190,11 @@ async function createFourTimesPayment({
     },
     description: String(itemName).slice(0, 80),
     metadata: {
-      order_id: order.order_id,
-      lifecycle_order_id: order.order_id,
+      order_id: String(order.order_id || ''),
+      lifecycle_order_id: String(order.order_id || ''),
       product_id: String(product.id || ''),
       payment_plan: '4x',
+      ...(metadata.order_type ? { order_type: String(metadata.order_type).slice(0, 20) } : {}),
     },
     notification_url: `${baseUrl}/api/webhooks/payplug`,
     hosted_payment: urls,
@@ -254,7 +275,12 @@ function retrievePayment(paymentId) {
 }
 
 function isPayplugPaymentPaid(payment) {
-  return Boolean(payment && payment.is_paid === true && !payment.failure);
+  if (!payment || payment.failure) return false;
+  if (payment.is_paid === true) return true;
+  // Oney : une fois autorisé, auto_capture encaisse le total pour le marchand.
+  const authorizedAt = payment.authorization?.authorized_at || payment.authorized_at;
+  const pending = payment.payment_method?.is_pending === true;
+  return Boolean(authorizedAt) && !pending && payment.auto_capture !== false;
 }
 
 function isPayplugPaymentPending(payment) {
@@ -280,5 +306,6 @@ module.exports = {
   phoneE164,
   customerDetails,
   validateOneyCustomer,
+  formatPayplugError,
   hostedPaymentUrl,
 };

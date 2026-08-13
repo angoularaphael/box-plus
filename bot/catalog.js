@@ -11,7 +11,7 @@ const {
   inferSaleType,
   buildDeciplusProductSearch,
 } = require('../lib/catalog-text');
-const { isTrialOrder, isCarteMerchOrder, buildProductConfig } = require('../lib/catalog-sale');
+const { isTrialOrder, isCarteMerchOrder, buildProductConfig, isBadgeCatalogTitle } = require('../lib/catalog-sale');
 
 const API_BASE = 'https://api.deciplus.pro/staff/v1';
 const CATALOG_CACHE_MS = Number(process.env.BOT_CATALOG_CACHE_MS || 300000);
@@ -163,10 +163,6 @@ function scoreMatch(query, product) {
   if (overlap >= 2) return 50 + overlap * 5;
   if (overlap === 1 && qTokens.length === 1) return 40;
   return 0;
-}
-
-function isBadgeCatalogTitle(title) {
-  return /\bbadge\b/i.test(String(title || '')) && !/essai|coaching/i.test(String(title || ''));
 }
 
 function findProductInCatalog(catalog, order) {

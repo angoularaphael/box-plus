@@ -78,6 +78,8 @@ describe('lifecycle tunnel', () => {
     const payload = buildOrderFromLifecycle(signed, product);
     assert.equal(payload.customer.first_name, 'Test');
     assert.equal(payload.gym, 'minimes');
+    assert.equal(payload.sale_type, 'carte');
+    assert.match(String(payload.deciplus_product_search || ''), /essai/i);
 
     const { filepath } = await generateContractPdf(signed);
     assert.ok(fs.existsSync(filepath));
