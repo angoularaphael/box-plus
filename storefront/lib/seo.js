@@ -88,7 +88,8 @@ const FAQ = [
   ['Mon enfant peut-il s\'inscrire ?', 'Oui ! Baby Boxe accueille les 3-6 ans et la Boxe éducative les 7-16 ans. L\'encadrement est adapté à chaque tranche d\'âge.'],
 ];
 
-const DEFAULT_OG_IMAGE = '/img/bc/og-default.jpg'; // 1200x630, generated from gym-01
+const LOGO_PNG = '/img/bc/logo/BC_Logo_Officiel_Transparent.png';
+const DEFAULT_OG_IMAGE = '/img/bc/og-logo.jpg'; // 1200x630 — logo officiel Boxing Center
 
 /* ── JSON-LD builders ─────────────────────────────────────────────── */
 
@@ -105,7 +106,7 @@ function orgJsonLd() {
     name: BUSINESS.name,
     alternateName: BUSINESS.legalName,
     url: `${SITE_URL}/`,
-    logo: `${SITE_URL}/img/bc/logo/BC_Logo_Officiel_Transparent.png`,
+    logo: `${SITE_URL}${LOGO_PNG}`,
     image: `${SITE_URL}${DEFAULT_OG_IMAGE}`,
     foundingDate: BUSINESS.foundingDate,
     telephone: BUSINESS.telephone,
@@ -413,7 +414,7 @@ function videoJsonLd(v) {
       '@type': 'Organization',
       name: BUSINESS.name,
       url: SITE_URL,
-      logo: { '@type': 'ImageObject', url: `${SITE_URL}${DEFAULT_OG_IMAGE}` },
+      logo: { '@type': 'ImageObject', url: `${SITE_URL}${LOGO_PNG}` },
     },
     /* La vidéo montre les salles : on la rattache au lieu, c'est ce qui
        la fait remonter sur les requêtes locales (« salle de boxe Toulouse »). */
@@ -533,7 +534,7 @@ function headTags(route, { ogImage, ogImageAlt, jsonLd, video, extra, noindex } 
   if (process.env.BING_SITE_VERIFICATION) {
     parts.push(`<meta name="msvalidate.01" content="${esc(process.env.BING_SITE_VERIFICATION)}" />`);
   }
-  parts.push(`<meta property="og:image:alt" content="${esc(ogImageAlt || 'Salle Boxing Center à Toulouse — entraînement de boxe')}" />`);
+  parts.push(`<meta property="og:image:alt" content="${esc(ogImageAlt || 'Logo Boxing Center')}" />`);
   parts.push(`<meta name="twitter:image" content="${img}" />`);
   /* Partage social : sans ces balises, un lien collé dans une conversation
      ne montre qu'une image fixe. On ne touche PAS à og:type, qui reste
