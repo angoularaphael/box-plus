@@ -586,25 +586,6 @@
     );
   }
 
-  function isPortetGym(gym) {
-    return String(gym || state.order?.customer_full?.gym || state.gymDraft || '')
-      .trim()
-      .toLowerCase() === 'portet';
-  }
-
-  function portetPaypalNoticeHtml(id) {
-    return `<p id="${id}" class="portet-pay-notice" hidden role="status">
-      À <strong>Portet</strong>, vous ne pourrez payer <strong>que par PayPal</strong>.
-      Si vous voulez payer par <strong>carte bancaire</strong>, choisissez une autre salle
-      (Minimes, Ramonville, États-Unis ou Saint-Cyprien).
-    </p>`;
-  }
-
-  function syncPortetPaypalNotice(selectEl, noticeEl) {
-    if (!noticeEl) return;
-    noticeEl.hidden = String(selectEl?.value || '').trim().toLowerCase() !== 'portet';
-  }
-
   async function loadConfig() {
     const res = await fetch('/api/config');
     state.config = await res.json();
@@ -687,7 +668,7 @@
     if (data.code === 'oney_4x_unavailable' || /4× sans frais.*indisponible/i.test(String(data.error || ''))) {
       return (
         data.error ||
-        'Le paiement en 4× sans frais de l’offre 259 € est momentanément indisponible. Vous pouvez régler 259 € en une seule fois par carte ou PayPal.'
+        'Le 4× sans frais par carte (PayPlug) est momentanément indisponible. Vous pouvez payer en 4× via PayPal, ou régler en une fois par carte ou PayPal.'
       );
     }
     if (data.error === 'payplug_not_configured') {
@@ -702,7 +683,7 @@
     if (/PayPal Portet est mal configuré|Client Authentication failed/i.test(String(data.error || ''))) {
       return (
         data.error ||
-        'PayPal Portet est mal configuré. Choisissez une autre salle pour payer par carte, ou réessayez plus tard.'
+        'PayPal Portet est mal configuré. Payez par carte, ou réessayez plus tard.'
       );
     }
     if (data.error === 'paypal_url_missing') {
@@ -842,18 +823,15 @@
     const full = state.order?.customer_full || {};
     const payFlags = await loadPayFlags(full.gym);
     const oney4x = payFlags.oney4x === true;
-    const savedInstallment =
-      oney4x && state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
+    const savedInstallment = state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
     const oneyNotice =
       installmentChoice && !oney4x
         ? `<p class="portet-pay-notice">${esc(
             payFlags.oney4xMessage ||
-              'Le paiement en 4× sans frais de l’offre 259 € est momentanément indisponible. Vous pouvez régler 259 € en une seule fois par carte ou PayPal.'
+              'Le 4× sans frais par carte (PayPlug) est momentanément indisponible. Le 4× est disponible via PayPal, dans toutes les salles.'
           )}</p>`
         : '';
-    const portetPaypalOnly =
-      isPortetGym(full.gym) && !payFlags.preview && payFlags.showPaypal;
-    const showCard = payFlags.showCard && !portetPaypalOnly;
+    const showCard = payFlags.showCard;
     const showPaypal = payFlags.showPaypal;
     const paypalMsgHtml = showPaypal
       ? `<div class="full" style="margin-top:8px">
@@ -869,9 +847,7 @@
     let billingHtml = '';
     if (installmentChoice) {
       const quart = ((Number(p.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
-      const savedMethod = portetPaypalOnly
-        ? 'paypal'
-        : state.order?.payment?.preferred_checkout || 'card';
+      const savedMethod = state.order?.payment?.preferred_checkout || 'card';
       const onceMethods = payMethodsHtml({
         name: 'pay_method_once',
         cardValue: 'card',
@@ -882,7 +858,7 @@
         cardTitle: 'Carte bancaire',
         cardSmall: 'Paiement sécurisé',
         paypalTitle: 'PayPal',
-        paypalSmall: portetPaypalOnly ? 'Obligatoire pour la salle Portet' : 'Paiement sécurisé',
+        paypalSmall: 'Paiement sécurisé',
         cardLogo: 'card',
       });
       const fourMethods =
@@ -890,26 +866,19 @@
           name: 'pay_method_4x',
           cardValue: 'payplug',
           paypalValue: 'paypal',
-          showCard,
+          showCard: showCard && oney4x,
           showPaypal,
-          preferPaypal: portetPaypalOnly,
+          preferPaypal: true,
           cardTitle: '4× sans frais',
-          cardSmall: 'Carte · sans frais supplémentaires',
-          paypalTitle: 'PayPal',
-          paypalSmall: portetPaypalOnly
-            ? '4× PayPal si éligible — obligatoire à Portet (montant total)'
-            : 'Pay Later si éligible — sinon paiement du montant total',
+          cardSmall: 'Carte PayPlug / Oney',
+          paypalTitle: 'PayPal 4×',
+          paypalSmall: '4× Pay Later si éligible — sinon paiement du montant total',
           cardLogo: 'payplug',
         }) + paypalMsgHtml;
       billingHtml = `
         <div class="full billing-plan-block">
           ${previewNotice}
           ${oneyNotice}
-          ${
-            portetPaypalOnly
-              ? '<p class="portet-pay-notice">À <strong>Portet</strong>, le paiement se fait <strong>uniquement par PayPal</strong>. Pour payer par carte bancaire, revenez en arrière et choisissez une autre salle.</p>'
-              : ''
-          }
           <p class="sub" style="margin-top:0">Étape 1 — Comment souhaitez-vous régler ?</p>
           <div class="billing-choice-row" role="radiogroup" aria-label="Type de paiement">
             <label class="billing-choice">
@@ -919,17 +888,17 @@
                 <small>${priceLabel(p)}</small>
               </span>
             </label>
-            ${
-              oney4x
-                ? `<label class="billing-choice">
+            <label class="billing-choice">
               <input type="radio" name="payment_plan" value="4x" ${savedInstallment === '4x' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>En 4× sans frais</strong>
-                <small>Carte PayPlug/Oney : ${quart}&nbsp;€ tout de suite, puis 3 échéances. PayPal : montant total, 4× seulement si éligible.</small>
+                <small>${
+                  oney4x
+                    ? `Carte PayPlug/Oney : ${quart}&nbsp;€ tout de suite, puis 3 échéances. PayPal : 4× si éligible.`
+                    : 'Pour le moment via PayPal uniquement (PayPlug 4× indisponible).'
+                }</small>
               </span>
-            </label>`
-                : ''
-            }
+            </label>
           </div>
           <div id="fourXSchedule" class="fourx-schedule" style="display:none" aria-live="polite"></div>
           <p class="sub" style="margin:16px 0 8px">Étape 2 — Choisissez votre moyen de paiement</p>
@@ -967,22 +936,16 @@
       billingHtml = `
         <div class="full billing-plan-block">
           ${previewNotice}
-          ${
-            portetPaypalOnly
-              ? '<p class="portet-pay-notice">À <strong>Portet</strong>, la 1ʳᵉ échéance se paie <strong>uniquement par PayPal</strong>. Pour payer par carte bancaire, revenez en arrière et choisissez une autre salle.</p>'
-              : ''
-          }
           <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
             ${methods || emptyPayHtml}
           </div>
         </div>`;
     } else if (isComptantLike || isOneShotPaid) {
       const savedOneShot =
-        portetPaypalOnly || state.order?.payment?.preferred_checkout === 'paypal'
+        state.order?.payment?.preferred_checkout === 'paypal' ||
+        state.order?.payment?.billing_plan === 'paypal'
           ? 'paypal'
-          : state.order?.payment?.billing_plan === 'paypal'
-            ? 'paypal'
-            : 'card';
+          : 'card';
       const methods = payMethodsHtml({
         name: 'billing_plan',
         cardValue: 'card',
@@ -999,11 +962,6 @@
       billingHtml = `
         <div class="full billing-plan-block">
           ${previewNotice}
-          ${
-            portetPaypalOnly
-              ? '<p class="portet-pay-notice">À <strong>Portet</strong>, le paiement se fait <strong>uniquement par PayPal</strong>. Pour payer par carte bancaire, revenez en arrière et choisissez une autre salle.</p>'
-              : ''
-          }
           <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
             ${methods || emptyPayHtml}
           </div>
@@ -1030,17 +988,16 @@
         const addrBox = document.getElementById('fourXAddress');
         const schedule = document.getElementById('fourXSchedule');
         const payBtn = document.getElementById('payBtn');
-        const fourMethod = portetPaypalOnly
-          ? 'paypal'
-          : document.querySelector('input[name="pay_method_4x"]:checked')?.value ||
-            (showPaypal && !showCard ? 'paypal' : 'payplug');
+        const fourMethod =
+          document.querySelector('input[name="pay_method_4x"]:checked')?.value ||
+          (oney4x && showCard && !showPaypal ? 'payplug' : 'paypal');
         if (onceBox) onceBox.style.display = plan === 'once' ? '' : 'none';
         if (fourBox) fourBox.style.display = plan === '4x' ? '' : 'none';
         if (schedule) {
           schedule.style.display = plan === '4x' ? '' : 'none';
           if (plan === '4x') schedule.innerHTML = buildFourXScheduleHtml(quart, fourMethod === 'paypal');
         }
-        const needAddress = plan === '4x' && fourMethod === 'payplug' && !portetPaypalOnly;
+        const needAddress = plan === '4x' && fourMethod === 'payplug' && oney4x;
         if (addrBox) {
           addrBox.style.display = needAddress ? '' : 'none';
           addrBox.querySelectorAll('input').forEach((input) => {
@@ -1076,20 +1033,16 @@
       setMsg('Redirection…');
       saveProgress();
       const body = payRequestBody();
-      if (portetPaypalOnly) {
-        body.pay_method = 'paypal';
-        if (!installmentChoice) body.billing_plan = 'paypal';
-      }
       const planInput = document.querySelector('input[name="billing_plan"]:checked');
       const installmentInput = document.querySelector('input[name="payment_plan"]:checked');
       if (installmentChoice) {
         body.payment_plan = installmentInput?.value || 'once';
         if (body.payment_plan === '4x') {
           const fourMethod =
-            document.querySelector('input[name="pay_method_4x"]:checked')?.value || 'payplug';
-          body.pay_method = fourMethod;
-          body.billing_plan = fourMethod === 'paypal' ? 'paypal' : null;
-          if (fourMethod === 'payplug') {
+            document.querySelector('input[name="pay_method_4x"]:checked')?.value || 'paypal';
+          body.pay_method = fourMethod === 'payplug' && oney4x ? 'payplug' : 'paypal';
+          body.billing_plan = body.pay_method === 'paypal' ? 'paypal' : null;
+          if (body.pay_method === 'payplug') {
             body.address = document.querySelector('#fourXAddress input[name="address"]')?.value?.trim();
             body.postal_code = document
               .querySelector('#fourXAddress input[name="postal_code"]')
@@ -1217,16 +1170,11 @@
       <form id="gymForm" class="form-grid">
         <div class="full"><label for="gym">Salle principale *</label>
           <select id="gym" name="gym" required>${gymsOptions(selected)}</select>
-          ${portetPaypalNoticeHtml('portetPaypalNotice')}
         </div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
         <div class="full">${backButton('← Retour à l\'offre', 1)}</div>
       </form>`;
     bindBackButtons();
-    const gymSelect = document.getElementById('gym');
-    const portetNotice = document.getElementById('portetPaypalNotice');
-    syncPortetPaypalNotice(gymSelect, portetNotice);
-    gymSelect.addEventListener('change', () => syncPortetPaypalNotice(gymSelect, portetNotice));
     document.getElementById('gymForm').onsubmit = async (e) => {
       e.preventDefault();
       const gym = document.getElementById('gym').value;

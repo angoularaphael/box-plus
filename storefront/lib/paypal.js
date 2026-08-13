@@ -51,7 +51,7 @@ function formatPaypalError(err, { gym } = {}) {
   const portet = String(gym || '').trim().toLowerCase() === 'portet';
   if (/client authentication failed|invalid_client/i.test(raw) || /CLIENT_ID.*invalide/i.test(raw)) {
     return portet
-      ? 'PayPal Portet est mal configuré (identifiants). Choisissez une autre salle pour payer par carte, ou réessayez plus tard.'
+      ? 'PayPal Portet est mal configuré (identifiants). Payez par carte, ou réessayez plus tard.'
       : 'PayPal est mal configuré (identifiants). Réessayez, ou payez par carte.';
   }
   return raw || 'Erreur PayPal';

@@ -123,7 +123,7 @@ function isPortetGym(gym) {
 /**
  * Ce que CE visiteur doit voir.
  * Session studio : tout ce qui est branché, même si décoché en prod.
- * Visiteur : cases cochées. Portet reste PayPal-only hors session studio.
+ * Visiteur : cases cochées. Plus de PayPal-only forcé à Portet.
  */
 function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady }) {
   const flags = normalize(stored);
@@ -135,15 +135,13 @@ function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady }) {
       portetPaypalOnly: false,
     };
   }
-  let show_payplug = Boolean(payplugReady) && flags.payplug;
-  let show_paypal = Boolean(paypalReady) && flags.paypal;
-  const portetPaypalOnly = isPortetGym(gym) && show_paypal;
-  if (portetPaypalOnly) show_payplug = false;
+  const show_payplug = Boolean(payplugReady) && flags.payplug;
+  const show_paypal = Boolean(paypalReady) && flags.paypal;
   return {
     preview: false,
     show_payplug,
     show_paypal,
-    portetPaypalOnly,
+    portetPaypalOnly: false,
   };
 }
 

@@ -30,7 +30,7 @@ test('preview affiche carte + paypal même à Portet', () => {
   assert.equal(vis.portetPaypalOnly, false);
 });
 
-test('prod : cases respectées, Portet reste PayPal-only si PayPal est coché', () => {
+test('prod : Portet voit carte + PayPal comme les autres salles', () => {
   const vis = resolveDisplay({
     stored: { payplug: true, paypal: true },
     preview: false,
@@ -38,9 +38,9 @@ test('prod : cases respectées, Portet reste PayPal-only si PayPal est coché', 
     payplugReady: true,
     paypalReady: true,
   });
-  assert.equal(vis.show_payplug, false);
+  assert.equal(vis.show_payplug, true);
   assert.equal(vis.show_paypal, true);
-  assert.equal(vis.portetPaypalOnly, true);
+  assert.equal(vis.portetPaypalOnly, false);
 });
 
 test('prod : PayPal décoché masque PayPal ailleurs', () => {

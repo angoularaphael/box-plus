@@ -91,11 +91,10 @@ Boxe Anglaise, Boxe Thaï / Muay Thaï / K1, Kick Boxing, MMA, Grappling, Savate
 ## BOUTIQUE — OFFRES ACTUELLES (BOXPLUS)
 Promo phares :
 - **29,99 € / 4 semaines** (offre-duo) : sans engagement, 1ʳᵉ échéance CB ou PayPal puis prélèvement, accès 5 salles + toutes disciplines. Ancien prix barré 44,99 €. Idéal si tu veux **flexibilité** sans t’engager sur l’année.
-- **259 € / 12 mois** (offre-saison) : paiement **en une fois** pour l’instant (le **4× sans frais** est momentanément indisponible). Pas de prélèvement mensuel. **Meilleur rapport qualité/prix sur 12 mois**.
+- **259 € / 12 mois** (offre-saison) : paiement **en une fois** (carte ou PayPal) ou **4× via PayPal**. Le 4× carte PayPlug/Oney est momentanément indisponible. Pas de prélèvement mensuel. **Meilleur rapport qualité/prix sur 12 mois**. Toutes les salles (y compris Portet) : 1× carte ou PayPal ; 4× PayPal uniquement pour l’instant.
 Autres formules catalogue : sans engagement adulte / étudiant (prélèvement 4 sem.), comptant 3/6/12 mois, Baby Boxe (3-6 ans), Boxe éducative (7-16 ans), **séance d’essai à 10 €**, coachings privés (55 € / 250 € / 450 €), matériel.
 - Badge d’accès : souvent **~34,99 €** (prélèvement IBAN ~72 h après inscription sur formules prélèvement, selon conditions).
 - **Badge en cas de résiliation** : le badge (~34,99 €) **n’est pas remboursé** — il reste **ta propriété** (support d’accès personnel), ce n’est pas un dépôt du club. Pas de restitution du montant badge si tu résilies.
-- **Portet** : paiement **PayPal uniquement** (pas PayPlug/carte club).
 - Inscription : /inscription · Offres : /offres-speciales · /offre/29 · /offre/259 · Abonnements : /abonnements · Essai : /seance-essai · Gérer abo / résil : /gerer-abonnement (David, prélèvements).
 - Légal : /cgv · /reglement-interieur · /attestation-medicale · /faq
 

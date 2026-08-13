@@ -2023,12 +2023,10 @@ function createApp() {
         payplugReady: isPayplugEnabled(),
         paypalReady: isPaypalEnabled(gymNorm),
       });
-      const portetPaypalOnly = display.portetPaypalOnly;
       let preferredCheckout =
         payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
           ? 'paypal'
           : 'card';
-      if (portetPaypalOnly) preferredCheckout = 'paypal';
       if (preferredCheckout === 'paypal' && !display.show_paypal) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
       }
@@ -2070,7 +2068,7 @@ function createApp() {
 
       const baseUrl = getCheckoutBaseUrl(req);
       const planLabel = paymentPlan || (productSupportsInstallmentChoice(product) ? 'once' : 'once');
-      if (planLabel === '4x' && !isOney4xEnabled()) {
+      if (planLabel === '4x' && preferredCheckout !== 'paypal' && !isOney4xEnabled()) {
         return res.status(503).json({
           ok: false,
           error: ONEY_4X_UNAVAILABLE_MESSAGE,
@@ -2506,8 +2504,7 @@ function createApp() {
         payplugReady: isPayplugEnabled(),
         paypalReady: isPaypalEnabled(gymNorm),
       });
-      const portetPaypalOnly = display.portetPaypalOnly;
-      let preferPaypal = method === 'paypal' || portetPaypalOnly;
+      let preferPaypal = method === 'paypal';
       const {
         productSupportsInstallmentChoice,
         normalizePaymentPlan,
@@ -2515,10 +2512,11 @@ function createApp() {
       const paymentPlan =
         normalizePaymentPlan(body.payment_plan, product) ||
         (productSupportsInstallmentChoice(product) ? 'once' : 'once');
-      if (portetPaypalOnly && !preferPaypal) {
-        return res.status(400).json({
+      if (paymentPlan === '4x' && !preferPaypal && !isOney4xEnabled()) {
+        return res.status(503).json({
           ok: false,
-          error: 'Pour la salle Portet, le paiement doit passer par PayPal.',
+          error: ONEY_4X_UNAVAILABLE_MESSAGE,
+          code: 'oney_4x_unavailable',
         });
       }
       if (preferPaypal && !display.show_paypal) {
