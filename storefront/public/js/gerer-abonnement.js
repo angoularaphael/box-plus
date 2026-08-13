@@ -107,6 +107,13 @@
   ).join('');
 
   gymSelect.innerHTML = GYMS.map((g) => `<option value="${g.id}">${g.label}</option>`).join('');
+  const portetNotice = document.getElementById('portetPaypalNotice');
+  const syncPortetNotice = () => {
+    if (!portetNotice) return;
+    portetNotice.hidden = String(gymSelect.value || '').toLowerCase() !== 'portet';
+  };
+  gymSelect.addEventListener('change', syncPortetNotice);
+  syncPortetNotice();
 
   function clearFormErrors(form) {
     form?.querySelectorAll('.field-error').forEach((el) => el.classList.remove('field-error'));
@@ -375,7 +382,7 @@
 
     let html = '';
     if (portet) {
-      html += `<p class="manage-lead" style="color:var(--bc-red,#E8001C);margin:0 0 12px">Salle Portet : paiement uniquement via PayPal.</p>`;
+      html += `<p class="portet-pay-notice">À <strong>Portet</strong>, vous ne pourrez payer <strong>que par PayPal</strong>. Si vous voulez payer par <strong>carte bancaire</strong>, choisissez une autre salle (Minimes, Ramonville, États-Unis ou Saint-Cyprien).</p>`;
     }
     if (installment) {
       html += `
@@ -487,7 +494,7 @@
       'abonnement comptant';
     const portet = isPortetGym(body.gym);
     changePayLead.textContent = label
-      ? `Identité confirmée. Montant : ${label} (${name}).${portet ? ' PayPal uniquement (Portet).' : ''}`
+      ? `Identité confirmée. Montant : ${label} (${name}). À Portet, le paiement se fait uniquement par PayPal — pour la carte bancaire, choisissez une autre salle.`
       : `Identité confirmée. Choisissez votre mode de paiement.`;
     renderChangePayChoices({ product: changeProductSummary, gym: body.gym });
     changeForm.hidden = true;

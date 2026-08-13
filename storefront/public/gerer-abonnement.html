@@ -65,7 +65,13 @@
         <div><label for="c_birth">Date de naissance *</label><input id="c_birth" name="birthdate" type="date" required min="1900-01-01" /></div>
         <div><label for="c_email">Email *</label><input id="c_email" name="email" type="email" required /></div>
         <div><label for="c_phone">Téléphone</label><input id="c_phone" name="phone" type="tel" /></div>
-        <div><label for="c_gym">Salle *</label><select id="c_gym" name="gym" required></select></div>
+        <div class="full"><label for="c_gym">Salle *</label><select id="c_gym" name="gym" required></select>
+          <p id="portetPaypalNotice" class="portet-pay-notice" hidden role="status">
+            À <strong>Portet</strong>, vous ne pourrez payer <strong>que par PayPal</strong>.
+            Si vous voulez payer par <strong>carte bancaire</strong>, choisissez une autre salle
+            (Minimes, Ramonville, États-Unis ou Saint-Cyprien).
+          </p>
+        </div>
         <div class="full"><label for="c_current">Abonnement actuel *</label><select id="c_current" name="current_plan" required></select></div>
         <div class="full"><label for="c_target">Nouvel abonnement comptant *</label><select id="c_target" name="target_product_id" required></select></div>
         <div class="full"><button type="submit" class="btn block">Vérifier mes informations</button></div>
@@ -125,6 +131,6 @@
   <script src="/js/layout.js"></script>
   <script src="/js/motion.js"></script>
   <script src="/js/counselor-david.js?v=4"></script>
-  <script src="/js/gerer-abonnement.js?v=8"></script>
+  <script src="/js/gerer-abonnement.js?v=9"></script>
 </body>
 </html>

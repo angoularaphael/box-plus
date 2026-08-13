@@ -1526,6 +1526,18 @@ input:focus, select:focus, textarea:focus {
   color: #b42318;
   font-weight: 600;
 }
+.portet-pay-notice {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(232, 0, 28, 0.08);
+  border: 1px solid rgba(232, 0, 28, 0.28);
+  color: #8a1018;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.portet-pay-notice strong { color: #b42318; }
 .rate-limit-note {
   display: inline-block;
   margin-top: 6px;

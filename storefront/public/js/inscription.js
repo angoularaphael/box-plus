@@ -494,6 +494,19 @@
       .toLowerCase() === 'portet';
   }
 
+  function portetPaypalNoticeHtml(id) {
+    return `<p id="${id}" class="portet-pay-notice" hidden role="status">
+      À <strong>Portet</strong>, vous ne pourrez payer <strong>que par PayPal</strong>.
+      Si vous voulez payer par <strong>carte bancaire</strong>, choisissez une autre salle
+      (Minimes, Ramonville, États-Unis ou Saint-Cyprien).
+    </p>`;
+  }
+
+  function syncPortetPaypalNotice(selectEl, noticeEl) {
+    if (!noticeEl) return;
+    noticeEl.hidden = String(selectEl?.value || '').trim().toLowerCase() !== 'portet';
+  }
+
   async function loadConfig() {
     const res = await fetch('/api/config');
     state.config = await res.json();
@@ -785,7 +798,7 @@
         <div class="full billing-plan-block">
           ${
             portetPaypalOnly
-              ? '<p class="sub" style="margin-top:0;color:var(--bc-red,#E8001C)">Salle Portet : paiement uniquement via PayPal (carte PayPlug indisponible).</p>'
+              ? '<p class="portet-pay-notice">À <strong>Portet</strong>, le paiement se fait <strong>uniquement par PayPal</strong>. Pour payer par carte bancaire, revenez en arrière et choisissez une autre salle.</p>'
               : ''
           }
           <p class="sub" style="margin-top:0">Étape 1 — Comment souhaitez-vous régler ?</p>
@@ -820,7 +833,7 @@
       billingHtml = portetPaypalOnly
         ? `
         <div class="full billing-plan-block">
-          <p class="sub" style="margin-top:0;color:var(--bc-red,#E8001C)">Salle Portet : 1ʳᵉ échéance uniquement via PayPal.</p>
+          <p class="portet-pay-notice">À <strong>Portet</strong>, la 1ʳᵉ échéance se paie <strong>uniquement par PayPal</strong>. Pour payer par carte bancaire, revenez en arrière et choisissez une autre salle.</p>
           <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
             <label class="billing-choice">
               <input type="radio" name="billing_plan" value="paypal" checked />
@@ -863,7 +876,7 @@
       billingHtml = portetPaypalOnly
         ? `
         <div class="full billing-plan-block">
-          <p class="sub" style="margin-top:0;color:var(--bc-red,#E8001C)">Salle Portet : paiement uniquement via PayPal.</p>
+          <p class="portet-pay-notice">À <strong>Portet</strong>, le paiement se fait <strong>uniquement par PayPal</strong>. Pour payer par carte bancaire, revenez en arrière et choisissez une autre salle.</p>
           <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
             <label class="billing-choice">
               <input type="radio" name="billing_plan" value="paypal" checked />
@@ -1093,11 +1106,17 @@
       <h1>Votre salle</h1>
       <form id="gymForm" class="form-grid">
         <div class="full"><label for="gym">Salle principale *</label>
-          <select id="gym" name="gym" required>${gymsOptions(selected)}</select></div>
+          <select id="gym" name="gym" required>${gymsOptions(selected)}</select>
+          ${portetPaypalNoticeHtml('portetPaypalNotice')}
+        </div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
         <div class="full">${backButton('← Retour à l\'offre', 1)}</div>
       </form>`;
     bindBackButtons();
+    const gymSelect = document.getElementById('gym');
+    const portetNotice = document.getElementById('portetPaypalNotice');
+    syncPortetPaypalNotice(gymSelect, portetNotice);
+    gymSelect.addEventListener('change', () => syncPortetPaypalNotice(gymSelect, portetNotice));
     document.getElementById('gymForm').onsubmit = async (e) => {
       e.preventDefault();
       const gym = document.getElementById('gym').value;
