@@ -375,20 +375,21 @@
   }
 
   function paymentLogosHtml(kind) {
+    const paypalImg = `<img src="https://up.yimg.com/ib/th/id/OIP.h_nvZo9_TUEbrpVqSdXsGAHaHa?pid=Api&rs=1&c=1&qlt=95&w=122&h=122" alt="PayPal" height="28" />`;
+    const cardImgs = `<img src="https://tse1.mm.bing.net/th/id/OIP.i6EmD8Ol2FWxjgKeOSjh1wHaDo?r=0&pid=Api&h=220&P=0" alt="CB Visa Mastercard" height="28" />
+      <img src="https://tse2.mm.bing.net/th/id/OIP.aejxZDH8dT3Q7pQ8GBLV_AHaHa?r=0&pid=Api&h=220&P=0" alt="American Express" height="28" />`;
     if (kind === 'paypal') {
-      return `<span class="pay-logos" aria-hidden="true">
-        <img src="https://up.yimg.com/ib/th/id/OIP.h_nvZo9_TUEbrpVqSdXsGAHaHa?pid=Api&rs=1&c=1&qlt=95&w=122&h=122" alt="PayPal" height="28" />
-      </span>`;
+      return `<span class="pay-logos" aria-hidden="true">${paypalImg}</span>`;
     }
     if (kind === 'payplug') {
       return `<span class="pay-logos" aria-hidden="true">
         <img src="https://www.onatureshop.com/img/cms/Payplug-logo.png" alt="Paiement en 4× sans frais" height="32" style="background:#111;border-radius:6px;padding:2px 6px" />
       </span>`;
     }
-    return `<span class="pay-logos" aria-hidden="true">
-      <img src="https://tse1.mm.bing.net/th/id/OIP.i6EmD8Ol2FWxjgKeOSjh1wHaDo?r=0&pid=Api&h=220&P=0" alt="CB Visa Mastercard" height="28" />
-      <img src="https://tse2.mm.bing.net/th/id/OIP.aejxZDH8dT3Q7pQ8GBLV_AHaHa?r=0&pid=Api&h=220&P=0" alt="American Express" height="28" />
-    </span>`;
+    if (kind === 'card-paypal') {
+      return `<span class="pay-logos" aria-hidden="true">${cardImgs}${paypalImg}</span>`;
+    }
+    return `<span class="pay-logos" aria-hidden="true">${cardImgs}</span>`;
   }
 
   async function loadPayFlags(gym) {
@@ -402,9 +403,10 @@
         showPaypal: cfg.show_paypal !== false,
         oney4x: cfg.oney_4x === true,
         oney4xMessage: cfg.oney_4x_message || '',
+        portetViaPaypal: cfg.portet_via_paypal === true,
       };
     } catch {
-      return { preview: false, showCard: true, showPaypal: true, oney4x: false };
+      return { preview: false, showCard: true, showPaypal: true, oney4x: false, portetViaPaypal: false };
     }
   }
 
@@ -833,6 +835,9 @@
         : '';
     const showCard = payFlags.showCard;
     const showPaypal = payFlags.showPaypal;
+    const portetViaPaypal = payFlags.portetViaPaypal === true && showPaypal;
+    const cardLogoKind = portetViaPaypal ? 'card-paypal' : 'card';
+    const cardSmallOnce = portetViaPaypal ? 'Carte via PayPal' : 'Paiement sécurisé';
     const paypalMsgHtml = showPaypal
       ? `<div class="full" style="margin-top:8px">
               <div data-pp-message data-pp-style-layout="text" data-pp-style-logo-type="inline" data-pp-amount="${(Number(p.price_cents || 0) / 100).toFixed(2)}"></div>
@@ -856,10 +861,10 @@
         showPaypal,
         preferPaypal: savedMethod === 'paypal',
         cardTitle: 'Carte bancaire',
-        cardSmall: 'Paiement sécurisé',
+        cardSmall: cardSmallOnce,
         paypalTitle: 'PayPal',
         paypalSmall: 'Paiement sécurisé',
-        cardLogo: 'card',
+        cardLogo: cardLogoKind,
       });
       const fourMethods =
         payMethodsHtml({
@@ -928,10 +933,12 @@
         showPaypal,
         preferPaypal: savedPlan === 'paypal',
         cardTitle: 'Carte bancaire',
-        cardSmall: '1ʳᵉ échéance par carte, puis prélèvement sans engagement',
+        cardSmall: portetViaPaypal
+          ? '1ʳᵉ échéance via PayPal, puis prélèvement sans engagement'
+          : '1ʳᵉ échéance par carte, puis prélèvement sans engagement',
         paypalTitle: 'PayPal',
         paypalSmall: '1ʳᵉ échéance PayPal, puis prélèvement sans engagement',
-        cardLogo: 'card',
+        cardLogo: cardLogoKind,
       });
       billingHtml = `
         <div class="full billing-plan-block">
@@ -954,10 +961,10 @@
         showPaypal,
         preferPaypal: savedOneShot === 'paypal',
         cardTitle: 'Carte bancaire',
-        cardSmall: 'En une seule fois',
+        cardSmall: portetViaPaypal ? 'Carte via PayPal' : 'En une seule fois',
         paypalTitle: 'PayPal',
         paypalSmall: 'En une seule fois',
-        cardLogo: 'card',
+        cardLogo: cardLogoKind,
       });
       billingHtml = `
         <div class="full billing-plan-block">
@@ -1072,6 +1079,10 @@
         body.billing_plan = planInput.value;
       } else if (isPrelevement) {
         body.billing_plan = 'rib';
+      }
+      if (portetViaPaypal) {
+        body.pay_method = 'paypal';
+        body.billing_plan = 'paypal';
       }
       body.badge_timing = 'deferred';
       body.badge_method = 'iban';

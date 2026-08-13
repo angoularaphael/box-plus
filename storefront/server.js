@@ -2027,6 +2027,7 @@ function createApp() {
         payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
           ? 'paypal'
           : 'card';
+      if (display.portetViaPaypal) preferredCheckout = 'paypal';
       if (preferredCheckout === 'paypal' && !display.show_paypal) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
       }
@@ -2504,7 +2505,7 @@ function createApp() {
         payplugReady: isPayplugEnabled(),
         paypalReady: isPaypalEnabled(gymNorm),
       });
-      let preferPaypal = method === 'paypal';
+      let preferPaypal = method === 'paypal' || display.portetViaPaypal === true;
       const {
         productSupportsInstallmentChoice,
         normalizePaymentPlan,
@@ -3123,6 +3124,7 @@ function createApp() {
       paypal_account: paypalAccountForGym(gym),
       show_payplug: display.show_payplug,
       show_paypal: display.show_paypal,
+      portet_via_paypal: display.portetViaPaypal === true,
       oney_4x: isOney4xEnabled(),
       oney_4x_message: isOney4xEnabled() ? null : ONEY_4X_UNAVAILABLE_MESSAGE,
       preview: display.preview,

@@ -28,6 +28,7 @@ test('preview affiche carte + paypal même à Portet', () => {
   assert.equal(vis.show_payplug, true);
   assert.equal(vis.show_paypal, true);
   assert.equal(vis.portetPaypalOnly, false);
+  assert.equal(vis.portetViaPaypal, true);
 });
 
 test('prod : Portet voit carte + PayPal comme les autres salles', () => {
@@ -41,6 +42,7 @@ test('prod : Portet voit carte + PayPal comme les autres salles', () => {
   assert.equal(vis.show_payplug, true);
   assert.equal(vis.show_paypal, true);
   assert.equal(vis.portetPaypalOnly, false);
+  assert.equal(vis.portetViaPaypal, true);
 });
 
 test('prod : PayPal décoché masque PayPal ailleurs', () => {
@@ -53,6 +55,7 @@ test('prod : PayPal décoché masque PayPal ailleurs', () => {
   });
   assert.equal(vis.show_payplug, true);
   assert.equal(vis.show_paypal, false);
+  assert.equal(vis.portetViaPaypal, false);
 });
 
 test('defaults : les deux moyens visibles', () => {

@@ -123,16 +123,19 @@ function isPortetGym(gym) {
 /**
  * Ce que CE visiteur doit voir.
  * Session studio : tout ce qui est branché, même si décoché en prod.
- * Visiteur : cases cochées. Plus de PayPal-only forcé à Portet.
+ * Visiteur : cases cochées. À Portet, la CB passe aussi par PayPal
+ * (PayPal accepte la carte) : les deux tuiles restent visibles.
  */
 function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady }) {
   const flags = normalize(stored);
   if (preview) {
+    const show_paypal = Boolean(paypalReady);
     return {
       preview: true,
       show_payplug: Boolean(payplugReady),
-      show_paypal: Boolean(paypalReady),
+      show_paypal,
       portetPaypalOnly: false,
+      portetViaPaypal: isPortetGym(gym) && show_paypal,
     };
   }
   const show_payplug = Boolean(payplugReady) && flags.payplug;
@@ -142,6 +145,7 @@ function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady }) {
     show_payplug,
     show_paypal,
     portetPaypalOnly: false,
+    portetViaPaypal: isPortetGym(gym) && show_paypal,
   };
 }
 
