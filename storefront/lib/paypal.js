@@ -17,6 +17,13 @@ function paypalAccountForGym(gym) {
   return String(gym || '').trim().toLowerCase() === 'portet' ? 'portet' : 'minimes';
 }
 
+/** LOGIN = compte PayPal ; BILLING = saisie carte (invité), email prérempli. */
+function resolvePaypalLandingPage({ paymentPlan, guestCard } = {}) {
+  if (paymentPlan === '4x') return 'NO_PREFERENCE';
+  if (guestCard) return 'BILLING';
+  return 'LOGIN';
+}
+
 function resolvePaypalAccount({ gym, account } = {}) {
   if (account === 'portet' || account === 'minimes') return account;
   return paypalAccountForGym(gym);
@@ -180,6 +187,8 @@ async function createPaypalOrder({
   returnUrl = null,
   cancelUrl = null,
   gym = null,
+  guestCard = false,
+  payerEmail = null,
 }) {
   const amount = Number(amountCents || product?.price_cents || 0);
   if (!amount) throw new Error('Montant PayPal invalide');
@@ -201,6 +210,29 @@ async function createPaypalOrder({
   const customId = String(
     order?.order_id || metadata.order_id || metadata.payment_ref || metadata.verify_order_id || ''
   ).slice(0, 127);
+  const email = String(
+    payerEmail ||
+      order?.customer_short?.email ||
+      order?.customer_full?.email ||
+      metadata.email ||
+      ''
+  )
+    .trim()
+    .toLowerCase();
+  const landingPage = resolvePaypalLandingPage({ paymentPlan, guestCard });
+  const paypalSource = {
+    experience_context: {
+      brand_name: account === 'portet' ? 'Boxing Center Portet' : 'Boxing Center',
+      locale: 'fr-FR',
+      landing_page: landingPage,
+      user_action: 'PAY_NOW',
+      return_url: resolvedReturn,
+      cancel_url: resolvedCancel,
+      shipping_preference: 'NO_SHIPPING',
+    },
+  };
+  if (email && email.includes('@')) paypalSource.email_address = email.slice(0, 254);
+
   // Ne pas mélanger payment_source + application_context (INCOMPATIBLE_PARAMETER_VALUE).
   const payload = {
     intent: 'CAPTURE',
@@ -216,17 +248,7 @@ async function createPaypalOrder({
       },
     ],
     payment_source: {
-      paypal: {
-        experience_context: {
-          brand_name: account === 'portet' ? 'Boxing Center Portet' : 'Boxing Center',
-          locale: 'fr-FR',
-          landing_page: paymentPlan === '4x' ? 'NO_PREFERENCE' : 'LOGIN',
-          user_action: 'PAY_NOW',
-          return_url: resolvedReturn,
-          cancel_url: resolvedCancel,
-          shipping_preference: 'NO_SHIPPING',
-        },
-      },
+      paypal: paypalSource,
     },
   };
 
@@ -283,6 +305,7 @@ module.exports = {
   publicClientId,
   paypalAccountForGym,
   resolvePaypalAccount,
+  resolvePaypalLandingPage,
   credentialsForAccount,
   createPaypalOrder,
   capturePaypalOrder,

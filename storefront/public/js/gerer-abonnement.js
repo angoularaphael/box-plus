@@ -604,7 +604,11 @@
         (changePayFlags.showPaypal && !changePayFlags.showCard ? 'paypal' : 'payplug');
     }
 
-    if (changePayFlags.portetViaPaypal) paymentMethod = 'paypal';
+    if (changePayFlags.portetViaPaypal) {
+      extra.paypal_landing = paymentMethod === 'paypal' ? 'login' : 'billing';
+      extra.paypal_guest_card = paymentMethod !== 'paypal';
+      paymentMethod = 'paypal';
+    }
 
     changePayBtn.disabled = true;
     changeMsg.hidden = false;

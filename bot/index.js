@@ -567,6 +567,91 @@ async function notifyMembershipChangeComplete(order, memberId) {
   }
 }
 
+/** Relance dossier payé mais non terminé — email boxe, sans Deciplus. */
+async function processInscriptionNudgeJob(order) {
+  const email = order.customer?.email || order.raw?.email || '';
+  if (!email || /@boxplus-test\.local$/i.test(email)) {
+    logInfo('Relance inscription ignorée (test / sans email)', { order_id: order.order_id });
+    return { status: STATUS.SUCCESS, action: 'inscription_nudge', skipped: true };
+  }
+  const first = order.customer?.first_name || '';
+  const resumeUrl = order.raw?.resume_url || '';
+  const subject =
+    order.raw?.email_subject ||
+    'Gong ! Ton inscription Boxing Center n’est pas encore sur le ring';
+  const html =
+    order.raw?.email_html ||
+    `<p>Salut ${first || 'champion'},</p>
+     <p>Tu as payé, mais le round n’est pas fini : dossier + signature. Tant que ce n’est pas bouclé, tu n’es pas inscrit en salle.</p>
+     <p><a href="${resumeUrl}">Finir le round</a></p>
+     <p>À tout de suite sur le ring,<br/>Boxing Center</p>`;
+
+  const apiKey = String(process.env.BREVO_API_KEY || '').trim().replace(/^["']|["']$/g, '');
+  if (apiKey.startsWith('xkeysib-')) {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: { 'api-key': apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        sender: {
+          name: process.env.BREVO_SENDER_NAME || 'Boxing Center',
+          email: process.env.BREVO_SENDER_EMAIL || 'suzinabot@gmail.com',
+        },
+        to: [{ email }],
+        subject,
+        htmlContent: html,
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`Brevo relance inscription HTTP ${res.status} ${errText}`.trim());
+    }
+    logInfo('Relance inscription envoyée (Brevo)', { order_id: order.order_id, email });
+  } else {
+    logWarn('Relance inscription : BREVO_API_KEY manquante', { order_id: order.order_id });
+  }
+
+  const storeBase = (
+    order.status_callback_base ||
+    process.env.BOXPLUS_STORE_URL ||
+    process.env.STORE_URL ||
+    ''
+  ).replace(/\/$/, '');
+  const storeSecret = process.env.SYNC_SECRET || process.env.ADMIN_SECRET || '';
+  if (storeBase && storeSecret) {
+    await fetch(`${storeBase}/api/internal/inscription-nudges/${encodeURIComponent(order.order_id)}/sent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-sync-secret': storeSecret },
+    }).catch(() => {});
+  }
+  return { status: STATUS.SUCCESS, action: 'inscription_nudge' };
+}
+
+async function maybeTriggerInscriptionNudges() {
+  const role = String(process.env.BOT_ROLE || 'all').toLowerCase();
+  if (role === 'sales') return;
+  const storeBase = (
+    process.env.BOXPLUS_STORE_URL ||
+    process.env.STORE_URL ||
+    ''
+  ).replace(/\/$/, '');
+  const secret = process.env.SYNC_SECRET || process.env.ADMIN_SECRET || '';
+  if (!storeBase || !secret) return;
+  try {
+    const res = await fetch(`${storeBase}/api/cron/inscription-nudges`, {
+      method: 'GET',
+      headers: { 'x-sync-secret': secret },
+    });
+    if (!res.ok) {
+      logWarn('Poll relances inscription HTTP', { status: res.status });
+    }
+  } catch (err) {
+    logWarn('Poll relances inscription', { error: err.message });
+  }
+}
+
+let lastNudgePollAt = 0;
+const NUDGE_POLL_MS = Number(process.env.BOT_NUDGE_POLL_MS || 60 * 1000);
+
 async function processJob(page, job) {
   const order = normalizeOrder(job);
   const errors = validateOrder(order);
@@ -587,6 +672,10 @@ async function processJob(page, job) {
 
   if (role === 'sales' && (action !== 'sale' || isChangeSale)) {
     throw new Error(`Bot ventes refuse « ${action} » — utiliser BOXPLUS_BOT_URL_OPS`);
+  }
+
+  if (order.action === 'inscription_nudge') {
+    return processInscriptionNudgeJob(order);
   }
 
   if (order.action === 'cancel') {
@@ -722,6 +811,29 @@ async function processOneJob(job) {
   }
 
   updateJob(filePath, { status: STATUS.PROCESSING, started_at: new Date().toISOString() });
+
+  const action = String(order.action || job.action || 'sale').toLowerCase();
+  if (action === 'inscription_nudge') {
+    try {
+      const role = String(process.env.BOT_ROLE || 'all').toLowerCase();
+      if (role === 'sales') {
+        throw new Error('Bot ventes refuse « inscription_nudge » — utiliser BOXPLUS_BOT_URL_OPS');
+      }
+      const outcome = await processInscriptionNudgeJob(order);
+      markProcessed(jobId, outcome);
+      removeJob(filePath);
+      logInfo('Relance inscription traitée', { job_id: jobId, order_id: order.order_id });
+      return { ok: true, result: outcome };
+    } catch (err) {
+      updateJob(filePath, {
+        status: STATUS.ERROR,
+        last_error: err.message,
+        attempts: priorAttempts + 1,
+      });
+      logError('Erreur relance inscription', { job_id: jobId, error: err.message });
+      return { ok: false, error: err.message };
+    }
+  }
 
   try {
     if (!order.gym) {
@@ -878,6 +990,10 @@ async function runLoop(once = false) {
     if (pending.length === 0) {
       if (once) break;
       await maybeKeepSessionAlive();
+      if (Date.now() - lastNudgePollAt >= NUDGE_POLL_MS) {
+        lastNudgePollAt = Date.now();
+        await maybeTriggerInscriptionNudges();
+      }
       await sleep(POLL_MS);
       continue;
     }

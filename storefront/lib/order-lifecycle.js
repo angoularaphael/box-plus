@@ -150,7 +150,15 @@ async function markPaymentPaidAsync(orderId, paymentData) {
     ...order.payment,
     ...paymentData,
     status: 'paid',
-    paid_at: new Date().toISOString(),
+    paid_at: order.payment?.paid_at || paymentData.paid_at || new Date().toISOString(),
+  };
+  const paidAt = Date.parse(order.payment.paid_at);
+  const nudgeMs = Number(process.env.BOXPLUS_INSCRIPTION_NUDGE_MS || 30 * 60 * 1000);
+  order.funnel = {
+    ...(order.funnel || {}),
+    complete_deadline_at:
+      order.funnel?.complete_deadline_at ||
+      new Date((Number.isFinite(paidAt) ? paidAt : Date.now()) + nudgeMs).toISOString(),
   };
   const plan = order.payment?.billing_plan;
   const snap = order.product_snapshot || {};

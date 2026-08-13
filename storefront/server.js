@@ -341,6 +341,17 @@ function isAuthorizedSync(req) {
   return token === SYNC_SECRET;
 }
 
+function isAuthorizedCron(req) {
+  if (isAuthorizedSync(req)) return true;
+  const cron = String(process.env.CRON_SECRET || '').trim();
+  if (cron) {
+    const header = req.headers['authorization'] || '';
+    const token = String(header).replace(/^Bearer\s+/i, '').trim();
+    if (token === cron) return true;
+  }
+  return req.headers['x-vercel-cron'] === '1';
+}
+
 async function isAuthorizedAdmin(req) {
   const session = await getAdminSession(req);
   if (session) return true;
@@ -1273,6 +1284,33 @@ function createApp() {
     res.json({ ok: result.ok !== false, ...result });
   });
 
+  app.get('/api/cron/inscription-nudges', async (req, res) => {
+    if (!isAuthorizedCron(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { dispatchDueNudges } = require('./lib/inscription-nudge');
+      const result = await dispatchDueNudges();
+      res.json(result);
+    } catch (err) {
+      logError('Cron relances inscription', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/internal/inscription-nudges', async (req, res) => {
+    if (!isAuthorizedSync(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const { listDueNudges } = require('./lib/inscription-nudge');
+    const orders = await listDueNudges();
+    res.json({ ok: true, orders });
+  });
+
+  app.post('/api/internal/inscription-nudges/:id/sent', async (req, res) => {
+    if (!isAuthorizedSync(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const { markNudgeSent } = require('./lib/inscription-nudge');
+    const order = await markNudgeSent(req.params.id);
+    if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+    res.json({ ok: true, order_id: order.order_id });
+  });
+
   app.post('/api/admin/ingest-catalog', (req, res) => {
     if (!isAuthorizedSync(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
@@ -1698,6 +1736,27 @@ function createApp() {
     });
   });
 
+  app.post('/api/orders/:id/nudge', async (req, res) => {
+    const order = await loadOrderOrRecover(req.params.id, {
+      token: req.body.token || req.query.token,
+      sessionId: req.body.session_id || req.query.session_id,
+      stripe,
+      findProduct,
+    });
+    if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+    if (!verifyAccess(order, req.body.token || req.query.token)) {
+      return res.status(403).json({ ok: false, error: 'forbidden' });
+    }
+    try {
+      const { dispatchOneNudge } = require('./lib/inscription-nudge');
+      const result = await dispatchOneNudge(order.order_id);
+      res.json(result);
+    } catch (err) {
+      logError('Relance inscription (client)', { order_id: order.order_id, error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   app.patch('/api/orders/:id/profile', async (req, res) => {
     try {
       const order = await loadOrderOrRecover(req.params.id, {
@@ -2100,6 +2159,13 @@ function createApp() {
         if (!isPaypalEnabled(gym)) {
           return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
         }
+        const landing = String(req.body.paypal_landing || '').toLowerCase();
+        const guestCard =
+          planLabel !== '4x' &&
+          (landing === 'billing' ||
+            landing === 'guest' ||
+            req.body.paypal_guest_card === true ||
+            (Boolean(display.portetViaPaypal) && landing !== 'login' && payMethod !== 'paypal'));
         const ppOrder = await createPaypalOrder({
           order,
           product,
@@ -2107,6 +2173,8 @@ function createApp() {
           baseUrl,
           paymentPlan: planLabel === '4x' ? '4x' : 'once',
           gym,
+          guestCard,
+          payerEmail: order.customer_short?.email || order.customer_full?.email,
         });
         if (!ppOrder.approve_url) {
           return res.status(502).json({ ok: false, error: 'paypal_url_missing' });
@@ -2568,6 +2636,13 @@ function createApp() {
       } = require('./lib/membership');
 
       if (preferPaypal) {
+        const landing = String(body.paypal_landing || '').toLowerCase();
+        const guestCard =
+          paymentPlan !== '4x' &&
+          (landing === 'billing' ||
+            landing === 'guest' ||
+            body.paypal_guest_card === true ||
+            (Boolean(display.portetViaPaypal) && landing !== 'login' && method !== 'paypal'));
         const ppOrder = await createPaypalOrder({
           product,
           amountCents: product.price_cents,
@@ -2575,10 +2650,13 @@ function createApp() {
           paymentPlan: paymentPlan === '4x' ? '4x' : 'once',
           description: product.display_name || product.name || 'Changement abo comptant',
           gym: gymNorm,
+          guestCard,
+          payerEmail: body.email,
           metadata: {
             order_id: body.verify_order_id || `chg-${Date.now()}`,
             verify_order_id: body.verify_order_id || '',
             gym: gymNorm,
+            email: body.email || '',
           },
           returnUrl: `${baseUrl}/gerer-abonnement?change=1&paypal_return=1`,
           cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled`,

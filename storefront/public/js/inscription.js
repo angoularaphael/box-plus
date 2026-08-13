@@ -1081,8 +1081,11 @@
         body.billing_plan = 'rib';
       }
       if (portetViaPaypal) {
+        const wasPaypalTile = body.pay_method === 'paypal';
         body.pay_method = 'paypal';
         body.billing_plan = 'paypal';
+        body.paypal_landing = wasPaypalTile ? 'login' : 'billing';
+        body.paypal_guest_card = !wasPaypalTile && body.payment_plan !== '4x';
       }
       body.badge_timing = 'deferred';
       body.badge_method = 'iban';
@@ -1111,6 +1114,53 @@
     setMsg(paymentFailureMessage(), 'err');
     persistAndRender();
     return true;
+  }
+
+  function roundClockHtml() {
+    if (state.order?.payment?.status !== 'paid') return '';
+    const paidAt = Date.parse(state.order?.payment?.paid_at || '');
+    if (!Number.isFinite(paidAt)) return '';
+    return `<aside class="round-clock" id="roundClock" data-paid-at="${paidAt}" role="timer" aria-live="polite">
+      <span class="round-clock__kicker">Round de 30 min</span>
+      <span class="round-clock__time" id="roundClockTime">30:00</span>
+      <p class="round-clock__copy" id="roundClockCopy">Le gong a sonné : tu as payé, mais tu n’es pas encore sur le ring. Finis dossier + signature avant la fin du round — sinon le club ne te verra pas inscrit.</p>
+    </aside>`;
+  }
+
+  function bindRoundClock() {
+    const root = document.getElementById('roundClock');
+    const timeEl = document.getElementById('roundClockTime');
+    const copyEl = document.getElementById('roundClockCopy');
+    if (!root || !timeEl) return;
+    const paidAt = Number(root.getAttribute('data-paid-at') || 0);
+    const limitMs = 30 * 60 * 1000;
+    let nudged = false;
+    const tick = () => {
+      const left = Math.max(0, paidAt + limitMs - Date.now());
+      const totalSec = Math.floor(left / 1000);
+      const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
+      const ss = String(totalSec % 60).padStart(2, '0');
+      timeEl.textContent = `${mm}:${ss}`;
+      root.classList.toggle('is-urgent', left > 0 && left <= 5 * 60 * 1000);
+      root.classList.toggle('is-over', left <= 0);
+      if (left <= 0) {
+        if (copyEl) {
+          copyEl.textContent =
+            'Gong ! Le round est clos. On t’envoie un rappel — reviens signer pour être sur la feuille. Sans ça, tu n’es pas inscrit en salle.';
+        }
+        if (!nudged && state.orderId && state.token) {
+          nudged = true;
+          fetch(`/api/orders/${encodeURIComponent(state.orderId)}/nudge`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: state.token, session_id: state.sessionId || undefined }),
+          }).catch(() => {});
+        }
+      }
+    };
+    tick();
+    if (root._roundTimer) clearInterval(root._roundTimer);
+    root._roundTimer = setInterval(tick, 1000);
   }
 
   /* ——— Steps ——— */
@@ -1379,6 +1429,7 @@
     }
     const existingIban = state.order?.payment?.iban || state.order?.customer_full?.iban || '';
     stepContent.innerHTML = `
+      ${roundClockHtml()}
       <h1>Coordonnées bancaires</h1>
       <p class="sub">Indiquez votre IBAN pour les prochaines échéances — prélèvement sans engagement, sans surprise.</p>
       <form id="ibanForm" class="form-grid">
@@ -1419,6 +1470,7 @@
       }
       goToStep(6);
     };
+    bindRoundClock();
   }
 
   function renderStep6() {
@@ -1432,6 +1484,7 @@
     const birthMax = new Date().toISOString().slice(0, 10);
     const photoOk = state.photoUploaded || Boolean(state.order?.documents?.photo) || Boolean(state.order?.documents?.photo_base64);
     stepContent.innerHTML = `
+      ${roundClockHtml()}
       <h1>Votre dossier</h1>
       <form id="fullForm" class="form-grid">
         <input type="hidden" name="token" value="${state.token}" />
@@ -1594,6 +1647,7 @@
       goToStep(7);
     };
     bindBackButtons();
+    bindRoundClock();
   }
 
   const LEGAL = {
@@ -1673,6 +1727,7 @@
   function renderStep7() {
     if (guardPaidStep()) return;
     stepContent.innerHTML = `
+      ${roundClockHtml()}
       <h1>Signature</h1>
       <canvas id="sigPad" class="signature-pad" width="640" height="180" style="width:100%;display:block;cursor:crosshair"></canvas>
       <div class="signature-actions">
@@ -1770,6 +1825,7 @@
       await render();
     };
     bindBackButtons();
+    bindRoundClock();
   }
 
   function renderStep8() {
