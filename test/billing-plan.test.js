@@ -11,6 +11,9 @@ const {
   requiresIbanForPlan,
   applyBillingPlanToProductConfig,
   paymentModeLabel,
+  isChildOfferProduct,
+  ageFromBirthdate,
+  adultOfferAgeError,
 } = require('../lib/billing-plan');
 
 describe('billing-plan', () => {
@@ -67,5 +70,19 @@ describe('billing-plan', () => {
     assert.equal(normalizePaymentPlan(null, promo), null);
     assert.match(paymentModeLabel(promo, null, '4x'), /4× sans frais/i);
     assert.match(paymentModeLabel(promo, null, 'once'), /une fois/i);
+  });
+
+  it('adult offers block under 15, child offers do not', () => {
+    const saison = { id: 'offre-saison', name: 'OFFRE PROMO 12 MOIS' };
+    const baby = { id: 'baby-boxe', subsection: 'enfants' };
+    const fourteen = `${new Date().getFullYear() - 14}-06-15`;
+    const sixteen = `${new Date().getFullYear() - 16}-06-15`;
+    assert.equal(isChildOfferProduct(baby), true);
+    assert.equal(isChildOfferProduct(saison), false);
+    assert.ok(ageFromBirthdate(fourteen) < 15);
+    assert.ok(ageFromBirthdate(sixteen) >= 15);
+    assert.match(adultOfferAgeError(fourteen, saison), /réservée aux adultes/);
+    assert.equal(adultOfferAgeError(sixteen, saison), null);
+    assert.equal(adultOfferAgeError(fourteen, baby), null);
   });
 });

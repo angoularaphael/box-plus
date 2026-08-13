@@ -38,6 +38,7 @@ const {
   normalizePaymentPlan,
   productSupportsInstallmentChoice,
   requiresIbanForPlan,
+  adultOfferAgeError,
 } = require('../lib/billing-plan');
 const {
   createFourTimesPayment,
@@ -1465,7 +1466,7 @@ function createApp() {
       const hasShort = rest.first_name && rest.last_name && rest.email && rest.phone;
       let customer_short = null;
       if (hasShort) {
-        const errors = validateShortForm(rest, { requireBirthdate: false });
+        const errors = validateShortForm(rest, { requireBirthdate: true, product });
         if (errors.length) return res.status(400).json({ ok: false, errors });
         customer_short = {
           first_name: rest.first_name,
@@ -1537,15 +1538,15 @@ function createApp() {
       if (!verifyAccess(order, token)) {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
+      const product = findProduct(order.product_id) || order.product_snapshot;
       const short = {
         first_name: req.body.first_name,
         last_name: req.body.last_name,
         email: req.body.email,
         phone: req.body.phone,
-        // Conserver une date déjà saisie au dossier si non renvoyée ici
         birthdate: req.body.birthdate || order.customer_short?.birthdate || null,
       };
-      const errors = validateShortForm(short, { requireBirthdate: false });
+      const errors = validateShortForm(short, { requireBirthdate: true, product });
       if (errors.length) return res.status(400).json({ ok: false, errors });
       if (!order.customer_full?.gym && !req.body.gym) {
         return res.status(400).json({ ok: false, errors: ['Choisissez d\'abord votre salle'] });
@@ -1834,6 +1835,13 @@ function createApp() {
       }
 
       const product = findProduct(order.product_id) || order.product_snapshot;
+      const ageErr = adultOfferAgeError(
+        order.customer_short?.birthdate || order.customer_full?.birthdate,
+        product
+      );
+      if (ageErr) {
+        return res.status(400).json({ ok: false, error: ageErr, code: 'adult_offer_age' });
+      }
       if (product?.requires_payment !== false && order.payment?.status !== 'paid') {
         const refreshed = await refreshPaymentFromStripe(order, req.body.session_id);
         if (refreshed?.payment?.status === 'paid') {
@@ -1973,6 +1981,13 @@ function createApp() {
       }
 
       const product = findProduct(order.product_id) || order.product_snapshot;
+      const ageErr = adultOfferAgeError(
+        order.customer_short?.birthdate || order.customer_full?.birthdate,
+        product
+      );
+      if (ageErr) {
+        return res.status(400).json({ ok: false, error: ageErr, code: 'adult_offer_age' });
+      }
 
       if (order.payment?.status === 'paid') {
         return res.json({

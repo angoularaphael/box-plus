@@ -10,6 +10,8 @@ const {
   requiresIbanForPlan,
   productSupportsBillingChoice,
   productSupportsInstallmentChoice,
+  adultOfferAgeError,
+  ageFromBirthdate,
 } = require('../../lib/billing-plan');
 
 const PENDING_DIR =
@@ -132,25 +134,30 @@ function validateBirthdate(value) {
   const raw = String(value).trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return 'Date de naissance invalide';
   const [y, m, d] = raw.split('-').map(Number);
-  if (y < 1900 || y > new Date().getFullYear() - 5) return 'Année de naissance invalide';
+  if (y < 1900 || y > new Date().getFullYear()) return 'Année de naissance invalide';
   const dt = new Date(y, m - 1, d);
   if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) {
     return 'Date de naissance invalide';
   }
   if (dt > new Date()) return 'Date de naissance invalide';
+  const age = ageFromBirthdate(raw);
+  if (age != null && age < 3) return 'L’adhérent doit avoir au moins 3 ans';
   return null;
 }
 
-function validateShortForm(input, { requireBirthdate = false } = {}) {
+function validateShortForm(input, { requireBirthdate = false, product = null } = {}) {
   const errors = [];
   if (!input.first_name) errors.push('Prénom requis');
   if (!input.last_name) errors.push('Nom requis');
   if (!input.email) errors.push('Email requis');
   if (!input.phone) errors.push('Téléphone requis');
-  // Date de naissance collectée à l'étape dossier (sauf si explicitement exigée)
   if (requireBirthdate || input.birthdate) {
     const birthErr = validateBirthdate(input.birthdate);
     if (birthErr) errors.push(birthErr);
+    else {
+      const ageErr = adultOfferAgeError(input.birthdate, product);
+      if (ageErr) errors.push(ageErr);
+    }
   }
   return errors;
 }
@@ -164,6 +171,10 @@ function validateFullForm(input, product = {}) {
   if (!input.city) errors.push('Ville requise');
   const birthErr = validateBirthdate(input.birthdate);
   if (birthErr) errors.push(birthErr);
+  else {
+    const ageErr = adultOfferAgeError(input.birthdate, product);
+    if (ageErr) errors.push(ageErr);
+  }
   return errors;
 }
 

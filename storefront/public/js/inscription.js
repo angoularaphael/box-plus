@@ -272,6 +272,42 @@
     );
   }
 
+  function isChildOfferProduct(p) {
+    if (!p) return false;
+    if (p.subsection === 'enfants') return true;
+    const id = String(p.id || '');
+    const legacy = String(p.legacy_id || '');
+    if (id === 'baby-boxe' || legacy === 'baby-boxe' || id === 'dp-93') return true;
+    if (id === 'boxe-educative' || legacy === 'boxe-educative' || id === 'dp-45') return true;
+    const title = String(p.name || p.display_name || '');
+    return /BABY\s*BOXE/i.test(title) || /BOXE\s*[EÉ]DUCATIVE/i.test(title);
+  }
+
+  function ageFromBirthdate(value) {
+    const raw = String(value || '').trim();
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    const d = Number(m[3]);
+    const birth = new Date(y, mo - 1, d);
+    if (birth.getFullYear() !== y || birth.getMonth() !== mo - 1 || birth.getDate() !== d) return null;
+    const at = new Date();
+    let age = at.getFullYear() - y;
+    if (at.getMonth() < mo - 1 || (at.getMonth() === mo - 1 && at.getDate() < d)) age -= 1;
+    return age;
+  }
+
+  function adultOfferAgeError(birthdate, product) {
+    if (isChildOfferProduct(product)) return null;
+    const age = ageFromBirthdate(birthdate);
+    if (age == null) return 'Date de naissance requise';
+    if (age < 15) {
+      return 'Cette offre est réservée aux adultes (15 ans et plus). Pour un enfant, choisissez Baby Boxe ou Boxe éducative.';
+    }
+    return null;
+  }
+
   function supportsInstallmentChoice(p) {
     const id = String(p?.id || '');
     const legacy = String(p?.legacy_id || '');
@@ -641,6 +677,12 @@
     if (data.message) return data.message;
     if (data.error === 'payment_not_completed' || data.error === 'payment_required') {
       return paymentFailureMessage();
+    }
+    if (data.code === 'adult_offer_age' || /réservée aux adultes/i.test(String(data.error || ''))) {
+      return (
+        data.error ||
+        'Cette offre est réservée aux adultes (15 ans et plus). Pour un enfant, choisissez Baby Boxe ou Boxe éducative.'
+      );
     }
     if (data.code === 'oney_4x_unavailable' || /4× sans frais.*indisponible/i.test(String(data.error || ''))) {
       return (
@@ -1230,7 +1272,6 @@
   function renderStep3() {
     // coordonnées déjà données à l'assistant d'un site du club → préremplies ;
     // ce que l'utilisateur a saisi ICI (brouillon/commande) garde la priorité.
-    // Date de naissance → étape dossier (pas ici).
     let bcpPrefill = {};
     try { bcpPrefill = JSON.parse(sessionStorage.getItem('bcp_prefill') || '{}'); } catch (e) { /* vide */ }
     const fromTunnel = {
@@ -1238,6 +1279,7 @@
       last_name: params.get('nom') || params.get('last_name') || '',
       email: params.get('email') || '',
       phone: params.get('phone') || params.get('telephone') || '',
+      birthdate: params.get('birthdate') || params.get('naissance') || '',
     };
     Object.keys(fromTunnel).forEach((k) => {
       if (!fromTunnel[k]) delete fromTunnel[k];
@@ -1247,13 +1289,18 @@
       ...fromTunnel,
       ...(state.order?.customer_short || state.shortDraft || {}),
     };
+    const birthMax = new Date().toISOString().slice(0, 10);
     stepContent.innerHTML = `
       <h1>Vos coordonnées</h1>
       <form id="shortForm" class="form-grid">
-        <div><label for="first_name">Prénom *</label><input id="first_name" name="first_name" required value="${short.first_name || ''}" /></div>
-        <div><label for="last_name">Nom *</label><input id="last_name" name="last_name" required value="${short.last_name || ''}" /></div>
-        <div class="full"><label for="email">Email *</label><input id="email" name="email" type="email" required value="${short.email || ''}" /></div>
-        <div class="full"><label for="phone">Téléphone mobile *</label><input id="phone" name="phone" type="tel" required inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78" value="${short.phone || ''}" /></div>
+        <div><label for="first_name">Prénom *</label><input id="first_name" name="first_name" required value="${esc(short.first_name || '')}" /></div>
+        <div><label for="last_name">Nom *</label><input id="last_name" name="last_name" required value="${esc(short.last_name || '')}" /></div>
+        <div class="full"><label for="email">Email *</label><input id="email" name="email" type="email" required value="${esc(short.email || '')}" /></div>
+        <div class="full"><label for="phone">Téléphone mobile *</label><input id="phone" name="phone" type="tel" required inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78" value="${esc(short.phone || '')}" /></div>
+        <div class="full"><label for="birthdate">Date de naissance *</label>
+          <input id="birthdate" name="birthdate" type="date" required
+            min="1900-01-01" max="${birthMax}"
+            value="${esc(short.birthdate || '')}" /></div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
         <div class="full">${backButton('← Retour à la salle', 2)}</div>
       </form>`;
@@ -1272,6 +1319,16 @@
         /^[67]\d{8}$/.test(phoneDigits);
       if (!phoneOk) {
         setMsg('Téléphone mobile FR requis (ex. 06 12 34 56 78).', 'err');
+        return;
+      }
+      const birthErr = validateBirthdateClient(body.birthdate);
+      if (birthErr) {
+        setMsg(birthErr, 'err');
+        return;
+      }
+      const ageErr = adultOfferAgeError(body.birthdate, state.product);
+      if (ageErr) {
+        setMsg(ageErr, 'err');
         return;
       }
       setMsg('Envoi…');
@@ -1335,7 +1392,7 @@
       return 'Date de naissance invalide';
     }
     const [y, m, d] = String(value).split('-').map(Number);
-    if (y < 1900 || y > new Date().getFullYear() - 5) {
+    if (y < 1900 || y > new Date().getFullYear()) {
       return 'Année de naissance invalide';
     }
     const dt = new Date(y, m - 1, d);
@@ -1343,6 +1400,8 @@
       return 'Date de naissance invalide';
     }
     if (dt > new Date()) return 'Date de naissance invalide';
+    const age = ageFromBirthdate(value);
+    if (age != null && age < 3) return 'L’adhérent doit avoir au moins 3 ans';
     return null;
   }
 
@@ -1405,7 +1464,7 @@
     }
     const full = state.order?.customer_full || {};
     const short = state.order?.customer_short || state.shortDraft || {};
-    const birthMax = new Date(new Date().getFullYear() - 5, 11, 31).toISOString().slice(0, 10);
+    const birthMax = new Date().toISOString().slice(0, 10);
     const photoOk = state.photoUploaded || Boolean(state.order?.documents?.photo) || Boolean(state.order?.documents?.photo_base64);
     stepContent.innerHTML = `
       <h1>Votre dossier</h1>
@@ -1535,6 +1594,11 @@
       const birthErr = validateBirthdateClient(body.birthdate);
       if (birthErr) {
         setMsg(birthErr, 'err');
+        return;
+      }
+      const ageErr = adultOfferAgeError(body.birthdate, state.product || state.order?.product_snapshot);
+      if (ageErr) {
+        setMsg(ageErr, 'err');
         return;
       }
       // Renvoie l'IBAN déjà saisi — évite le faux « IBAN requis » si le store
@@ -1685,6 +1749,15 @@
       }
       if (!pad.hasInk()) {
         setMsg('Signez dans le cadre avant de valider.', 'err');
+        return;
+      }
+      const birthdate =
+        state.order?.customer_short?.birthdate ||
+        state.order?.customer_full?.birthdate ||
+        state.shortDraft?.birthdate;
+      const ageErr = adultOfferAgeError(birthdate, state.product || state.order?.product_snapshot);
+      if (ageErr) {
+        setMsg(ageErr, 'err');
         return;
       }
       setMsg('Finalisation…');
