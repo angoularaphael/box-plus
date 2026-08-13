@@ -46,6 +46,8 @@ const {
   isPayplugPaymentPaid,
   isPayplugPaymentPending,
   isPayplugEnabled,
+  isOney4xEnabled,
+  ONEY_4X_UNAVAILABLE_MESSAGE,
   hostedPaymentUrl,
   formatPayplugError,
 } = require('./lib/payplug');
@@ -2052,6 +2054,13 @@ function createApp() {
 
       const baseUrl = getCheckoutBaseUrl(req);
       const planLabel = paymentPlan || (productSupportsInstallmentChoice(product) ? 'once' : 'once');
+      if (planLabel === '4x' && !isOney4xEnabled()) {
+        return res.status(503).json({
+          ok: false,
+          error: ONEY_4X_UNAVAILABLE_MESSAGE,
+          code: 'oney_4x_unavailable',
+        });
+      }
 
       if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true' && !isPayplugEnabled() && !isPaypalEnabled(gym)) {
         order = await markPaymentPaid(order.order_id, {
@@ -2575,6 +2584,14 @@ function createApp() {
         });
       }
 
+      if (paymentPlan === '4x' && !isOney4xEnabled()) {
+        return res.status(503).json({
+          ok: false,
+          error: ONEY_4X_UNAVAILABLE_MESSAGE,
+          code: 'oney_4x_unavailable',
+        });
+      }
+
       if (paymentPlan === '4x') {
         const syntheticOrder = {
           order_id: body.verify_order_id || `chg-${Date.now()}`,
@@ -3089,6 +3106,8 @@ function createApp() {
       paypal_account: paypalAccountForGym(gym),
       show_payplug: display.show_payplug,
       show_paypal: display.show_paypal,
+      oney_4x: isOney4xEnabled(),
+      oney_4x_message: isOney4xEnabled() ? null : ONEY_4X_UNAVAILABLE_MESSAGE,
       preview: display.preview,
       sandbox: Boolean(display.preview),
     });

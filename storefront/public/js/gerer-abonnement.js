@@ -372,9 +372,11 @@
         preview: Boolean(cfg.preview),
         showCard: cfg.show_payplug !== false,
         showPaypal: cfg.show_paypal !== false,
+        oney4x: cfg.oney_4x === true,
+        oney4xMessage: cfg.oney_4x_message || '',
       };
     } catch {
-      return { preview: false, showCard: true, showPaypal: true };
+      return { preview: false, showCard: true, showPaypal: true, oney4x: false };
     }
   }
 
@@ -419,12 +421,29 @@
     if (changePayFlags.preview) {
       html += `<p class="portet-pay-notice">Studio : tous les moyens branchés s’affichent. Les visiteurs verront les cases enregistrées après déconnexion.</p>`;
     }
+    const oney4x = changePayFlags.oney4x === true;
+    if (installment && !oney4x) {
+      html += `<p class="portet-pay-notice">${
+        changePayFlags.oney4xMessage ||
+        'Le paiement en 4× sans frais de l’offre 259 € est momentanément indisponible. Vous pouvez régler 259 € en une seule fois par carte ou PayPal.'
+      }</p>`;
+    }
     if (installment) {
       html += `
         <p class="sub" style="margin:0 0 8px">Étape 1 — Comment souhaitez-vous régler ?</p>
         <div class="billing-choice-row" role="radiogroup" aria-label="Type de paiement">
           ${methodRow('change_payment_plan', 'once', true, 'En une seule fois', product?.price_label || '')}
-          ${methodRow('change_payment_plan', '4x', false, 'En 4× sans frais', quart ? `Carte : ${quart} € tout de suite · PayPal : total si éligible` : '4 échéances')}
+          ${
+            oney4x
+              ? methodRow(
+                  'change_payment_plan',
+                  '4x',
+                  false,
+                  'En 4× sans frais',
+                  quart ? `Carte : ${quart} € tout de suite · PayPal : total si éligible` : '4 échéances'
+                )
+              : ''
+          }
         </div>
         <div id="changeFourXSchedule" class="fourx-schedule" style="display:none;margin-top:10px"></div>
         <p class="sub" style="margin:16px 0 8px">Étape 2 — Moyen de paiement</p>

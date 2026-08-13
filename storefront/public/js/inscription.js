@@ -364,9 +364,11 @@
         preview: Boolean(cfg.preview),
         showCard: cfg.show_payplug !== false,
         showPaypal: cfg.show_paypal !== false,
+        oney4x: cfg.oney_4x === true,
+        oney4xMessage: cfg.oney_4x_message || '',
       };
     } catch {
-      return { preview: false, showCard: true, showPaypal: true };
+      return { preview: false, showCard: true, showPaypal: true, oney4x: false };
     }
   }
 
@@ -640,6 +642,12 @@
     if (data.error === 'payment_not_completed' || data.error === 'payment_required') {
       return paymentFailureMessage();
     }
+    if (data.code === 'oney_4x_unavailable' || /4× sans frais.*indisponible/i.test(String(data.error || ''))) {
+      return (
+        data.error ||
+        'Le paiement en 4× sans frais de l’offre 259 € est momentanément indisponible. Vous pouvez régler 259 € en une seule fois par carte ou PayPal.'
+      );
+    }
     if (data.error === 'payplug_not_configured') {
       return 'Paiement carte temporairement indisponible. Essayez PayPal, ou contactez le club.';
     }
@@ -783,10 +791,18 @@
       !isPrelevement &&
       orderRequiresPayment({ product_snapshot: p });
     const savedPlan = state.order?.payment?.billing_plan === 'paypal' ? 'paypal' : 'rib';
-    const savedInstallment =
-      state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
     const full = state.order?.customer_full || {};
     const payFlags = await loadPayFlags(full.gym);
+    const oney4x = payFlags.oney4x === true;
+    const savedInstallment =
+      oney4x && state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
+    const oneyNotice =
+      installmentChoice && !oney4x
+        ? `<p class="portet-pay-notice">${esc(
+            payFlags.oney4xMessage ||
+              'Le paiement en 4× sans frais de l’offre 259 € est momentanément indisponible. Vous pouvez régler 259 € en une seule fois par carte ou PayPal.'
+          )}</p>`
+        : '';
     const portetPaypalOnly =
       isPortetGym(full.gym) && !payFlags.preview && payFlags.showPaypal;
     const showCard = payFlags.showCard && !portetPaypalOnly;
@@ -840,6 +856,7 @@
       billingHtml = `
         <div class="full billing-plan-block">
           ${previewNotice}
+          ${oneyNotice}
           ${
             portetPaypalOnly
               ? '<p class="portet-pay-notice">À <strong>Portet</strong>, le paiement se fait <strong>uniquement par PayPal</strong>. Pour payer par carte bancaire, revenez en arrière et choisissez une autre salle.</p>'
@@ -854,13 +871,17 @@
                 <small>${priceLabel(p)}</small>
               </span>
             </label>
-            <label class="billing-choice">
+            ${
+              oney4x
+                ? `<label class="billing-choice">
               <input type="radio" name="payment_plan" value="4x" ${savedInstallment === '4x' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>En 4× sans frais</strong>
                 <small>Carte PayPlug/Oney : ${quart}&nbsp;€ tout de suite, puis 3 échéances. PayPal : montant total, 4× seulement si éligible.</small>
               </span>
-            </label>
+            </label>`
+                : ''
+            }
           </div>
           <div id="fourXSchedule" class="fourx-schedule" style="display:none" aria-live="polite"></div>
           <p class="sub" style="margin:16px 0 8px">Étape 2 — Choisissez votre moyen de paiement</p>

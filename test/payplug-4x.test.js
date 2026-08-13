@@ -8,6 +8,7 @@ const {
   formatPayplugError,
   isPayplugPaymentPaid,
   isPayplugPaymentPending,
+  isOney4xEnabled,
 } = require('../storefront/lib/payplug');
 
 function run() {
@@ -47,6 +48,18 @@ function run() {
     }),
     'The payment cannot be created — invalid postcode'
   );
+  assert.match(
+    formatPayplugError({ message: 'Access to this feature is not available.' }),
+    /portail PayPlug/
+  );
+
+  const prev = process.env.PAYPLUG_ONEY_4X_ENABLED;
+  process.env.PAYPLUG_ONEY_4X_ENABLED = '0';
+  assert.equal(isOney4xEnabled(), false);
+  process.env.PAYPLUG_ONEY_4X_ENABLED = '1';
+  assert.equal(isOney4xEnabled(), true);
+  if (prev === undefined) delete process.env.PAYPLUG_ONEY_4X_ENABLED;
+  else process.env.PAYPLUG_ONEY_4X_ENABLED = prev;
 
   assert.equal(isPayplugPaymentPaid({ is_paid: true }), true);
   assert.equal(isPayplugPaymentPaid({ is_paid: false, failure: { message: 'refused' } }), false);

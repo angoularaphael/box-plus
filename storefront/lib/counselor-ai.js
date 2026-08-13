@@ -326,9 +326,9 @@ const FAQ_VARIANTS = {
     'Formule flexible : **29,99 €** / 4 sem., résiliable sans préavis. Accès libre aux 5 clubs Boxing Center.',
   ],
   offer259: [
-    'L’offre à **259 €** / 12 mois : en **1×** ou **4× sans frais** (**64,75 €**). Pas de prélèvement mensuel — accès illimité aux 5 salles.',
-    '**259 €** pour 12 mois, paiement **1×** ou **4×** (**64,75 €**, sans frais). Forfait comptant, pas de mensualité après.',
-    'Saison à **259 €** : un an d’accès 5 salles, en une fois ou en 4 échéances égales sans frais.',
+    'L’offre à **259 €** / 12 mois se règle **en une fois** pour l’instant : le **4× sans frais** est **momentanément indisponible**. Accès illimité aux 5 salles, pas de prélèvement mensuel.',
+    '**259 €** pour 12 mois, paiement **en une fois** (carte ou PayPal). Le 4× sans frais revient dès que PayPlug l’active. Forfait comptant, pas de mensualité après.',
+    'Saison à **259 €** : un an d’accès 5 salles, à régler aujourd’hui en une fois. Le 4× sans frais est momentanément indisponible.',
   ],
   gyms: [
     '5 salles : **Minimes**, **Ramonville**, **St-Cyprien**, **Portet**, **États-Unis**. Accès libre ~**10h–21h30**, 7j/7. Managers : Medhi, Pascal, Daddy, Valentin, Sébastien.',

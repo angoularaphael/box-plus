@@ -3,7 +3,22 @@
 const API_BASE = 'https://api.payplug.com/v1';
 const API_VERSION = process.env.PAYPLUG_API_VERSION || '2019-08-06';
 
-const { paymentVar } = require('./test-env');
+const { paymentVar, useTestPayments } = require('./test-env');
+
+/** Message visiteur tant que PayPlug LIVE n’a pas activé Oney 4× sans frais. */
+const ONEY_4X_UNAVAILABLE_MESSAGE =
+  'Le paiement en 4× sans frais de l’offre 259 € est momentanément indisponible. Vous pouvez régler 259 € en une seule fois par carte ou PayPal.';
+
+/**
+ * 4× Oney live : off tant que PayPlug n’a pas ouvert l’option sur le compte.
+ * PAYPLUG_ONEY_4X_ENABLED=1 pour le réactiver. Le studio (/dev) reste testable.
+ */
+function isOney4xEnabled() {
+  const flag = String(process.env.PAYPLUG_ONEY_4X_ENABLED || '').trim().toLowerCase();
+  if (flag === '1' || flag === 'true' || flag === 'yes') return true;
+  if (flag === '0' || flag === 'false' || flag === 'no') return false;
+  return useTestPayments();
+}
 
 function isPayplugEnabled() {
   return Boolean(paymentVar('PAYPLUG_SECRET_KEY'));
@@ -81,13 +96,21 @@ function validateOneyCustomer(details) {
 
 function formatPayplugError(err) {
   const body = err?.body || {};
+  const raw = String(err?.message || body.message || body.error || '');
+  if (/access to this feature is not available|can'?t use this feature|cannot use this feature/i.test(raw)) {
+    return (
+      'Le 4× carte (Oney) n’est pas activé sur le compte PayPlug. ' +
+      'Dans le portail PayPlug, demandez l’activation du paiement fractionné 4× sans frais, puis réessayez. ' +
+      'En attendant, payez en une fois ou via PayPal.'
+    );
+  }
   const details = Array.isArray(body.details)
     ? body.details
         .map((d) => d.message || d.field || d.description)
         .filter(Boolean)
         .join(' ; ')
     : '';
-  return [err?.message || body.message || body.error, details].filter(Boolean).join(' — ');
+  return [raw || null, details].filter(Boolean).join(' — ');
 }
 
 async function request(path, options = {}) {
@@ -303,6 +326,8 @@ module.exports = {
   isPayplugPaymentPaid,
   isPayplugPaymentPending,
   isPayplugEnabled,
+  isOney4xEnabled,
+  ONEY_4X_UNAVAILABLE_MESSAGE,
   phoneE164,
   customerDetails,
   validateOneyCustomer,

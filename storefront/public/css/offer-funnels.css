@@ -1639,6 +1639,9 @@ body.offer-page--sheet .topbar:not(.scrolled) .nav-toggle span { background: #ff
     gap: 40px;
     align-items: center;
   }
+  .offer-pay-panel .offer-4x-notice {
+    grid-column: 1 / -1;
+  }
 }
 .offer-pay-panel__copy .kicker { color: var(--bc-gold, #C8902F); }
 .offer-pay-panel__copy h2 {
@@ -1686,11 +1689,26 @@ body.offer-page--sheet .topbar:not(.scrolled) .nav-toggle span { background: #ff
   line-height: 1;
   margin-bottom: 6px;
 }
-.offer-pay-option em {
-  font-style: normal;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+.offer-pay-option--off {
+  opacity: 0.55;
 }
+.offer-pay-option--off:hover {
+  transform: none;
+  background: rgba(255, 255, 255, 0.06);
+}
+.offer-4x-notice {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(232, 0, 28, 0.16);
+  border: 1px solid rgba(255, 180, 180, 0.35);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.offer-4x-notice strong { color: #ffd2d2; }
 .offer-pay-panel__steps {
   display: grid;
   gap: 14px;
