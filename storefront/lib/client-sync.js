@@ -107,14 +107,16 @@ function isSchemaOrConstraintError(err) {
 
 async function findExistingClientId(sb, { email, telephone }) {
   if (email) {
-    const { data } = await sb.from(TABLE).select('id').ilike('email', email).maybeSingle();
-    if (data?.id) return data.id;
+    const { data, error } = await sb.from(TABLE).select('id').ilike('email', email).limit(1);
+    if (error) throw error;
+    if (data?.[0]?.id) return data[0].id;
   }
   if (telephone) {
     const variants = phoneLookupVariants(telephone);
     if (variants.length) {
-      const { data } = await sb.from(TABLE).select('id').in('telephone', variants).limit(1).maybeSingle();
-      if (data?.id) return data.id;
+      const { data, error } = await sb.from(TABLE).select('id').in('telephone', variants).limit(1);
+      if (error) throw error;
+      if (data?.[0]?.id) return data[0].id;
     }
   }
   return null;
@@ -263,7 +265,7 @@ async function upsertLeadClient(fields = {}) {
         nom: cleanNamePart(fields.nom),
         email: normalizeEmail(fields.email),
         telephone,
-        salle: fields.salle || null,
+        salle: gymToSalle(fields.salle) || fields.salle || null,
         offre: fields.offre || 'Lead boutique',
         source: 'boxplus',
       },
@@ -280,6 +282,7 @@ module.exports = {
   upsertClientFromInscription,
   upsertMaterielClient,
   upsertLeadClient,
+  gymToSalle,
   buildRowVariants,
   isSchemaOrConstraintError,
 };

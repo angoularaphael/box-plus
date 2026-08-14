@@ -158,7 +158,7 @@ const {
   generateMaterielInvoicePdf,
   streamInscriptionInvoicePdf,
 } = require('./lib/invoice-pdf');
-const { upsertClientFromInscription, upsertMaterielClient } = require('./lib/client-sync');
+const { upsertClientFromInscription, upsertMaterielClient, upsertLeadClient } = require('./lib/client-sync');
 const { insertTunnelLead, tunnelFromProductId } = require('./lib/tunnel-lead');
 const {
   sanitizeFriend,
@@ -385,11 +385,20 @@ function findProduct(productId) {
 
 async function maybeNotifyOffre29Friend(order, friendInput) {
   if (!isOffre29Order(order)) return { skipped: true };
-  if (order.referral_notify?.whatsapp?.sent) return { skipped: true, already: true };
   const friend = sanitizeFriend(friendInput || order.referral_friend);
   if (!friend) return { skipped: true };
   const referrer = order.customer_short || {};
   if (!referrer.first_name || !referrer.last_name) return { skipped: true };
+  await upsertLeadClient({
+    prenom: friend.prenom,
+    nom: friend.nom,
+    telephone: friend.telephone,
+    email: friend.email,
+    salle: order.customer_full?.gym || null,
+    offre: 'Parrainage — Offre 29 € (ami)',
+    logLabel: 'ami-parrainage',
+  }).catch((err) => logWarn('Sync ami portet_clients', { order_id: order.order_id, error: err.message }));
+  if (order.referral_notify?.whatsapp?.sent) return { skipped: true, already: true };
   try {
     const result = await notifyReferralFriend({
       order,
