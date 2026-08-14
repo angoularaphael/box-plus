@@ -3,10 +3,8 @@
  * Uniquement : QR, session, envoi de messages (parrainage Offre Duo).
  * Pas de campagnes, pas de Deciplus, pas de commandes admin.
  *
- * Bot Hosting (us3:21819) :
- *   npm install
- *   node index.js
- *   (ou depuis la racine box-plus : node boutique-bot/index.js)
+ * Bot Hosting : coller bootstrap.js en /home/container/index.js
+ * (il clone box-plus et lance ce fichier).
  */
 'use strict';
 
@@ -28,7 +26,9 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const PORT = parseInt(process.env.SERVER_PORT || process.env.PORT || '21819', 10) || 21819;
 const HOST = process.env.HOST || '0.0.0.0';
 const SITE_API_SECRET = String(process.env.SITE_API_SECRET || process.env.WHATSAPP_BOT_SECRET || '').trim();
-const AUTH_DIR = path.join(__dirname, 'auth_info_baileys');
+const AUTH_DIR = process.env.WA_AUTH_DIR
+  ? path.resolve(process.env.WA_AUTH_DIR)
+  : path.join(__dirname, 'auth_info_baileys');
 const MAX_RECONNECT_ATTEMPTS = 8;
 
 const app = express();
