@@ -16,12 +16,7 @@ function whatsappBotUrl() {
 }
 
 function botSecret() {
-  return (
-    process.env.WHATSAPP_BOT_SECRET ||
-    process.env.SITE_API_SECRET ||
-    process.env.SYNC_SECRET ||
-    ''
-  );
+  return String(process.env.WHATSAPP_BOT_SECRET || '').trim();
 }
 
 function botHeaders() {

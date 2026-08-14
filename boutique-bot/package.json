@@ -1,0 +1,21 @@
+{
+  "name": "boxplus-boutique-bot",
+  "version": "1.0.0",
+  "description": "Bot WhatsApp dédié boutique Boxing Center — parrainage Offre Duo 29 €",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^7.0.0-rc11",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4"
+  }
+}

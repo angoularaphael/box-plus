@@ -44,6 +44,8 @@ env.*
 *.env
 !.env.example
 !env.bothosting
+!boutique-bot/env.bothosting
+boutique-bot/auth_info_baileys/
 
 # Large media masters / backups — never deploy or commit
 storefront/public/media/_src/
