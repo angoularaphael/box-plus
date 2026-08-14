@@ -290,7 +290,8 @@
     $$(".resume-dash", racine || document).forEach((btn) => {
       btn.onclick = () => {
         if (window.BCAdminResume && typeof window.BCAdminResume.generate === "function") {
-          window.BCAdminResume.generate(btn.dataset.id, btn);
+          const pay = btn.classList.contains("pay-dash");
+          window.BCAdminResume.generate(btn.dataset.id, btn, pay ? "pay" : "resume");
         } else {
           toast("Rechargez le panneau pour générer le lien", "err");
         }
@@ -350,12 +351,14 @@
         return `<tr>
           <td data-l="Adhérent"><strong>${esc(o.name)}</strong><br><span style="color:var(--pan-mute);font-size:12px">${esc(o.email)}</span></td>
           <td data-l="Offre">${esc(o.product)}</td>
-          <td data-l="Salle">${esc(o.gym || "—")}</td>
+          <td data-l="Salle">${esc(o.gym_label || o.gym || "—")}</td>
           <td data-l="Motif">${motif}</td>
           <td data-l="Ouvert le">${esc(dateCourte(o.created_at))}</td>
           <td data-l="">${o.can_resume
             ? `<button type="button" class="btn sm resume-dash" data-id="${esc(o.order_id)}">Lien de reprise</button>`
-            : ''}<a class="btn sm secondary" href="mailto:${encodeURIComponent(o.email)}">Écrire</a></td>
+            : ""}${o.can_pay
+            ? `<button type="button" class="btn sm resume-dash pay-dash" data-id="${esc(o.order_id)}">Payer</button>`
+            : ""}<a class="btn sm secondary" href="mailto:${encodeURIComponent(o.email)}">Écrire</a></td>
         </tr>`;
       }).join("")}</tbody></table></div>`;
     if (liste.length > 25) {
@@ -372,10 +375,11 @@
       return;
     }
     zone.innerHTML = `<div class="pan-tablewrap"><table class="pan-table pan-table--cartes">
-      <thead><tr><th>Adhérent</th><th>Offre</th><th>Étape</th><th>Paiement</th><th>Ouvert le</th><th></th></tr></thead>
+      <thead><tr><th>Adhérent</th><th>Offre</th><th>Salle</th><th>Étape</th><th>Paiement</th><th>Ouvert le</th><th></th></tr></thead>
       <tbody>${tri.map((o) => `<tr>
         <td data-l="Adhérent"><strong>${esc(o.name)}</strong></td>
         <td data-l="Offre">${esc(o.product)}</td>
+        <td data-l="Salle">${esc(o.gym_label || o.gym || "—")}</td>
         <td data-l="Étape"><span class="pan-tag pan-tag--neutre">${esc(o.step_label || LIB_ETAPE[o.step] || o.step)}</span></td>
         <td data-l="Paiement">${o.payment_status === "paid"
           ? '<span class="pan-tag pan-tag--ok">Payé</span>'
@@ -385,6 +389,8 @@
         <td data-l="Ouvert le">${esc(dateCourte(o.created_at))}</td>
         <td data-l="">${o.can_resume
           ? `<button type="button" class="btn sm resume-dash" data-id="${esc(o.order_id)}">Lien de reprise</button>`
+          : ""}${o.can_pay
+          ? `<button type="button" class="btn sm resume-dash pay-dash" data-id="${esc(o.order_id)}">Payer</button>`
           : ""}</td>
       </tr>`).join("")}</tbody></table></div>`;
   }
@@ -499,6 +505,9 @@
   /** Compare deux cellules : les nombres et les dates en nombres, le reste
       en texte. Trier « 10 € » avant « 9 € » est un tri qui ment. */
   function comparer(a, b) {
+    const vide = (t) => !t || t === "—" || t === "-";
+    if (vide(a) && !vide(b)) return 1;
+    if (vide(b) && !vide(a)) return -1;
     const nb = (t) => {
       const m = t.replace(/\s| /g, "").match(/-?\d+(?:[.,]\d+)?/);
       return m ? parseFloat(m[0].replace(",", ".")) : null;

@@ -23,6 +23,7 @@ test('lien de reprise : étape réelle, produit et jeton', () => {
     product_id: 'abo-mensuel',
     step: 3,
     customer_short: { first_name: 'Léa', last_name: 'Martin', email: 'lea@test.local' },
+    product_snapshot: { id: 'abo-mensuel', price_cents: 2999, requires_payment: true },
   };
   const url = resumeUrl(order);
   assert.match(url, /^https:\/\/boutique\.boxingcenter\.fr\/inscription\?/);
@@ -36,6 +37,19 @@ test('lien de reprise : étape réelle, produit et jeton', () => {
   assert.equal(info.step_label, 'Identité');
   assert.equal(info.email, 'lea@test.local');
   assert.equal(describeResume({ ...order, step: 8 }).can_resume, false);
+  const pay = describeResume(order, { kind: 'pay' });
+  assert.equal(pay.kind, 'pay');
+  assert.equal(pay.step, 4);
+  assert.match(pay.url, /step=4/);
+  assert.match(pay.url, /pay=1/);
+  assert.equal(pay.can_pay, true);
+  assert.equal(
+    describeResume(
+      { ...order, payment: { status: 'paid' }, product_snapshot: { price_cents: 2999 } },
+      { kind: 'pay' }
+    ).can_pay,
+    false
+  );
   assert.equal(resumeUrl(order, { minStep: 5 }).includes('step=5'), true);
   if (prev === undefined) delete process.env.STORE_URL;
   else process.env.STORE_URL = prev;

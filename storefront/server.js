@@ -1577,7 +1577,7 @@ function createApp() {
     if (!order) {
       return res.status(404).json({ ok: false, error: 'not_found', message: 'Référence introuvable' });
     }
-    const { describeResume } = require('./lib/inscription-nudge');
+    const { describeResume, canPayOrder, productNeedsPayment } = require('./lib/inscription-nudge');
     if (order.action || !order.access_token) {
       return res.status(400).json({
         ok: false,
@@ -1587,13 +1587,29 @@ function createApp() {
           : 'Pas de jeton de reprise pour cette référence',
       });
     }
-    const info = describeResume(order);
+    const kind = String(req.query.kind || '').toLowerCase() === 'pay' ? 'pay' : 'resume';
+    if (kind === 'pay' && !canPayOrder(order)) {
+      const st = String(order.payment?.status || '');
+      const message =
+        st === 'paid' || st === 'free'
+          ? 'Cette inscription est déjà payée'
+          : st === 'past_due'
+            ? 'Impayé d’abonnement — utilisez le suivi CB, pas le tunnel d’inscription'
+            : !productNeedsPayment(order)
+              ? 'Cette offre ne nécessite pas de paiement'
+              : 'Impossible de générer un lien de paiement';
+      return res.status(400).json({ ok: false, error: 'cannot_pay', message });
+    }
+    const info = describeResume(order, { kind });
     res.json({
       ok: true,
       ...info,
-      message: info.completed
-        ? 'Inscription déjà terminée — lien vers la confirmation'
-        : `Lien de reprise — étape ${info.step_label}`,
+      message:
+        kind === 'pay'
+          ? 'Lien de paiement — étape Paiement'
+          : info.completed
+            ? 'Inscription déjà terminée — lien vers la confirmation'
+            : `Lien de reprise — étape ${info.step_label}`,
     });
   });
 

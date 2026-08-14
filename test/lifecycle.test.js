@@ -47,6 +47,7 @@ describe('lifecycle tunnel', () => {
     orderId = order.order_id;
     assert.equal(order.step, 4); // PAYMENT
     assert.equal(toAdminSummary(order).can_resume, true);
+    assert.equal(toAdminSummary(order).can_pay, true);
 
     const shortErrors = validateShortForm(order.customer_short);
     assert.equal(shortErrors.length, 0);
@@ -55,6 +56,7 @@ describe('lifecycle tunnel', () => {
     const paid = loadOrder(orderId);
     assert.equal(paid.payment.status, 'paid');
     assert.equal(paid.step, 6); // DOSSIER (pas d'IBAN pour séance essai)
+    assert.equal(toAdminSummary(paid).can_pay, false);
 
     await updateFullProfile(orderId, {
       gender: 'M',
@@ -91,6 +93,8 @@ describe('lifecycle tunnel', () => {
     assert.equal(summary.signed, true);
     assert.equal(summary.email, 'lifecycle@test.boxplus.local');
     assert.equal(summary.can_resume, false);
+    assert.equal(summary.gym, 'minimes');
+    assert.equal(summary.gym_label, 'Minimes');
   });
 
   after(() => {

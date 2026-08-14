@@ -2171,6 +2171,16 @@
           'err'
         );
       }
+      if (
+        params.get('pay') === '1' &&
+        state.order &&
+        orderRequiresPayment(state.order) &&
+        state.order.payment?.status !== 'paid' &&
+        state.order.payment?.status !== 'free' &&
+        state.order.customer_short
+      ) {
+        state.step = 4;
+      }
     }
 
     await ensureProductLoaded();

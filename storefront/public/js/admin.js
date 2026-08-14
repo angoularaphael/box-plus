@@ -17,6 +17,21 @@
     8: 'Confirmé',
   };
 
+  const GYM_LABELS = {
+    minimes: 'Minimes',
+    ramonville: 'Ramonville',
+    portet: 'Portet',
+    'etats-unis': 'États-Unis',
+    'st-cyprien': 'Saint-Cyprien',
+    balma: 'Balma',
+  };
+
+  function gymLabel(gym) {
+    const key = String(gym || '').trim();
+    if (!key) return '—';
+    return GYM_LABELS[key] || GYM_LABELS[key.toLowerCase()] || key;
+  }
+
   const CATALOG_SECTIONS = [
     { key: 'promo', label: 'Offres promotionnelles' },
     { key: 'prelevement', label: 'Prélèvement sans engagement' },
@@ -68,9 +83,10 @@
     }
   }
 
-  async function fetchResumeLink(orderId) {
+  async function fetchResumeLink(orderId, kind = 'resume') {
     const id = String(orderId || '').trim();
-    const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}/resume-link`, {
+    const qs = kind === 'pay' ? '?kind=pay' : '';
+    const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}/resume-link${qs}`, {
       credentials: 'include',
       headers: headers(false),
     });
@@ -85,14 +101,18 @@
     const box = document.getElementById('resumeLinkBox');
     if (!box) return;
     const first = String(data.name || '').split(/\s+/)[0] || '';
-    const mailBody = `Bonjour${first ? ` ${first}` : ''},\n\nVoici le lien pour reprendre votre inscription Boxing Center exactement où vous vous êtes arrêté :\n${data.url}\n\nBoxing Center`;
+    const pay = data.kind === 'pay';
+    const mailBody = pay
+      ? `Bonjour${first ? ` ${first}` : ''},\n\nVoici le lien pour payer votre inscription Boxing Center :\n${data.url}\n\nBoxing Center`
+      : `Bonjour${first ? ` ${first}` : ''},\n\nVoici le lien pour reprendre votre inscription Boxing Center exactement où vous vous êtes arrêté :\n${data.url}\n\nBoxing Center`;
+    const mailSubject = pay ? 'Payer votre inscription Boxing Center' : 'Votre inscription Boxing Center';
     const mailHref =
       data.email && data.email !== '—'
-        ? `mailto:${encodeURIComponent(data.email)}?subject=${encodeURIComponent('Votre inscription Boxing Center')}&body=${encodeURIComponent(mailBody)}`
+        ? `mailto:${encodeURIComponent(data.email)}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}`
         : '';
     box.hidden = false;
     box.innerHTML = `
-      <p><strong>${escapeHtml(data.message || 'Lien de reprise')}</strong>${data.name ? ` — ${escapeHtml(data.name)}` : ''}</p>
+      <p><strong>${escapeHtml(data.message || (pay ? 'Lien de paiement' : 'Lien de reprise'))}</strong>${data.name ? ` — ${escapeHtml(data.name)}` : ''}</p>
       <div class="resume-link-box__row">
         <input type="text" readonly value="${escapeHtml(data.url)}" id="resumeLinkUrl" />
         <button type="button" class="btn sm" id="resumeCopyBtn">Copier</button>
@@ -108,9 +128,10 @@
     });
   }
 
-  async function generateResumeLink(orderId, btn) {
+  async function generateResumeLink(orderId, btn, kind = 'resume') {
     const msg = document.getElementById('ordersMsg');
     const id = String(orderId || '').trim();
+    const pay = kind === 'pay';
     if (!id) {
       if (msg) {
         msg.textContent = 'Indiquez une référence (colonne Référence).';
@@ -121,7 +142,7 @@
     }
     if (btn) btn.disabled = true;
     try {
-      const data = await fetchResumeLink(id);
+      const data = await fetchResumeLink(id, kind);
       const copied = await copyText(data.url);
       showResumeBox(data);
       if (msg) {
@@ -131,7 +152,10 @@
         msg.className = 'form-msg ok';
       }
       if (typeof window.panToast === 'function') {
-        window.panToast(copied ? 'Lien de reprise copié' : 'Lien généré', 'ok');
+        window.panToast(
+          copied ? (pay ? 'Lien de paiement copié' : 'Lien de reprise copié') : 'Lien généré',
+          'ok'
+        );
       }
       return data;
     } catch (err) {
@@ -146,7 +170,10 @@
     }
   }
 
-  window.BCAdminResume = { generate: generateResumeLink };
+  window.BCAdminResume = {
+    generate: generateResumeLink,
+    generatePay: (orderId, btn) => generateResumeLink(orderId, btn, 'pay'),
+  };
 
   function showTab(name) {
     ['tabOffers', 'tabMateriel', 'tabContracts', 'tabCoachings', 'tabStats', 'tabWhatsapp'].forEach((id) => {
@@ -230,6 +257,7 @@
       const data = await res.json();
       orders = data.orders || [];
       msg.textContent = '';
+      fillGymFilter();
       renderOrders();
     } catch (err) {
       msg.textContent = err.message;
@@ -252,9 +280,25 @@
     return o.action === 'coaching_booking' || String(o.order_id || '').startsWith('COACH-');
   }
 
+  function fillGymFilter() {
+    const sel = document.getElementById('ordersGymFilter');
+    if (!sel) return;
+    const current = sel.value || 'all';
+    const seen = new Map(Object.entries(GYM_LABELS));
+    orders.forEach((o) => {
+      if (o.gym && !seen.has(o.gym)) seen.set(o.gym, o.gym_label || gymLabel(o.gym));
+    });
+    const opts = [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1], 'fr'));
+    sel.innerHTML =
+      '<option value="all">Toutes les salles</option>' +
+      opts.map(([id, label]) => `<option value="${escapeHtml(id)}">${escapeHtml(label)}</option>`).join('');
+    if ([...sel.options].some((opt) => opt.value === current)) sel.value = current;
+  }
+
   function filteredOrders() {
     const q = (document.getElementById('ordersSearch')?.value || '').toLowerCase().trim();
     const filter = document.getElementById('ordersFilter')?.value || 'all';
+    const gym = document.getElementById('ordersGymFilter')?.value || 'all';
     return orders.filter((o) => {
       if (isCoachingOrder(o)) return false;
       const hasVisibleContent = [o.name, o.email, o.product].some(
@@ -264,8 +308,9 @@
       if (filter === 'signed' && !o.signed) return false;
       if (filter === 'progress' && o.signed) return false;
       if (filter === 'unpaid' && o.payment_status !== 'past_due' && !o.access_blocked) return false;
+      if (gym !== 'all' && String(o.gym || '') !== gym) return false;
       if (!q) return true;
-      const hay = `${o.order_id} ${o.name} ${o.email} ${o.product}`.toLowerCase();
+      const hay = `${o.order_id} ${o.name} ${o.email} ${o.product} ${o.gym || ''} ${o.gym_label || gymLabel(o.gym)}`.toLowerCase();
       return hay.includes(q);
     });
   }
@@ -388,7 +433,7 @@
 
     if (!list.length) {
       tbody.innerHTML =
-        '<tr><td colspan="10" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription trouvée</td></tr>';
+        '<tr><td colspan="11" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription trouvée</td></tr>';
       return;
     }
 
@@ -400,6 +445,7 @@
         <td>${escapeHtml(o.name)}</td>
         <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>
         <td>${escapeHtml(o.product)}</td>
+        <td>${escapeHtml(o.gym_label || gymLabel(o.gym))}</td>
         <td>${escapeHtml(o.step_label || STEP_LABELS[o.step] || o.step)}</td>
         <td>${paymentBadge(o)}</td>
         <td>${o.signed ? `✓ ${formatDate(o.signed_at)}` : '—'}</td>
@@ -415,6 +461,11 @@
           ${
             o.can_resume
               ? `<button type="button" class="btn sm resume-order" data-id="${escapeHtml(o.order_id)}">Lien de reprise</button>`
+              : ''
+          }
+          ${
+            o.can_pay
+              ? `<button type="button" class="btn sm pay-order" data-id="${escapeHtml(o.order_id)}">Payer</button>`
               : ''
           }
           <button type="button" class="btn sm secondary del-order" data-id="${escapeHtml(o.order_id)}" title="Supprimer">✕</button>
@@ -433,6 +484,9 @@
 
     tbody.querySelectorAll('.resume-order').forEach((btn) => {
       btn.onclick = () => generateResumeLink(btn.dataset.id, btn);
+    });
+    tbody.querySelectorAll('.pay-order').forEach((btn) => {
+      btn.onclick = () => generateResumeLink(btn.dataset.id, btn, 'pay');
     });
 
     tbody.querySelectorAll('.del-order').forEach((btn) => {
@@ -1430,9 +1484,14 @@
   document.getElementById('refreshOrdersBtn').onclick = loadOrders;
   document.getElementById('ordersSearch').oninput = renderOrders;
   document.getElementById('ordersFilter').onchange = renderOrders;
+  document.getElementById('ordersGymFilter')?.addEventListener('change', renderOrders);
   document.getElementById('resumeLinkBtn')?.addEventListener('click', () => {
     const id = document.getElementById('resumeRefInput')?.value || '';
     generateResumeLink(id, document.getElementById('resumeLinkBtn'));
+  });
+  document.getElementById('payLinkBtn')?.addEventListener('click', () => {
+    const id = document.getElementById('resumeRefInput')?.value || '';
+    generateResumeLink(id, document.getElementById('payLinkBtn'), 'pay');
   });
   document.getElementById('resumeRefInput')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {

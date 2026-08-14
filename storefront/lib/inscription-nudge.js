@@ -59,7 +59,25 @@ function isInscriptionTunnel(order) {
   return Boolean(order.access_token);
 }
 
-function resumeStep(order, { minStep, fallbackStep } = {}) {
+function productNeedsPayment(order) {
+  const p = order?.product_snapshot || {};
+  if (p.requires_payment === false) return false;
+  if (Number(p.price_cents || 0) <= 0) return false;
+  if (/gratuit/i.test(String(p.price_label || p.stripe_price_label || ''))) return false;
+  return true;
+}
+
+function canPayOrder(order) {
+  if (!isInscriptionTunnel(order) || order.access_blocked) return false;
+  const st = String(order?.payment?.status || 'pending');
+  if (st === 'paid' || st === 'free' || st === 'past_due') return false;
+  return productNeedsPayment(order);
+}
+
+function resumeStep(order, { minStep, fallbackStep, forceStep } = {}) {
+  if (forceStep) {
+    return Math.min(Math.max(Number(forceStep) || STEPS.PAYMENT, STEPS.OFFER), STEPS.CONFIRMED);
+  }
   const raw = Number(order?.step);
   let step = Number.isFinite(raw) && raw > 0 ? raw : fallbackStep || STEPS.GYM;
   if (order?.signature?.signed_at || step >= STEPS.CONFIRMED) step = STEPS.CONFIRMED;
@@ -67,7 +85,7 @@ function resumeStep(order, { minStep, fallbackStep } = {}) {
   return Math.min(Math.max(step, STEPS.OFFER), STEPS.CONFIRMED);
 }
 
-function resumeUrl(order, opts) {
+function resumeUrl(order, opts = {}) {
   const step = resumeStep(order, opts);
   const qs = new URLSearchParams();
   if (order?.product_id) qs.set('product', String(order.product_id));
@@ -77,21 +95,25 @@ function resumeUrl(order, opts) {
     qs.set('token', token);
     qs.set('bc_token', token);
   }
+  if (opts.pay) qs.set('pay', '1');
   qs.set('step', String(step));
   return `${getStoreUrl()}/inscription?${qs}`;
 }
 
-function describeResume(order) {
-  const step = resumeStep(order);
-  const completed = step >= STEPS.CONFIRMED || Boolean(order?.signature?.signed_at);
+function describeResume(order, { kind } = {}) {
+  const pay = kind === 'pay';
+  const step = pay ? STEPS.PAYMENT : resumeStep(order);
+  const completed = resumeStep(order) >= STEPS.CONFIRMED || Boolean(order?.signature?.signed_at);
   const short = order?.customer_short || {};
   return {
     order_id: order.order_id,
-    url: resumeUrl(order),
+    kind: pay ? 'pay' : 'resume',
+    url: resumeUrl(order, pay ? { forceStep: STEPS.PAYMENT, pay: true } : {}),
     step,
     step_label: STEP_LABELS[step] || String(step),
     completed,
     can_resume: isInscriptionTunnel(order) && !completed,
+    can_pay: canPayOrder(order),
     email: customerEmail(order),
     name: [short.first_name, short.last_name].filter(Boolean).join(' ').trim(),
     product: order.product_snapshot?.display_name || order.product_snapshot?.name || '',
@@ -262,6 +284,8 @@ module.exports = {
   resumeStep,
   describeResume,
   isInscriptionTunnel,
+  productNeedsPayment,
+  canPayOrder,
   STEP_LABELS,
   nudgeEmailSubject,
   nudgeEmailHtml,

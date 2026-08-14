@@ -25,6 +25,21 @@ const STEPS = {
   CONFIRMED: 8,
 };
 
+const GYM_LABELS = {
+  minimes: 'Minimes',
+  ramonville: 'Ramonville',
+  portet: 'Portet',
+  'etats-unis': 'États-Unis',
+  'st-cyprien': 'Saint-Cyprien',
+  balma: 'Balma',
+};
+
+function gymLabel(slug) {
+  const key = String(slug || '').trim();
+  if (!key) return null;
+  return GYM_LABELS[key] || GYM_LABELS[key.toLowerCase()] || key;
+}
+
 function initDirs() {
   ensureDir(ORDERS_DIR);
   ensureDir(UPLOADS_DIR);
@@ -425,6 +440,7 @@ function toAdminSummary(order) {
     phone: short.phone || customer.phone || null,
     name: nameFromCustomer,
     gym: full.gym || order.gym || customer.gym || null,
+    gym_label: gymLabel(full.gym || order.gym || customer.gym),
     activity: order.activity_label || order.activity || null,
     booking_date: order.booking_date || null,
     slot: order.slot_label || order.slot || null,
@@ -443,6 +459,14 @@ function toAdminSummary(order) {
       Number(order.step || 0) < STEPS.CONFIRMED &&
       Boolean(order.access_token) &&
       !/^(COACH|CHANGE|VERIFY)-/i.test(String(order.order_id || '')),
+    can_pay:
+      !isAction &&
+      Boolean(order.access_token) &&
+      !order.access_blocked &&
+      !/^(COACH|CHANGE|VERIFY)-/i.test(String(order.order_id || '')) &&
+      !['paid', 'free', 'past_due'].includes(String(payRaw || 'pending')) &&
+      order.product_snapshot?.requires_payment !== false &&
+      Number(order.product_snapshot?.price_cents || 0) > 0,
   };
 }
 
@@ -475,5 +499,7 @@ module.exports = {
   listAllOrdersAsync,
   deleteOrderAsync,
   toAdminSummary,
+  gymLabel,
+  GYM_LABELS,
   productSnapshot,
 };

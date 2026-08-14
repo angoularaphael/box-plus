@@ -317,11 +317,15 @@
             <option value="progress">En cours</option>
             <option value="unpaid">Impayés CB</option>
           </select>
+          <select id="ordersGymFilter" class="admin-search">
+            <option value="all">Toutes les salles</option>
+          </select>
           <button type="button" class="btn sm" id="refreshOrdersBtn">Actualiser</button>
         </div>
         <div class="admin-toolbar" style="margin-top:8px">
           <input type="text" id="resumeRefInput" placeholder="Référence (ex. BC-…)" class="admin-search" autocomplete="off" />
           <button type="button" class="btn sm" id="resumeLinkBtn">Générer le lien de reprise</button>
+          <button type="button" class="btn sm" id="payLinkBtn">Générer le lien payer</button>
         </div>
         <div id="resumeLinkBox" class="resume-link-box" hidden></div>
         <p class="form-msg" id="ordersMsg"></p>
@@ -333,6 +337,7 @@
                 <th>Adhérent</th>
                 <th>Email</th>
                 <th>Offre</th>
+                <th>Salle</th>
                 <th>Étape</th>
                 <th>Paiement</th>
                 <th>Signé</th>
@@ -453,9 +458,9 @@
   </div>
 
   <script src="../js/contract-open.js?v=8"></script>
-  <script src="../js/admin.js?v=12"></script>
+  <script src="../js/admin.js?v=14"></script>
   <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
        reecrit pas une ligne (un autre developpeur y travaille). -->
-  <script src="/js/admin-shell.js?v=10"></script>
+  <script src="/js/admin-shell.js?v=12"></script>
 </body>
 </html>
