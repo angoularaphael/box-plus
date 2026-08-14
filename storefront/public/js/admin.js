@@ -1251,43 +1251,36 @@
 
   let waTimer = null;
   async function loadWhatsApp(withQr = false) {
-    const msg = document.getElementById('waMsg');
     const badge = document.getElementById('waBadge');
-    const host = document.getElementById('waHost');
     const wrap = document.getElementById('waQrWrap');
-    if (msg) msg.textContent = 'Chargement…';
     try {
       const res = await fetch(`/api/admin/whatsapp${withQr ? '?qr=1' : ''}`, { credentials: 'include' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'unauthorized');
-      if (host) host.textContent = data.host ? `Bot : ${data.host}` : '';
+      if (!res.ok) throw new Error('unreachable');
       if (badge) {
-        badge.textContent = data.connected ? 'Connecté' : data.connecting ? 'QR en cours' : data.reachable ? 'Déconnecté' : 'Hors ligne';
+        badge.textContent = data.connected ? 'Connecté' : data.connecting ? 'Scan en cours' : 'Déconnecté';
       }
       if (wrap) {
         if (data.connected) {
-          wrap.innerHTML = '<p class="admin-section-desc">WhatsApp est connecté. Les messages parrainage Offre Duo partent depuis ce numéro.</p>';
+          wrap.innerHTML = '<p class="admin-section-desc">C’est bon. Les messages d’offre partent depuis ce WhatsApp.</p>';
           if (waTimer) { clearInterval(waTimer); waTimer = null; }
         } else if (data.qr) {
           wrap.innerHTML = `<img alt="QR WhatsApp" src="${data.qr}" style="width:min(280px,100%);border-radius:12px;background:#fff;padding:8px" />`;
           if (!waTimer) waTimer = setInterval(() => loadWhatsApp(true), 4000);
         } else {
-          wrap.innerHTML = `<p class="admin-section-desc">${escapeHtml(data.error || 'Clique « Afficher le QR » puis scanne avec WhatsApp → Appareils connectés.')}</p>`;
+          wrap.innerHTML = '<p class="admin-section-desc">Clique « Afficher le QR », puis scanne avec WhatsApp → Appareils connectés.</p>';
         }
       }
-      if (msg) {
-        msg.textContent = data.connected ? 'Prêt.' : '';
-        msg.className = 'form-msg' + (data.connected ? '' : data.error ? ' err' : '');
+    } catch {
+      if (badge) badge.textContent = 'Déconnecté';
+      if (wrap) {
+        wrap.innerHTML = '<p class="admin-section-desc">Le QR n’est pas disponible pour le moment. Réessaie dans un instant.</p>';
       }
-    } catch (err) {
-      if (msg) { msg.textContent = err.message; msg.className = 'form-msg err'; }
     }
   }
 
   document.getElementById('waRefreshBtn')?.addEventListener('click', () => loadWhatsApp(true));
   document.getElementById('waStartBtn')?.addEventListener('click', async () => {
-    const msg = document.getElementById('waMsg');
-    if (msg) msg.textContent = 'Démarrage…';
     try {
       await fetch('/api/admin/whatsapp?action=start', {
         method: 'POST',
@@ -1298,8 +1291,9 @@
       if (waTimer) clearInterval(waTimer);
       waTimer = setInterval(() => loadWhatsApp(true), 4000);
       await loadWhatsApp(true);
-    } catch (err) {
-      if (msg) { msg.textContent = err.message; msg.className = 'form-msg err'; }
+    } catch {
+      const wrap = document.getElementById('waQrWrap');
+      if (wrap) wrap.innerHTML = '<p class="admin-section-desc">Impossible d’afficher le QR. Réessaie dans un instant.</p>';
     }
   });
   document.getElementById('waLogoutBtn')?.addEventListener('click', async () => {
