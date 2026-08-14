@@ -79,7 +79,7 @@ function getSmtpTransport() {
   return smtpTransport;
 }
 
-async function sendViaRestApi({ to, subject, html, text, replyTo, attachments }) {
+async function sendViaRestApi({ to, subject, html, text, replyTo, attachments, cc }) {
   const apiKey = readApiKey();
   const files = normalizeAttachments(attachments);
   const body = {
@@ -90,6 +90,8 @@ async function sendViaRestApi({ to, subject, html, text, replyTo, attachments })
     htmlContent: html || undefined,
     textContent: text || undefined,
   };
+  const ccList = (Array.isArray(cc) ? cc : [cc]).map((e) => String(e || '').trim()).filter(Boolean);
+  if (ccList.length) body.cc = ccList.map((email) => ({ email }));
   if (files.length) {
     body.attachment = files.map((f) => ({
       name: f.name,
@@ -120,10 +122,11 @@ async function sendViaRestApi({ to, subject, html, text, replyTo, attachments })
   return { sent: true, messageId: data.messageId, via: 'brevo-api', sender: senderEmail() };
 }
 
-async function sendViaSmtp({ to, subject, html, text, replyTo, attachments }) {
+async function sendViaSmtp({ to, subject, html, text, replyTo, attachments, cc }) {
   const info = await getSmtpTransport().sendMail({
     from: `"${senderName()}" <${senderEmail()}>`,
     to,
+    cc: (Array.isArray(cc) ? cc : [cc]).filter(Boolean).join(',') || undefined,
     replyTo: replyTo || defaultReplyTo(),
     subject: subject || 'Message Boxing Center',
     text: text || '',
@@ -133,19 +136,19 @@ async function sendViaSmtp({ to, subject, html, text, replyTo, attachments }) {
   return { sent: true, messageId: info.messageId, via: 'brevo-smtp' };
 }
 
-async function sendEmailViaBrevo({ to, subject, html, text, replyTo, attachments }) {
+async function sendEmailViaBrevo({ to, subject, html, text, replyTo, attachments, cc }) {
   if (!to) throw new Error('Destinataire email manquant');
   if (!apiKeyConfigured() && !smtpConfigured()) return null;
 
   if (apiKeyConfigured()) {
-    return sendViaRestApi({ to, subject, html, text, replyTo, attachments });
+    return sendViaRestApi({ to, subject, html, text, replyTo, attachments, cc });
   }
 
   if (onVercel()) {
     return null;
   }
 
-  return sendViaSmtp({ to, subject, html, text, replyTo, attachments });
+  return sendViaSmtp({ to, subject, html, text, replyTo, attachments, cc });
 }
 
 function isConfigured() {

@@ -128,6 +128,19 @@ async function buildInscriptionAttachments(order, extra = []) {
   return attachments;
 }
 
+function isPortetOrder(order) {
+  const gym = String(order?.customer_full?.gym || order?.gym || '').toLowerCase();
+  return gym === 'portet' || gym.includes('portet');
+}
+
+function portetDossierCc(order) {
+  if (!isPortetOrder(order)) return [];
+  const cc = String(process.env.PORTET_DOSSIER_CC || 'nobleartportesien@gmail.com').trim();
+  const to = String(order?.customer_short?.email || '').trim().toLowerCase();
+  if (!cc || cc.toLowerCase() === to) return [];
+  return [cc];
+}
+
 async function sendConfirmationEmail(order, attachments = []) {
   const to = order.customer_short?.email;
   if (!to) {
@@ -157,6 +170,7 @@ async function sendConfirmationEmail(order, attachments = []) {
       html,
       replyTo: defaultReplyTo(),
       attachments: mailAttachments,
+      cc: portetDossierCc(order),
     });
     if (!result) {
       return {
@@ -171,6 +185,7 @@ async function sendConfirmationEmail(order, attachments = []) {
       order_id: order.order_id,
       via: result.via,
       attachments: attachmentNames,
+      cc: portetDossierCc(order),
     });
     return { sent: true, via: result.via, attachments: attachmentNames };
   } catch (err) {
@@ -401,4 +416,6 @@ module.exports = {
   buildMaterielConfirmationHtml,
   buildInscriptionAttachments,
   getMailFrom,
+  isPortetOrder,
+  portetDossierCc,
 };

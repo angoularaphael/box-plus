@@ -305,7 +305,7 @@
 
   function ensureChloe() {
     const p = currentPath();
-    if (/gerer-abonnement|inscription|checkout|panier|success|contrat|mon-inscription|admin|attestation|\/404|\/dev/i.test(p)) {
+    if (/gerer-abonnement|regulariser|inscription|checkout|panier|success|contrat|mon-inscription|admin|attestation|\/404|\/dev/i.test(p)) {
       return;
     }
     if (document.querySelector('script[data-chloe]')) return;

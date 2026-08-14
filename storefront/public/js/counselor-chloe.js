@@ -43,7 +43,7 @@ window.BCChloe = (function () {
   function mount() {
     if (document.getElementById('chloeWidget')) return;
     const path = window.BCLayout?.currentPath?.() || location.pathname;
-    if (/gerer-abonnement|inscription|checkout|panier|admin|success|contrat|mon-inscription/i.test(path)) {
+    if (/gerer-abonnement|regulariser|inscription|checkout|panier|admin|success|contrat|mon-inscription/i.test(path)) {
       return;
     }
 

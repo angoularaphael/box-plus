@@ -62,6 +62,8 @@
     '/faq': 'faq.html',
     '/politique-confidentialite': 'legal/confidentialite.html',
     '/mon-inscription': 'mon-inscription.html',
+    '/gerer-abonnement': 'gerer-abonnement.html',
+    '/regulariser': 'regulariser.html',
     '/admin': 'admin/index.html',
     '/admin/contrats': 'admin/index.html',
   };

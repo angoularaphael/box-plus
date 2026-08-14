@@ -7,6 +7,7 @@
   ],
   "functions": {
     "api/index.js": {
+      "runtime": "nodejs24.x",
       "maxDuration": 30,
       "includeFiles": "{storefront/**,data/storefront/**,lib/**,config/**}"
     },

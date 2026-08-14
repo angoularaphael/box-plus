@@ -75,6 +75,10 @@ const {
 const { runPaymentContext, testPaymentsInfo } = require('./lib/test-env');
 const { corsMiddleware } = require('./lib/cors');
 const {
+  registerEcheancierPayRoutes,
+  fulfillEcheancierIfPaid,
+} = require('./lib/echeancier-pay');
+const {
   isProductionRuntime,
   isDemoCheckoutAllowed,
   secretsEqual,
@@ -3458,6 +3462,8 @@ function createApp() {
     return paid;
   }
 
+  registerEcheancierPayRoutes(app);
+
   app.get('/api/payments/config', async (req, res) => {
     const gym = req.query.gym;
     const display = await resolvePaymentDisplay(req, gym, {
@@ -3501,6 +3507,11 @@ function createApp() {
         payment = await runPaymentContext({ test: true }, () => retrievePayment(paymentId));
       }
       const meta = payment.metadata || {};
+
+      if (String(meta.order_type || '') === 'echeancier') {
+        const out = await fulfillEcheancierIfPaid(payment);
+        return res.json({ ok: true, echeancier: true, ...(out || {}) });
+      }
 
       // Changement d’abo (pas de lifecycle order)
       if (meta.order_type === 'membership_change' && isPayplugPaymentPaid(payment)) {
@@ -3794,6 +3805,7 @@ function createApp() {
     '/attestation-medicale': 'attestation-medicale.html',
     '/mon-inscription': 'mon-inscription.html',
     '/gerer-abonnement': 'gerer-abonnement.html',
+    '/regulariser': 'regulariser.html',
     '/checkout.html': 'checkout.html',
     '/admin': 'admin/index.html',
     '/admin/': 'admin/index.html',

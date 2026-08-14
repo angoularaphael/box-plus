@@ -355,11 +355,12 @@ const INDEXABLE = {
  * height, uploadDate (AAAA-MM-JJ).
  *
  * Recette d'encodage, à garder identique d'une vidéo à l'autre :
- *   Desktop : 960px, 10–12 s, CRF 20, sans audio, +faststart
- *   Mobile  : 640px, 8 s, CRF 26
- *   ffmpeg -ss <départ> -t 12 -i "source.mp4" -an \
- *     -vf "scale=960:-2:flags=lanczos,unsharp=5:5:0.55:5:5:0.0,fps=30" \
- *     -c:v libx264 -preset medium -crf 20 -pix_fmt yuv420p -profile:v high \
+ *   Desktop : 1280px, 8–10 s, CRF 21, 24 fps, sans audio, +faststart
+ *   Mobile  : 960px, 8 s, CRF 23
+ *   Toujours partir d'une source ≥720p (jamais upscaler du 360p).
+ *   ffmpeg -ss <départ> -t 10 -i "source.mp4" -an \
+ *     -vf "scale=1280:-2:flags=lanczos,unsharp=5:5:0.4:5:5:0.0,fps=24" \
+ *     -c:v libx264 -preset slow -crf 21 -pix_fmt yuv420p -profile:v high \
  *     -movflags +faststart "sortie.mp4"
  */
 const VIDEOS = {
@@ -483,6 +484,7 @@ const NOINDEX_PATHS = [
   '/mon-inscription',
   '/contrat',
   '/gerer-abonnement',
+  '/regulariser',
   '/checkout.html',
   '/success.html',
   '/admin',
