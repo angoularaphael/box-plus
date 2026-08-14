@@ -6,6 +6,7 @@ const {
   matchManagerFromText,
   pickVariant,
 } = require('./welcome-knowledge');
+const { resolvePersona } = require('./counselor-personas');
 
 const KNOWLEDGE = `
 Tu es David, conseiller virtuel Boxing Center (Toulouse). Tu aides les adhérents sur le parcours « Gérer mon abonnement ».
@@ -372,9 +373,12 @@ function cleanWelcomeReply(content, fallback) {
   return reply || fallback;
 }
 
-function welcomeFallbackReply(lastUser, lastBot) {
+function welcomeFallbackReply(lastUser, lastBot, persona) {
+  /* Les réponses factuelles sont communes aux conseillers — ce sont des
+     informations contractuelles. Seule la relance générique prend leur voix. */
+  const generic = (persona && persona.fallbacks) || WELCOME_FALLBACKS;
   const pick = (key) => {
-    const variants = FAQ_VARIANTS[key] || WELCOME_FALLBACKS;
+    const variants = FAQ_VARIANTS[key] || generic;
     let reply = pickVariant(variants);
     if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
       const alt = variants.find((v) => similarityScore(v, lastBot) < 0.55);
@@ -403,10 +407,11 @@ function welcomeFallbackReply(lastUser, lastBot) {
   if (/essai|10\s*€|d[eé]butant/i.test(lastUser)) {
     return { reply: pick('trial'), source: 'faq' };
   }
-  return { reply: pickVariant(WELCOME_FALLBACKS), source: 'template' };
+  return { reply: pickVariant(generic), source: 'template' };
 }
 
-async function guideWelcome({ freeText, messages = [] } = {}) {
+async function guideWelcome({ freeText, messages = [], persona: personaId } = {}) {
+  const persona = resolvePersona(personaId);
   const lastUser = lastMemberMessage(messages, freeText);
   const lastBot = lastAssistantMessage(messages);
 
@@ -430,21 +435,24 @@ async function guideWelcome({ freeText, messages = [] } = {}) {
     return { reply: pickVariant(FAQ_VARIANTS.longTerm), source: 'faq-longterm' };
   }
 
-  const fallback = pickVariant(WELCOME_FALLBACKS);
+  const fallback = pickVariant(persona.fallbacks);
   if (!isAiEnabled()) {
-    return welcomeFallbackReply(lastUser, lastBot);
+    return { ...welcomeFallbackReply(lastUser, lastBot, persona), persona: persona.id };
   }
 
   try {
-    const transcript = buildTranscript(messages, freeText).replace(/David:/g, 'Chloe:');
+    const transcript = buildTranscript(messages, freeText).replace(/David:/g, `${persona.name}:`);
     const { content } = await chatCompletion(
       [
         { role: 'system', content: WELCOME_KNOWLEDGE },
+        /* Même base de connaissances pour tous : seule la voix change. */
+        { role: 'system', content: persona.tone },
         {
           role: 'user',
           content: [
             'Réponds au visiteur boutique. Réponse directe, factuelle, sans formule de fin. Si managers : noms exacts de la base.',
             'Rédige une réponse utile et **différente** de ta précédente (autre angle / autre formulation).',
+            `Reste dans la voix de ${persona.name} : les faits ne changent pas, la façon de les dire oui.`,
             transcript ? `Conversation:\n${transcript}` : '',
             lastBot ? `Ta dernière réponse (à NE PAS répéter) : ${lastBot.slice(0, 500)}` : '',
             lastUser ? `Dernier message: ${lastUser}` : '',
@@ -458,14 +466,19 @@ async function guideWelcome({ freeText, messages = [] } = {}) {
     let reply = cleanWelcomeReply(content, fallback).replace(/29 €/g, '29,99 €');
 
     if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
-      const alt = welcomeFallbackReply(lastUser, lastBot);
+      const alt = welcomeFallbackReply(lastUser, lastBot, persona);
       reply = alt.reply;
-      return { reply, source: 'dedup' };
+      return { reply, source: 'dedup', persona: persona.id };
     }
 
-    return { reply: reply || fallback, source: 'groq' };
+    return { reply: reply || fallback, source: 'groq', persona: persona.id };
   } catch (err) {
-    return { ...welcomeFallbackReply(lastUser, lastBot), source: 'template-fallback', error: err.message };
+    return {
+      ...welcomeFallbackReply(lastUser, lastBot, persona),
+      source: 'template-fallback',
+      persona: persona.id,
+      error: err.message,
+    };
   }
 }
 

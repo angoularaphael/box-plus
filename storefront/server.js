@@ -2471,8 +2471,15 @@ function createApp() {
       const result = await guideWelcome({
         freeText,
         messages,
+        /* Conseiller choisi côté client ; un identifiant inconnu retombe sur Chloe. */
+        persona: body.persona,
       });
-      res.json({ ok: true, reply: result.reply, source: result.source });
+      res.json({
+        ok: true,
+        reply: result.reply,
+        source: result.source,
+        persona: result.persona,
+      });
     } catch (err) {
       logError('Erreur welcome counsel', { error: err.message });
       res.status(500).json({
