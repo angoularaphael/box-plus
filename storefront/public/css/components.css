@@ -2424,6 +2424,14 @@ video.bg-video.is-playing {
   top: 0;
   left: 0;
   right: 0;
+  display: flex;
+  flex-direction: column;
+}
+/* Ancien insertion (frère du header) : ne plus recouvrir la nav overlay */
+.home-cinema > .resume-bar {
+  position: relative;
+  z-index: 201;
+  margin-top: 72px;
 }
 .home-cinema .topbar:not(.scrolled) {
   background: transparent;

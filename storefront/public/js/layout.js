@@ -114,6 +114,11 @@
     bar.innerHTML = `
       <p>Votre inscription est en cours. Reprenez exactement où vous vous êtes arrêté.</p>
       <a class="btn" href="${href}">Continuer</a>`;
+    const topbar = document.querySelector('#site-header .topbar');
+    if (topbar) {
+      topbar.appendChild(bar);
+      return;
+    }
     const header = document.getElementById('site-header');
     if (header && header.parentNode) {
       header.parentNode.insertBefore(bar, header.nextSibling);
