@@ -3,7 +3,7 @@ const path = require('path');
 const { ROOT, ensureDir } = require('../../lib/utils');
 const { normalizeOrder, validateOrder } = require('../../lib/normalize');
 const { enqueue } = require('../../lib/queue');
-const { isValidFrenchIban, normalizeIban } = require('../../lib/iban');
+const { normalizeIban, frenchIbanError } = require('../../lib/iban');
 const {
   normalizeBillingPlan,
   normalizePaymentPlan,
@@ -197,10 +197,9 @@ function validateIbanForm(input, product = {}) {
   const billingPlan = normalizeBillingPlan(input.billing_plan, product);
   if (requiresIbanForPlan(product, billingPlan)) {
     if (!input.iban) errors.push('IBAN requis pour le prélèvement');
-    else if (!isValidFrenchIban(input.iban)) {
-      errors.push(
-        'Seuls les IBAN français commençant par FR sont acceptés. Si vous n’en avez pas, rapprochez-vous du manager de votre salle.'
-      );
+    else {
+      const ibanErr = frenchIbanError(input.iban);
+      if (ibanErr) errors.push(ibanErr);
     }
   }
   return errors;
