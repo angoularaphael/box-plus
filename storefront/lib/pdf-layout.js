@@ -26,6 +26,42 @@ const CLUB = {
   web: 'boxingcenter.fr',
 };
 
+/** Émetteur factures salle Portet — association Noble Art Portésien. */
+const CLUB_PORTET = {
+  name: 'NOBLE ART PORTESIEN',
+  brand: 'Boxing Center Portet',
+  legalForm: 'Association loi 1901',
+  address: '61 route d\'Espagne',
+  city: '31120 Portet-sur-Garonne',
+  country: 'France',
+  siren: '444 152 482',
+  siret: '444 152 482 00022',
+  tva: 'FR80444152482',
+  naf: '9312Z',
+  phone: '06 87 90 02 16',
+  email: 'nobleartportesien@gmail.com',
+  web: 'boxingcenter.fr',
+};
+
+function isPortetIssuerGym(gym) {
+  return /portet/i.test(String(gym || ''));
+}
+
+function clubForGym(gym) {
+  return isPortetIssuerGym(gym) ? CLUB_PORTET : CLUB;
+}
+
+function clubForOrder(order = {}) {
+  const gym =
+    order.customer_full?.gym ||
+    order.gym ||
+    order.pickup_gym ||
+    order.customer?.pickup_gym ||
+    order.customer?.gym ||
+    '';
+  return clubForGym(gym);
+}
+
 function formatEuros(cents) {
   return `${((cents || 0) / 100).toFixed(2).replace('.', ',')} €`;
 }
@@ -114,14 +150,18 @@ function drawTwoParties(doc, emitterRows, recipientRows) {
   doc.y = Math.max(h1, h2) + 16;
 }
 
-function clubEmitterRows() {
-  return [
-    { label: 'Société', value: CLUB.name },
-    { label: 'Adresse', value: `${CLUB.address}\n${CLUB.city}, ${CLUB.country}` },
-    { label: 'SIRET', value: CLUB.siret },
-    { label: 'TVA', value: CLUB.tva },
-    { label: 'Site web', value: CLUB.web },
+function clubEmitterRows(club = CLUB) {
+  const rows = [
+    { label: club.legalForm ? 'Association' : 'Société', value: club.name },
+    club.legalForm ? { label: 'Forme juridique', value: club.legalForm } : null,
+    { label: 'Adresse', value: `${club.address}\n${club.city}, ${club.country}` },
+    club.siren ? { label: 'SIREN', value: club.siren } : null,
+    { label: 'SIRET', value: club.siret },
+    { label: 'TVA', value: club.tva },
+    club.naf ? { label: 'NAF / APE', value: club.naf } : null,
+    { label: 'Site web', value: club.web },
   ];
+  return rows.filter((row) => row?.value);
 }
 
 function memberRecipientRows(short = {}, full = {}) {
@@ -296,13 +336,14 @@ function drawSignatureBlock(doc, order) {
   }
 }
 
-function clubEmitterRowsCompact() {
+function clubEmitterRowsCompact(club = CLUB) {
   return [
-    { label: 'Société', value: CLUB.name },
-    { label: 'Adresse', value: `${CLUB.address}, ${CLUB.city}` },
-    { label: 'SIRET', value: CLUB.siret },
-    { label: 'Site web', value: CLUB.web },
-  ];
+    { label: club.legalForm ? 'Association' : 'Société', value: club.name },
+    { label: 'Adresse', value: `${club.address}, ${club.city}` },
+    { label: 'SIRET', value: club.siret },
+    club.tva ? { label: 'TVA', value: club.tva } : null,
+    { label: 'Site web', value: club.web },
+  ].filter((row) => row?.value);
 }
 
 function drawPartyColumnCompact(doc, x, y, width, heading, rows) {
@@ -413,10 +454,28 @@ function drawSignatureBlockCompact(doc, order) {
   }
 }
 
-function drawPageFooter(doc) {
+function resolveClubArg(clubOrOrder) {
+  if (!clubOrOrder) return CLUB;
+  if (clubOrOrder.siret && clubOrOrder.name && !clubOrOrder.order_id && !clubOrOrder.customer_full) {
+    return clubOrOrder;
+  }
+  if (
+    clubOrOrder.order_id ||
+    clubOrOrder.customer_full ||
+    clubOrOrder.gym ||
+    clubOrOrder.pickup_gym ||
+    clubOrOrder.customer
+  ) {
+    return clubForOrder(clubOrOrder);
+  }
+  return CLUB;
+}
+
+function drawPageFooter(doc, clubOrOrder) {
+  const club = resolveClubArg(clubOrOrder);
   const range = doc.bufferedPageRange();
   const total = range.count;
-  const footerText = `${CLUB.name} — SIRET ${CLUB.siret} — ${CLUB.web}`;
+  const footerText = `${club.name} — SIRET ${club.siret} — ${club.web}`;
 
   for (let i = 0; i < total; i += 1) {
     doc.switchToPage(range.start + i);
@@ -437,6 +496,10 @@ function drawPageFooter(doc) {
 
 module.exports = {
   CLUB,
+  CLUB_PORTET,
+  clubForGym,
+  clubForOrder,
+  isPortetIssuerGym,
   NAVY,
   TEAL,
   MUTED,

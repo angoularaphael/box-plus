@@ -3,7 +3,7 @@ const path = require('path');
 const PDFDocument = require('pdfkit');
 const { ensureDir } = require('../../lib/utils');
 const {
-  CLUB,
+  clubForOrder,
   formatEuros,
   formatDateFr,
   memberDisplayName,
@@ -83,7 +83,7 @@ function renderInscriptionInvoice(doc, order) {
     ref: order.order_id,
   });
 
-  drawTwoParties(doc, clubEmitterRows(), invoiceRecipientRows({ ...short, ...full }));
+  drawTwoParties(doc, clubEmitterRows(clubForOrder(order)), invoiceRecipientRows({ ...short, ...full }));
 
   drawSectionHeading(doc, 'Détail des prestations');
 
@@ -180,7 +180,7 @@ function renderInscriptionInvoice(doc, order) {
     { align: 'justify', lineGap: 2 }
   );
 
-  drawPageFooter(doc);
+  drawPageFooter(doc, clubForOrder(order));
 }
 
 function renderMaterielInvoice(doc, order) {
@@ -196,7 +196,7 @@ function renderMaterielInvoice(doc, order) {
     ref: order.order_id,
   });
 
-  drawTwoParties(doc, clubEmitterRows(), invoiceRecipientRows(customer));
+  drawTwoParties(doc, clubEmitterRows(clubForOrder(order)), invoiceRecipientRows(customer));
 
   drawSectionHeading(doc, 'Détail des articles');
 
@@ -256,7 +256,7 @@ function renderMaterielInvoice(doc, order) {
     },
   ]);
 
-  drawPageFooter(doc);
+  drawPageFooter(doc, clubForOrder(order));
 }
 
 async function writePdf(renderFn, order, suffix) {

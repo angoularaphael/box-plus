@@ -3,6 +3,7 @@ const path = require('path');
 const PDFDocument = require('pdfkit');
 const { ROOT, ensureDir } = require('../../lib/utils');
 const {
+  clubForOrder,
   formatEuros,
   drawProHeaderCompact,
   drawTwoPartiesCompact,
@@ -100,7 +101,7 @@ function renderContractBody(doc, order) {
     ref: order.order_id,
   });
 
-  drawTwoPartiesCompact(doc, clubEmitterRowsCompact(), recipient);
+  drawTwoPartiesCompact(doc, clubEmitterRowsCompact(clubForOrder(order)), recipient);
 
   doc.fontSize(10).fillColor('#0B1F3A').font('Helvetica-Bold').text('Détail de l\'offre', doc.page.margins.left, doc.y);
   doc.y += 12;
