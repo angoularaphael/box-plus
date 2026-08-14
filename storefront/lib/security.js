@@ -71,6 +71,26 @@ function sanitizePaymentId(id) {
   return s;
 }
 
+/** Token d’accès inscription (48 hex). PayPal rajoute aussi `token=` (order id). */
+function isInscriptionAccessToken(value) {
+  return /^[a-f0-9]{48}$/i.test(String(value || '').trim());
+}
+
+function requestAccessToken(req) {
+  const body = req.body || {};
+  const q = req.query || {};
+  const candidates = [body.bc_token, q.bc_token, body.token, q.token];
+  for (const c of candidates) {
+    const s = String(c || '').trim();
+    if (isInscriptionAccessToken(s)) return s;
+  }
+  for (const c of candidates) {
+    const s = String(c || '').trim();
+    if (s) return s;
+  }
+  return '';
+}
+
 function maskIban(iban) {
   const s = String(iban || '').replace(/\s+/g, '').toUpperCase();
   if (!s) return '';
@@ -210,6 +230,8 @@ module.exports = {
   sessionSecret,
   sanitizeOrderId,
   sanitizePaymentId,
+  isInscriptionAccessToken,
+  requestAccessToken,
   maskIban,
   redactOrderForClient,
   clientIp,

@@ -29,14 +29,15 @@ function payplugMatches({ payment, orderId, expectedCents, storedPaymentId }) {
   const metaOrder = String(meta.lifecycle_order_id || meta.order_id || meta.verify_order_id || '').trim();
   const wanted = String(orderId || '').trim();
   const stored = String(storedPaymentId || '').trim();
+  const idMatch = Boolean(stored) && stored === String(payment.id);
+  const metaMatch = Boolean(wanted) && Boolean(metaOrder) && metaOrder === wanted;
 
-  if (stored && stored !== String(payment.id)) {
+  // L’id qu’on a nous-mêmes enregistré prime : les metadata PayPlug sont parfois
+  // incomplètes / tronquées au retour, ça ne doit pas recaler un paiement déjà lié.
+  if (stored && !idMatch) {
     return { ok: false, error: 'payment_mismatch' };
   }
-  if (wanted && metaOrder && metaOrder !== wanted) {
-    return { ok: false, error: 'payment_mismatch' };
-  }
-  if (!metaOrder && !stored) {
+  if (!idMatch && !metaMatch) {
     return { ok: false, error: 'payment_mismatch' };
   }
   if (expectedCents != null && !paidMatchesExpected(payment.amount || payment.authorized_amount, expectedCents)) {
@@ -63,15 +64,15 @@ function paypalPaidCents(captured) {
 function paypalMatches({ captured, orderId, expectedCents, storedPaypalId }) {
   if (!captured?.id) return { ok: false, error: 'payment_mismatch' };
   const stored = String(storedPaypalId || '').trim();
-  if (stored && stored !== String(captured.id)) {
-    return { ok: false, error: 'payment_mismatch' };
-  }
   const customId = paypalCustomId(captured);
   const wanted = String(orderId || '').trim();
-  if (wanted && customId && customId !== wanted) {
+  const idMatch = Boolean(stored) && stored === String(captured.id);
+  const customMatch = Boolean(wanted) && Boolean(customId) && customId === wanted;
+
+  if (stored && !idMatch) {
     return { ok: false, error: 'payment_mismatch' };
   }
-  if (!customId && !stored) {
+  if (!idMatch && !customMatch) {
     return { ok: false, error: 'payment_mismatch' };
   }
   if (expectedCents != null) {

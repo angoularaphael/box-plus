@@ -55,8 +55,76 @@
     return location.pathname.replace(/\/$/, '') || '/';
   }
 
+  const RESUME_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+  function readResumeProgress() {
+    const fromLs = () => {
+      try {
+        return JSON.parse(localStorage.getItem('bc_inscription_progress') || 'null');
+      } catch {
+        return null;
+      }
+    };
+    const fromCookie = () => {
+      try {
+        const match = document.cookie.match(/(?:^|;\s*)bc_resume=([^;]*)/);
+        if (!match) return null;
+        const c = JSON.parse(decodeURIComponent(match[1]));
+        if (!c?.o || !c?.t) return null;
+        return {
+          orderId: c.o,
+          token: c.t,
+          step: Number(c.s) || 1,
+          productId: c.p || null,
+          savedAt: c.at || Date.now(),
+        };
+      } catch {
+        return null;
+      }
+    };
+    const saved = fromLs() || fromCookie();
+    if (!saved?.orderId || !saved?.token) return null;
+    if (saved.savedAt && Date.now() - Number(saved.savedAt) > RESUME_TTL_MS) return null;
+    const step = Number(saved.step) || 1;
+    if (step < 2 || step >= 8 || saved.tunnelComplete) return null;
+    return saved;
+  }
+
+  function resumeInscriptionHref() {
+    const saved = readResumeProgress();
+    if (!saved) return '';
+    const qs = new URLSearchParams();
+    if (saved.productId) qs.set('product', saved.productId);
+    qs.set('order', saved.orderId);
+    qs.set('token', saved.token);
+    qs.set('bc_token', saved.token);
+    qs.set('step', String(saved.step || 2));
+    return `${L('/inscription')}?${qs}`;
+  }
+
+  function renderResumeBar() {
+    const path = currentPath();
+    if (/inscription|admin|\/dev|success|contrat|mon-inscription/i.test(path)) return;
+    const href = resumeInscriptionHref();
+    if (!href || document.getElementById('resumeBar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'resumeBar';
+    bar.className = 'resume-bar';
+    bar.setAttribute('role', 'status');
+    bar.innerHTML = `
+      <p>Votre inscription est en cours. Reprenez exactement où vous vous êtes arrêté.</p>
+      <a class="btn" href="${href}">Continuer</a>`;
+    const header = document.getElementById('site-header');
+    if (header && header.parentNode) {
+      header.parentNode.insertBefore(bar, header.nextSibling);
+    } else {
+      document.body.prepend(bar);
+    }
+  }
+
   function renderHeader() {
     const path = currentPath();
+    const resumeHref = resumeInscriptionHref();
     const navLinks = NAV_ITEMS.map(
       (item) =>
         `<a href="${L(item.href)}" class="${item.match(path) ? 'active' : ''}">${item.label}</a>`
@@ -75,7 +143,7 @@
             <a href="${L('/panier')}" class="nav-cart" id="navCart" aria-label="Panier">
               Panier <span class="cart-badge" id="cartBadge" hidden>0</span>
             </a>
-            <a href="${L('/abonnements')}" class="nav-cta">Je m'inscris</a>
+            <a href="${resumeHref || L('/abonnements')}" class="nav-cta">${resumeHref ? 'Continuer' : "Je m'inscris"}</a>
           </nav>
         </div>
       </header>`;
@@ -249,6 +317,7 @@
     if (headerSlot) headerSlot.innerHTML = renderHeader();
     if (footerSlot) footerSlot.innerHTML = renderFooter();
     initNav();
+    renderResumeBar();
     renderBackTop();
     renderCartFab();
     updateCartBadge();

@@ -143,7 +143,7 @@ async function request(path, options = {}) {
 
 function buildReturnUrls(baseUrl, order, { step = 4 } = {}) {
   if (order?.order_id && order?.access_token) {
-    const returnBase = `${baseUrl}/inscription?order=${encodeURIComponent(order.order_id)}&token=${encodeURIComponent(order.access_token)}`;
+    const returnBase = `${baseUrl}/inscription?order=${encodeURIComponent(order.order_id)}&token=${encodeURIComponent(order.access_token)}&bc_token=${encodeURIComponent(order.access_token)}`;
     return {
       return_url: `${returnBase}&step=${step}&payplug_return=1`,
       cancel_url: `${returnBase}&step=${step}&cancelled=1`,

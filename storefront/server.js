@@ -80,6 +80,7 @@ const {
   secretsEqual,
   sanitizeOrderId,
   sanitizePaymentId,
+  requestAccessToken,
   redactOrderForClient,
   loginLocked,
   recordLoginFail,
@@ -367,10 +368,12 @@ async function refreshPaymentFromStripe(order, sessionIdHint) {
 
 function inscriptionRedirect(order, stepOverride) {
   const step = stepOverride || order.step || STEPS.PAYMENT;
-  const sid = order.payment?.stripe_session_id
+  const tok = encodeURIComponent(order.access_token || '');
+  const stripeReturn = order.payment?.method === 'stripe' && order.payment?.stripe_session_id;
+  const sid = stripeReturn
     ? `&session_id=${encodeURIComponent(order.payment.stripe_session_id)}`
     : '';
-  return `/inscription?order=${order.order_id}&token=${order.access_token}&step=${step}${sid}`;
+  return `/inscription?order=${order.order_id}&token=${tok}&bc_token=${tok}&step=${step}${sid}`;
 }
 
 function isAuthorizedSync(req) {
@@ -1874,14 +1877,15 @@ function createApp() {
   });
 
   app.get('/api/orders/:id', async (req, res) => {
+    const token = requestAccessToken(req);
     const order = await loadOrderOrRecover(req.params.id, {
-      token: req.query.token,
+      token,
       sessionId: req.query.session_id,
       stripe,
       findProduct,
     });
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
-    if (!verifyAccess(order, req.query.token)) {
+    if (!verifyAccess(order, token)) {
       return res.status(403).json({ ok: false, error: 'forbidden' });
     }
     const safe = redactOrderForClient(order);
@@ -1889,14 +1893,15 @@ function createApp() {
   });
 
   app.get('/api/orders/:id/status', async (req, res) => {
+    const token = requestAccessToken(req);
     const order = await loadOrderOrRecover(req.params.id, {
-      token: req.query.token,
+      token,
       sessionId: req.query.session_id,
       stripe,
       findProduct,
     });
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
-    if (!verifyAccess(order, req.query.token)) {
+    if (!verifyAccess(order, token)) {
       return res.status(403).json({ ok: false, error: 'forbidden' });
     }
     res.json({
@@ -3569,7 +3574,8 @@ function createApp() {
 
   app.post('/api/checkout/confirm-payplug', async (req, res) => {
     try {
-      const { order_id: orderId, token, payment_id: paymentId } = req.body || {};
+      const { order_id: orderId, payment_id: paymentId } = req.body || {};
+      const token = requestAccessToken(req);
       if (!orderId || !token) {
         return res.status(400).json({ ok: false, error: 'order_id et token requis' });
       }
@@ -3628,7 +3634,8 @@ function createApp() {
 
   app.post('/api/checkout/confirm-paypal', async (req, res) => {
     try {
-      const { order_id: orderId, token, paypal_order_id: paypalOrderId } = req.body || {};
+      const { order_id: orderId, paypal_order_id: paypalOrderId } = req.body || {};
+      const token = requestAccessToken(req);
       if (!orderId || !token) {
         return res.status(400).json({ ok: false, error: 'order_id et token requis' });
       }

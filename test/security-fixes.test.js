@@ -14,6 +14,7 @@ const {
   redactOrderForClient,
   looksLikeAllowedImage,
   sessionSecret,
+  requestAccessToken,
 } = require('../storefront/lib/security');
 
 const {
@@ -99,6 +100,18 @@ test('PayPlug refuse un paiement lié à une autre commande', () => {
     storedPaymentId: 'pay_ok',
   });
   assert.equal(ok.ok, true);
+
+  const storedWins = payplugMatches({
+    payment: {
+      id: 'pay_ok',
+      amount: 25900,
+      metadata: { lifecycle_order_id: 'BC-OTHER', order_id: 'BC-OTHER' },
+    },
+    orderId: 'BC-EXPENSIVE',
+    expectedCents: 25900,
+    storedPaymentId: 'pay_ok',
+  });
+  assert.equal(storedWins.ok, true);
 });
 
 test('PayPal refuse un custom_id / montant différent', () => {
@@ -138,6 +151,23 @@ test('PayPal refuse un custom_id / montant différent', () => {
   });
   assert.equal(ok.ok, true);
   assert.equal(paypalPaidCents(captured), 1000);
+
+  const storedWins = paypalMatches({
+    captured: {
+      id: 'PP-OK',
+      purchase_units: [
+        {
+          custom_id: 'BC-OTHER',
+          amount: { value: '259.00' },
+          payments: { captures: [{ amount: { value: '259.00' }, status: 'COMPLETED' }] },
+        },
+      ],
+    },
+    orderId: 'BC-EXPENSIVE',
+    expectedCents: 25900,
+    storedPaypalId: 'PP-OK',
+  });
+  assert.equal(storedWins.ok, true);
 });
 
 test('4× accepte le montant plein ou le quart', () => {
@@ -204,4 +234,18 @@ test('sessionSecret refuse change-me en production', () => {
     if (prev.admin == null) delete process.env.ADMIN_SECRET;
     else process.env.ADMIN_SECRET = prev.admin;
   }
+});
+
+test('requestAccessToken préfère bc_token / hex 48 face au token PayPal', () => {
+  const hex = 'a'.repeat(48);
+  const paypalId = '5O190127TN364715T';
+  const picked = requestAccessToken({
+    query: { token: paypalId, bc_token: hex },
+    body: {},
+  });
+  assert.equal(picked, hex);
+  assert.equal(
+    requestAccessToken({ query: { token: paypalId }, body: { token: hex } }),
+    hex
+  );
 });

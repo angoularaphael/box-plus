@@ -202,7 +202,7 @@ async function createPaypalOrder({
 
   const itemName = description || product?.display_name || product?.name || 'Boxing Center';
   const returnBase = order?.access_token
-    ? `${baseUrl}/inscription?order=${encodeURIComponent(order.order_id)}&token=${encodeURIComponent(order.access_token)}`
+    ? `${baseUrl}/inscription?order=${encodeURIComponent(order.order_id)}&token=${encodeURIComponent(order.access_token)}&bc_token=${encodeURIComponent(order.access_token)}`
     : `${baseUrl}/`;
   const resolvedReturn = returnUrl || `${returnBase}&step=4&paypal_return=1`;
   const resolvedCancel = cancelUrl || `${returnBase}&step=4&cancelled=1`;

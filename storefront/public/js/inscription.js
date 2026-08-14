@@ -1,7 +1,33 @@
 (function () {
   const params = new URLSearchParams(window.location.search);
   const STORAGE_KEY = 'bc_inscription_progress';
-  const STORAGE_TTL_MS = 48 * 60 * 60 * 1000;
+  const RESUME_COOKIE = 'bc_resume';
+  const STORAGE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+  function isAccessToken(value) {
+    return /^[a-f0-9]{48}$/i.test(String(value || '').trim());
+  }
+
+  function pickUrlAccessToken(searchParams) {
+    const bc = String(searchParams.get('bc_token') || '').trim();
+    if (isAccessToken(bc)) return bc;
+    const all = searchParams.getAll('token').map((t) => String(t || '').trim()).filter(Boolean);
+    const hex = all.find(isAccessToken);
+    if (hex) return hex;
+    return all[0] || '';
+  }
+
+  function pickPaypalOrderIdFromUrl(searchParams) {
+    const explicit = String(searchParams.get('paypal_order_id') || '').trim();
+    if (explicit) return explicit;
+    if (searchParams.get('paypal_return') !== '1') return '';
+    const all = searchParams.getAll('token').map((t) => String(t || '').trim()).filter(Boolean);
+    return all.find((t) => t && !isAccessToken(t) && /^[A-Z0-9_-]{8,30}$/i.test(t)) || '';
+  }
+
+  function isPspReturn(searchParams) {
+    return searchParams.get('payplug_return') === '1' || searchParams.get('paypal_return') === '1';
+  }
 
   function readStoredProgress() {
     try {
@@ -10,6 +36,45 @@
     } catch {
       return null;
     }
+  }
+
+  function writeResumeCookie(data) {
+    if (!data?.orderId || !data?.token) return;
+    const payload = encodeURIComponent(
+      JSON.stringify({
+        o: data.orderId,
+        t: data.token,
+        s: Number(data.step) || 1,
+        p: data.productId || '',
+        at: data.savedAt || Date.now(),
+      })
+    );
+    const maxAge = Math.floor(STORAGE_TTL_MS / 1000);
+    const secure = location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${RESUME_COOKIE}=${payload}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`;
+  }
+
+  function readResumeCookie() {
+    try {
+      const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${RESUME_COOKIE}=([^;]*)`));
+      if (!match) return null;
+      const c = JSON.parse(decodeURIComponent(match[1]));
+      if (!c?.o || !c?.t) return null;
+      return {
+        orderId: c.o,
+        token: c.t,
+        step: Number(c.s) || 1,
+        productId: c.p || null,
+        savedAt: c.at || Date.now(),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function clearResumeCookie() {
+    const secure = location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${RESUME_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
   }
 
   function writeStoredProgress(data) {
@@ -24,13 +89,14 @@
     } catch {
       /* quota */
     }
+    writeResumeCookie(data);
   }
 
   const state = {
     productId: params.get('product'),
     orderId: params.get('order'),
-    token: params.get('token'),
-    sessionId: params.get('session_id'),
+    token: pickUrlAccessToken(params),
+    sessionId: isPspReturn(params) ? null : params.get('session_id'),
     step: Number(params.get('step') || 1),
     product: null,
     order: null,
@@ -110,7 +176,7 @@
 
   function restoreProgress() {
     try {
-      const saved = readStoredProgress();
+      const saved = readStoredProgress() || readResumeCookie();
       if (!saved) return;
       if (!saved.savedAt || Date.now() - saved.savedAt > STORAGE_TTL_MS) {
         clearProgress();
@@ -147,8 +213,12 @@
         state.productId = saved.productId;
       }
       if (saved.orderId) state.orderId = state.orderId || saved.orderId;
-      if (saved.token) state.token = state.token || saved.token;
-      if (saved.sessionId) state.sessionId = state.sessionId || saved.sessionId;
+      if (isAccessToken(saved.token) && !isAccessToken(state.token)) {
+        state.token = saved.token;
+      } else if (saved.token) state.token = state.token || saved.token;
+      if (!isPspReturn(params) && saved.sessionId) {
+        state.sessionId = state.sessionId || saved.sessionId;
+      }
       if (saved.shortDraft) state.shortDraft = saved.shortDraft;
       if (saved.gymDraft) state.gymDraft = saved.gymDraft;
       if (saved.photoUploaded) state.photoUploaded = true;
@@ -181,6 +251,7 @@
     } catch {
       /* ignore */
     }
+    clearResumeCookie();
   }
 
   /** Après validation + signature : vide tout le cache tunnel et coupe les réécritures. */
@@ -214,8 +285,13 @@
     const qs = new URLSearchParams();
     if (state.productId) qs.set('product', state.productId);
     if (state.orderId) qs.set('order', state.orderId);
-    if (state.token) qs.set('token', state.token);
-    if (state.sessionId) qs.set('session_id', state.sessionId);
+    if (state.token) {
+      qs.set('token', state.token);
+      qs.set('bc_token', state.token);
+    }
+    if (state.sessionId && state.order?.payment?.method === 'stripe') {
+      qs.set('session_id', state.sessionId);
+    }
     qs.set('step', String(state.step));
     const path = '/inscription';
     const next = `${path}?${qs}`;
@@ -618,7 +694,7 @@
 
   async function loadOrder() {
     if (!state.orderId || !state.token) return false;
-    const qs = new URLSearchParams({ token: state.token });
+    const qs = new URLSearchParams({ token: state.token, bc_token: state.token });
     if (state.sessionId) qs.set('session_id', state.sessionId);
     const res = await fetch(`/api/orders/${state.orderId}?${qs}`);
     if (!res.ok) return false;
@@ -1928,6 +2004,7 @@
         body: JSON.stringify({
           order_id: state.orderId,
           token: state.token,
+          bc_token: state.token,
           payment_id: state.order?.payment?.payplug_payment_id,
         }),
       });
@@ -1974,7 +2051,9 @@
         body: JSON.stringify({
           order_id: state.orderId,
           token: state.token,
-          paypal_order_id: state.order?.payment?.paypal_order_id,
+          bc_token: state.token,
+          paypal_order_id:
+            pickPaypalOrderIdFromUrl(params) || state.order?.payment?.paypal_order_id,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -1996,6 +2075,7 @@
   }
 
   async function confirmStripeReturn() {
+    if (isPspReturn(params)) return false;
     const sessionId = params.get('session_id') || state.sessionId;
     if (!sessionId || stripeConfirmDone) return false;
     stripeConfirmDone = true;
@@ -2046,6 +2126,10 @@
     restoreProgress();
     await loadConfig();
 
+    if (state.orderId && state.token && !params.get('order')) {
+      syncUrl();
+    }
+
     if (params.get('cancelled')) {
       state.step = 4;
       state.sessionId = null;
@@ -2061,9 +2145,9 @@
       const loaded = await loadOrder();
       if (state.order?.payment?.status === 'paid') {
         state.step = Math.max(state.step, stepFromOrder(state.order));
-      } else if (orderRequiresPayment(state.order) && state.step > 4) {
+      } else if (loaded && orderRequiresPayment(state.order) && state.step > 4) {
         state.step = 4;
-      } else if (!loaded && state.step >= 4) {
+      } else if (!loaded && state.step >= 4 && !isPspReturn(params)) {
         setMsg(
           'Impossible de recharger votre dossier — vous pouvez tout de même payer si vos coordonnées sont enregistrées.',
           'err'
@@ -2112,6 +2196,10 @@
   }
 
   window.addEventListener('beforeunload', saveProgress);
+  window.addEventListener('pagehide', saveProgress);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') saveProgress();
+  });
 
   init();
 })();
