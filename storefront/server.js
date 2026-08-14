@@ -385,16 +385,26 @@ function findProduct(productId) {
 
 async function maybeNotifyOffre29Friend(order, friendInput) {
   if (!isOffre29Order(order)) return { skipped: true };
-  if (order.referral_notified_at) return { skipped: true, already: true };
+  if (order.referral_notify?.whatsapp?.sent) return { skipped: true, already: true };
   const friend = sanitizeFriend(friendInput || order.referral_friend);
   if (!friend) return { skipped: true };
   const referrer = order.customer_short || {};
   if (!referrer.first_name || !referrer.last_name) return { skipped: true };
   try {
-    const result = await notifyReferralFriend({ order, friend, referrer });
+    const result = await notifyReferralFriend({
+      order,
+      friend,
+      referrer,
+      skipEmail: Boolean(order.referral_notify?.email?.sent),
+    });
     order.referral_friend = friend;
-    order.referral_notified_at = new Date().toISOString();
-    order.referral_notify = result;
+    order.referral_notify = {
+      email: result.email?.sent || order.referral_notify?.email?.sent ? { sent: true } : result.email,
+      whatsapp: result.whatsapp,
+    };
+    if (order.referral_notify.whatsapp?.sent) {
+      order.referral_notified_at = new Date().toISOString();
+    }
     await saveOrderAsync(order);
     return result;
   } catch (err) {
@@ -2145,6 +2155,7 @@ function createApp() {
       await syncInscriptionClient(orderForSync).catch((err) =>
         logError('Sync client inscription (pay)', { order_id: order.order_id, error: err.message })
       );
+      await maybeNotifyOffre29Friend(order).catch(() => {});
 
       const short = order.customer_short;
       const rawBilling = String(req.body.billing_plan || '').trim().toLowerCase();

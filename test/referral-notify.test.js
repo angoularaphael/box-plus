@@ -7,6 +7,7 @@ const {
   isOffre29Order,
   buildReferralCopy,
 } = require('../storefront/lib/referral-notify');
+const { toWhatsAppPhone } = require('../storefront/lib/whatsapp-bot');
 
 describe('referral-notify', () => {
   it('keeps friend prenom + phone', () => {
@@ -30,5 +31,10 @@ describe('referral-notify', () => {
     assert.match(copy.text, /Hugo Durand/);
     assert.match(copy.text, /29 €/);
     assert.match(copy.text, /offre\/29/);
+  });
+
+  it('formats French mobile for WhatsApp', () => {
+    assert.equal(toWhatsAppPhone('06 12 34 56 78'), '33612345678');
+    assert.equal(toWhatsAppPhone('+33 6 12 34 56 78'), '33612345678');
   });
 });

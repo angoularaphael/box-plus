@@ -1,6 +1,7 @@
 'use strict';
 
 const DEFAULT_WHATSAPP_BOT_URL = 'http://us3.bot-hosting.net:21819';
+const DEFAULT_WHATSAPP_BOT_SECRET = 'bxp-boutique-wa-k8n4Qp2mL7xR';
 
 function whatsappBotUrl() {
   const raw =
@@ -16,7 +17,7 @@ function whatsappBotUrl() {
 }
 
 function botSecret() {
-  return String(process.env.WHATSAPP_BOT_SECRET || '').trim();
+  return String(process.env.WHATSAPP_BOT_SECRET || DEFAULT_WHATSAPP_BOT_SECRET || '').trim();
 }
 
 function botHeaders() {
@@ -29,7 +30,7 @@ function botHeaders() {
   return headers;
 }
 
-async function botFetch(path, { method = 'GET', body, timeoutMs = 9000 } = {}) {
+async function botFetch(path, { method = 'GET', body, timeoutMs = 18000 } = {}) {
   const base = whatsappBotUrl();
   if (!base) throw new Error('WHATSAPP_BOT_URL manquant');
   const controller = new AbortController();
@@ -123,12 +124,13 @@ async function sendWhatsAppMessage(phone, message) {
   return botFetch('/api/send-message', {
     method: 'POST',
     body: { phone: to, message },
-    timeoutMs: 9000,
+    timeoutMs: 18000,
   });
 }
 
 module.exports = {
   DEFAULT_WHATSAPP_BOT_URL,
+  DEFAULT_WHATSAPP_BOT_SECRET,
   whatsappBotUrl,
   toWhatsAppPhone,
   getWhatsAppStatus,

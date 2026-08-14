@@ -69,7 +69,7 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
-async function notifyReferralFriend({ order, friend, referrer }) {
+async function notifyReferralFriend({ order, friend, referrer, skipEmail = false }) {
   const copy = buildReferralCopy({
     friendPrenom: friend.prenom,
     referrerFirst: referrer.first_name,
@@ -77,7 +77,7 @@ async function notifyReferralFriend({ order, friend, referrer }) {
   });
   const out = { email: { sent: false }, whatsapp: { sent: false } };
 
-  if (friend.email && isConfigured()) {
+  if (!skipEmail && friend.email && isConfigured()) {
     try {
       const result = await sendEmailViaBrevo({
         to: friend.email,
@@ -90,6 +90,8 @@ async function notifyReferralFriend({ order, friend, referrer }) {
       out.email = { sent: false, error: err.message };
       logWarn('Email parrainage ami', { error: err.message, order_id: order.order_id });
     }
+  } else if (skipEmail) {
+    out.email = { sent: true, skipped: true };
   }
 
   try {
