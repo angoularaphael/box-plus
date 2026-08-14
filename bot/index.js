@@ -988,13 +988,13 @@ async function runLoop(once = false) {
     }
 
     const pending = listPending();
+    if (Date.now() - lastNudgePollAt >= NUDGE_POLL_MS) {
+      lastNudgePollAt = Date.now();
+      await maybeTriggerInscriptionNudges();
+    }
     if (pending.length === 0) {
       if (once) break;
       await maybeKeepSessionAlive();
-      if (Date.now() - lastNudgePollAt >= NUDGE_POLL_MS) {
-        lastNudgePollAt = Date.now();
-        await maybeTriggerInscriptionNudges();
-      }
       await sleep(POLL_MS);
       continue;
     }

@@ -30,6 +30,27 @@ test('relance 30 min : due seulement si payé, incomplet, deadline dépassée', 
     false
   );
   assert.equal(
+    isNudgeDue(
+      {
+        ...base,
+        funnel: { complete_deadline_at: '2026-08-13T17:50:00.000Z', nudge_queued_at: '2026-08-13T17:59:00.000Z' },
+      },
+      now
+    ),
+    false
+  );
+  assert.equal(
+    isNudgeDue(
+      {
+        ...base,
+        funnel: { complete_deadline_at: '2026-08-13T17:50:00.000Z', nudge_queued_at: '2026-08-13T17:50:00.000Z' },
+      },
+      now
+    ),
+    true
+  );
+  assert.equal(isNudgeDue(base, Date.parse('2026-08-13T17:49:00.000Z'), { force: true }), true);
+  assert.equal(
     isNudgeDue({ ...base, payment: { status: 'pending', paid_at: paid } }, now),
     false
   );

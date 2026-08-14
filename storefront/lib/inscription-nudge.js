@@ -1,7 +1,6 @@
 'use strict';
 
 const { STEPS, listAllOrdersAsync, loadOrderAsync, saveOrderAsync } = require('./order-lifecycle');
-const { forwardJobToBot } = require('../../lib/bot-forward');
 const { getStoreUrl } = require('../../lib/app-urls');
 const { logInfo, logWarn } = require('../../lib/logger');
 
@@ -26,21 +25,77 @@ function isPaidIncomplete(order) {
   return true;
 }
 
-function isNudgeDue(order, now = Date.now()) {
+const QUEUE_RETRY_MS = 3 * 60 * 1000;
+
+function isNudgeDue(order, now = Date.now(), { force = false } = {}) {
   if (!isPaidIncomplete(order)) return false;
-  if (order.funnel?.nudge_sent_at || order.funnel?.nudge_queued_at) return false;
+  if (order.funnel?.nudge_sent_at) return false;
+  const queuedAt = Date.parse(order.funnel?.nudge_queued_at || '');
+  if (Number.isFinite(queuedAt) && now - queuedAt < QUEUE_RETRY_MS) return false;
   const paidAt = Date.parse(order.payment?.paid_at || '');
   if (!Number.isFinite(paidAt)) return false;
   const hasDeadline = Boolean(order.funnel?.complete_deadline_at);
   if (!hasDeadline && now - paidAt > LEGACY_MAX_AGE_MS) return false;
+  if (force) return true;
   const deadline = Date.parse(completeDeadlineAt(order) || '');
   return Number.isFinite(deadline) && now >= deadline;
 }
 
-function resumeUrl(order) {
-  const step = Math.max(Number(order.step || STEPS.DOSSIER), STEPS.IBAN);
-  const token = order.access_token || '';
-  return `${getStoreUrl()}/inscription?order=${encodeURIComponent(order.order_id)}&token=${encodeURIComponent(token)}&step=${step}`;
+const STEP_LABELS = {
+  1: 'Offre',
+  2: 'Salle',
+  3: 'Identité',
+  4: 'Paiement',
+  5: 'IBAN',
+  6: 'Dossier',
+  7: 'Signature',
+  8: 'Confirmé',
+};
+
+function isInscriptionTunnel(order) {
+  if (!order || order.action) return false;
+  const id = String(order.order_id || '');
+  if (/^(COACH|CHANGE|VERIFY)-/i.test(id)) return false;
+  return Boolean(order.access_token);
+}
+
+function resumeStep(order, { minStep, fallbackStep } = {}) {
+  const raw = Number(order?.step);
+  let step = Number.isFinite(raw) && raw > 0 ? raw : fallbackStep || STEPS.GYM;
+  if (order?.signature?.signed_at || step >= STEPS.CONFIRMED) step = STEPS.CONFIRMED;
+  if (minStep) step = Math.max(step, minStep);
+  return Math.min(Math.max(step, STEPS.OFFER), STEPS.CONFIRMED);
+}
+
+function resumeUrl(order, opts) {
+  const step = resumeStep(order, opts);
+  const qs = new URLSearchParams();
+  if (order?.product_id) qs.set('product', String(order.product_id));
+  qs.set('order', String(order?.order_id || ''));
+  const token = String(order?.access_token || '');
+  if (token) {
+    qs.set('token', token);
+    qs.set('bc_token', token);
+  }
+  qs.set('step', String(step));
+  return `${getStoreUrl()}/inscription?${qs}`;
+}
+
+function describeResume(order) {
+  const step = resumeStep(order);
+  const completed = step >= STEPS.CONFIRMED || Boolean(order?.signature?.signed_at);
+  const short = order?.customer_short || {};
+  return {
+    order_id: order.order_id,
+    url: resumeUrl(order),
+    step,
+    step_label: STEP_LABELS[step] || String(step),
+    completed,
+    can_resume: isInscriptionTunnel(order) && !completed,
+    email: customerEmail(order),
+    name: [short.first_name, short.last_name].filter(Boolean).join(' ').trim(),
+    product: order.product_snapshot?.display_name || order.product_snapshot?.name || '',
+  };
 }
 
 function customerEmail(order) {
@@ -61,7 +116,7 @@ function nudgeEmailSubject() {
 
 function nudgeEmailHtml(order) {
   const first = escapeHtml(order.customer_short?.first_name || '');
-  const url = resumeUrl(order);
+  const url = resumeUrl(order, { minStep: STEPS.IBAN, fallbackStep: STEPS.DOSSIER });
   return `<!DOCTYPE html>
 <html lang="fr">
 <head><meta charset="UTF-8"><title>Round non terminé</title></head>
@@ -91,7 +146,7 @@ function summarizeNudge(order) {
     email: customerEmail(order),
     first_name: order.customer_short?.first_name || '',
     last_name: order.customer_short?.last_name || '',
-    resume_url: resumeUrl(order),
+    resume_url: resumeUrl(order, { minStep: STEPS.IBAN, fallbackStep: STEPS.DOSSIER }),
     paid_at: order.payment?.paid_at || null,
     deadline_at: completeDeadlineAt(order),
     step: order.step,
@@ -127,48 +182,69 @@ async function markNudgeSent(orderId) {
   return saveOrderAsync(order);
 }
 
-async function dispatchOneNudge(orderId) {
+async function sendNudgeEmail(order) {
+  const item = summarizeNudge(order);
+  if (!item.email || /@boxplus-test\.local$/i.test(item.email)) {
+    return { sent: false, skipped: true, reason: 'no_email_or_test' };
+  }
+  const { sendEmailViaBrevo } = require('./brevo-send');
+  const result = await sendEmailViaBrevo({
+    to: item.email,
+    subject: item.email_subject,
+    html: item.email_html,
+  });
+  if (!result) return { sent: false, reason: 'brevo_not_configured' };
+  return { sent: true, via: result.via || 'brevo' };
+}
+
+async function dispatchOneNudge(orderId, { force = false } = {}) {
   const order = await loadOrderAsync(orderId);
   if (!order) return { ok: false, error: 'not_found' };
-  if (!isNudgeDue(order)) return { ok: true, skipped: true };
-  const [result] = (await dispatchDueNudges()).results.filter((r) => r.order_id === orderId);
-  return { ok: true, ...(result || { dispatched: true }) };
+  if (!isNudgeDue(order, Date.now(), { force })) {
+    return { ok: true, skipped: true, reason: order.funnel?.nudge_sent_at ? 'already_sent' : 'not_due' };
+  }
+  return sendAndMarkNudge(order);
+}
+
+async function sendAndMarkNudge(order) {
+  const email = customerEmail(order);
+  if (!email || /@boxplus-test\.local$/i.test(email)) {
+    await markNudgeSent(order.order_id);
+    return { ok: true, skipped: true, reason: 'no_email_or_test' };
+  }
+  await markNudgeQueued(order.order_id);
+  try {
+    const mailed = await sendNudgeEmail(order);
+    if (mailed.sent) {
+      await markNudgeSent(order.order_id);
+      logInfo('Relance inscription envoyée', { order_id: order.order_id, via: mailed.via });
+      return { ok: true, sent: true };
+    }
+    logWarn('Relance inscription — email non envoyé', {
+      order_id: order.order_id,
+      reason: mailed.reason || mailed.skipped,
+    });
+    return { ok: false, error: mailed.reason || 'email_not_sent' };
+  } catch (err) {
+    logWarn('Relance inscription — envoi échoué', {
+      order_id: order.order_id,
+      error: err.message,
+    });
+    return { ok: false, error: err.message };
+  }
 }
 
 async function dispatchDueNudges() {
   const due = await listDueNudges();
   const results = [];
   for (const item of due) {
-    if (!item.email || /@boxplus-test\.local$/i.test(item.email)) {
-      await markNudgeSent(item.order_id);
-      results.push({ order_id: item.order_id, skipped: true, reason: 'no_email_or_test' });
+    const order = await loadOrderAsync(item.order_id);
+    if (!order) {
+      results.push({ order_id: item.order_id, ok: false, error: 'not_found' });
       continue;
     }
-    try {
-      await markNudgeQueued(item.order_id);
-      const forwarded = await forwardJobToBot({
-        action: 'inscription_nudge',
-        order_id: item.order_id,
-        gym: item.gym,
-        customer: {
-          first_name: item.first_name,
-          last_name: item.last_name,
-          email: item.email,
-        },
-        email: item.email,
-        resume_url: item.resume_url,
-        email_subject: item.email_subject,
-        email_html: item.email_html,
-        product_name: item.product_name,
-      });
-      results.push({ order_id: item.order_id, forwarded: forwarded.forwarded !== false });
-    } catch (err) {
-      logWarn('Relance inscription — envoi bot échoué', {
-        order_id: item.order_id,
-        error: err.message,
-      });
-      results.push({ order_id: item.order_id, ok: false, error: err.message });
-    }
+    const out = await sendAndMarkNudge(order);
+    results.push({ order_id: item.order_id, ...out });
   }
   if (results.length) {
     logInfo('Relances inscription dispatchées', { count: results.length });
@@ -183,6 +259,10 @@ module.exports = {
   isPaidIncomplete,
   isNudgeDue,
   resumeUrl,
+  resumeStep,
+  describeResume,
+  isInscriptionTunnel,
+  STEP_LABELS,
   nudgeEmailSubject,
   nudgeEmailHtml,
   listDueNudges,

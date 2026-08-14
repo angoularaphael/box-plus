@@ -1216,8 +1216,12 @@
   function roundClockHtml() {
     if (state.order?.payment?.status !== 'paid') return '';
     const paidAt = Date.parse(state.order?.payment?.paid_at || '');
-    if (!Number.isFinite(paidAt)) return '';
-    return `<aside class="round-clock" id="roundClock" data-paid-at="${paidAt}" role="timer" aria-live="polite">
+    const deadlineAt = Date.parse(state.order?.funnel?.complete_deadline_at || '');
+    const start = Number.isFinite(deadlineAt)
+      ? deadlineAt - 30 * 60 * 1000
+      : paidAt;
+    if (!Number.isFinite(start)) return '';
+    return `<aside class="round-clock" id="roundClock" data-paid-at="${start}" role="timer" aria-live="polite">
       <span class="round-clock__kicker">Round de 30 min</span>
       <span class="round-clock__time" id="roundClockTime">30:00</span>
       <p class="round-clock__copy" id="roundClockCopy">Le gong a sonné : tu as payé, mais tu n’es pas encore sur le ring. Finis dossier + signature avant la fin du round — sinon le club ne te verra pas inscrit.</p>
@@ -1231,7 +1235,28 @@
     if (!root || !timeEl) return;
     const paidAt = Number(root.getAttribute('data-paid-at') || 0);
     const limitMs = 30 * 60 * 1000;
-    let nudged = false;
+    let nudgeTries = 0;
+    const fireNudge = () => {
+      if (!state.orderId || !state.token || nudgeTries >= 6) return;
+      nudgeTries += 1;
+      fetch(`/api/orders/${encodeURIComponent(state.orderId)}/nudge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: state.token,
+          bc_token: state.token,
+          session_id: state.sessionId || undefined,
+        }),
+      })
+        .then((res) => res.json().catch(() => ({})))
+        .then((data) => {
+          if (data?.sent || data?.skipped) return;
+          window.setTimeout(fireNudge, 8000);
+        })
+        .catch(() => {
+          window.setTimeout(fireNudge, 8000);
+        });
+    };
     const tick = () => {
       const left = Math.max(0, paidAt + limitMs - Date.now());
       const totalSec = Math.floor(left / 1000);
@@ -1245,14 +1270,7 @@
           copyEl.textContent =
             'Gong ! Le round est clos. On t’envoie un rappel — reviens signer pour être sur la feuille. Sans ça, tu n’es pas inscrit en salle.';
         }
-        if (!nudged && state.orderId && state.token) {
-          nudged = true;
-          fetch(`/api/orders/${encodeURIComponent(state.orderId)}/nudge`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: state.token, session_id: state.sessionId || undefined }),
-          }).catch(() => {});
-        }
+        if (nudgeTries === 0) fireNudge();
       }
     };
     tick();

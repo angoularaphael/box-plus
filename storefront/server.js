@@ -1442,7 +1442,14 @@ function createApp() {
     if (!isAuthorizedCron(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const { runCatalogSyncIfNeeded } = require('./lib/auto-sync');
     const result = await runCatalogSyncIfNeeded({ force: true });
-    res.json({ ok: result.ok !== false, ...result });
+    let nudges = { count: 0 };
+    try {
+      const { dispatchDueNudges } = require('./lib/inscription-nudge');
+      nudges = await dispatchDueNudges();
+    } catch (err) {
+      logWarn('Relances inscription (cron catalogue)', { error: err.message });
+    }
+    res.json({ ok: result.ok !== false, ...result, nudges: { count: nudges.count || 0 } });
   });
 
   app.get('/api/cron/inscription-nudges', async (req, res) => {
@@ -1562,6 +1569,32 @@ function createApp() {
       .map(toAdminSummary)
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
     res.json({ ok: true, orders, count: orders.length });
+  });
+
+  app.get('/api/admin/orders/:id/resume-link', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const order = await loadOrderAsync(String(req.params.id || '').trim());
+    if (!order) {
+      return res.status(404).json({ ok: false, error: 'not_found', message: 'Référence introuvable' });
+    }
+    const { describeResume } = require('./lib/inscription-nudge');
+    if (order.action || !order.access_token) {
+      return res.status(400).json({
+        ok: false,
+        error: order.action ? 'not_inscription' : 'no_token',
+        message: order.action
+          ? 'Cette référence n’est pas une inscription boutique'
+          : 'Pas de jeton de reprise pour cette référence',
+      });
+    }
+    const info = describeResume(order);
+    res.json({
+      ok: true,
+      ...info,
+      message: info.completed
+        ? 'Inscription déjà terminée — lien vers la confirmation'
+        : `Lien de reprise — étape ${info.step_label}`,
+    });
   });
 
   app.get('/api/admin/orders/:id', async (req, res) => {
@@ -1916,19 +1949,20 @@ function createApp() {
   });
 
   app.post('/api/orders/:id/nudge', async (req, res) => {
+    const token = requestAccessToken(req);
     const order = await loadOrderOrRecover(req.params.id, {
-      token: req.body.token || req.query.token,
+      token,
       sessionId: req.body.session_id || req.query.session_id,
       stripe,
       findProduct,
     });
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
-    if (!verifyAccess(order, req.body.token || req.query.token)) {
+    if (!verifyAccess(order, token)) {
       return res.status(403).json({ ok: false, error: 'forbidden' });
     }
     try {
       const { dispatchOneNudge } = require('./lib/inscription-nudge');
-      const result = await dispatchOneNudge(order.order_id);
+      const result = await dispatchOneNudge(order.order_id, { force: true });
       res.json(result);
     } catch (err) {
       logError('Relance inscription (client)', { order_id: order.order_id, error: err.message });
