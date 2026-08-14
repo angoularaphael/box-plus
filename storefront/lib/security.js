@@ -166,7 +166,8 @@ function applySecurityHeaders(req, res, next) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('X-DNS-Prefetch-Control', 'off');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // camera=(self) : photo adhérent via getUserMedia sur /inscription
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
   if (isProductionRuntime()) {
     res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
   }
