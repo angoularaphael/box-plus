@@ -50,7 +50,7 @@
   }
 
   function showTab(name) {
-    ['tabOffers', 'tabMateriel', 'tabContracts', 'tabCoachings', 'tabStats'].forEach((id) => {
+    ['tabOffers', 'tabMateriel', 'tabContracts', 'tabCoachings', 'tabStats', 'tabWhatsapp'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.hidden = id !== `tab${name.charAt(0).toUpperCase()}${name.slice(1)}`;
     });
@@ -61,6 +61,7 @@
     if (name === 'coachings') loadCoachings();
     if (name === 'materiel') loadMateriel();
     if (name === 'stats') initStats();
+    if (name === 'whatsapp') loadWhatsApp(true);
     if (location.hash !== `#${name}`) {
       history.replaceState(null, '', `/admin/#${name}`);
     }
@@ -1246,6 +1247,66 @@
   document.getElementById('loadStatsBtn')?.addEventListener('click', () => {
     statsLoaded = false;
     loadStats();
+  });
+
+  let waTimer = null;
+  async function loadWhatsApp(withQr = false) {
+    const msg = document.getElementById('waMsg');
+    const badge = document.getElementById('waBadge');
+    const host = document.getElementById('waHost');
+    const wrap = document.getElementById('waQrWrap');
+    if (msg) msg.textContent = 'Chargement…';
+    try {
+      const res = await fetch(`/api/admin/whatsapp${withQr ? '?qr=1' : ''}`, { credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'unauthorized');
+      if (host) host.textContent = data.host ? `Bot : ${data.host}` : '';
+      if (badge) {
+        badge.textContent = data.connected ? 'Connecté' : data.connecting ? 'QR en cours' : data.reachable ? 'Déconnecté' : 'Hors ligne';
+      }
+      if (wrap) {
+        if (data.connected) {
+          wrap.innerHTML = '<p class="admin-section-desc">WhatsApp est connecté. Les messages parrainage Offre Duo partent depuis ce numéro.</p>';
+          if (waTimer) { clearInterval(waTimer); waTimer = null; }
+        } else if (data.qr) {
+          wrap.innerHTML = `<img alt="QR WhatsApp" src="${data.qr}" style="width:min(280px,100%);border-radius:12px;background:#fff;padding:8px" />`;
+          if (!waTimer) waTimer = setInterval(() => loadWhatsApp(true), 4000);
+        } else {
+          wrap.innerHTML = `<p class="admin-section-desc">${escapeHtml(data.error || 'Clique « Afficher le QR » puis scanne avec WhatsApp → Appareils connectés.')}</p>`;
+        }
+      }
+      if (msg) {
+        msg.textContent = data.connected ? 'Prêt.' : '';
+        msg.className = 'form-msg' + (data.connected ? '' : data.error ? ' err' : '');
+      }
+    } catch (err) {
+      if (msg) { msg.textContent = err.message; msg.className = 'form-msg err'; }
+    }
+  }
+
+  document.getElementById('waRefreshBtn')?.addEventListener('click', () => loadWhatsApp(true));
+  document.getElementById('waStartBtn')?.addEventListener('click', async () => {
+    const msg = document.getElementById('waMsg');
+    if (msg) msg.textContent = 'Démarrage…';
+    try {
+      await fetch('/api/admin/whatsapp?action=start', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method: 'qr' }),
+      });
+      if (waTimer) clearInterval(waTimer);
+      waTimer = setInterval(() => loadWhatsApp(true), 4000);
+      await loadWhatsApp(true);
+    } catch (err) {
+      if (msg) { msg.textContent = err.message; msg.className = 'form-msg err'; }
+    }
+  });
+  document.getElementById('waLogoutBtn')?.addEventListener('click', async () => {
+    try {
+      await fetch('/api/admin/whatsapp?action=logout', { method: 'POST', credentials: 'include' });
+    } catch { /* ignore */ }
+    await loadWhatsApp(false);
   });
 
   document.getElementById('logoutBtn').onclick = async () => {

@@ -121,6 +121,17 @@
         }
 
         if (isFriendLead) {
+          try {
+            sessionStorage.setItem(
+              'boxplus_referral_friend',
+              JSON.stringify({
+                prenom: payload.prenom,
+                nom: payload.nom,
+                telephone: payload.telephone,
+                email: payload.email || '',
+              })
+            );
+          } catch (e) { /* ignore */ }
           await runFriendCelebrate();
           window.location.href = inscriptionUrl;
           return;

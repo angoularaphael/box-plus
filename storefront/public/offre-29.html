@@ -179,6 +179,8 @@
         <input id="nom29" name="nom" autocomplete="off" />
         <label for="tel29">Téléphone de ton ami ou amie *</label>
         <input id="tel29" name="telephone" type="tel" required autocomplete="off" inputmode="tel" />
+        <label for="email29">Email de ton ami ou amie</label>
+        <input id="email29" name="email" type="email" autocomplete="off" placeholder="optionnel — pour lui envoyer l’offre" />
         <p id="offerLeadError" class="offer-lead-error" role="alert"></p>
         <p id="offerLeadTarif" class="offer-lead-tarif" aria-live="polite">Tarif actuel&nbsp;: <strong>44,99&nbsp;€</strong></p>
         <div class="offer-lead-modal__actions">
@@ -203,7 +205,7 @@
   <script src="/js/offer-sheet-motion.js"></script>
   <script src="/js/offers.js?v=15"></script>
   <script src="/js/faq.js"></script>
-  <script src="/js/offer-funnel.js"></script>
+  <script src="/js/offer-funnel.js?v=2"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       if (window.BCTrack) window.BCTrack.track('funnel_view', { tunnel: 'offre_29' });

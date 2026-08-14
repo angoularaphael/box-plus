@@ -64,6 +64,7 @@
     { id: "inscriptions", label: "Inscriptions", ico: "M4 5h16M4 12h16M4 19h10", onglet: "contracts" },
     { id: "coachings", label: "Coachings", ico: "M12 6v6l4 2M12 22a10 10 0 110-20 10 10 0 010 20z", onglet: "coachings" },
     { id: "ventes", label: "Ventes", ico: "M4 19V9m5 10V5m5 14v-7m5 7V8", onglet: "stats" },
+    { id: "whatsapp", label: "WhatsApp", ico: "M21 11.5a8.4 8.4 0 01-9.5 8.4L6 21l1.2-3.4A8.4 8.4 0 1121 11.5z", onglet: "whatsapp" },
     { id: "catalogue", label: "Catalogue", ico: "M4 6h16v12H4zM4 10h16", onglet: "offers" },
     { id: "reglages", label: "Réglages", ico: "M12 15a3 3 0 100-6 3 3 0 000 6zM4 12h2m12 0h2M12 4v2m0 12v2" },
   ];
@@ -140,7 +141,7 @@
       const vieux = $(`.admin-tab[data-tab="${sec.onglet}"]`);
       if (vieux) vieux.click();
     } else {
-      ["tabOffers", "tabMateriel", "tabContracts", "tabCoachings", "tabStats"].forEach((x) => {
+      ["tabOffers", "tabMateriel", "tabContracts", "tabCoachings", "tabStats", "tabWhatsapp"].forEach((x) => {
         const el = document.getElementById(x);
         if (el) el.hidden = true;
       });
@@ -679,7 +680,7 @@
     /* La route d'arrivée : on respecte le fragment s'il en porte un
        (les anciens liens /admin/#contracts doivent continuer de marcher). */
     const frag = (location.hash || "").replace("#", "");
-    const vieuxVersNeuf = { contracts: "inscriptions", stats: "ventes", offers: "catalogue", materiel: "catalogue", coachings: "coachings" };
+    const vieuxVersNeuf = { contracts: "inscriptions", stats: "ventes", offers: "catalogue", materiel: "catalogue", coachings: "coachings", whatsapp: "whatsapp" };
     const destination = SECTIONS.some((s) => s.id === frag) ? frag : (vieuxVersNeuf[frag] || "aujourdhui");
     aller(destination);
     /* La pastille d'alerte ne doit pas dependre de la page d'arrivee : on

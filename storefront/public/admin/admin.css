@@ -675,3 +675,21 @@ button.pan-kpi:hover {
 }
 .pan-pagination__b { display: flex; gap: 8px; }
 .pan-pagination__b button[disabled] { opacity: .42; cursor: not-allowed; }
+
+.wa-pair {
+  display: grid;
+  gap: 16px;
+  margin-top: 12px;
+}
+.wa-pair__qr {
+  min-height: 160px;
+  padding: 16px;
+  border: 1px dashed var(--bc-border, #e4e7ed);
+  border-radius: 12px;
+  background: #fff;
+}
+.wa-pair__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

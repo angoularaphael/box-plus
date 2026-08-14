@@ -700,6 +700,23 @@
     return (data.errors || [data.error]).filter(Boolean).join(', ');
   }
 
+  function readReferralFriend() {
+    try {
+      const raw = sessionStorage.getItem('boxplus_referral_friend');
+      if (!raw) return null;
+      const friend = JSON.parse(raw);
+      if (!friend || !friend.prenom || !friend.telephone) return null;
+      return friend;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function referralFriendPayload() {
+    const friend = readReferralFriend();
+    return friend ? { referral_friend: friend } : {};
+  }
+
   function payRequestBody(extra = {}) {
     const short = state.order?.customer_short || state.shortDraft;
     return {
@@ -1356,7 +1373,7 @@
       const res = await fetch('/api/orders/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...body, product_id: state.productId }),
+          body: JSON.stringify({ ...body, product_id: state.productId, ...referralFriendPayload() }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -1369,7 +1386,7 @@
         const res = await fetch(`/api/orders/${state.orderId}/identity`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ ...body, ...referralFriendPayload() }),
         });
         const data = await res.json();
         if (!data.ok) {

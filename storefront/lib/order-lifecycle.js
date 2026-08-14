@@ -64,7 +64,7 @@ function productSnapshot(product) {
   };
 }
 
-function createDraft({ product_id, product, customer_short, gym }) {
+function createDraft({ product_id, product, customer_short, gym, referral_friend }) {
   initDirs();
   const order_id = generateOrderId();
   const access_token = generateAccessToken();
@@ -76,6 +76,7 @@ function createDraft({ product_id, product, customer_short, gym }) {
     product_snapshot: productSnapshot(product),
     customer_short: customer_short || null,
     customer_full: gym ? { gym } : null,
+    referral_friend: referral_friend || null,
     payment: { status: 'pending' },
     signature: null,
     documents: {},
@@ -87,10 +88,17 @@ function createDraft({ product_id, product, customer_short, gym }) {
   return order;
 }
 
-async function createDraftAsync({ product_id, product, customer_short, gym }) {
-  const order = createDraft({ product_id, product, customer_short, gym });
+async function createDraftAsync({ product_id, product, customer_short, gym, referral_friend }) {
+  const order = createDraft({ product_id, product, customer_short, gym, referral_friend });
   await persistence.saveOrderAsync(order);
   return order;
+}
+
+async function attachReferralFriendAsync(orderId, friend) {
+  const order = await loadOrderAsync(orderId);
+  if (!order || !friend) return order;
+  order.referral_friend = friend;
+  return saveOrderAsync(order);
 }
 
 /** Lecture locale (fs) — même instance serverless ou dev. */
@@ -434,6 +442,7 @@ module.exports = {
   UPLOADS_DIR,
   createDraft,
   createDraftAsync,
+  attachReferralFriendAsync,
   loadOrder,
   loadOrderAsync,
   saveOrder,

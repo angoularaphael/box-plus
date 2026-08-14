@@ -131,8 +131,10 @@ const {
   STEPS,
   createDraft,
   createDraftAsync,
+  attachReferralFriendAsync,
   loadOrder,
   loadOrderAsync,
+  saveOrderAsync,
   verifyAccess,
   updateShortProfile,
   updateGymAsync,
@@ -158,6 +160,17 @@ const {
 } = require('./lib/invoice-pdf');
 const { upsertClientFromInscription, upsertMaterielClient } = require('./lib/client-sync');
 const { insertTunnelLead, tunnelFromProductId } = require('./lib/tunnel-lead');
+const {
+  sanitizeFriend,
+  isOffre29Order,
+  notifyReferralFriend,
+} = require('./lib/referral-notify');
+const {
+  getWhatsAppStatus,
+  startWhatsAppBot,
+  stopWhatsAppBot,
+  logoutWhatsAppBot,
+} = require('./lib/whatsapp-bot');
 
 function streamOrderFacturePdf(order, res) {
   const storedDossier = order.documents?.dossier_pdf;
@@ -368,6 +381,26 @@ if (STRIPE_SECRET) {
 
 function findProduct(productId) {
   return findEnrichedProduct(productId) || null;
+}
+
+async function maybeNotifyOffre29Friend(order, friendInput) {
+  if (!isOffre29Order(order)) return { skipped: true };
+  if (order.referral_notified_at) return { skipped: true, already: true };
+  const friend = sanitizeFriend(friendInput || order.referral_friend);
+  if (!friend) return { skipped: true };
+  const referrer = order.customer_short || {};
+  if (!referrer.first_name || !referrer.last_name) return { skipped: true };
+  try {
+    const result = await notifyReferralFriend({ order, friend, referrer });
+    order.referral_friend = friend;
+    order.referral_notified_at = new Date().toISOString();
+    order.referral_notify = result;
+    await saveOrderAsync(order);
+    return result;
+  } catch (err) {
+    logWarn('Notif ami offre 29', { order_id: order.order_id, error: err.message });
+    return { skipped: false, error: err.message };
+  }
 }
 
 async function dispatchLifecycleOrder(order) {
@@ -942,6 +975,38 @@ function createApp() {
       res.json({ ok: true, reglage: neuf, ventes_en_ligne: ventes, affiche: neuf.restantes });
     } catch (err) {
       res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/admin/whatsapp', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const includeQr = String(req.query.qr || '') === '1';
+    const status = await getWhatsAppStatus({ includeQr });
+    res.json({ ok: true, ...status });
+  });
+
+  app.post('/api/admin/whatsapp', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const action = String(req.query.action || req.body?.action || '').toLowerCase();
+    try {
+      if (action === 'start') {
+        const result = await startWhatsAppBot(req.body || {});
+        return res.json({ ok: true, action, ...result });
+      }
+      if (action === 'stop') {
+        const result = await stopWhatsAppBot();
+        return res.json({ ok: true, action, ...result });
+      }
+      if (action === 'logout') {
+        const result = await logoutWhatsAppBot();
+        return res.json({ ok: true, action, ...result });
+      }
+      return res.status(400).json({ ok: false, error: 'action inconnue' });
+    } catch (err) {
+      if (action === 'start' || action === 'stop') {
+        return res.json({ ok: true, action, pending: true, message: err.message });
+      }
+      res.status(502).json({ ok: false, error: err.message });
     }
   });
 
@@ -1526,6 +1591,7 @@ function createApp() {
         product,
         customer_short,
         gym: gym || undefined,
+        referral_friend: sanitizeFriend(rest.referral_friend || rest.friend) || undefined,
       });
       if (customer_short) {
         await syncInscriptionClient(order).catch((err) =>
@@ -1534,6 +1600,7 @@ function createApp() {
         await maybeRecordTunnelLeadFromOrder(order).catch((err) =>
           logError('Lead tunnel (draft)', { order_id: order.order_id, error: err.message })
         );
+        await maybeNotifyOffre29Friend(order, rest.referral_friend || rest.friend).catch(() => {});
       }
       res.json({
         ok: true,
@@ -1596,10 +1663,13 @@ function createApp() {
         return res.status(400).json({ ok: false, errors: ['Choisissez d\'abord votre salle'] });
       }
       if (req.body.gym) await updateGymAsync(order.order_id, req.body.gym);
+      const friend = sanitizeFriend(req.body.referral_friend || req.body.friend);
+      if (friend) await attachReferralFriendAsync(order.order_id, friend);
       const updated = await updateShortProfile(order.order_id, short);
       await syncInscriptionClient(updated).catch((err) =>
         logError('Sync client inscription (identity)', { order_id: order.order_id, error: err.message })
       );
+      await maybeNotifyOffre29Friend(updated, friend).catch(() => {});
       res.json({ ok: true, step: updated.step });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
