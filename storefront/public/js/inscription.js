@@ -1521,6 +1521,10 @@
     stepContent.innerHTML = `
       ${roundClockHtml()}
       <h1>Votre dossier</h1>
+      <div class="notice-important" style="margin:0 0 20px">
+        <strong>Anciens et nouveaux adhérents</strong>
+        <p>Allez jusqu’au bout des étapes : ce dossier, puis la signature. Tant que ce n’est pas terminé, votre abonnement ne prend pas effet — que vous soyez déjà membre ou que vous rejoigniez Boxing Center, le club ne vous inscrit pas en salle.</p>
+      </div>
       <form id="fullForm" class="form-grid">
         <input type="hidden" name="token" value="${state.token}" />
         ${state.sessionId ? `<input type="hidden" name="session_id" value="${state.sessionId}" />` : ''}
