@@ -1161,6 +1161,34 @@
   min-width: 200px;
 }
 
+.resume-link-box {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--bc-bg);
+  border: 1px solid var(--bc-border);
+  border-radius: 10px;
+}
+.resume-link-box p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.resume-link-box__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.resume-link-box__row input {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--bc-border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 .badge {
   display: inline-block;
   padding: 2px 8px;

@@ -437,6 +437,12 @@ function toAdminSummary(order) {
     email_sent: Boolean(order.email_sent_at),
     created_at: order.created_at,
     updated_at: order.updated_at,
+    can_resume:
+      !isAction &&
+      !order.signature?.signed_at &&
+      Number(order.step || 0) < STEPS.CONFIRMED &&
+      Boolean(order.access_token) &&
+      !/^(COACH|CHANGE|VERIFY)-/i.test(String(order.order_id || '')),
   };
 }
 

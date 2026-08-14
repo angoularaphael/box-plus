@@ -49,6 +49,105 @@
     return h;
   }
 
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;left:-9999px;top:0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        return document.execCommand('copy');
+      } finally {
+        ta.remove();
+      }
+    }
+  }
+
+  async function fetchResumeLink(orderId) {
+    const id = String(orderId || '').trim();
+    const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}/resume-link`, {
+      credentials: 'include',
+      headers: headers(false),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      throw new Error(data.message || data.error || 'Impossible de générer le lien');
+    }
+    return data;
+  }
+
+  function showResumeBox(data) {
+    const box = document.getElementById('resumeLinkBox');
+    if (!box) return;
+    const first = String(data.name || '').split(/\s+/)[0] || '';
+    const mailBody = `Bonjour${first ? ` ${first}` : ''},\n\nVoici le lien pour reprendre votre inscription Boxing Center exactement où vous vous êtes arrêté :\n${data.url}\n\nBoxing Center`;
+    const mailHref =
+      data.email && data.email !== '—'
+        ? `mailto:${encodeURIComponent(data.email)}?subject=${encodeURIComponent('Votre inscription Boxing Center')}&body=${encodeURIComponent(mailBody)}`
+        : '';
+    box.hidden = false;
+    box.innerHTML = `
+      <p><strong>${escapeHtml(data.message || 'Lien de reprise')}</strong>${data.name ? ` — ${escapeHtml(data.name)}` : ''}</p>
+      <div class="resume-link-box__row">
+        <input type="text" readonly value="${escapeHtml(data.url)}" id="resumeLinkUrl" />
+        <button type="button" class="btn sm" id="resumeCopyBtn">Copier</button>
+        ${mailHref ? `<a class="btn sm secondary" href="${escapeHtml(mailHref)}">Envoyer par e-mail</a>` : ''}
+      </div>`;
+    const input = document.getElementById('resumeLinkUrl');
+    input?.focus();
+    input?.select();
+    document.getElementById('resumeCopyBtn')?.addEventListener('click', async () => {
+      const ok = await copyText(data.url);
+      const btn = document.getElementById('resumeCopyBtn');
+      if (btn) btn.textContent = ok ? 'Copié' : 'Sélectionnez le lien';
+    });
+  }
+
+  async function generateResumeLink(orderId, btn) {
+    const msg = document.getElementById('ordersMsg');
+    const id = String(orderId || '').trim();
+    if (!id) {
+      if (msg) {
+        msg.textContent = 'Indiquez une référence (colonne Référence).';
+        msg.className = 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast('Indiquez une référence', 'err');
+      return null;
+    }
+    if (btn) btn.disabled = true;
+    try {
+      const data = await fetchResumeLink(id);
+      const copied = await copyText(data.url);
+      showResumeBox(data);
+      if (msg) {
+        msg.textContent = copied
+          ? `${data.message}. Lien copié — envoyez-le à la personne.`
+          : `${data.message}. Copiez le lien ci-dessous.`;
+        msg.className = 'form-msg ok';
+      }
+      if (typeof window.panToast === 'function') {
+        window.panToast(copied ? 'Lien de reprise copié' : 'Lien généré', 'ok');
+      }
+      return data;
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message;
+        msg.className = 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
+      return null;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  window.BCAdminResume = { generate: generateResumeLink };
+
   function showTab(name) {
     ['tabOffers', 'tabMateriel', 'tabContracts', 'tabCoachings', 'tabStats', 'tabWhatsapp'].forEach((id) => {
       const el = document.getElementById(id);
@@ -313,6 +412,11 @@
           }
         </td>
         <td>
+          ${
+            o.can_resume
+              ? `<button type="button" class="btn sm resume-order" data-id="${escapeHtml(o.order_id)}">Lien de reprise</button>`
+              : ''
+          }
           <button type="button" class="btn sm secondary del-order" data-id="${escapeHtml(o.order_id)}" title="Supprimer">✕</button>
         </td>
       </tr>`
@@ -327,9 +431,14 @@
       };
     });
 
+    tbody.querySelectorAll('.resume-order').forEach((btn) => {
+      btn.onclick = () => generateResumeLink(btn.dataset.id, btn);
+    });
+
     tbody.querySelectorAll('.del-order').forEach((btn) => {
       btn.onclick = async () => {
         const id = btn.dataset.id;
+        const msg = document.getElementById('ordersMsg');
         if (!confirm(`Supprimer l'inscription ${id} ? Cette action est irréversible.`)) return;
         btn.disabled = true;
         try {
@@ -342,11 +451,15 @@
           if (!data.ok) throw new Error(data.error || 'Erreur');
           orders = orders.filter((o) => o.order_id !== id);
           renderOrders();
-          msg.textContent = `Inscription ${id} supprimée.`;
-          msg.className = 'form-msg ok';
+          if (msg) {
+            msg.textContent = `Inscription ${id} supprimée.`;
+            msg.className = 'form-msg ok';
+          }
         } catch (err) {
-          msg.textContent = err.message;
-          msg.className = 'form-msg err';
+          if (msg) {
+            msg.textContent = err.message;
+            msg.className = 'form-msg err';
+          }
           btn.disabled = false;
         }
       };
@@ -1317,6 +1430,16 @@
   document.getElementById('refreshOrdersBtn').onclick = loadOrders;
   document.getElementById('ordersSearch').oninput = renderOrders;
   document.getElementById('ordersFilter').onchange = renderOrders;
+  document.getElementById('resumeLinkBtn')?.addEventListener('click', () => {
+    const id = document.getElementById('resumeRefInput')?.value || '';
+    generateResumeLink(id, document.getElementById('resumeLinkBtn'));
+  });
+  document.getElementById('resumeRefInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('resumeLinkBtn')?.click();
+    }
+  });
   document.getElementById('refreshCoachingsBtn')?.addEventListener('click', loadCoachings);
   document.getElementById('coachingsSearch')?.addEventListener('input', renderCoachings);
 

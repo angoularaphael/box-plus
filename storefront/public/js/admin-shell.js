@@ -272,6 +272,7 @@
     peindreAFaire(zoneA, aFaire);
     peindreDernieres(zoneD, inscriptions);
     peindreCoachingsRecents(coachings);
+    brancherLiensReprise();
 
     const pastille = $('.pan-nav__n[data-n="inscriptions"]');
     if (pastille) {
@@ -283,6 +284,18 @@
       pastilleCoach.textContent = String(coachSemaine);
       pastilleCoach.hidden = coachSemaine === 0;
     }
+  }
+
+  function brancherLiensReprise(racine) {
+    $$(".resume-dash", racine || document).forEach((btn) => {
+      btn.onclick = () => {
+        if (window.BCAdminResume && typeof window.BCAdminResume.generate === "function") {
+          window.BCAdminResume.generate(btn.dataset.id, btn);
+        } else {
+          toast("Rechargez le panneau pour générer le lien", "err");
+        }
+      };
+    });
   }
 
   function peindreKpis(nAFaire, nImpayes, nSemaine, places) {
@@ -340,7 +353,9 @@
           <td data-l="Salle">${esc(o.gym || "—")}</td>
           <td data-l="Motif">${motif}</td>
           <td data-l="Ouvert le">${esc(dateCourte(o.created_at))}</td>
-          <td data-l=""><a class="btn sm secondary" href="mailto:${encodeURIComponent(o.email)}">Écrire</a></td>
+          <td data-l="">${o.can_resume
+            ? `<button type="button" class="btn sm resume-dash" data-id="${esc(o.order_id)}">Lien de reprise</button>`
+            : ''}<a class="btn sm secondary" href="mailto:${encodeURIComponent(o.email)}">Écrire</a></td>
         </tr>`;
       }).join("")}</tbody></table></div>`;
     if (liste.length > 25) {
@@ -357,7 +372,7 @@
       return;
     }
     zone.innerHTML = `<div class="pan-tablewrap"><table class="pan-table pan-table--cartes">
-      <thead><tr><th>Adhérent</th><th>Offre</th><th>Étape</th><th>Paiement</th><th>Ouvert le</th></tr></thead>
+      <thead><tr><th>Adhérent</th><th>Offre</th><th>Étape</th><th>Paiement</th><th>Ouvert le</th><th></th></tr></thead>
       <tbody>${tri.map((o) => `<tr>
         <td data-l="Adhérent"><strong>${esc(o.name)}</strong></td>
         <td data-l="Offre">${esc(o.product)}</td>
@@ -368,6 +383,9 @@
             ? '<span class="pan-tag pan-tag--neutre">—</span>'
           : `<span class="pan-tag pan-tag--att">${esc(o.payment_status || "en attente")}</span>`}</td>
         <td data-l="Ouvert le">${esc(dateCourte(o.created_at))}</td>
+        <td data-l="">${o.can_resume
+          ? `<button type="button" class="btn sm resume-dash" data-id="${esc(o.order_id)}">Lien de reprise</button>`
+          : ""}</td>
       </tr>`).join("")}</tbody></table></div>`;
   }
 
