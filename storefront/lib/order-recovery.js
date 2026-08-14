@@ -5,12 +5,14 @@ const { loadOrderAsync, saveOrderAsync, productSnapshot } = require('./order-lif
 const { unpackOrderMetadata } = require('./orders');
 
 function rehydrateOrderFromClient(orderId, body, findProduct) {
+  const { sanitizeOrderId } = require('./security');
+  const safeId = sanitizeOrderId(orderId);
   const { token, product_id, customer_short, product_snapshot } = body || {};
-  if (!token || !product_id || !customer_short?.email) return null;
+  if (!safeId || !token || !product_id || !customer_short?.email) return null;
 
   const product = findProduct ? findProduct(product_id) : null;
   return {
-    order_id: orderId,
+    order_id: safeId,
     access_token: token,
     step: 3,
     product_id,

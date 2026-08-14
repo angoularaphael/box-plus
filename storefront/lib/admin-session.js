@@ -1,35 +1,31 @@
 const crypto = require('crypto');
+const { sessionSecret, hmacEqual } = require('./security');
 
 const COOKIE = 'bc_admin_session';
 const MAX_AGE_SEC = 60 * 60 * 24 * 7;
-
-function sessionSecret() {
-  return (
-    process.env.SESSION_SECRET ||
-    process.env.SITE_API_SECRET ||
-    process.env.ADMIN_SECRET ||
-    'change-me'
-  );
-}
 
 function base64urlJson(obj) {
   return Buffer.from(JSON.stringify(obj)).toString('base64url');
 }
 
 function signJwt(payload) {
+  const secret = sessionSecret();
+  if (!secret) throw new Error('session_secret_missing');
   const header = base64urlJson({ alg: 'HS256', typ: 'JWT' });
   const body = base64urlJson(payload);
   const data = `${header}.${body}`;
-  const sig = crypto.createHmac('sha256', sessionSecret()).update(data).digest('base64url');
+  const sig = crypto.createHmac('sha256', secret).update(data).digest('base64url');
   return `${data}.${sig}`;
 }
 
 function verifyJwt(token) {
+  const secret = sessionSecret();
+  if (!secret) throw new Error('session_secret_missing');
   const parts = String(token || '').split('.');
   if (parts.length !== 3) throw new Error('invalid token');
   const data = `${parts[0]}.${parts[1]}`;
-  const expected = crypto.createHmac('sha256', sessionSecret()).update(data).digest('base64url');
-  if (parts[2] !== expected) throw new Error('invalid signature');
+  const expected = crypto.createHmac('sha256', secret).update(data).digest('base64url');
+  if (!hmacEqual(parts[2], expected)) throw new Error('invalid signature');
   const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
   if (payload.exp && Math.floor(Date.now() / 1000) > payload.exp) {
     throw new Error('expired');

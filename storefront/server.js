@@ -10,7 +10,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
 const { logInfo, logError, logWarn } = require('../lib/logger');
-const { getStoreUrl, getCheckoutBaseUrl, getBridgeUrl, PRODUCTION_STORE_URL } = require('../lib/app-urls');
+const { getStoreUrl, getCheckoutBaseUrl, PRODUCTION_STORE_URL } = require('../lib/app-urls');
 const {
   buildOrderPayload,
   buildOrderFromLifecycle,
@@ -74,6 +74,27 @@ const {
 } = require('./lib/dev-session');
 const { runPaymentContext, testPaymentsInfo } = require('./lib/test-env');
 const { corsMiddleware } = require('./lib/cors');
+const {
+  isProductionRuntime,
+  isDemoCheckoutAllowed,
+  secretsEqual,
+  sanitizeOrderId,
+  sanitizePaymentId,
+  redactOrderForClient,
+  loginLocked,
+  recordLoginFail,
+  clearLoginFails,
+  applySecurityHeaders,
+  photoExtForMime,
+  looksLikeAllowedImage,
+  publicServerError,
+} = require('./lib/security');
+const {
+  expectedChargeCents,
+  payplugMatches,
+  paypalMatches,
+  verifyPayplugSignature,
+} = require('./lib/payment-bind');
 const {
   getPaymentDisplay,
   setPaymentDisplay,
@@ -285,10 +306,15 @@ function makeUploader(subdir) {
         cb(null, getUploadDir(subdir));
       },
       filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname) || '.jpg';
-        cb(null, `${req.params.id || 'upload'}-${Date.now()}${ext}`);
+        const ext = photoExtForMime(file.mimetype) || '.jpg';
+        const id = sanitizeOrderId(req.params.id) || 'upload';
+        cb(null, `${id}-${Date.now()}${ext}`);
       },
     }),
+    fileFilter: (_req, file, cb) => {
+      if (photoExtForMime(file.mimetype)) return cb(null, true);
+      cb(new Error('invalid_image_type'));
+    },
     limits: { fileSize: 5 * 1024 * 1024 },
   });
 }
@@ -351,18 +377,16 @@ function isAuthorizedSync(req) {
   if (!SYNC_SECRET) return false;
   const header = req.headers['x-sync-secret'] || req.headers['authorization'] || '';
   const token = String(header).replace(/^Bearer\s+/i, '').trim();
-  return token === SYNC_SECRET;
+  return secretsEqual(token, SYNC_SECRET);
 }
 
 function isAuthorizedCron(req) {
   if (isAuthorizedSync(req)) return true;
   const cron = String(process.env.CRON_SECRET || '').trim();
-  if (cron) {
-    const header = req.headers['authorization'] || '';
-    const token = String(header).replace(/^Bearer\s+/i, '').trim();
-    if (token === cron) return true;
-  }
-  return req.headers['x-vercel-cron'] === '1';
+  if (!cron) return false;
+  const header = req.headers['authorization'] || '';
+  const token = String(header).replace(/^Bearer\s+/i, '').trim();
+  return secretsEqual(token, cron);
 }
 
 async function isAuthorizedAdmin(req) {
@@ -371,7 +395,7 @@ async function isAuthorizedAdmin(req) {
   if (!ADMIN_SECRET) return false;
   const header = req.headers['x-admin-secret'] || req.headers['authorization'] || '';
   const token = String(header).replace(/^Bearer\s+/i, '').trim();
-  return token === ADMIN_SECRET;
+  return secretsEqual(token, ADMIN_SECRET);
 }
 
 let stripe = null;
@@ -502,8 +526,11 @@ async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
   return {
     ok: true,
     order_id: order.order_id,
+    access_token: order.access_token,
     materiel: true,
-    redirect: `/success.html?order=${order.order_id}&type=materiel`,
+    redirect: `/success.html?order=${order.order_id}&type=materiel${
+      order.access_token ? `&token=${encodeURIComponent(order.access_token)}` : ''
+    }`,
   };
 }
 
@@ -528,6 +555,14 @@ async function fulfillMaterielPayplug(paymentId) {
     });
   }
   if (!order) return { ok: false, error: 'order_not_found' };
+
+  const bound = payplugMatches({
+    payment,
+    orderId: order.order_id,
+    expectedCents: order.total_cents,
+    storedPaymentId: order.payment?.payplug_payment_id,
+  });
+  if (!bound.ok) return { ok: false, error: bound.error };
 
   if (order.payment?.status === 'paid') {
     await sendMaterielEmailIfNeeded(order);
@@ -565,8 +600,11 @@ async function fulfillMaterielPayplug(paymentId) {
   return {
     ok: true,
     order_id: order.order_id,
+    access_token: order.access_token,
     materiel: true,
-    redirect: `/success.html?order=${order.order_id}&type=materiel`,
+    redirect: `/success.html?order=${order.order_id}&type=materiel${
+      order.access_token ? `&token=${encodeURIComponent(order.access_token)}` : ''
+    }`,
   };
 }
 
@@ -641,6 +679,8 @@ async function fulfillStripeSession(sessionId, stripeSession = null, lifecycleMo
 
 function createApp() {
   const app = express();
+  app.disable('x-powered-by');
+  app.use(applySecurityHeaders);
 
   app.post(
     '/api/stripe/webhook',
@@ -650,11 +690,14 @@ function createApp() {
 
       let event;
       try {
-        if (STRIPE_WEBHOOK_SECRET) {
+        if (!STRIPE_WEBHOOK_SECRET) {
+          if (isProductionRuntime()) {
+            return res.status(503).json({ ok: false, error: 'webhook_not_configured' });
+          }
+          event = JSON.parse(req.body.toString());
+        } else {
           const sig = req.headers['stripe-signature'];
           event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
-        } else {
-          event = JSON.parse(req.body.toString());
         }
       } catch (err) {
         logError('Stripe webhook invalide', { error: err.message });
@@ -795,7 +838,16 @@ function createApp() {
      sans en-tête CORS le navigateur bloquait la réponse (préflight en 404). */
   app.use('/api', corsMiddleware());
 
-  app.use(express.json({ limit: '2mb' }));
+  app.use(
+    express.json({
+      limit: '2mb',
+      verify: (req, _res, buf) => {
+        if (req.originalUrl === '/api/webhooks/payplug' || req.path === '/api/webhooks/payplug') {
+          req.rawBody = buf;
+        }
+      },
+    })
+  );
 
   app.use((req, _res, next) => {
     runPaymentContext({ test: Boolean(getDevSession(req)) }, () => next());
@@ -803,15 +855,25 @@ function createApp() {
 
   app.post('/api/auth/login', async (req, res) => {
     try {
+      if (loginLocked(req)) {
+        return res.status(429).json({ ok: false, error: 'Trop d’essais. Réessayez plus tard.' });
+      }
       const { email, password } = req.body || {};
       const user = await verifyAdminLogin(email, password);
       if (!user) {
+        recordLoginFail(req);
         return res.status(401).json({ ok: false, error: 'Email ou mot de passe incorrect' });
       }
+      clearLoginFails(req);
       await setAdminSessionCookie(res, user);
       res.json({ ok: true, user: { email: user.email, name: user.name, role: user.role } });
     } catch (err) {
-      res.status(500).json({ ok: false, error: err.message });
+      logError('Login admin', { error: err.message });
+      const status = err.message === 'session_secret_missing' ? 503 : 500;
+      res.status(status).json({
+        ok: false,
+        error: status === 503 ? 'session_secret_missing' : publicServerError(),
+      });
     }
   });
 
@@ -1070,7 +1132,7 @@ function createApp() {
       const orderId = `MAT-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
 
       if (!isPayplugEnabled()) {
-        if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true') {
+        if (isDemoCheckoutAllowed()) {
           const order = await createMaterielOrderAsync({
             customer,
             items,
@@ -1080,11 +1142,15 @@ function createApp() {
           await markMaterielPaidAsync(order.order_id, { method: 'demo' });
           await syncMaterielClient(order).catch(() => {});
           await sendMaterielConfirmationEmail(order).catch(() => {});
+          const tokenQ = order.access_token
+            ? `&token=${encodeURIComponent(order.access_token)}`
+            : '';
           return res.json({
             ok: true,
             mode: 'demo',
             order_id: order.order_id,
-            redirect: `/success.html?order=${order.order_id}&type=materiel&demo=1`,
+            access_token: order.access_token,
+            redirect: `/success.html?order=${order.order_id}&type=materiel&demo=1${tokenQ}`,
           });
         }
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
@@ -1117,7 +1183,7 @@ function createApp() {
           payment_plan: 'once',
         },
         customerOverrides: customer,
-        returnUrl: `${baseUrl}/success.html?order=${encodeURIComponent(orderId)}&type=materiel&payplug_return=1`,
+        returnUrl: `${baseUrl}/success.html?order=${encodeURIComponent(orderId)}&type=materiel&payplug_return=1&token=${encodeURIComponent(order.access_token || '')}`,
         cancelUrl: `${baseUrl}/panier?cancelled=1`,
       });
       const url = hostedPaymentUrl(payment);
@@ -1321,10 +1387,19 @@ function createApp() {
   // Public invoice download for materiel orders (token-gated by order_id)
   app.get('/api/facture/materiel/:orderId', async (req, res) => {
     try {
-      const order = await loadMaterielOrderAsync(req.params.orderId);
+      const orderId = sanitizeOrderId(req.params.orderId);
+      if (!orderId) return res.status(400).json({ ok: false, error: 'invalid_id' });
+      const order = await loadMaterielOrderAsync(orderId);
       if (!order) return res.status(404).json({ ok: false, error: 'Commande introuvable' });
       if (order.payment?.status !== 'paid') {
         return res.status(403).json({ ok: false, error: 'Facture disponible uniquement après paiement' });
+      }
+      const token = String(req.query.token || '');
+      const adminOk = await isAuthorizedAdmin(req);
+      if (!adminOk) {
+        if (!order.access_token || !secretsEqual(token, order.access_token)) {
+          return res.status(403).json({ ok: false, error: 'forbidden' });
+        }
       }
       const result = await generateMaterielInvoicePdf(order);
       if (!result?.filepath) {
@@ -1347,10 +1422,9 @@ function createApp() {
       res.json({
         stripe_enabled: Boolean(stripe),
         demo_mode: !stripe,
-        demo_checkout_enabled: String(process.env.STORE_DEMO_ENABLED || 'false') === 'true',
+        demo_checkout_enabled: isDemoCheckoutAllowed(),
         store_url: STORE_URL,
         production_url: PRODUCTION_STORE_URL,
-        boxplus_bridge: getBridgeUrl(),
         deciplus_synced_at: catalog.synced_at,
         product_count: catalog.products?.length || 0,
         sync_auto: String(process.env.STORE_SYNC_ENABLED || 'true') !== 'false',
@@ -1362,7 +1436,7 @@ function createApp() {
   });
 
   app.get('/api/cron/sync-catalog', async (req, res) => {
-    if (!isAuthorizedSync(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    if (!isAuthorizedCron(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const { runCatalogSyncIfNeeded } = require('./lib/auto-sync');
     const result = await runCatalogSyncIfNeeded({ force: true });
     res.json({ ok: result.ok !== false, ...result });
@@ -1731,7 +1805,18 @@ function createApp() {
     }
   });
 
-  app.post('/api/orders/:id/photo', uploadPhoto.single('photo'), async (req, res) => {
+  app.post('/api/orders/:id/photo', (req, res, next) => {
+    uploadPhoto.single('photo')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({
+          ok: false,
+          error: 'invalid_image_type',
+          message: 'Envoyez une photo JPEG, PNG ou WebP (max 5 Mo).',
+        });
+      }
+      next();
+    });
+  }, async (req, res) => {
     try {
       const token = req.body.token || req.query.token;
       const order = await loadOrderOrRecover(req.params.id, {
@@ -1749,6 +1834,18 @@ function createApp() {
       let photo_base64 = null;
       try {
         const buf = fs.readFileSync(req.file.path);
+        if (!looksLikeAllowedImage(buf, req.file.mimetype)) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch {
+            /* ignore */
+          }
+          return res.status(400).json({
+            ok: false,
+            error: 'invalid_image_type',
+            message: 'Envoyez une photo JPEG, PNG ou WebP.',
+          });
+        }
         if (buf.length > 1.8 * 1024 * 1024) {
           return res.status(400).json({
             ok: false,
@@ -1787,19 +1884,7 @@ function createApp() {
     if (!verifyAccess(order, req.query.token)) {
       return res.status(403).json({ ok: false, error: 'forbidden' });
     }
-    const { access_token, ...rest } = order;
-    // Ne pas renvoyer les gros base64 au navigateur (flag seul)
-    const safe = { ...rest };
-    if (safe.documents?.photo_base64) {
-      safe.documents = {
-        ...safe.documents,
-        photo_base64: true,
-        has_photo: true,
-      };
-    }
-    if (safe.signature?.image_base64) {
-      safe.signature = { ...safe.signature, image_base64: true };
-    }
+    const safe = redactOrderForClient(order);
     res.json({ ok: true, order: safe });
   });
 
@@ -2231,7 +2316,7 @@ function createApp() {
         });
       }
 
-      if (String(process.env.STORE_DEMO_ENABLED || 'false') === 'true' && !isPayplugEnabled() && !isPaypalEnabled(gym)) {
+      if (isDemoCheckoutAllowed() && !isPayplugEnabled() && !isPaypalEnabled(gym)) {
         order = await markPaymentPaid(order.order_id, {
           method: 'demo',
           billing_plan: billingPlan,
@@ -2939,6 +3024,15 @@ function createApp() {
         if (!pending?.target_product_id) {
           return res.status(404).json({ ok: false, error: 'changement introuvable pour ce paiement' });
         }
+        const changeBound = paypalMatches({
+          captured,
+          orderId: pending.verify_order_id || pending.order_id,
+          expectedCents: pending.charge_cents || pending.amount_cents,
+          storedPaypalId: paypalOrderId,
+        });
+        if (!changeBound.ok) {
+          return res.status(409).json({ ok: false, error: changeBound.error });
+        }
         const deciplusMemberId = await resolveDeciplusMemberId(
           {
             deciplus_member_id: pending.deciplus_member_id,
@@ -2963,11 +3057,32 @@ function createApp() {
       }
 
       if (paymentId && isPayplugEnabled()) {
-        const payment = await retrievePayment(paymentId);
+        const safePayId = sanitizePaymentId(paymentId);
+        if (!safePayId) return res.status(400).json({ ok: false, error: 'payment_id manquant' });
+        const payment = await retrievePayment(safePayId);
         if (!isPayplugPaymentPaid(payment)) {
           return res.status(402).json({ ok: false, error: 'paiement non confirmé' });
         }
         const meta = payment.metadata || {};
+        const pendingChange = await loadMembershipChangePending(payment.id);
+        if (String(meta.order_type || pendingChange?.order_type || '') !== 'membership_change') {
+          return res.status(409).json({ ok: false, error: 'payment_mismatch' });
+        }
+        const target = findProduct(meta.target_product_id || pendingChange?.target_product_id);
+        const changeBound = payplugMatches({
+          payment,
+          orderId: pendingChange?.verify_order_id || meta.verify_order_id || meta.order_id,
+          expectedCents:
+            pendingChange?.charge_cents ||
+            pendingChange?.amount_cents ||
+            meta.charge_cents ||
+            meta.amount_cents ||
+            target?.price_cents,
+          storedPaymentId: pendingChange?.payplug_payment_id,
+        });
+        if (!changeBound.ok) {
+          return res.status(409).json({ ok: false, error: changeBound.error });
+        }
         const deciplusMemberId = await resolveDeciplusMemberId(meta, getCancelStatus);
         const result = await confirmMembershipChangeOnce({
           identity: {
@@ -3314,8 +3429,13 @@ function createApp() {
 
   app.post('/api/webhooks/payplug', async (req, res) => {
     try {
+      const secret = process.env.PAYPLUG_SECRET_KEY || '';
+      const sig = req.headers['payplug-signature'] || req.headers['Payplug-Signature'];
+      if (sig && secret && !verifyPayplugSignature(req.rawBody || '', sig, secret)) {
+        return res.status(400).json({ ok: false, error: 'invalid_signature' });
+      }
       const body = req.body || {};
-      const paymentId = body.id || body.resource_id || body.object?.id;
+      const paymentId = sanitizePaymentId(body.id || body.resource_id || body.object?.id);
       if (!paymentId) return res.status(400).json({ ok: false, error: 'payment_id manquant' });
       if (!isPayplugEnabled()) return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
 
@@ -3378,6 +3498,20 @@ function createApp() {
         logWarn('PayPlug webhook — commande introuvable', { order_id: orderId, payment_id: paymentId });
         return res.json({ ok: true, ignored: true });
       }
+      const bound = payplugMatches({
+        payment,
+        orderId: order.order_id,
+        expectedCents: expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot),
+        storedPaymentId: order.payment?.payplug_payment_id,
+      });
+      if (!bound.ok) {
+        logWarn('PayPlug webhook — paiement non lié', {
+          order_id: orderId,
+          payment_id: paymentId,
+          error: bound.error,
+        });
+        return res.status(409).json({ ok: false, error: bound.error });
+      }
       if (order.payment?.status === 'paid') {
         return res.json({ ok: true, already_paid: true });
       }
@@ -3410,15 +3544,14 @@ function createApp() {
       if (!paymentId && !orderIdHint) {
         return res.status(400).json({ ok: false, error: 'payment_id ou order_id requis' });
       }
-      let id = paymentId;
+      let id = sanitizePaymentId(paymentId);
       if (!id && orderIdHint) {
-        const pendingByOrder = loadPendingCheckout(orderIdHint);
-        id = pendingByOrder?.payplug_payment_id || null;
+        const pendingByOrder = loadPendingCheckout(sanitizePaymentId(orderIdHint) || sanitizeOrderId(orderIdHint));
+        id = sanitizePaymentId(pendingByOrder?.payplug_payment_id);
       }
-      // Pending keys are PayPlug payment ids (see cart checkout)
-      if (!id) {
-        const order = await loadMaterielOrderAsync(orderIdHint);
-        id = order?.payment?.payplug_payment_id || null;
+      if (!id && orderIdHint) {
+        const order = await loadMaterielOrderAsync(sanitizeOrderId(orderIdHint));
+        id = sanitizePaymentId(order?.payment?.payplug_payment_id);
       }
       if (!id) return res.status(400).json({ ok: false, error: 'payment_id manquant' });
 
@@ -3454,9 +3587,18 @@ function createApp() {
       if (!isPayplugEnabled()) {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
-      const id = paymentId || order.payment?.payplug_payment_id;
+      const id = sanitizePaymentId(paymentId || order.payment?.payplug_payment_id);
       if (!id) return res.status(400).json({ ok: false, error: 'payment_id manquant' });
       const payment = await retrievePayment(id);
+      const bound = payplugMatches({
+        payment,
+        orderId: order.order_id,
+        expectedCents: expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot),
+        storedPaymentId: order.payment?.payplug_payment_id,
+      });
+      if (!bound.ok) {
+        return res.status(409).json({ ok: false, error: bound.error });
+      }
       if (isPayplugPaymentPaid(payment)) {
         order = await markPayplugOrderPaid(order, payment);
         return res.json({
@@ -3504,7 +3646,7 @@ function createApp() {
       if (!isPaypalEnabled(order.payment?.paypal_account || order.customer_full?.gym)) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
       }
-      const id = paypalOrderId || order.payment?.paypal_order_id;
+      const id = sanitizePaymentId(paypalOrderId || order.payment?.paypal_order_id);
       if (!id) return res.status(400).json({ ok: false, error: 'paypal_order_id manquant' });
 
       const paypalOpts = {
@@ -3521,6 +3663,15 @@ function createApp() {
           error: 'payment_not_completed',
           message: 'Paiement PayPal non confirmé',
         });
+      }
+      const bound = paypalMatches({
+        captured,
+        orderId: order.order_id,
+        expectedCents: expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot),
+        storedPaypalId: order.payment?.paypal_order_id,
+      });
+      if (!bound.ok) {
+        return res.status(409).json({ ok: false, error: bound.error });
       }
       order = await markPaymentPaid(order.order_id, {
         method: 'paypal',
@@ -3542,6 +3693,9 @@ function createApp() {
 
   app.post('/api/checkout/demo', async (req, res) => {
     try {
+      if (!isDemoCheckoutAllowed()) {
+        return res.status(403).json({ ok: false, error: 'demo_disabled' });
+      }
       const { product_id: productId, ...form } = req.body;
       const product = findProduct(productId);
       if (!product) return res.status(404).json({ ok: false, error: 'Produit introuvable' });

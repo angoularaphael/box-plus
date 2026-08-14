@@ -124,7 +124,11 @@ async function saveOrderAsync(order) {
 }
 
 function verifyAccess(order, token) {
-  return order && token && order.access_token === token;
+  if (!order || !token || !order.access_token) return false;
+  const a = Buffer.from(String(order.access_token));
+  const b = Buffer.from(String(token));
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
 }
 
 function updateShortProfile(orderId, customer_short) {

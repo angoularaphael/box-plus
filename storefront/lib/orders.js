@@ -4,6 +4,7 @@ const { ROOT, ensureDir } = require('../../lib/utils');
 const { normalizeOrder, validateOrder } = require('../../lib/normalize');
 const { enqueue } = require('../../lib/queue');
 const { normalizeIban, frenchIbanError } = require('../../lib/iban');
+const { sanitizePaymentId } = require('./security');
 const {
   normalizeBillingPlan,
   normalizePaymentPlan,
@@ -26,20 +27,26 @@ function initPending() {
 
 function savePendingOrder(sessionId, order) {
   initPending();
-  const file = path.join(PENDING_DIR, `${sessionId}.json`);
+  const safe = sanitizePaymentId(sessionId);
+  if (!safe) return null;
+  const file = path.join(PENDING_DIR, `${safe}.json`);
   fs.writeFileSync(file, JSON.stringify({ ...order, saved_at: new Date().toISOString() }, null, 2));
   return file;
 }
 
 function loadPendingOrder(sessionId) {
   initPending();
-  const file = path.join(PENDING_DIR, `${sessionId}.json`);
+  const safe = sanitizePaymentId(sessionId);
+  if (!safe) return null;
+  const file = path.join(PENDING_DIR, `${safe}.json`);
   if (!fs.existsSync(file)) return null;
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
 function removePendingOrder(sessionId) {
-  const file = path.join(PENDING_DIR, `${sessionId}.json`);
+  const safe = sanitizePaymentId(sessionId);
+  if (!safe) return;
+  const file = path.join(PENDING_DIR, `${safe}.json`);
   if (fs.existsSync(file)) fs.unlinkSync(file);
 }
 

@@ -371,7 +371,11 @@
 
   /** IBAN encore manquant — pour bloquer l'avancée vers le dossier. */
   function orderNeedsIban(order) {
-    return productRequiresIban(order) && !order?.payment?.iban;
+    return (
+      productRequiresIban(order) &&
+      !order?.payment?.iban &&
+      !order?.payment?.has_iban
+    );
   }
 
   function paymentLogosHtml(kind) {
@@ -1444,7 +1448,9 @@
       goToStep(6);
       return;
     }
-    const existingIban = state.order?.payment?.iban || state.order?.customer_full?.iban || '';
+    const existingIban = state.order?.payment?.iban || '';
+    const ibanMasked = state.order?.payment?.iban_masked || '';
+    const hasIban = Boolean(existingIban || state.order?.payment?.has_iban);
     const ibanFrMessage =
       'Seuls les IBAN français commençant par FR sont acceptés. Si vous n’en avez pas, rapprochez-vous du manager de votre salle.';
     stepContent.innerHTML = `
@@ -1457,8 +1463,8 @@
       </div>
       <form id="ibanForm" class="form-grid">
         <div class="full">
-          <label for="iban">IBAN français (commence par FR) *</label>
-          <input id="iban" name="iban" required placeholder="FR76 3000 6000 0112 3456 7890 189" autocomplete="off" spellcheck="false" value="${esc(existingIban)}" />
+          <label for="iban">IBAN français (commence par FR) ${hasIban ? '' : '*'}</label>
+          <input id="iban" name="iban" ${hasIban ? '' : 'required'} placeholder="${hasIban ? ibanMasked : 'FR76 3000 6000 0112 3456 7890 189'}" autocomplete="off" spellcheck="false" value="${esc(existingIban)}" />
           <p class="iban-fr-hint">Exemple : FR76 … — les IBAN étrangers (DE, ES, BE…) ne passent pas.</p>
         </div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
@@ -1651,10 +1657,8 @@
       // Renvoie l'IBAN déjà saisi — évite le faux « IBAN requis » si le store
       // distant n'a pas encore propagé payment.iban sur cette instance.
       if (!body.iban) {
-        body.iban =
-          state.order?.payment?.iban ||
-          state.order?.customer_full?.iban ||
-          undefined;
+        const stored = state.order?.payment?.iban || state.order?.customer_full?.iban;
+        if (stored && !String(stored).includes('•')) body.iban = stored;
       }
       const res = await fetch(`/api/orders/${state.orderId}/profile`, {
         method: 'PATCH',

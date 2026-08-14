@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { ROOT, ensureDir } = require('../../lib/utils');
 const { findMaterielVariant, loadMaterielCatalog, saveMaterielCatalog } = require('./merch');
+const { sanitizePaymentId } = require('./security');
 const {
   ORDERS_DIR,
   loadOrder,
@@ -31,17 +32,21 @@ function generateOrderId() {
 }
 
 function pendingPath(sessionId) {
-  return path.join(PENDING_DIR, `${sessionId}.json`);
+  const safe = sanitizePaymentId(sessionId);
+  if (!safe) return null;
+  return path.join(PENDING_DIR, `${safe}.json`);
 }
 
 function savePendingCheckout(sessionId, payload) {
   ensureStores();
-  fs.writeFileSync(pendingPath(sessionId), JSON.stringify(payload, null, 2), 'utf8');
+  const file = pendingPath(sessionId);
+  if (!file) return;
+  fs.writeFileSync(file, JSON.stringify(payload, null, 2), 'utf8');
 }
 
 function loadPendingCheckout(sessionId) {
   const file = pendingPath(sessionId);
-  if (!fs.existsSync(file)) return null;
+  if (!file || !fs.existsSync(file)) return null;
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch {
@@ -51,7 +56,7 @@ function loadPendingCheckout(sessionId) {
 
 function removePendingCheckout(sessionId) {
   const file = pendingPath(sessionId);
-  if (fs.existsSync(file)) fs.unlinkSync(file);
+  if (file && fs.existsSync(file)) fs.unlinkSync(file);
 }
 
 function resolveLine(line) {
@@ -146,6 +151,7 @@ function decrementStock(items) {
 function buildMaterielOrder({ customer, items, total_cents, pickup_gym, order_id }) {
   return {
     order_id: order_id || generateOrderId(),
+    access_token: crypto.randomBytes(24).toString('hex'),
     order_type: 'materiel',
     created_at: new Date().toISOString(),
     customer,

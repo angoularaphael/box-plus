@@ -172,6 +172,10 @@ test('intégration API demo — toutes les offres (si boutique :3040)', async ()
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(10000),
       });
+      if (res.status === 403) {
+        console.log('  (skip API demo — STORE_DEMO_ENABLED désactivé)');
+        return;
+      }
       const data = await res.json();
       if (!res.ok || !data.ok) {
         const err = data.errors?.join(', ') || data.error || res.status;

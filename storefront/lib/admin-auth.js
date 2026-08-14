@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { getSupabase } = require('./supabase');
+const { secretsEqual } = require('./security');
 
 function dbRole(role) {
   return role === 'super_admin' ? 'admin' : role || 'admin';
@@ -11,8 +12,8 @@ async function verifyAdminLogin(email, password) {
 
   const superEmail = (process.env.SUPER_ADMIN_EMAIL || '').trim().toLowerCase();
   const superPass = process.env.SUPER_ADMIN_PASSWORD || '';
-  if (superEmail && normalized === superEmail) {
-    if (password === superPass) {
+  if (superEmail && secretsEqual(normalized, superEmail)) {
+    if (superPass && secretsEqual(password, superPass)) {
       return { email: normalized, role: 'super_admin', name: 'Super administrateur' };
     }
     return null;

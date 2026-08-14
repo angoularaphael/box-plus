@@ -4,15 +4,16 @@ const sessionId = params.get('session_id') || '';
 const demo = params.get('demo');
 const productId = params.get('product') || '';
 const orderType = params.get('type') || '';
-const payplugReturn = params.get('payplug_return') === '1';
+const token = params.get('token') || '';
 
 const PAYMENT_FAILED_MSG =
   'Le paiement n\'a pas pu être finalisé — vous n\'avez pas été débité. Vous pouvez réessayer.';
 
-function showInvoiceButton(orderId) {
+function showInvoiceButton(orderId, token) {
   const btn = document.getElementById('downloadInvoiceBtn');
   if (btn && orderId) {
-    btn.href = `/api/facture/materiel/${encodeURIComponent(orderId)}`;
+    const q = token ? `?token=${encodeURIComponent(token)}` : '';
+    btn.href = `/api/facture/materiel/${encodeURIComponent(orderId)}${q}`;
     btn.style.display = '';
   }
 }
@@ -63,7 +64,7 @@ async function confirmStripeSession(retryHref) {
         if (successText) {
           successText.textContent = `Paiement confirmé — réf. ${orderId}. Retirez votre matériel en salle.`;
         }
-        if (orderId) showInvoiceButton(orderId);
+        if (orderId) showInvoiceButton(orderId, token || data.access_token);
       } else if (successText) {
         successText.textContent =
           "Paiement confirmé — votre abonnement est en cours d'enregistrement.";
@@ -100,7 +101,7 @@ async function confirmPayplugMateriel() {
       if (successText) {
         successText.textContent = `Paiement confirmé — réf. ${orderId}. Retirez votre matériel en salle.`;
       }
-      if (orderId) showInvoiceButton(orderId);
+      if (orderId) showInvoiceButton(orderId, token || data.access_token);
       return;
     }
     if (data.pending || data.error === 'payment_pending') {
@@ -109,7 +110,7 @@ async function confirmPayplugMateriel() {
           data.message ||
           'Paiement en cours de validation — vous recevrez un email dès confirmation.';
       }
-      if (order) showInvoiceButton(order);
+      if (order) showInvoiceButton(order, token);
       return;
     }
     showPaymentFailure('/panier', data.message || PAYMENT_FAILED_MSG);
@@ -131,7 +132,7 @@ if (!successText) {
     void confirmStripeSession('/panier');
   } else if (order) {
     successText.textContent = `Commande ${order} confirmée — retrait en salle.`;
-    showInvoiceButton(order);
+    showInvoiceButton(order, token);
   } else {
     successText.textContent = 'Commande matériel confirmée — retrait en salle.';
   }

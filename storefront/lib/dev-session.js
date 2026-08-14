@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { sessionSecret, hmacEqual, clientIp } = require('./security');
 
 const COOKIE = 'bc_studio';
 const MAX_AGE_SEC = 60 * 60 * 12;
@@ -8,17 +9,8 @@ const FAIL_WINDOW_MS = 15 * 60 * 1000;
 const FAIL_MAX = 8;
 const failsByIp = new Map();
 
-function sessionSecret() {
-  return (
-    process.env.SESSION_SECRET ||
-    process.env.SITE_API_SECRET ||
-    process.env.ADMIN_SECRET ||
-    'change-me'
-  );
-}
-
 function expectedCode() {
-  return String(process.env.DEV_UNLOCK_CODE || '302006').trim();
+  return String(process.env.DEV_UNLOCK_CODE || '').trim();
 }
 
 function base64urlJson(obj) {
@@ -26,19 +18,23 @@ function base64urlJson(obj) {
 }
 
 function signJwt(payload) {
+  const secret = sessionSecret();
+  if (!secret) throw new Error('session_secret_missing');
   const header = base64urlJson({ alg: 'HS256', typ: 'JWT' });
   const body = base64urlJson(payload);
   const data = `${header}.${body}`;
-  const sig = crypto.createHmac('sha256', sessionSecret()).update(data).digest('base64url');
+  const sig = crypto.createHmac('sha256', secret).update(data).digest('base64url');
   return `${data}.${sig}`;
 }
 
 function verifyJwt(token) {
+  const secret = sessionSecret();
+  if (!secret) throw new Error('session_secret_missing');
   const parts = String(token || '').split('.');
   if (parts.length !== 3) throw new Error('invalid token');
   const data = `${parts[0]}.${parts[1]}`;
-  const expected = crypto.createHmac('sha256', sessionSecret()).update(data).digest('base64url');
-  if (parts[2] !== expected) throw new Error('invalid signature');
+  const expected = crypto.createHmac('sha256', secret).update(data).digest('base64url');
+  if (!hmacEqual(parts[2], expected)) throw new Error('invalid signature');
   const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
   if (payload.exp && Math.floor(Date.now() / 1000) > payload.exp) {
     throw new Error('expired');
@@ -90,13 +86,6 @@ function getDevSession(req) {
   }
 }
 
-function clientIp(req) {
-  const fwd = String(req.headers['x-forwarded-for'] || '')
-    .split(',')[0]
-    .trim();
-  return fwd || req.socket?.remoteAddress || 'unknown';
-}
-
 function pruneFails(now) {
   for (const [ip, row] of failsByIp) {
     if (now - row.start > FAIL_WINDOW_MS) failsByIp.delete(ip);
@@ -127,6 +116,7 @@ function clearUnlockFails(req) {
 
 function codesMatch(input) {
   const expected = expectedCode();
+  if (!expected) return false;
   const a = Buffer.from(String(input || '').trim());
   const b = Buffer.from(expected);
   if (!a.length || a.length !== b.length) return false;

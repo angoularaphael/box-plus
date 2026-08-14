@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { logError } = require('../../lib/logger');
 const { getSupabase } = require('./supabase');
+const { sanitizeOrderId } = require('./security');
 
 const ORDERS_DIR =
   process.env.BOXPLUS_ORDERS_DIR ||
@@ -17,7 +18,9 @@ function useRemoteStore() {
 }
 
 function orderPath(orderId) {
-  return path.join(ORDERS_DIR, `${orderId}.json`);
+  const safe = sanitizeOrderId(orderId);
+  if (!safe) return null;
+  return path.join(ORDERS_DIR, `${safe}.json`);
 }
 
 function ensureOrdersDir() {
@@ -27,7 +30,7 @@ function ensureOrdersDir() {
 function loadOrderFromFs(orderId) {
   ensureOrdersDir();
   const file = orderPath(orderId);
-  if (!fs.existsSync(file)) return null;
+  if (!file || !fs.existsSync(file)) return null;
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch {
@@ -37,7 +40,9 @@ function loadOrderFromFs(orderId) {
 
 function saveOrderToFs(order) {
   ensureOrdersDir();
-  fs.writeFileSync(orderPath(order.order_id), JSON.stringify(order, null, 2));
+  const file = orderPath(order.order_id);
+  if (!file) return;
+  fs.writeFileSync(file, JSON.stringify(order, null, 2));
 }
 
 async function loadOrderFromRemote(orderId) {
@@ -154,7 +159,7 @@ async function listAllOrders() {
 function deleteOrderFromFs(orderId) {
   ensureOrdersDir();
   const file = orderPath(orderId);
-  if (fs.existsSync(file)) fs.unlinkSync(file);
+  if (file && fs.existsSync(file)) fs.unlinkSync(file);
 }
 
 async function deleteOrderFromRemote(orderId) {

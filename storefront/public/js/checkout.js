@@ -1,6 +1,7 @@
 let currentProduct = null;
 let stripeMode = false;
 let catalogLoading = true;
+let demoAllowed = false;
 
 const BADGE_FEE_NOTICE =
   "En souscrivant un abonnement, votre badge d'accès (34,99 €) est prélevé automatiquement quelques jours après l'inscription. Le montant payé aujourd'hui par carte correspond à votre première échéance.";
@@ -74,8 +75,7 @@ async function init() {
     }
 
     stripeMode = Boolean(config.stripe_enabled);
-    const demoAllowed =
-      !stripeMode || String(config.demo_checkout_enabled) === 'true';
+    demoAllowed = Boolean(config.demo_checkout_enabled);
 
     document.getElementById('modePill').textContent = stripeMode ? 'Paiement sécurisé' : 'Mode démonstration';
     document.getElementById('productId').value = currentProduct.id;
@@ -115,8 +115,11 @@ async function init() {
       setPayButtons({ free: true });
     } else if (stripeMode) {
       setPayButtons({ stripe: true, demo: demoAllowed });
-    } else {
+    } else if (demoAllowed) {
       setPayButtons({ demo: true });
+    } else {
+      setPayButtons();
+      showMsg('Paiement non configuré pour le moment.', false);
     }
   } catch (err) {
     showMsg('Impossible de charger l\'offre — rechargez la page.', false);
@@ -182,6 +185,10 @@ document.getElementById('checkoutForm').addEventListener('submit', (e) => {
     return;
   }
   if (submitterId === 'payDemoBtn') {
+    if (!demoAllowed) {
+      showMsg('Le mode démonstration est désactivé.', false);
+      return;
+    }
     submitCheckout('/api/checkout/demo');
     return;
   }
@@ -189,10 +196,18 @@ document.getElementById('checkoutForm').addEventListener('submit', (e) => {
     submitCheckout('/api/checkout/create-session');
     return;
   }
-  submitCheckout('/api/checkout/demo');
+  if (demoAllowed) {
+    submitCheckout('/api/checkout/demo');
+    return;
+  }
+  showMsg('Paiement non configuré pour le moment.', false);
 });
 
 document.getElementById('payDemoBtn').addEventListener('click', () => {
+  if (!demoAllowed) {
+    showMsg('Le mode démonstration est désactivé.', false);
+    return;
+  }
   submitCheckout('/api/checkout/demo');
 });
 
