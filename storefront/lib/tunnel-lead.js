@@ -71,6 +71,32 @@ async function insertTunnelLead(input = {}) {
   try {
     const sb = getSupabase();
     const isFriend = Boolean(input.is_friend_referral || input.friend || tunnel === 'referral_pote');
+    const { upsertLeadClient } = require('./client-sync');
+
+    let portet = { synced: false };
+    const wantPortet =
+      input.sync_portet !== false &&
+      (isFriend || tunnel === 'offre_29' || tunnel === 'offre_259' || tunnel === 'referral_pote');
+    if (wantPortet) {
+      portet = await upsertLeadClient({
+        prenom,
+        nom: nom || prenom,
+        telephone,
+        email,
+        salle,
+        offre: isFriend
+          ? 'Parrainage — Offre 29 € (ami)'
+          : tunnel === 'offre_259'
+            ? 'Lead — Offre 259 €'
+            : 'Lead — Offre 29 €',
+        logLabel: isFriend ? 'ami-parrainage' : 'tunnel-lead',
+      });
+      if (isFriend && !portet.synced) {
+        logWarn('Ami non écrit dans Clients', { error: portet.error || portet.reason });
+        return { ok: false, error: portet.error || 'Impossible d’enregistrer l’ami. Réessaie.' };
+      }
+    }
+
     const { data, error } = await sb
       .from('tunnel_leads')
       .insert({
@@ -86,6 +112,7 @@ async function insertTunnelLead(input = {}) {
           order_id: input.order_id || null,
           is_friend_referral: isFriend,
           origin_tunnel: tunnel,
+          portet_client_id: portet.client_id || null,
         },
       })
       .select('id')
@@ -93,6 +120,9 @@ async function insertTunnelLead(input = {}) {
 
     if (error) {
       logWarn('tunnel_leads insert échoué', { tunnel, error: error.message });
+      if (isFriend && portet.synced) {
+        return { ok: true, lead_id: portet.client_id, portet_synced: true, portet };
+      }
       const missingTable =
         /Could not find the table .*tunnel_leads/i.test(error.message) ||
         /relation ["']?public\.?tunnel_leads["']? does not exist/i.test(error.message) ||
@@ -107,29 +137,7 @@ async function insertTunnelLead(input = {}) {
       return { ok: false, error: error.message };
     }
 
-    logInfo('Lead tunnel enregistré', { tunnel, lead_id: data.id, friend: isFriend });
-
-    let portet = { synced: false };
-    const wantPortet =
-      input.sync_portet !== false &&
-      (isFriend || tunnel === 'offre_29' || tunnel === 'offre_259' || tunnel === 'referral_pote');
-    if (wantPortet) {
-      const { upsertLeadClient } = require('./client-sync');
-      portet = await upsertLeadClient({
-        prenom,
-        nom,
-        telephone,
-        email,
-        salle,
-        lead_id: data.id,
-        offre: isFriend
-          ? 'Parrainage — Offre 29 € (ami)'
-          : tunnel === 'offre_259'
-            ? 'Lead — Offre 259 €'
-            : 'Lead — Offre 29 €',
-        logLabel: isFriend ? 'ami-parrainage' : 'tunnel-lead',
-      });
-    }
+    logInfo('Lead tunnel enregistré', { tunnel, lead_id: data.id, friend: isFriend, portet: Boolean(portet.synced) });
 
     return { ok: true, lead_id: data.id, portet_synced: Boolean(portet.synced), portet };
   } catch (err) {

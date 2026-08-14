@@ -1578,7 +1578,7 @@ function createApp() {
             : 400;
         return res.status(status).json({ ok: false, error: msg });
       }
-      res.json({ ok: true, lead_id: result.lead_id });
+      res.json({ ok: true, lead_id: result.lead_id, portet_synced: Boolean(result.portet_synced) });
     } catch (err) {
       logError('API tunnel-lead', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });

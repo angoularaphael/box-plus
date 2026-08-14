@@ -119,6 +119,9 @@
         if (!res.ok) {
           throw new Error(data.error || 'Envoi impossible');
         }
+        if (isFriendLead && data.portet_synced === false) {
+          throw new Error('Enregistrement incomplet. Réessaie.');
+        }
 
         if (isFriendLead) {
           try {

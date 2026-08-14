@@ -30,6 +30,9 @@ describe('referral-notify', () => {
     assert.match(copy.text, /Félicitations Léa/);
     assert.match(copy.text, /Hugo Durand/);
     assert.match(copy.text, /29 €/);
+    assert.match(copy.text, /~44 €~/);
+    assert.match(copy.text, /\*29 €\*/);
+    assert.match(copy.text, /quelques places/);
     assert.match(copy.text, /offre\/29/);
   });
 
