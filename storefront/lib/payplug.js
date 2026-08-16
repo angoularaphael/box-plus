@@ -297,10 +297,11 @@ function retrievePayment(paymentId) {
   return request(`/payments/${encodeURIComponent(paymentId)}`, { method: 'GET' });
 }
 
-async function listPayments({ page = 1, perPage = 20 } = {}) {
+async function listPayments({ page = 0, perPage = 10 } = {}) {
   const q = new URLSearchParams();
-  q.set('page', String(Math.max(1, Number(page) || 1)));
-  q.set('per_page', String(Math.min(100, Math.max(1, Number(perPage) || 20))));
+  const pageNum = Number(page);
+  q.set('page', String(Number.isFinite(pageNum) && pageNum >= 0 ? pageNum : 0));
+  q.set('per_page', String(Math.min(100, Math.max(1, Number(perPage) || 10))));
   return request(`/payments?${q}`, { method: 'GET' });
 }
 

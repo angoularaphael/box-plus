@@ -3747,32 +3747,48 @@ function createApp() {
     }
 
     const wantedOrders = new Set((orderIds || []).map((id) => String(id || '').trim()).filter(Boolean));
+    const wantedOrderList = [];
+    for (const id of wantedOrders) {
+      const loaded = await loadOrderAsync(id);
+      if (loaded) wantedOrderList.push(loaded);
+    }
     if ((wantedOrders.size || listRecent) && isPayplugEnabled()) {
-      const maxPages = wantedOrders.size ? 4 : 1;
-      for (let page = 1; page <= maxPages; page += 1) {
+      const maxPages = wantedOrders.size ? 6 : 1;
+      for (let page = 0; page < maxPages; page += 1) {
         let listing;
         try {
-          listing = await listPayments({ page, perPage: 30 });
+          listing = await listPayments({ page, perPage: 10 });
         } catch (err) {
           logWarn('PayPlug liste paiements', { error: err.message, page });
+          results.push({ ok: false, error: 'list_failed', page, message: err.message });
           break;
         }
         const rows = listing?.data || listing?.payments || [];
         for (const row of rows) {
           const metaId = String(row?.metadata?.lifecycle_order_id || row?.metadata?.order_id || '').trim();
-          if (wantedOrders.size && !wantedOrders.has(metaId)) continue;
+          const payEmail = String(row?.billing?.email || row?.metadata?.email || '')
+            .trim()
+            .toLowerCase();
+          let order = null;
+          if (wantedOrders.size) {
+            order =
+              wantedOrderList.find((o) => o.order_id === metaId) ||
+              (payEmail ? wantedOrderList.find((o) => inscriptionEmail(o) === payEmail) : null);
+            if (!order) continue;
+          } else {
+            order = await findUnpaidOrderForPayplug(row, recentUnpaid);
+          }
           if (!isPayplugPaymentPaid(row)) continue;
           const id = sanitizePaymentId(row.id);
           if (!id || seen.has(id)) continue;
           seen.add(id);
-          const order = await findUnpaidOrderForPayplug(row, recentUnpaid);
           if (!order || String(order.payment?.status) === 'paid' || String(order.payment?.status) === 'free') {
             continue;
           }
           const out = await fulfillInscriptionPayplug(row, order);
           results.push({ payment_id: id, ...out });
         }
-        if (!listing?.has_more && rows.length < 30) break;
+        if (!listing?.has_more && rows.length < 10) break;
       }
     }
 
