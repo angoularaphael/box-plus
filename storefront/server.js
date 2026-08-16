@@ -1617,6 +1617,106 @@ function createApp() {
     });
   });
 
+  app.post('/api/admin/orders/:id/send-resume-email', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const order = await loadOrderAsync(String(req.params.id || '').trim());
+    if (!order) {
+      return res.status(404).json({ ok: false, error: 'not_found', message: 'Référence introuvable' });
+    }
+    const { describeResume, canPayOrder, sendResumeEmail } = require('./lib/inscription-nudge');
+    if (order.action || !order.access_token) {
+      return res.status(400).json({
+        ok: false,
+        error: 'not_inscription',
+        message: 'Cette référence n’est pas une inscription boutique',
+      });
+    }
+    const kind = String(req.body?.kind || req.query.kind || '').toLowerCase() === 'pay' ? 'pay' : 'resume';
+    if (kind === 'pay' && !canPayOrder(order)) {
+      return res.status(400).json({ ok: false, error: 'cannot_pay', message: 'Impossible d’envoyer un lien de paiement' });
+    }
+    try {
+      const mailed = await sendResumeEmail(order, { kind });
+      if (!mailed.sent) {
+        return res.status(502).json({
+          ok: false,
+          error: mailed.error || mailed.reason || 'email_not_sent',
+          message:
+            mailed.error === 'no_email'
+              ? 'Pas d’e-mail sur ce dossier'
+              : 'Envoi e-mail impossible (Brevo)',
+        });
+      }
+      const info = describeResume(order, { kind });
+      logInfo('Lien de reprise envoyé par e-mail', {
+        order_id: order.order_id,
+        kind,
+        via: mailed.via,
+      });
+      res.json({
+        ok: true,
+        sent: true,
+        to: mailed.to,
+        kind,
+        message: `E-mail envoyé à ${mailed.to}`,
+        ...info,
+      });
+    } catch (err) {
+      logError('Envoi lien de reprise', { order_id: order.order_id, error: err.message });
+      res.status(500).json({ ok: false, error: err.message, message: 'Envoi e-mail échoué' });
+    }
+  });
+
+  app.post('/api/admin/orders/send-resume-email-batch', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const ids = [
+      ...new Set(
+        (Array.isArray(req.body?.order_ids) ? req.body.order_ids : [])
+          .map((id) => String(id || '').trim())
+          .filter(Boolean)
+      ),
+    ];
+    if (!ids.length) {
+      return res.status(400).json({ ok: false, error: 'empty', message: 'Aucune personne sélectionnée' });
+    }
+    if (ids.length > 40) {
+      return res.status(400).json({
+        ok: false,
+        error: 'too_many',
+        message: '40 destinataires maximum par diffusion',
+      });
+    }
+    const { sendResumeEmail } = require('./lib/inscription-nudge');
+    const results = [];
+    for (const id of ids) {
+      const order = await loadOrderAsync(id);
+      if (!order || order.action || !order.access_token) {
+        results.push({ order_id: id, ok: false, error: 'not_inscription' });
+        continue;
+      }
+      try {
+        const mailed = await sendResumeEmail(order, { kind: 'resume' });
+        results.push({
+          order_id: id,
+          ok: Boolean(mailed.sent),
+          to: mailed.to || null,
+          error: mailed.error || mailed.reason || null,
+        });
+      } catch (err) {
+        results.push({ order_id: id, ok: false, error: err.message });
+      }
+    }
+    const sent = results.filter((r) => r.ok).length;
+    logInfo('Diffusion mails de reprise', { sent, total: ids.length });
+    res.json({
+      ok: sent > 0,
+      sent,
+      total: ids.length,
+      results,
+      message: `${sent} e-mail(s) envoyé(s) sur ${ids.length}`,
+    });
+  });
+
   app.get('/api/admin/orders/:id', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const order = await loadOrderAsync(req.params.id);

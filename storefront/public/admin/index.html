@@ -326,6 +326,7 @@
           <input type="text" id="resumeRefInput" placeholder="Référence (ex. BC-…)" class="admin-search" autocomplete="off" />
           <button type="button" class="btn sm" id="resumeLinkBtn">Générer le lien de reprise</button>
           <button type="button" class="btn sm" id="payLinkBtn">Générer le lien payer</button>
+          <button type="button" class="btn sm secondary" id="diffusionBtn">Diffusion</button>
         </div>
         <div id="resumeLinkBox" class="resume-link-box" hidden></div>
         <p class="form-msg" id="ordersMsg"></p>
@@ -333,6 +334,7 @@
           <table class="admin-table" id="ordersTable">
             <thead>
               <tr>
+                <th><input type="checkbox" id="ordersSelectAll" title="Tout sélectionner" /></th>
                 <th>Référence</th>
                 <th>Adhérent</th>
                 <th>Email</th>

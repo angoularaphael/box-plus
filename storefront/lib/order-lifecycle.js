@@ -472,6 +472,7 @@ function toAdminSummary(order) {
 
 module.exports = {
   STEPS,
+  gymLabel,
   ORDERS_DIR,
   UPLOADS_DIR,
   createDraft,

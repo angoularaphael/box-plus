@@ -1189,6 +1189,13 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
+.admin-table .order-pick,
+#ordersSelectAll {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--bc-cta, #e8001c);
+}
+
 .badge {
   display: inline-block;
   padding: 2px 8px;

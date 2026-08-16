@@ -55,6 +55,62 @@ test('lien de reprise : étape réelle, produit et jeton', () => {
   else process.env.STORE_URL = prev;
 });
 
+test('mails reprise / relance : vouvoiement, bouton payer visible', () => {
+  const prev = process.env.STORE_URL;
+  process.env.STORE_URL = 'https://boutique.boxingcenter.fr';
+  const {
+    resumeEmailSubject,
+    resumeEmailHtml,
+    nudgeEmailSubject,
+    nudgeEmailHtml,
+  } = require('../storefront/lib/inscription-nudge');
+  const token = 'b'.repeat(48);
+  const unpaid = {
+    order_id: 'BC-MAIL',
+    access_token: token,
+    product_id: 'dp-104',
+    step: 4,
+    customer_short: { first_name: 'Diego', last_name: 'Cardozo', email: 'd@test.local' },
+    customer_full: { gym: 'st-cyprien' },
+    product_snapshot: { name: 'OFFRE A 29€', price_cents: 2999, requires_payment: true },
+    payment: { status: 'failed' },
+  };
+  const payHtml = resumeEmailHtml(unpaid);
+  const paySubject = resumeEmailSubject(unpaid);
+  assert.match(paySubject, /payer/i);
+  assert.match(payHtml, /Bonjour Diego/);
+  assert.match(payHtml, /Payer maintenant/);
+  assert.match(payHtml, /carte bancaire/i);
+  assert.match(payHtml, /PayPal/);
+  assert.match(payHtml, /boutique\.boxingcenter\.fr\/inscription/);
+  assert.match(payHtml, /order=BC-MAIL/);
+  assert.match(payHtml, /\bvous\b|\bvotre\b/i);
+  assert.doesNotMatch(payHtml, /(?:^|[\s>])(?:tu |ton |tes |toi)|t'|Salut /i);
+
+  const identity = { ...unpaid, step: 3, payment: { status: 'pending' } };
+  const resumeHtml = resumeEmailHtml(identity);
+  assert.match(resumeHtml, /Reprendre mon inscription/);
+  assert.match(resumeHtml, /Identité/);
+  assert.match(resumeHtml, /\bvous\b|\bvotre\b/i);
+  assert.doesNotMatch(resumeHtml, /(?:^|[\s>])(?:tu |ton |tes |toi)|t'|Salut /i);
+
+  const paid = {
+    ...unpaid,
+    step: 6,
+    payment: { status: 'paid', paid_at: '2026-08-16T08:00:00.000Z' },
+  };
+  const nudgeHtml = nudgeEmailHtml(paid);
+  assert.match(nudgeEmailSubject(), /validez votre inscription/i);
+  assert.match(nudgeHtml, /Bonjour Diego/);
+  assert.match(nudgeHtml, /Terminer mon inscription/);
+  assert.match(nudgeHtml, /dossier et la signature/);
+  assert.match(nudgeHtml, /boutique\.boxingcenter\.fr\/inscription/);
+  assert.match(nudgeHtml, /\bvous\b|\bvotre\b/i);
+  assert.doesNotMatch(nudgeHtml, /(?:^|[\s>])(?:tu |ton |tes |toi)|t'|Salut /i);
+  if (prev === undefined) delete process.env.STORE_URL;
+  else process.env.STORE_URL = prev;
+});
+
 test('relance 30 min : due seulement si payé, incomplet, deadline dépassée', () => {
   const now = Date.parse('2026-08-13T18:00:00.000Z');
   const paid = '2026-08-13T17:20:00.000Z';

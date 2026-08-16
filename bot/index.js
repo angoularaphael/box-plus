@@ -578,13 +578,14 @@ async function processInscriptionNudgeJob(order) {
   const resumeUrl = order.raw?.resume_url || '';
   const subject =
     order.raw?.email_subject ||
-    'Gong ! Ton inscription Boxing Center n’est pas encore sur le ring';
+    'Dernière étape : validez votre inscription Boxing Center';
   const html =
     order.raw?.email_html ||
-    `<p>Salut ${first || 'champion'},</p>
-     <p>Tu as payé, mais le round n’est pas fini : dossier + signature. Tant que ce n’est pas bouclé, tu n’es pas inscrit en salle.</p>
-     <p><a href="${resumeUrl}">Finir le round</a></p>
-     <p>À tout de suite sur le ring,<br/>Boxing Center</p>`;
+    `<p>Bonjour ${first || ''},</p>
+     <p>Votre règlement est bien reçu. Il reste le dossier et la signature. Tant que ce n’est pas validé, vous n’êtes pas encore inscrit en salle.</p>
+     <p><a href="${resumeUrl}">Terminer mon inscription</a></p>
+     <p>Si le bouton ne s’affiche pas, copiez ce lien : ${resumeUrl}</p>
+     <p>Sportivement,<br/>L’équipe Boxing Center</p>`;
 
   const apiKey = String(process.env.BREVO_API_KEY || '').trim().replace(/^["']|["']$/g, '');
   if (apiKey.startsWith('xkeysib-')) {

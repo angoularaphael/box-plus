@@ -128,7 +128,7 @@ window.BCCounselor = (function () {
           </div>`;
       } else if (step === 'form') {
         footer = `
-          <p class="chat-form-hint">Le <strong>nom</strong>, le <strong>prénom</strong>, le <strong>téléphone</strong> et la <strong>date de naissance</strong> doivent correspondre à votre fiche adhérent (majuscules / minuscules indifférentes).</p>
+          <p class="chat-form-hint">Les informations doivent être <strong>identiques à celles de votre inscription</strong> : nom, prénom, date de naissance et téléphone (majuscules / minuscules indifférentes).</p>
           <form id="cancelForm" class="chat-form form-grid">
             <div><label>Prénom *</label><input name="first_name" required /></div>
             <div><label>Nom *</label><input name="last_name" required /></div>

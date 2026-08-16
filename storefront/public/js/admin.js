@@ -100,23 +100,18 @@
   function showResumeBox(data) {
     const box = document.getElementById('resumeLinkBox');
     if (!box) return;
-    const first = String(data.name || '').split(/\s+/)[0] || '';
     const pay = data.kind === 'pay';
-    const mailBody = pay
-      ? `Bonjour${first ? ` ${first}` : ''},\n\nVoici le lien pour payer votre inscription Boxing Center :\n${data.url}\n\nBoxing Center`
-      : `Bonjour${first ? ` ${first}` : ''},\n\nVoici le lien pour reprendre votre inscription Boxing Center exactement où vous vous êtes arrêté :\n${data.url}\n\nBoxing Center`;
-    const mailSubject = pay ? 'Payer votre inscription Boxing Center' : 'Votre inscription Boxing Center';
-    const mailHref =
-      data.email && data.email !== '—'
-        ? `mailto:${encodeURIComponent(data.email)}?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}`
-        : '';
     box.hidden = false;
     box.innerHTML = `
       <p><strong>${escapeHtml(data.message || (pay ? 'Lien de paiement' : 'Lien de reprise'))}</strong>${data.name ? ` — ${escapeHtml(data.name)}` : ''}</p>
       <div class="resume-link-box__row">
         <input type="text" readonly value="${escapeHtml(data.url)}" id="resumeLinkUrl" />
         <button type="button" class="btn sm" id="resumeCopyBtn">Copier</button>
-        ${mailHref ? `<a class="btn sm secondary" href="${escapeHtml(mailHref)}">Envoyer par e-mail</a>` : ''}
+        ${
+          data.email && data.email !== '—'
+            ? `<button type="button" class="btn sm secondary" id="resumeSendBtn">Envoyer par e-mail</button>`
+            : ''
+        }
       </div>`;
     const input = document.getElementById('resumeLinkUrl');
     input?.focus();
@@ -126,6 +121,38 @@
       const btn = document.getElementById('resumeCopyBtn');
       if (btn) btn.textContent = ok ? 'Copié' : 'Sélectionnez le lien';
     });
+    document.getElementById('resumeSendBtn')?.addEventListener('click', () => sendResumeEmail(data));
+  }
+
+  async function sendResumeEmail(data) {
+    const btn = document.getElementById('resumeSendBtn');
+    const msg = document.getElementById('ordersMsg');
+    if (btn) btn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(data.order_id)}/send-resume-email`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true),
+        body: JSON.stringify({ kind: data.kind || 'resume' }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok || !out.ok) {
+        throw new Error(out.message || out.error || 'Envoi impossible');
+      }
+      if (btn) btn.textContent = 'Envoyé';
+      if (msg) {
+        msg.textContent = out.message || `E-mail envoyé à ${out.to}`;
+        msg.className = 'form-msg ok';
+      }
+      if (typeof window.panToast === 'function') window.panToast(out.message || 'E-mail envoyé', 'ok');
+    } catch (err) {
+      if (btn) btn.disabled = false;
+      if (msg) {
+        msg.textContent = err.message;
+        msg.className = 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
+    }
   }
 
   async function generateResumeLink(orderId, btn, kind = 'resume') {
@@ -174,6 +201,53 @@
     generate: generateResumeLink,
     generatePay: (orderId, btn) => generateResumeLink(orderId, btn, 'pay'),
   };
+
+  function selectedOrderIds() {
+    return [...document.querySelectorAll('.order-pick:checked')].map((el) => el.dataset.id).filter(Boolean);
+  }
+
+  async function sendDiffusion() {
+    const ids = selectedOrderIds();
+    const msg = document.getElementById('ordersMsg');
+    if (!ids.length) {
+      if (msg) {
+        msg.textContent = 'Cochez les personnes à relancer.';
+        msg.className = 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast('Cochez les personnes à relancer', 'err');
+      return;
+    }
+    if (!confirm(`Envoyer le mail de reprise à ${ids.length} personne(s) ?`)) return;
+    const btn = document.getElementById('diffusionBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const res = await fetch('/api/admin/orders/send-resume-email-batch', {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true),
+        body: JSON.stringify({ order_ids: ids }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok && !out.sent) {
+        throw new Error(out.message || out.error || 'Diffusion impossible');
+      }
+      if (msg) {
+        msg.textContent = out.message || `${out.sent || 0} e-mail(s) envoyé(s)`;
+        msg.className = out.sent ? 'form-msg ok' : 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') {
+        window.panToast(out.message || 'Diffusion envoyée', out.sent ? 'ok' : 'err');
+      }
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message;
+        msg.className = 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
 
   function showTab(name) {
     ['tabOffers', 'tabMateriel', 'tabContracts', 'tabCoachings', 'tabStats', 'tabWhatsapp'].forEach((id) => {
@@ -426,6 +500,8 @@
   function renderOrders() {
     const tbody = document.getElementById('ordersBody');
     const list = filteredOrders();
+    const selectAll = document.getElementById('ordersSelectAll');
+    if (selectAll) selectAll.checked = false;
     document.getElementById('ordersCount').textContent =
       list.length === orders.length
         ? `${orders.length} inscription(s)`
@@ -433,7 +509,7 @@
 
     if (!list.length) {
       tbody.innerHTML =
-        '<tr><td colspan="11" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription trouvée</td></tr>';
+        '<tr><td colspan="12" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription trouvée</td></tr>';
       return;
     }
 
@@ -441,6 +517,7 @@
       .map(
         (o) => `
       <tr>
+        <td><input type="checkbox" class="order-pick" data-id="${escapeHtml(o.order_id)}" ${o.email && o.email !== '—' && o.can_resume ? '' : 'disabled'} /></td>
         <td><code style="font-size:11px">${escapeHtml(o.order_id)}</code></td>
         <td>${escapeHtml(o.name)}</td>
         <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>
@@ -1492,6 +1569,13 @@
   document.getElementById('payLinkBtn')?.addEventListener('click', () => {
     const id = document.getElementById('resumeRefInput')?.value || '';
     generateResumeLink(id, document.getElementById('payLinkBtn'), 'pay');
+  });
+  document.getElementById('diffusionBtn')?.addEventListener('click', sendDiffusion);
+  document.getElementById('ordersSelectAll')?.addEventListener('change', (e) => {
+    const on = Boolean(e.target.checked);
+    document.querySelectorAll('.order-pick:not(:disabled)').forEach((cb) => {
+      cb.checked = on;
+    });
   });
   document.getElementById('resumeRefInput')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {

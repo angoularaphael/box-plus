@@ -1,6 +1,6 @@
 'use strict';
 
-const { STEPS, listAllOrdersAsync, loadOrderAsync, saveOrderAsync } = require('./order-lifecycle');
+const { STEPS, gymLabel, listAllOrdersAsync, loadOrderAsync, saveOrderAsync } = require('./order-lifecycle');
 const { getStoreUrl } = require('../../lib/app-urls');
 const { logInfo, logWarn } = require('../../lib/logger');
 
@@ -132,33 +132,112 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
-function nudgeEmailSubject() {
-  return 'Gong ! Ton inscription Boxing Center n’est pas encore sur le ring';
+function firstName(order) {
+  return String(order?.customer_short?.first_name || order?.customer_full?.first_name || '').trim();
 }
 
-function nudgeEmailHtml(order) {
-  const first = escapeHtml(order.customer_short?.first_name || '');
-  const url = resumeUrl(order, { minStep: STEPS.IBAN, fallbackStep: STEPS.DOSSIER });
+function productLabel(order) {
+  return String(
+    order?.product_snapshot?.display_name || order?.product_snapshot?.name || 'votre offre Boxing Center'
+  ).trim();
+}
+
+function wantsPayCta(order, { kind } = {}) {
+  if (kind === 'pay') return true;
+  return canPayOrder(order) && resumeStep(order) === STEPS.PAYMENT;
+}
+
+function ctaButton(url, label) {
+  return `<p style="text-align:center;margin:28px 0 12px">
+      <a href="${escapeHtml(url)}" style="display:inline-block;background:#E8001C;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:16px 28px;border-radius:8px">${escapeHtml(label)}</a>
+    </p>
+    <p style="font-size:13px;color:#5C6370;word-break:break-all;line-height:1.5">Si le bouton ne s’affiche pas, copiez ce lien dans votre navigateur :<br/><a href="${escapeHtml(url)}" style="color:#E8001C">${escapeHtml(url)}</a></p>`;
+}
+
+function wrapCommercialEmail({ kicker, title, inner }) {
   return `<!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><title>Round non terminé</title></head>
-<body style="font-family:Arial,sans-serif;color:#0C1829;max-width:600px;margin:0 auto;padding:24px;background:#f4f5f7">
+<head><meta charset="UTF-8"><title>${escapeHtml(title)}</title></head>
+<body style="font-family:Arial,Helvetica,sans-serif;color:#0C1829;max-width:600px;margin:0 auto;padding:24px;background:#f4f5f7">
   <div style="background:#0C1829;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0">
-    <p style="margin:0;letter-spacing:0.12em;font-size:12px;color:#C8902F;text-transform:uppercase">Boxing Center — Round de 30 min</p>
-    <h1 style="margin:8px 0 0;font-size:26px">Le gong a sonné.</h1>
+    <p style="margin:0;letter-spacing:0.12em;font-size:12px;color:#C8902F;text-transform:uppercase">${escapeHtml(kicker)}</p>
+    <h1 style="margin:8px 0 0;font-size:24px;line-height:1.25">${escapeHtml(title)}</h1>
   </div>
   <div style="background:#fff;padding:24px;border-radius:0 0 12px 12px">
-    <p>Salut ${first || 'champion'},</p>
-    <p>Tu as <strong>payé</strong>, mais le combat n’est pas fini : dossier + signature sont encore ouverts. Tant que ce round n’est pas bouclé, <strong>tu n’es pas inscrit en salle</strong> — les coachs ne te verront pas sur la feuille.</p>
-    <p>Remets les gants et termine maintenant (moins de 2 minutes) :</p>
-    <p style="text-align:center;margin:28px 0">
-      <a href="${escapeHtml(url)}" style="display:inline-block;background:#E8001C;color:#fff;text-decoration:none;font-weight:700;padding:14px 22px;border-radius:8px">Finir le round</a>
-    </p>
-    <p style="font-size:13px;color:#5C6370">Sans ça, tu risques d’arriver au club et d’entendre : « tu n’es pas dans le système ». On ne veut pas de ça.</p>
-    <p>À tout de suite sur le ring,<br/>Boxing Center</p>
+    ${inner}
+    <p style="margin:28px 0 0">Sportivement,<br/><strong>L’équipe Boxing Center</strong></p>
   </div>
 </body>
 </html>`;
+}
+
+function resumeEmailSubject(order, { kind } = {}) {
+  if (wantsPayCta(order, { kind })) {
+    return 'Votre inscription Boxing Center — il ne reste plus qu’à payer';
+  }
+  const step = STEP_LABELS[resumeStep(order)] || 'inscription';
+  return `Reprenez votre inscription Boxing Center (étape ${step})`;
+}
+
+function resumeEmailHtml(order, { kind } = {}) {
+  const info = describeResume(order, { kind });
+  const pay = wantsPayCta(order, { kind });
+  const url = info.url;
+  const hello = firstName(order) ? `Bonjour ${escapeHtml(firstName(order))},` : 'Bonjour,';
+  const offer = escapeHtml(productLabel(order));
+  const gym = escapeHtml(gymLabel(order.customer_full?.gym) || '');
+  const step = escapeHtml(info.step_label || 'inscription');
+  const inner = pay
+    ? `<p>${hello}</p>
+    <p>Votre inscription <strong>${offer}</strong>${gym ? ` à <strong>${gym}</strong>` : ''} est presque terminée. Il ne reste plus qu’à <strong>régler en ligne</strong> pour débloquer l’accès aux 5 salles.</p>
+    <p>Cliquez sur le bouton ci-dessous : vous arrivez <strong>directement sur la page de paiement</strong>. Choisissez <strong>carte bancaire</strong> ou <strong>PayPal</strong> — cela prend moins d’une minute.</p>
+    ${ctaButton(url, 'Payer maintenant')}
+    <p style="font-size:14px;color:#334155">Votre place vous attend. Plus vous validez tôt, plus vite vous pouvez enfiler les gants.</p>`
+    : `<p>${hello}</p>
+    <p>Vous avez commencé votre inscription <strong>${offer}</strong>${gym ? ` à <strong>${gym}</strong>` : ''} et vous vous êtes arrêté à l’étape <strong>${step}</strong>.</p>
+    <p>Un clic suffit pour reprendre <strong>exactement là où vous en étiez</strong> — sans tout recommencer.</p>
+    ${ctaButton(url, 'Reprendre mon inscription')}
+    <p style="font-size:14px;color:#334155">Les coachs et les 5 salles Boxing Center sont prêts. On vous attend.</p>`;
+  return wrapCommercialEmail({
+    kicker: 'Boxing Center — Inscription',
+    title: pay ? 'Il ne reste plus qu’à payer' : 'Reprenez là où vous en étiez',
+    inner,
+  });
+}
+
+function nudgeEmailSubject() {
+  return 'Dernière étape : validez votre inscription Boxing Center';
+}
+
+function nudgeEmailHtml(order) {
+  const hello = firstName(order) ? `Bonjour ${escapeHtml(firstName(order))},` : 'Bonjour,';
+  const url = resumeUrl(order, { minStep: STEPS.IBAN, fallbackStep: STEPS.DOSSIER });
+  const inner = `<p>${hello}</p>
+    <p>Votre règlement est bien reçu. Il reste <strong>le dossier et la signature</strong> (environ 2 minutes). Tant que ce n’est pas validé, <strong>vous n’êtes pas encore inscrit en salle</strong>.</p>
+    <p>Cliquez sur le bouton : vous reprenez directement à l’étape restante.</p>
+    ${ctaButton(url, 'Terminer mon inscription')}
+    <p style="font-size:14px;color:#334155">Sans cette validation, les coachs ne vous verront pas sur la feuille d’émargement.</p>`;
+  return wrapCommercialEmail({
+    kicker: 'Boxing Center — Dossier à finaliser',
+    title: 'Plus que 2 minutes pour être inscrit',
+    inner,
+  });
+}
+
+async function sendResumeEmail(order, { kind = 'resume', to } = {}) {
+  const dest = String(to || customerEmail(order) || '').trim();
+  if (!dest) return { sent: false, error: 'no_email' };
+  if (/@boxplus-test\.local$/i.test(dest)) {
+    return { sent: false, skipped: true, reason: 'test_email' };
+  }
+  const { sendEmailViaBrevo } = require('./brevo-send');
+  const result = await sendEmailViaBrevo({
+    to: dest,
+    subject: resumeEmailSubject(order, { kind }),
+    html: resumeEmailHtml(order, { kind }),
+  });
+  if (!result) return { sent: false, error: 'brevo_not_configured' };
+  return { sent: true, via: result.via || 'brevo', to: dest };
 }
 
 function summarizeNudge(order) {
@@ -287,6 +366,9 @@ module.exports = {
   productNeedsPayment,
   canPayOrder,
   STEP_LABELS,
+  resumeEmailSubject,
+  resumeEmailHtml,
+  sendResumeEmail,
   nudgeEmailSubject,
   nudgeEmailHtml,
   listDueNudges,
