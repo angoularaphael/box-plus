@@ -1463,7 +1463,7 @@ async function ensureMemberCheckForBadgeEdit(page, memberId) {
   if (!memberId) return false;
 
   if (!page.url().includes('check.php')) {
-    await openMemberCheck(page, memberId);
+    await openMemberCheck(page, memberId, gymConfig);
     await randomDelay(1500, 2200);
   } else {
     await randomDelay(800, 1200);
@@ -2456,7 +2456,7 @@ async function verifyCreatedContract(page, memberId, { badge = false, label = ''
 async function recordSale(page, order, productConfig, memberId, gymConfig = {}, options = {}) {
   if (productConfig.create_sale === false || productConfig.sale_type === 'none') {
     logInfo('Essai — fiche membre seulement', { order_id: order.order_id });
-    if (memberId) await openMemberCheck(page, memberId);
+    if (memberId) await openMemberCheck(page, memberId, gymConfig);
     return { sale_id: null, action: 'skipped_essai' };
   }
 
@@ -2467,14 +2467,14 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
 
   await closeGreyboxIfOpen(page);
   await dismissJqueryUiOverlay(page).catch(() => {});
-  await openMemberCheck(page, memberId);
+  await openMemberCheck(page, memberId, gymConfig);
   await dismissJqueryUiOverlay(page).catch(() => {});
   await annotateMember(page, order, productConfig, memberId).catch((err) => {
     logWarn('Annotation fiche membre ignorée', { error: err.message });
   });
   // Après Mettre à jour, revenir sur check.php (iframe) pour Achat Abonnement / Carte
   await closeGreyboxIfOpen(page);
-  await openMemberCheck(page, memberId);
+  await openMemberCheck(page, memberId, gymConfig);
   await randomDelay(1000, 1800);
 
   let result;
@@ -2555,7 +2555,7 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
     if (badgeProductConfig) {
       logInfo('Création badge après abonnement', { member_id: memberId, order_id: order.order_id });
       await closeGreyboxIfOpen(page);
-      await openMemberCheck(page, memberId);
+      await openMemberCheck(page, memberId, gymConfig);
       await randomDelay(400, 700);
       try {
         const badgeResult = await buyCarteBadge(page, badgeProductConfig, gymConfig, memberId);
@@ -2614,7 +2614,7 @@ async function enforceBadgeEcheance(page, memberId, badgeConfig = {}) {
 
   const { findActiveContracts, contractUrl } = require('./cancel-sale');
   await closeGreyboxIfOpen(page);
-  await openMemberCheck(page, memberId);
+  await openMemberCheck(page, memberId, gymConfig);
   await randomDelay(500, 800);
 
   const contracts = await findActiveContracts(page).catch(() => []);
