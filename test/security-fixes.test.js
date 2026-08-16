@@ -21,6 +21,7 @@ const {
   amountsMatch,
   expectedChargeCents,
   payplugMatches,
+  rememberPreviousPayplugId,
   paypalMatches,
   paypalPaidCents,
   verifyPayplugSignature,
@@ -112,6 +113,38 @@ test('PayPlug refuse un paiement lié à une autre commande', () => {
     storedPaymentId: 'pay_ok',
   });
   assert.equal(storedWins.ok, true);
+
+  // Double page hébergée : pay_A encaissé, la commande stocke pay_B.
+  const rebound = payplugMatches({
+    payment: {
+      id: 'pay_A',
+      amount: 25900,
+      metadata: { lifecycle_order_id: 'BC-X', order_id: 'BC-X' },
+    },
+    orderId: 'BC-X',
+    expectedCents: 25900,
+    storedPaymentId: 'pay_B',
+  });
+  assert.equal(rebound.ok, true);
+
+  const wrongAmountStored = payplugMatches({
+    payment: { id: 'pay_ok', amount: 1000, metadata: { lifecycle_order_id: 'BC-EXPENSIVE' } },
+    orderId: 'BC-EXPENSIVE',
+    expectedCents: 25900,
+    storedPaymentId: 'pay_ok',
+  });
+  assert.equal(wrongAmountStored.ok, false);
+  assert.equal(wrongAmountStored.error, 'amount_mismatch');
+});
+
+test('PayPlug conserve l’id précédent en cas de 2ᵉ page hébergée', () => {
+  const hist = rememberPreviousPayplugId({ payplug_payment_id: 'pay_A' }, 'pay_B');
+  assert.deepEqual(hist, ['pay_A']);
+  const again = rememberPreviousPayplugId(
+    { payplug_payment_id: 'pay_B', payplug_payment_ids: ['pay_A'] },
+    'pay_C'
+  );
+  assert.deepEqual(again, ['pay_A', 'pay_B']);
 });
 
 test('PayPal refuse un custom_id / montant différent', () => {

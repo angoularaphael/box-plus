@@ -44,6 +44,7 @@ const {
   createFourTimesPayment,
   createHostedPayment,
   retrievePayment,
+  listPayments,
   isPayplugPaymentPaid,
   isPayplugPaymentPending,
   isPayplugEnabled,
@@ -96,7 +97,10 @@ const {
 } = require('./lib/security');
 const {
   expectedChargeCents,
+  paidMatchesExpected,
   payplugMatches,
+  rememberPreviousPayplugId,
+  payplugIdCandidates,
   paypalMatches,
   verifyPayplugSignature,
 } = require('./lib/payment-bind');
@@ -1453,7 +1457,21 @@ function createApp() {
     } catch (err) {
       logWarn('Relances inscription (cron catalogue)', { error: err.message });
     }
-    res.json({ ok: result.ok !== false, ...result, nudges: { count: nudges.count || 0 } });
+    let payplug = { skipped: true };
+    try {
+      if (isPayplugEnabled()) {
+        payplug = await reconcilePayplugPayments({ listRecent: true });
+      }
+    } catch (err) {
+      logWarn('PayPlug réconciliation (cron catalogue)', { error: err.message });
+      payplug = { ok: false, error: err.message };
+    }
+    res.json({
+      ok: result.ok !== false,
+      ...result,
+      nudges: { count: nudges.count || 0 },
+      payplug: { marked: payplug.marked || 0, checked: payplug.checked || 0 },
+    });
   });
 
   app.get('/api/cron/inscription-nudges', async (req, res) => {
@@ -2586,6 +2604,7 @@ function createApp() {
           method: 'payplug',
           payment_plan: planLabel === '4x' ? '4x' : 'once',
           preferred_checkout: 'payplug',
+          payplug_payment_ids: rememberPreviousPayplugId(order.payment, payment.id),
           payplug_payment_id: payment.id,
           status: 'pending',
         };
@@ -3560,14 +3579,185 @@ function createApp() {
       payment.metadata?.payment_plan ||
       order.payment?.payment_plan ||
       'once';
+    const hist = rememberPreviousPayplugId(order.payment, payment.id);
     const paid = await markPaymentPaid(order.order_id, {
       method: 'payplug',
       payment_plan: plan,
       billing_plan: order.payment?.billing_plan || payment.metadata?.billing_plan || null,
+      payplug_payment_ids: hist,
       payplug_payment_id: payment.id,
       status: 'paid',
     });
     return paid;
+  }
+
+  function inscriptionEmail(order) {
+    return String(
+      order?.customer_short?.email || order?.customer_full?.email || order?.customer?.email || ''
+    )
+      .trim()
+      .toLowerCase();
+  }
+
+  async function fulfillInscriptionPayplug(payment, orderHint = null) {
+    const meta = payment.metadata || {};
+    const orderId = meta.lifecycle_order_id || meta.order_id || orderHint?.order_id || null;
+    let order = orderHint;
+    if (!order && orderId) order = await loadOrderAsync(orderId);
+    if (!order) {
+      return { ok: false, error: 'order_not_found', http: 200, ignored: true };
+    }
+    if (order.payment?.status === 'paid' || order.payment?.status === 'free') {
+      return { ok: true, already_paid: true, order_id: order.order_id };
+    }
+    const bound = payplugMatches({
+      payment,
+      orderId: order.order_id,
+      expectedCents: expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot),
+      storedPaymentId: order.payment?.payplug_payment_id,
+    });
+    if (!bound.ok) {
+      const metaOrder = String(meta.lifecycle_order_id || meta.order_id || meta.verify_order_id || '').trim();
+      const amountOk = paidMatchesExpected(
+        payment.amount || payment.authorized_amount,
+        expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot)
+      );
+      const trustedHint =
+        orderHint &&
+        orderHint.order_id === order.order_id &&
+        amountOk &&
+        (!metaOrder || metaOrder === order.order_id);
+      if (!trustedHint) {
+        return { ok: false, error: bound.error, http: 409, order_id: order.order_id };
+      }
+    }
+    if (isPayplugPaymentPaid(payment)) {
+      await markPayplugOrderPaid(order, payment);
+      logInfo('PayPlug confirmé', {
+        order_id: order.order_id,
+        payment_id: payment.id,
+        payment_plan: payment.metadata?.payment_plan || order.payment?.payment_plan,
+      });
+      return { ok: true, paid: true, order_id: order.order_id, payment_id: payment.id };
+    }
+    if (payment.failure) {
+      await markPaymentFailed(order.order_id, {
+        method: 'payplug',
+        payment_plan: payment.metadata?.payment_plan || order.payment?.payment_plan || 'once',
+        payplug_payment_id: payment.id,
+        failure: payment.failure,
+      }).catch(() => {});
+      return { ok: true, failed: true, order_id: order.order_id };
+    }
+    return { ok: true, pending: true, order_id: order.order_id };
+  }
+
+  async function findUnpaidOrderForPayplug(payment, orders) {
+    const metaId = String(
+      payment?.metadata?.lifecycle_order_id || payment?.metadata?.order_id || ''
+    ).trim();
+    if (metaId) {
+      const byId = orders.find((o) => o.order_id === metaId);
+      if (byId) return byId;
+      const loaded = await loadOrderAsync(metaId);
+      if (loaded) return loaded;
+    }
+    const email = String(payment?.billing?.email || payment?.metadata?.email || '')
+      .trim()
+      .toLowerCase();
+    if (!email || !email.includes('@')) return null;
+    const amount = payment.amount || payment.authorized_amount;
+    const hits = orders.filter((order) => {
+      if (String(order.payment?.status) === 'paid' || String(order.payment?.status) === 'free') {
+        return false;
+      }
+      if (inscriptionEmail(order) !== email) return false;
+      const expected = expectedChargeCents(
+        order,
+        findProduct(order.product_id) || order.product_snapshot
+      );
+      return paidMatchesExpected(amount, expected);
+    });
+    return hits.length === 1 ? hits[0] : null;
+  }
+
+  async function retrievePayplugPaymentSafe(paymentId) {
+    const id = sanitizePaymentId(paymentId);
+    if (!id) return null;
+    try {
+      return await retrievePayment(id);
+    } catch {
+      try {
+        return await runPaymentContext({ test: true }, () => retrievePayment(id));
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  async function reconcilePayplugPayments({ paymentIds = [], listRecent = true } = {}) {
+    const results = [];
+    const seen = new Set();
+    const orders = await listAllOrdersAsync();
+    const cutoff = Date.now() - 21 * 24 * 60 * 60 * 1000;
+    const recentUnpaid = orders.filter((order) => {
+      if (String(order.payment?.status) === 'paid' || String(order.payment?.status) === 'free') {
+        return false;
+      }
+      const t = Date.parse(order.updated_at || order.created_at || 0);
+      return Number.isFinite(t) && t >= cutoff;
+    });
+
+    async function tryOne(paymentId, orderHint) {
+      const id = sanitizePaymentId(paymentId);
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      const payment = await retrievePayplugPaymentSafe(id);
+      if (!payment) {
+        results.push({ payment_id: id, ok: false, error: 'retrieve_failed' });
+        return;
+      }
+      const metaType = String(payment.metadata?.order_type || '');
+      if (metaType === 'echeancier' || metaType === 'materiel' || metaType === 'membership_change') {
+        results.push({ payment_id: id, ok: true, skipped: metaType });
+        return;
+      }
+      let order = orderHint || (await findUnpaidOrderForPayplug(payment, recentUnpaid));
+      const out = await fulfillInscriptionPayplug(payment, order);
+      results.push({ payment_id: id, ...out });
+    }
+
+    for (const id of paymentIds) await tryOne(id, null);
+
+    for (const order of recentUnpaid) {
+      for (const id of payplugIdCandidates(order)) await tryOne(id, order);
+    }
+
+    if (listRecent && isPayplugEnabled()) {
+      const maxPages = 3;
+      for (let page = 1; page <= maxPages; page += 1) {
+        let listing;
+        try {
+          listing = await listPayments({ page, perPage: 25 });
+        } catch (err) {
+          logWarn('PayPlug liste paiements', { error: err.message, page });
+          break;
+        }
+        const rows = listing?.data || listing?.payments || [];
+        for (const row of rows) {
+          if (!isPayplugPaymentPaid(row)) continue;
+          const order = await findUnpaidOrderForPayplug(row, recentUnpaid);
+          if (!order) continue;
+          await tryOne(row.id, order);
+        }
+        if (!listing?.has_more && rows.length < 25) break;
+      }
+    }
+
+    const marked = results.filter((r) => r.paid).length;
+    const already = results.filter((r) => r.already_paid).length;
+    logInfo('PayPlug réconciliation', { checked: results.length, marked, already });
+    return { ok: true, checked: results.length, marked, already, results };
   }
 
   registerEcheancierPayRoutes(app);
@@ -3662,51 +3852,48 @@ function createApp() {
         });
       }
 
-      const orderId = meta.lifecycle_order_id || meta.order_id || null;
-      if (!orderId) {
-        logWarn('PayPlug webhook sans order_id', { payment_id: paymentId });
+      const out = await fulfillInscriptionPayplug(payment);
+      if (!out.ok && out.ignored) {
+        logWarn('PayPlug webhook ignoré', { payment_id: paymentId, error: out.error });
         return res.json({ ok: true, ignored: true });
       }
-      const order = await loadOrderAsync(orderId);
-      if (!order) {
-        logWarn('PayPlug webhook — commande introuvable', { order_id: orderId, payment_id: paymentId });
-        return res.json({ ok: true, ignored: true });
-      }
-      const bound = payplugMatches({
-        payment,
-        orderId: order.order_id,
-        expectedCents: expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot),
-        storedPaymentId: order.payment?.payplug_payment_id,
-      });
-      if (!bound.ok) {
+      if (!out.ok && out.http === 409) {
         logWarn('PayPlug webhook — paiement non lié', {
-          order_id: orderId,
+          order_id: out.order_id,
           payment_id: paymentId,
-          error: bound.error,
+          error: out.error,
         });
-        return res.status(409).json({ ok: false, error: bound.error });
+        return res.status(409).json({ ok: false, error: out.error });
       }
-      if (order.payment?.status === 'paid') {
-        return res.json({ ok: true, already_paid: true });
-      }
-      if (isPayplugPaymentPaid(payment)) {
-        await markPayplugOrderPaid(order, payment);
-        logInfo('PayPlug confirmé', {
-          order_id: orderId,
-          payment_id: paymentId,
-          payment_plan: payment.metadata?.payment_plan || order.payment?.payment_plan,
-        });
-      } else if (payment.failure) {
-        await markPaymentFailed(order.order_id, {
-          method: 'payplug',
-          payment_plan: payment.metadata?.payment_plan || order.payment?.payment_plan || 'once',
-          payplug_payment_id: payment.id,
-          failure: payment.failure,
-        }).catch(() => {});
-      }
-      res.json({ ok: true });
+      return res.json({ ok: true, ...out });
     } catch (err) {
       logError('Erreur webhook PayPlug', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/internal/payplug-reconcile', async (req, res) => {
+    if (!isAuthorizedSync(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    if (!isPayplugEnabled()) return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
+    try {
+      const paymentIds = Array.isArray(req.body?.payment_ids) ? req.body.payment_ids : [];
+      const listRecent = req.body?.list_recent !== false;
+      const out = await reconcilePayplugPayments({ paymentIds, listRecent });
+      res.json(out);
+    } catch (err) {
+      logError('PayPlug réconciliation', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/cron/payplug-reconcile', async (req, res) => {
+    if (!isAuthorizedCron(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    if (!isPayplugEnabled()) return res.json({ ok: true, skipped: 'payplug_not_configured' });
+    try {
+      const out = await reconcilePayplugPayments({ listRecent: true });
+      res.json(out);
+    } catch (err) {
+      logError('Cron PayPlug réconciliation', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });

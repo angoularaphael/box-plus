@@ -21,6 +21,10 @@
     {
       "path": "/api/cron/sync-catalog",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/payplug-reconcile",
+      "schedule": "20 6 * * *"
     }
   ]
 }

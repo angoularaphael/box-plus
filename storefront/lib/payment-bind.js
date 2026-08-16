@@ -32,11 +32,9 @@ function payplugMatches({ payment, orderId, expectedCents, storedPaymentId }) {
   const idMatch = Boolean(stored) && stored === String(payment.id);
   const metaMatch = Boolean(wanted) && Boolean(metaOrder) && metaOrder === wanted;
 
-  // L’id qu’on a nous-mêmes enregistré prime : les metadata PayPlug sont parfois
-  // incomplètes / tronquées au retour, ça ne doit pas recaler un paiement déjà lié.
-  if (stored && !idMatch) {
-    return { ok: false, error: 'payment_mismatch' };
-  }
+  // Double page PayPlug : le client paie pay_A alors que la commande stocke pay_B.
+  // On accepte l’id déjà lié, OU les metadata qui pointent vers CETTE commande.
+  // Un paiement d’une autre commande (metadata + id différents) reste refusé.
   if (!idMatch && !metaMatch) {
     return { ok: false, error: 'payment_mismatch' };
   }
@@ -44,6 +42,31 @@ function payplugMatches({ payment, orderId, expectedCents, storedPaymentId }) {
     return { ok: false, error: 'amount_mismatch' };
   }
   return { ok: true };
+}
+
+/** Conserve les ids PayPlug précédents quand on ouvre une 2ᵉ page hébergée. */
+function rememberPreviousPayplugId(paymentState, newId) {
+  const prev = String(paymentState?.payplug_payment_id || '').trim();
+  const next = String(newId || '').trim();
+  const hist = Array.isArray(paymentState?.payplug_payment_ids)
+    ? paymentState.payplug_payment_ids.map((id) => String(id || '').trim()).filter(Boolean)
+    : [];
+  if (prev && next && prev !== next && !hist.includes(prev)) hist.push(prev);
+  return hist.slice(-8);
+}
+
+function payplugIdCandidates(order) {
+  const ids = [];
+  const seen = new Set();
+  const add = (id) => {
+    const s = String(id || '').trim();
+    if (!s || seen.has(s)) return;
+    seen.add(s);
+    ids.push(s);
+  };
+  add(order?.payment?.payplug_payment_id);
+  for (const id of order?.payment?.payplug_payment_ids || []) add(id);
+  return ids;
 }
 
 function paypalCustomId(captured) {
@@ -113,6 +136,8 @@ module.exports = {
   paidMatchesExpected,
   expectedChargeCents,
   payplugMatches,
+  rememberPreviousPayplugId,
+  payplugIdCandidates,
   paypalMatches,
   paypalCustomId,
   paypalPaidCents,

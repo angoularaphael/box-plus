@@ -297,6 +297,13 @@ function retrievePayment(paymentId) {
   return request(`/payments/${encodeURIComponent(paymentId)}`, { method: 'GET' });
 }
 
+async function listPayments({ page = 1, perPage = 20 } = {}) {
+  const q = new URLSearchParams();
+  q.set('page', String(Math.max(1, Number(page) || 1)));
+  q.set('per_page', String(Math.min(100, Math.max(1, Number(perPage) || 20))));
+  return request(`/payments?${q}`, { method: 'GET' });
+}
+
 function isPayplugPaymentPaid(payment) {
   if (!payment || payment.failure) return false;
   if (payment.is_paid === true) return true;
@@ -323,6 +330,7 @@ module.exports = {
   createFourTimesPayment,
   createHostedPayment,
   retrievePayment,
+  listPayments,
   isPayplugPaymentPaid,
   isPayplugPaymentPending,
   isPayplugEnabled,
