@@ -155,7 +155,14 @@ async function updateShortProfileAsync(orderId, customer_short) {
   if (!order) return null;
   order.customer_short = customer_short;
   order.step = Math.max(order.step || 1, STEPS.PAYMENT);
-  return saveOrderAsync(order);
+  const saved = await saveOrderAsync(order);
+  try {
+    const { collapseUnpaidDraftsForEmail } = require('./order-prune');
+    await collapseUnpaidDraftsForEmail(customer_short?.email, order.order_id);
+  } catch {
+    /* ignore */
+  }
+  return saved;
 }
 
 async function updateGymAsync(orderId, gym) {
@@ -192,7 +199,15 @@ async function markPaymentPaidAsync(orderId, paymentData) {
   const { requiresIbanForPlan } = require('../../lib/billing-plan');
   const needsIban = !order.payment?.iban && requiresIbanForPlan(snap, plan);
   order.step = needsIban ? STEPS.IBAN : STEPS.DOSSIER;
-  return saveOrderAsync(order);
+  const saved = await saveOrderAsync(order);
+  try {
+    const { collapseUnpaidDraftsForEmail } = require('./order-prune');
+    const email = order.customer_short?.email || order.customer_full?.email;
+    await collapseUnpaidDraftsForEmail(email, order.order_id);
+  } catch {
+    /* ignore */
+  }
+  return saved;
 }
 
 function markPaymentFailed(orderId, paymentData) {
@@ -499,6 +514,7 @@ module.exports = {
   listAllOrders,
   listAllOrdersAsync,
   deleteOrderAsync,
+  memberDisplayName,
   toAdminSummary,
   gymLabel,
   GYM_LABELS,

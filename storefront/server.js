@@ -1556,12 +1556,20 @@ function createApp() {
   app.get('/api/admin/orders', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const raw = await listAllOrdersAsync();
-    for (const order of raw) {
+    let kept = raw;
+    try {
+      const { pruneAbandonedInscriptions } = require('./lib/order-prune');
+      const pruned = await pruneAbandonedInscriptions(raw);
+      kept = pruned.kept;
+    } catch (err) {
+      logWarn('Prune inscriptions admin', { error: err.message });
+    }
+    for (const order of kept) {
       if (order.signature?.signed_at && !order.gestion_client_id) {
         await syncInscriptionClient(order);
       }
     }
-    const orders = raw.map(toAdminSummary);
+    const orders = kept.map(toAdminSummary);
     res.json({ ok: true, orders, count: orders.length });
   });
 

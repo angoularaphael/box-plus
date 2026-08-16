@@ -395,6 +395,12 @@
     const q = (document.getElementById('ordersSearch')?.value || '').toLowerCase().trim();
     const filter = document.getElementById('ordersFilter')?.value || 'all';
     const gym = document.getElementById('ordersGymFilter')?.value || 'all';
+    const paidEmails = new Set(
+      orders
+        .filter((o) => o.payment_status === 'paid' || o.payment_status === 'free' || o.signed)
+        .map((o) => String(o.email || '').trim().toLowerCase())
+        .filter((e) => e && e !== '—' && e.includes('@'))
+    );
     return orders.filter((o) => {
       if (isCoachingOrder(o)) return false;
       const hasVisibleContent = [o.name, o.email, o.product].some(
@@ -407,6 +413,21 @@
       if (filter === 'unpaid' && o.payment_status !== 'past_due' && !o.access_blocked) return false;
       if (gym !== 'all' && String(o.gym || '') !== gym) return false;
       if (!inOrdersDateRange(o)) return false;
+      const emptyName = !String(o.name || '').trim() || o.name === '—';
+      const emptyEmail = !String(o.email || '').trim() || o.email === '—';
+      if (emptyName && emptyEmail && o.payment_status !== 'paid' && o.payment_status !== 'free' && !o.signed) {
+        return false;
+      }
+      const email = String(o.email || '').trim().toLowerCase();
+      if (
+        email &&
+        paidEmails.has(email) &&
+        o.payment_status !== 'paid' &&
+        o.payment_status !== 'free' &&
+        !o.signed
+      ) {
+        return false;
+      }
       if (!q) return true;
       const hay = `${o.order_id} ${o.name} ${o.email} ${o.product} ${o.gym || ''} ${o.gym_label || gymLabel(o.gym)}`.toLowerCase();
       return hay.includes(q);
