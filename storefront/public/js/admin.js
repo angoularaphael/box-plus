@@ -369,6 +369,28 @@
     if ([...sel.options].some((opt) => opt.value === current)) sel.value = current;
   }
 
+  function orderDateMs(o) {
+    const t = Date.parse(o.created_at || o.updated_at || '');
+    return Number.isFinite(t) ? t : 0;
+  }
+
+  function inOrdersDateRange(o) {
+    const fromVal = document.getElementById('ordersDateFrom')?.value || '';
+    const toVal = document.getElementById('ordersDateTo')?.value || '';
+    if (!fromVal && !toVal) return true;
+    const t = orderDateMs(o);
+    if (!t) return false;
+    if (fromVal) {
+      const from = new Date(`${fromVal}T00:00:00`).getTime();
+      if (t < from) return false;
+    }
+    if (toVal) {
+      const to = new Date(`${toVal}T23:59:59.999`).getTime();
+      if (t > to) return false;
+    }
+    return true;
+  }
+
   function filteredOrders() {
     const q = (document.getElementById('ordersSearch')?.value || '').toLowerCase().trim();
     const filter = document.getElementById('ordersFilter')?.value || 'all';
@@ -381,8 +403,10 @@
       if (!hasVisibleContent) return false;
       if (filter === 'signed' && !o.signed) return false;
       if (filter === 'progress' && o.signed) return false;
+      if (filter === 'paid_unsigned' && !(o.payment_status === 'paid' && !o.signed)) return false;
       if (filter === 'unpaid' && o.payment_status !== 'past_due' && !o.access_blocked) return false;
       if (gym !== 'all' && String(o.gym || '') !== gym) return false;
+      if (!inOrdersDateRange(o)) return false;
       if (!q) return true;
       const hay = `${o.order_id} ${o.name} ${o.email} ${o.product} ${o.gym || ''} ${o.gym_label || gymLabel(o.gym)}`.toLowerCase();
       return hay.includes(q);
@@ -1562,6 +1586,8 @@
   document.getElementById('ordersSearch').oninput = renderOrders;
   document.getElementById('ordersFilter').onchange = renderOrders;
   document.getElementById('ordersGymFilter')?.addEventListener('change', renderOrders);
+  document.getElementById('ordersDateFrom')?.addEventListener('change', renderOrders);
+  document.getElementById('ordersDateTo')?.addEventListener('change', renderOrders);
   document.getElementById('resumeLinkBtn')?.addEventListener('click', () => {
     const id = document.getElementById('resumeRefInput')?.value || '';
     generateResumeLink(id, document.getElementById('resumeLinkBtn'));

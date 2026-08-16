@@ -1161,6 +1161,19 @@
   min-width: 200px;
 }
 
+.admin-date-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--bc-muted, #5c6370);
+  white-space: nowrap;
+}
+.admin-date-filter .admin-search {
+  min-width: 0;
+  width: 11.5rem;
+}
+
 .resume-link-box {
   margin-top: 12px;
   padding: 12px 14px;
