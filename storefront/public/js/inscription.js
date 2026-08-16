@@ -1637,10 +1637,14 @@
         <div><label for="city">Ville *</label><input id="city" name="city" required value="${full.city || ''}" /></div>
         <div class="full photo-capture-block">
           <label>Photo *</label>
-          <p class="field-hint">Prenez une photo avec votre caméra — elle sera associée à votre dossier adhérent.</p>
+          <p class="field-hint">Importez une photo depuis votre téléphone ou votre ordinateur, ou prenez-en une avec la caméra. Elle sera collée à votre dossier adhérent (badge / fiche club).</p>
+          ${photoOk ? '<p class="photo-already-ok">Photo déjà enregistrée — vous pouvez en choisir une autre ci-dessous.</p>' : ''}
           <div class="photo-capture-actions">
+            <label class="btn secondary photo-file-label" for="photoFile">Importer une photo</label>
+            <input id="photoFile" type="file" accept="image/jpeg,image/png,image/webp,image/*" hidden />
             <button type="button" class="btn secondary" id="webcamBtn">Ouvrir la caméra</button>
           </div>
+          <p class="field-hint" id="photoFileName" hidden></p>
           <video id="webcamPreview" playsinline muted hidden style="width:100%;max-width:320px;border-radius:8px;margin-top:10px;background:#111"></video>
           <canvas id="webcamCanvas" hidden></canvas>
           <img id="webcamSnap" alt="Aperçu photo" hidden style="width:100%;max-width:320px;border-radius:8px;margin-top:10px" />
@@ -1659,10 +1663,24 @@
       </form>`;
 
     let webcamStream = null;
-    let webcamBlob = null;
+    let photoBlob = null;
     const video = document.getElementById('webcamPreview');
     const canvas = document.getElementById('webcamCanvas');
     const snap = document.getElementById('webcamSnap');
+    const fileInput = document.getElementById('photoFile');
+    const fileNameHint = document.getElementById('photoFileName');
+
+    function showPhotoPreview(blob, label) {
+      if (!blob) return;
+      photoBlob = blob;
+      if (snap.src && snap.src.startsWith('blob:')) URL.revokeObjectURL(snap.src);
+      snap.src = URL.createObjectURL(blob);
+      snap.hidden = false;
+      if (fileNameHint) {
+        fileNameHint.hidden = !label;
+        fileNameHint.textContent = label || '';
+      }
+    }
 
     async function stopWebcam() {
       if (webcamStream) {
@@ -1700,15 +1718,27 @@
       canvas.toBlob(
         async (blob) => {
           if (!blob) return;
-          webcamBlob = blob;
-          snap.src = URL.createObjectURL(blob);
-          snap.hidden = false;
+          if (fileInput) fileInput.value = '';
+          showPhotoPreview(blob, '');
           await stopWebcam();
           setMsg('Photo capturée — vous pouvez continuer.');
         },
         'image/jpeg',
         0.92
       );
+    };
+
+    fileInput.onchange = async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      if (!file.type || !file.type.startsWith('image/')) {
+        setMsg('Choisissez une image JPEG, PNG ou WebP.', 'err');
+        fileInput.value = '';
+        return;
+      }
+      await stopWebcam();
+      showPhotoPreview(file, file.name);
+      setMsg('Photo importée — vous pouvez continuer.');
     };
 
     document.getElementById('webcamStopBtn').onclick = () => stopWebcam();
@@ -1718,7 +1748,7 @@
     document.getElementById('fullForm').onsubmit = async (e) => {
       e.preventDefault();
       setMsg('Enregistrement…');
-      const source = webcamBlob;
+      const source = photoBlob;
       if (source) {
         const prepared = await prepareMemberPhoto(source);
         const fd = new FormData();
@@ -1735,7 +1765,7 @@
         }
         state.photoUploaded = true;
       } else if (!photoOk) {
-        setMsg('Ouvrez la caméra et prenez une photo avant de continuer.', 'err');
+        setMsg('Importez une photo ou prenez-en une avec la caméra avant de continuer.', 'err');
         return;
       }
 

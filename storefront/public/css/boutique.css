@@ -996,6 +996,18 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
 }
 
+.photo-file-label {
+  display: inline-flex;
+  cursor: pointer;
+  margin: 0;
+}
+
+.photo-already-ok {
+  font-size: 13px;
+  color: #1b7a3d;
+  margin: 0 0 10px;
+}
+
 .field-hint {
   font-size: 13px;
   color: #5c6370;
