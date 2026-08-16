@@ -1460,7 +1460,7 @@ function createApp() {
     let payplug = { skipped: true };
     try {
       if (isPayplugEnabled()) {
-        payplug = await reconcilePayplugPayments({ listRecent: true });
+        payplug = await reconcilePayplugPayments({ listRecent: true, scanPending: false });
       }
     } catch (err) {
       logWarn('PayPlug réconciliation (cron catalogue)', { error: err.message });
@@ -3695,18 +3695,28 @@ function createApp() {
     }
   }
 
-  async function reconcilePayplugPayments({ paymentIds = [], listRecent = true } = {}) {
+  async function reconcilePayplugPayments({
+    paymentIds = [],
+    listRecent = false,
+    scanPending = false,
+  } = {}) {
     const results = [];
     const seen = new Set();
-    const orders = await listAllOrdersAsync();
-    const cutoff = Date.now() - 21 * 24 * 60 * 60 * 1000;
-    const recentUnpaid = orders.filter((order) => {
-      if (String(order.payment?.status) === 'paid' || String(order.payment?.status) === 'free') {
-        return false;
-      }
-      const t = Date.parse(order.updated_at || order.created_at || 0);
-      return Number.isFinite(t) && t >= cutoff;
-    });
+    let recentUnpaid = [];
+    if (scanPending) {
+      const orders = await listAllOrdersAsync();
+      const cutoff = Date.now() - 21 * 24 * 60 * 60 * 1000;
+      recentUnpaid = orders
+        .filter((order) => {
+          if (String(order.payment?.status) === 'paid' || String(order.payment?.status) === 'free') {
+            return false;
+          }
+          if (!payplugIdCandidates(order).length) return false;
+          const t = Date.parse(order.updated_at || order.created_at || 0);
+          return Number.isFinite(t) && t >= cutoff;
+        })
+        .slice(0, 25);
+    }
 
     async function tryOne(paymentId, orderHint) {
       const id = sanitizePaymentId(paymentId);
@@ -3722,35 +3732,31 @@ function createApp() {
         results.push({ payment_id: id, ok: true, skipped: metaType });
         return;
       }
-      let order = orderHint || (await findUnpaidOrderForPayplug(payment, recentUnpaid));
+      const order = orderHint || (await findUnpaidOrderForPayplug(payment, recentUnpaid));
       const out = await fulfillInscriptionPayplug(payment, order);
       results.push({ payment_id: id, ...out });
     }
 
     for (const id of paymentIds) await tryOne(id, null);
 
-    for (const order of recentUnpaid) {
-      for (const id of payplugIdCandidates(order)) await tryOne(id, order);
+    if (scanPending) {
+      for (const order of recentUnpaid) {
+        for (const id of payplugIdCandidates(order)) await tryOne(id, order);
+      }
     }
 
     if (listRecent && isPayplugEnabled()) {
-      const maxPages = 3;
-      for (let page = 1; page <= maxPages; page += 1) {
-        let listing;
-        try {
-          listing = await listPayments({ page, perPage: 25 });
-        } catch (err) {
-          logWarn('PayPlug liste paiements', { error: err.message, page });
-          break;
-        }
+      try {
+        const listing = await listPayments({ page: 1, perPage: 50 });
         const rows = listing?.data || listing?.payments || [];
         for (const row of rows) {
           if (!isPayplugPaymentPaid(row)) continue;
           const order = await findUnpaidOrderForPayplug(row, recentUnpaid);
-          if (!order) continue;
+          if (!order || String(order.payment?.status) === 'paid') continue;
           await tryOne(row.id, order);
         }
-        if (!listing?.has_more && rows.length < 25) break;
+      } catch (err) {
+        logWarn('PayPlug liste paiements', { error: err.message });
       }
     }
 
@@ -3877,8 +3883,9 @@ function createApp() {
     if (!isPayplugEnabled()) return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
     try {
       const paymentIds = Array.isArray(req.body?.payment_ids) ? req.body.payment_ids : [];
-      const listRecent = req.body?.list_recent !== false;
-      const out = await reconcilePayplugPayments({ paymentIds, listRecent });
+      const listRecent = req.body?.list_recent === true;
+      const scanPending = req.body?.scan_pending === true;
+      const out = await reconcilePayplugPayments({ paymentIds, listRecent, scanPending });
       res.json(out);
     } catch (err) {
       logError('PayPlug réconciliation', { error: err.message });
@@ -3890,7 +3897,7 @@ function createApp() {
     if (!isAuthorizedCron(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
     if (!isPayplugEnabled()) return res.json({ ok: true, skipped: 'payplug_not_configured' });
     try {
-      const out = await reconcilePayplugPayments({ listRecent: true });
+      const out = await reconcilePayplugPayments({ listRecent: true, scanPending: false });
       res.json(out);
     } catch (err) {
       logError('Cron PayPlug réconciliation', { error: err.message });
