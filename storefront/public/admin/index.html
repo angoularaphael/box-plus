@@ -321,12 +321,13 @@
             <option value="all">Toutes les salles</option>
           </select>
           <button type="button" class="btn sm" id="refreshOrdersBtn">Actualiser</button>
+          <button type="button" class="btn sm" id="diffusionBtn">Diffusion — envoyer le mail</button>
         </div>
+        <p class="admin-section-desc" style="margin:8px 0 0">Cochez une ou plusieurs personnes, puis <strong>Diffusion</strong> pour leur envoyer le mail de reprise (max 40).</p>
         <div class="admin-toolbar" style="margin-top:8px">
           <input type="text" id="resumeRefInput" placeholder="Référence (ex. BC-…)" class="admin-search" autocomplete="off" />
           <button type="button" class="btn sm" id="resumeLinkBtn">Générer le lien de reprise</button>
           <button type="button" class="btn sm" id="payLinkBtn">Générer le lien payer</button>
-          <button type="button" class="btn sm secondary" id="diffusionBtn">Diffusion</button>
         </div>
         <div id="resumeLinkBox" class="resume-link-box" hidden></div>
         <p class="form-msg" id="ordersMsg"></p>
@@ -460,9 +461,9 @@
   </div>
 
   <script src="../js/contract-open.js?v=8"></script>
-  <script src="../js/admin.js?v=14"></script>
+  <script src="../js/admin.js?v=15"></script>
   <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
        reecrit pas une ligne (un autre developpeur y travaille). -->
-  <script src="/js/admin-shell.js?v=12"></script>
+  <script src="/js/admin-shell.js?v=13"></script>
 </body>
 </html>

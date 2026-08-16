@@ -524,6 +524,7 @@
 
     const entetes = $$("thead th", table);
     entetes.forEach((th, i) => {
+      if (th.querySelector("input[type=checkbox]")) return;
       const libelle = th.textContent.trim();
       if (!libelle) return;                       // colonne d'actions : rien à trier
       th.innerHTML = `<button type="button" class="pan-th-sort">${esc(libelle)}</button>`;
