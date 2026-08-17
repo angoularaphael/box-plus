@@ -95,6 +95,7 @@ function buildOrderPayload(input, product) {
     },
     photo_path: input.photo_path || null,
     photo_base64: input.photo_base64 || null,
+    photo_url: input.photo_url || null,
     badge_timing: input.badge_timing || null,
     badge_method: input.badge_method || null,
     payment: {
@@ -230,8 +231,9 @@ function buildOrderFromLifecycle(order, product) {
   const short = order.customer_short || {};
   const full = order.customer_full || {};
   const photoPath = order.documents?.photo || full.photo_path || null;
+  const photoUrl = order.documents?.photo_url || full.photo_url || null;
   let photoBase64 = order.documents?.photo_base64 || full.photo_base64 || null;
-  if (!photoBase64) photoBase64 = readPhotoBase64FromDisk(photoPath);
+  if (!photoBase64 && !photoUrl) photoBase64 = readPhotoBase64FromDisk(photoPath);
   return buildOrderPayload(
     {
       order_id: order.order_id,
@@ -256,6 +258,7 @@ function buildOrderFromLifecycle(order, product) {
       medical_info: full.medical_info,
       photo_path: photoPath,
       photo_base64: photoBase64,
+      photo_url: photoUrl,
       badge_timing: order.badge_timing || order.payment?.badge_timing || null,
       badge_method: order.badge_method || order.payment?.badge_method || null,
     },

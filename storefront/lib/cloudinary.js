@@ -1,0 +1,135 @@
+'use strict';
+
+const crypto = require('crypto');
+const { logWarn } = require('../../lib/logger');
+
+function cloudName() {
+  return String(process.env.CLOUDINARY_CLOUD_NAME || '').trim();
+}
+
+function isCloudinaryConfigured() {
+  return Boolean(
+    cloudName() &&
+      String(process.env.CLOUDINARY_API_KEY || '').trim() &&
+      String(process.env.CLOUDINARY_API_SECRET || '').trim()
+  );
+}
+
+function signParams(params, apiSecret) {
+  const filtered = Object.entries(params)
+    .filter(([, value]) => value !== undefined && value !== null && value !== '')
+    .sort(([a], [b]) => (a > b ? 1 : a < b ? -1 : 0))
+    .map(([key, value]) => `${key}=${value}`)
+    .join('&');
+  return crypto.createHash('sha1').update(filtered + apiSecret).digest('hex');
+}
+
+function imageUrl(publicId, { transform = 'f_auto,q_auto,w_900,c_limit' } = {}) {
+  const cloud = cloudName();
+  if (!cloud || !publicId) return null;
+  const id = String(publicId).replace(/^\/+/, '');
+  const t = transform ? `${transform}/` : '';
+  return `https://res.cloudinary.com/${cloud}/image/upload/${t}${id}`;
+}
+
+async function uploadImageBuffer({
+  buffer,
+  mime = 'image/jpeg',
+  filename = 'photo.jpg',
+  folder = 'boxplus/photos',
+  publicId,
+} = {}) {
+  if (!isCloudinaryConfigured()) {
+    throw new Error('cloudinary_not_configured');
+  }
+  if (!buffer || !buffer.length) throw new Error('empty_image');
+
+  const cloud = cloudName();
+  const apiKey = String(process.env.CLOUDINARY_API_KEY).trim();
+  const apiSecret = String(process.env.CLOUDINARY_API_SECRET).trim();
+  const timestamp = Math.floor(Date.now() / 1000);
+  const id = publicId || `${folder}/${Date.now()}`;
+  const toSign = {
+    overwrite: 'true',
+    public_id: id,
+    timestamp,
+  };
+  const signature = signParams(toSign, apiSecret);
+
+  const form = new FormData();
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  form.append('file', new Blob([bytes], { type: mime }), filename);
+  form.append('api_key', apiKey);
+  form.append('timestamp', String(timestamp));
+  form.append('signature', signature);
+  form.append('public_id', id);
+  form.append('overwrite', 'true');
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/image/upload`, {
+    method: 'POST',
+    body: form,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) {
+    const message = data.error?.message || `cloudinary_http_${res.status}`;
+    throw new Error(message);
+  }
+  return {
+    public_id: data.public_id,
+    url: imageUrl(data.public_id),
+    secure_url: data.secure_url || imageUrl(data.public_id),
+    bytes: data.bytes,
+    format: data.format,
+    width: data.width,
+    height: data.height,
+  };
+}
+
+async function downloadImageBuffer(url) {
+  const src = String(url || '').trim();
+  if (!/^https:\/\/res\.cloudinary\.com\//i.test(src) && !/^https:\/\/.+\.cloudinary\.com\//i.test(src)) {
+    throw new Error('invalid_cloudinary_url');
+  }
+  const res = await fetch(src);
+  if (!res.ok) throw new Error(`download_failed_${res.status}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (buf.length < 32) throw new Error('empty_download');
+  return buf;
+}
+
+async function hydrateOrderMedia(order) {
+  if (!order || typeof order !== 'object') return order;
+  const next = { ...order };
+  if (next.documents?.photo_url && !next.documents?.photo_base64) {
+    try {
+      const buf = await downloadImageBuffer(next.documents.photo_url);
+      next.documents = {
+        ...next.documents,
+        photo_base64: `data:image/jpeg;base64,${buf.toString('base64')}`,
+      };
+    } catch (err) {
+      logWarn('Hydratation photo Cloudinary', { error: err.message, order_id: order.order_id });
+    }
+  }
+  if (next.signature?.image_url && !next.signature?.image_base64) {
+    try {
+      const buf = await downloadImageBuffer(next.signature.image_url);
+      next.signature = {
+        ...next.signature,
+        image_base64: `data:image/png;base64,${buf.toString('base64')}`,
+      };
+    } catch (err) {
+      logWarn('Hydratation signature Cloudinary', { error: err.message, order_id: order.order_id });
+    }
+  }
+  return next;
+}
+
+module.exports = {
+  isCloudinaryConfigured,
+  signParams,
+  imageUrl,
+  uploadImageBuffer,
+  downloadImageBuffer,
+  hydrateOrderMedia,
+};

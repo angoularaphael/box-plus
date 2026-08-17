@@ -221,7 +221,9 @@ function streamOrderFacturePdf(order, res) {
   // Génération à la volée du dossier fusionné (CGV + RI + médical + facture)
   if (order.signature?.signed_at) {
     const { generateInscriptionDossierPdf } = require('./lib/legal-pdf');
-    generateInscriptionDossierPdf(order)
+    const { hydrateOrderMedia } = require('./lib/cloudinary');
+    hydrateOrderMedia(order)
+      .then((hydrated) => generateInscriptionDossierPdf(hydrated))
       .then((dossier) => {
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader(
@@ -331,7 +333,7 @@ function makeUploader(subdir) {
       if (photoExtForMime(file.mimetype)) return cb(null, true);
       cb(new Error('invalid_image_type'));
     },
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 3.5 * 1024 * 1024 },
   });
 }
 
@@ -467,7 +469,7 @@ async function maybeNotifyOffre29Friend(order, friendInput) {
 async function dispatchLifecycleOrder(order) {
   const product = findProduct(order.product_id) || order.product_snapshot;
   const payload = buildOrderFromLifecycle(order, product);
-  if (!payload.photo_base64 && !payload.photo_path) {
+  if (!payload.photo_base64 && !payload.photo_path && !payload.photo_url) {
     logWarn('Dispatch bot sans photo membre', { order_id: order.order_id });
   }
   const result = await dispatchOrder(payload);
@@ -2041,7 +2043,7 @@ function createApp() {
         return res.status(400).json({
           ok: false,
           error: 'invalid_image_type',
-          message: 'Envoyez une photo JPEG, PNG ou WebP (max 5 Mo).',
+          message: 'Envoyez une photo JPEG, PNG ou WebP (max 3,5 Mo).',
         });
       }
       next();
@@ -2060,44 +2062,75 @@ function createApp() {
       }
       if (!req.file) return res.status(400).json({ ok: false, error: 'photo_required' });
 
-      // Fichier + base64 (pour envoi bot / Vercel multi-instances)
-      let photo_base64 = null;
+      const { isCloudinaryConfigured, uploadImageBuffer } = require('./lib/cloudinary');
+      let buf;
       try {
-        const buf = fs.readFileSync(req.file.path);
-        if (!looksLikeAllowedImage(buf, req.file.mimetype)) {
-          try {
-            fs.unlinkSync(req.file.path);
-          } catch {
-            /* ignore */
-          }
-          return res.status(400).json({
-            ok: false,
-            error: 'invalid_image_type',
-            message: 'Envoyez une photo JPEG, PNG ou WebP.',
-          });
-        }
-        if (buf.length > 1.8 * 1024 * 1024) {
-          return res.status(400).json({
-            ok: false,
-            error: 'photo_too_large',
-            message: 'Photo trop lourde (max ~1,5 Mo). Compressez ou choisissez une autre image.',
-          });
-        }
-        const mime = req.file.mimetype || 'image/jpeg';
-        photo_base64 = `data:${mime};base64,${buf.toString('base64')}`;
+        buf = fs.readFileSync(req.file.path);
       } catch (readErr) {
-        logWarn('Lecture photo pour base64', { error: readErr.message });
+        return res.status(400).json({ ok: false, error: 'photo_unreadable', message: readErr.message });
+      }
+      if (!looksLikeAllowedImage(buf, req.file.mimetype)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {
+          /* ignore */
+        }
+        return res.status(400).json({
+          ok: false,
+          error: 'invalid_image_type',
+          message: 'Envoyez une photo JPEG, PNG ou WebP.',
+        });
+      }
+      if (buf.length > 1.8 * 1024 * 1024) {
+        return res.status(400).json({
+          ok: false,
+          error: 'photo_too_large',
+          message: 'Photo trop lourde (max ~1,5 Mo). Compressez ou choisissez une autre image.',
+        });
       }
 
-      order.documents = {
+      const documents = {
         ...(order.documents || {}),
         photo: req.file.path,
         photo_filename: req.file.filename,
-        photo_base64,
       };
+
+      if (isCloudinaryConfigured()) {
+        try {
+          const uploaded = await uploadImageBuffer({
+            buffer: buf,
+            mime: req.file.mimetype || 'image/jpeg',
+            filename: req.file.filename || 'photo.jpg',
+            publicId: `boxplus/photos/${order.order_id}`,
+          });
+          documents.photo_url = uploaded.url || uploaded.secure_url;
+          documents.photo_public_id = uploaded.public_id;
+        } catch (cloudErr) {
+          logError('Upload photo Cloudinary', { order_id: order.order_id, error: cloudErr.message });
+          return res.status(502).json({
+            ok: false,
+            error: 'cloudinary_failed',
+            message: 'Impossible d’enregistrer la photo. Réessayez dans un instant.',
+          });
+        }
+      } else if (process.env.VERCEL) {
+        return res.status(503).json({
+          ok: false,
+          error: 'cloudinary_not_configured',
+          message: 'Stockage photo indisponible. Ajoutez CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET sur Vercel.',
+        });
+      }
+
+      order.documents = documents;
       const { saveOrderAsync } = require('./lib/order-lifecycle');
       await saveOrderAsync(order);
-      res.json({ ok: true, photo: true, path: req.file.filename, stored: Boolean(photo_base64) });
+      res.json({
+        ok: true,
+        photo: true,
+        path: req.file.filename,
+        stored: Boolean(documents.photo_url || documents.photo),
+        cloudinary: Boolean(documents.photo_url),
+      });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
@@ -2221,7 +2254,7 @@ function createApp() {
       const errors = validateFullForm(full, product);
       if (errors.length) return res.status(400).json({ ok: false, errors });
 
-      if (!order.documents?.photo && !order.documents?.photo_base64) {
+      if (!order.documents?.photo && !order.documents?.photo_base64 && !order.documents?.photo_url) {
         return res.status(400).json({
           ok: false,
           error: 'photo_required',
@@ -2231,6 +2264,7 @@ function createApp() {
 
       if (order.documents?.photo) full.photo_path = order.documents.photo;
       if (order.documents?.photo_base64) full.photo_base64 = order.documents.photo_base64;
+      if (order.documents?.photo_url) full.photo_url = order.documents.photo_url;
 
       if (full.birthdate) {
         await updateShortProfile(order.order_id, {
@@ -2337,7 +2371,8 @@ function createApp() {
       }
 
       let image_path = null;
-      let image_base64 = null;
+      let image_url = null;
+      let image_public_id = null;
       try {
         const b64 = String(signature_image).split(',')[1];
         const buf = Buffer.from(b64, 'base64');
@@ -2347,8 +2382,23 @@ function createApp() {
         const fname = `${order.order_id}-${Date.now()}.png`;
         image_path = path.join(getUploadDir('signatures'), fname);
         fs.writeFileSync(image_path, buf);
-        // Conservé dans la commande (PDF / multi-instances Vercel)
-        image_base64 = `data:image/png;base64,${b64}`;
+        const { isCloudinaryConfigured, uploadImageBuffer } = require('./lib/cloudinary');
+        if (isCloudinaryConfigured()) {
+          const uploaded = await uploadImageBuffer({
+            buffer: buf,
+            mime: 'image/png',
+            filename: fname,
+            publicId: `boxplus/signatures/${order.order_id}`,
+          });
+          image_url = uploaded.url || uploaded.secure_url;
+          image_public_id = uploaded.public_id;
+        } else if (process.env.VERCEL) {
+          return res.status(503).json({
+            ok: false,
+            error: 'cloudinary_not_configured',
+            message: 'Stockage signature indisponible. Ajoutez les clés Cloudinary sur Vercel.',
+          });
+        }
       } catch (sigErr) {
         return res.status(400).json({ ok: false, error: 'Impossible d\'enregistrer la signature' });
       }
@@ -2359,7 +2409,8 @@ function createApp() {
         consent_medical: Boolean(consent_medical),
         ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
         image_path,
-        image_base64,
+        image_url,
+        image_public_id,
         method: 'canvas',
       });
 

@@ -128,8 +128,18 @@ function redactOrderForClient(order) {
       has_photo: true,
     };
   }
+  if (safe.documents?.photo_url) {
+    safe.documents = {
+      ...safe.documents,
+      photo_url: true,
+      has_photo: true,
+    };
+  }
   if (safe.signature?.image_base64) {
     safe.signature = { ...safe.signature, image_base64: true };
+  }
+  if (safe.signature?.image_url) {
+    safe.signature = { ...safe.signature, image_url: true };
   }
   return safe;
 }

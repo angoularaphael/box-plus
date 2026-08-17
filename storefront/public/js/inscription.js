@@ -702,7 +702,9 @@
     state.order = data.order;
     state.product = state.order.product_snapshot;
     if (!state.productId && state.product?.id) state.productId = state.product.id;
-    if (state.order.documents?.photo) state.photoUploaded = true;
+    if (state.order.documents?.photo || state.order.documents?.photo_url || state.order.documents?.has_photo) {
+      state.photoUploaded = true;
+    }
     state.step = stepFromOrder(state.order);
     return true;
   }
@@ -1611,7 +1613,7 @@
     const full = state.order?.customer_full || {};
     const short = state.order?.customer_short || state.shortDraft || {};
     const birthMax = new Date().toISOString().slice(0, 10);
-    const photoOk = state.photoUploaded || Boolean(state.order?.documents?.photo) || Boolean(state.order?.documents?.photo_base64);
+    const photoOk = state.photoUploaded || Boolean(state.order?.documents?.photo) || Boolean(state.order?.documents?.photo_base64) || Boolean(state.order?.documents?.photo_url) || Boolean(state.order?.documents?.has_photo);
     stepContent.innerHTML = `
       ${roundClockHtml()}
       <h1>Votre dossier</h1>

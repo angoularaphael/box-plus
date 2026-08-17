@@ -135,7 +135,13 @@ function buildOrderSummary(order) {
     documents: {
       photo: order.documents?.photo || null,
       photo_filename: order.documents?.photo_filename || null,
-      has_photo: Boolean(order.documents?.photo || order.documents?.photo_base64 || order.documents?.photo_filename),
+      photo_url: order.documents?.photo_url || null,
+      has_photo: Boolean(
+        order.documents?.photo ||
+          order.documents?.photo_base64 ||
+          order.documents?.photo_filename ||
+          order.documents?.photo_url
+      ),
     },
     dispatched_at: order.dispatched_at || null,
     email_sent_at: order.email_sent_at || null,
@@ -181,9 +187,10 @@ function reconstructOrderFromListRow(row) {
   if (row.payload && typeof row.payload === 'object') {
     return stripHeavyFields(row.payload);
   }
-  const signedAt = rowValue(row, 'signed_at', 'payload->signature->>signed_at');
-  const photo = rowValue(row, 'photo', 'payload->documents->>photo');
-  const photoFilename = rowValue(row, 'photo_filename', 'payload->documents->>photo_filename');
+  const signedAt = rowValue(row, 'signed_at', 'payload->signature->signed_at');
+  const photo = rowValue(row, 'photo', 'payload->documents->photo');
+  const photoFilename = rowValue(row, 'photo_filename', 'payload->documents->photo_filename');
+  const photoUrl = rowValue(row, 'photo_url', 'payload->documents->photo_url');
   const reconstructed = {
     order_id: row.order_id,
     access_token: row.access_token || rowValue(row, 'token') || null,
@@ -215,7 +222,8 @@ function reconstructOrderFromListRow(row) {
     documents: {
       photo: photo || null,
       photo_filename: photoFilename || null,
-      has_photo: Boolean(photo || photoFilename),
+      photo_url: photoUrl || null,
+      has_photo: Boolean(photo || photoFilename || photoUrl),
     },
     dispatched_at: rowValue(row, 'dispatched_at', 'payload->dispatched_at') || null,
     email_sent_at: rowValue(row, 'email_sent_at', 'payload->email_sent_at') || null,
@@ -257,6 +265,7 @@ const SLIM_SELECT = [
   'signed_at:payload->signature->signed_at',
   'photo:payload->documents->photo',
   'photo_filename:payload->documents->photo_filename',
+  'photo_url:payload->documents->photo_url',
 ].join(',\n');
 
 async function fetchAllPages(makeQuery) {
@@ -313,7 +322,7 @@ async function saveOrderToRemote(order) {
   const row = {
     order_id: order.order_id,
     access_token: accessToken,
-    payload: order,
+    payload: stripHeavyFields(order),
     summary: buildOrderSummary(order),
     updated_at: order.updated_at || new Date().toISOString(),
   };

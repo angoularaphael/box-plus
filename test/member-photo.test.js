@@ -30,7 +30,7 @@ describe('member photo pipeline', () => {
     fs.unlinkSync(p);
   });
 
-  it('buildOrderFromLifecycle includes photo_base64 from documents', () => {
+  it('buildOrderFromLifecycle inclut photo_url Cloudinary', () => {
     const product = findEnrichedProduct('seance-essai');
     const draft = createDraft({
       product_id: 'seance-essai',
@@ -54,11 +54,13 @@ describe('member photo pipeline', () => {
     draft.documents = {
       photo: '/tmp/fake.jpg',
       photo_base64: 'data:image/jpeg;base64,AAAA',
+      photo_url: 'https://res.cloudinary.com/demo/image/upload/boxplus/photos/BC-1',
     };
     saveOrder(draft);
     const order = loadOrder(draft.order_id);
     const payload = buildOrderFromLifecycle(order, product);
     assert.equal(payload.photo_path, '/tmp/fake.jpg');
     assert.equal(payload.photo_base64, 'data:image/jpeg;base64,AAAA');
+    assert.equal(payload.photo_url, 'https://res.cloudinary.com/demo/image/upload/boxplus/photos/BC-1');
   });
 });

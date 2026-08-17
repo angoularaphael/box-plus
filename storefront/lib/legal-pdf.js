@@ -322,6 +322,8 @@ async function generateInscriptionLegalPdfs(order = null) {
  */
 async function generateInscriptionDossierPdf(order) {
   if (!order?.order_id) throw new Error('order requis');
+  const { hydrateOrderMedia } = require('./cloudinary');
+  order = await hydrateOrderMedia(order);
   ensureDir(DOCS_DIR);
   const { renderInscriptionInvoice } = require('./invoice-pdf');
   const safeId = String(order.order_id).replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 80);
