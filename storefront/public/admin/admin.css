@@ -693,3 +693,76 @@ button.pan-kpi:hover {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* Gong — maintenance boutique */
+.bc-gong {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 220px;
+  padding: 12px 16px 14px;
+  border: 3px solid var(--pan-navy, #20254b);
+  border-radius: 14px;
+  background: #0c1829;
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 4px 4px 0 #c8902f;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.bc-gong:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 #c8902f; }
+.bc-gong:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #c8902f; }
+.bc-gong__kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: #c8902f;
+}
+.bc-gong__title {
+  font: 800 22px/1 var(--font-display, "Barlow Condensed", sans-serif);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.bc-gong__hint { font-size: 11.5px; color: #b8bdd0; line-height: 1.35; }
+.bc-gong.is-on {
+  background: #e8001c;
+  border-color: #6d3111;
+  box-shadow: 4px 4px 0 #0c1829;
+}
+.bc-gong.is-on .bc-gong__kicker { color: #ffd37a; }
+.bc-gong.is-on .bc-gong__hint { color: rgba(255,255,255,.88); }
+
+.bc-gong-card {
+  margin-bottom: var(--pan-gap, 18px);
+  padding: 18px;
+  border-radius: 16px;
+  background: #0c1829;
+  color: #fff;
+  border: 2px solid #c8902f;
+}
+.bc-gong-card h2 {
+  margin: 0 0 6px;
+  font: 700 20px/1.1 var(--font-display, "Barlow Condensed", sans-serif);
+  text-transform: uppercase;
+  color: #c8902f;
+}
+.bc-gong-card p { margin: 0 0 12px; font-size: 13px; color: #d5d8e2; }
+.bc-gong-card .bc-gong { width: 100%; max-width: 360px; }
+.bc-gong-card textarea {
+  width: 100%;
+  min-height: 72px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #3a4168;
+  background: #161a2e;
+  color: #fff;
+  font: 14px/1.4 var(--font-body, Montserrat, sans-serif);
+}
+
+.pan-rail.is-maint .pan-rail__mark {
+  background: #e8001c;
+  color: #fff;
+}

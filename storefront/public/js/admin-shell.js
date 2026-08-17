@@ -149,6 +149,7 @@
 
     $$(".pan-screen").forEach((e) => (e.hidden = e.dataset.sec !== id));
     if (id === "aujourdhui") chargerAujourdhui();
+    if (id === "reglages") chargerGong();
     if (id === "catalogue") majSousOnglet();
     window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
     history.replaceState(null, "", `/admin/#${id}`);
@@ -170,6 +171,11 @@
           <h1>Aujourd’hui</h1>
           <p>Ce qui demande une décision maintenant. Le reste attend.</p>
         </div>
+        <button type="button" class="bc-gong" id="panGong" aria-pressed="false">
+          <span class="bc-gong__kicker">RING OUVERT</span>
+          <span class="bc-gong__title">Maintenance</span>
+          <span class="bc-gong__hint">Clique pour fermer le site aux visiteurs.</span>
+        </button>
       </div>
       <div class="pan-kpis" id="panKpis">
         <div class="pan-kpi"><span class="pan-kpi__l">Chargement</span><span class="pan-kpi__v">—</span></div>
@@ -448,7 +454,18 @@
     s.innerHTML = `<div class="pan-head"><div>
         <h1>Réglages</h1>
         <p>Ce que les sites du club affichent, et ce qui remonte en page d’accueil.</p>
-      </div></div><div id="panReglagesHote"></div>`;
+      </div></div>
+      <div class="bc-gong-card">
+        <h2>Gong — maintenance</h2>
+        <p>Ferme la boutique aux visiteurs (page « Round suspendu »). Le back-office reste accessible.</p>
+        <textarea id="panGongMsg" maxlength="280" placeholder="Message affiché aux visiteurs"></textarea>
+        <button type="button" class="bc-gong" id="panGongReglages" aria-pressed="false">
+          <span class="bc-gong__kicker">RING OUVERT</span>
+          <span class="bc-gong__title">Maintenance</span>
+          <span class="bc-gong__hint">Clique pour activer ou couper.</span>
+        </button>
+      </div>
+      <div id="panReglagesHote"></div>`;
     return s;
   }
 
@@ -681,7 +698,64 @@
   }
 
   /* ==================================================================
-     6. DÉMARRAGE
+     6. GONG — maintenance boutique
+     ================================================================== */
+  function peindreGong(state) {
+    const on = Boolean(state?.enabled);
+    const kicker = on ? "ROUND SUSPENDU" : "RING OUVERT";
+    const title = on ? "Maintenance ON" : "Maintenance";
+    const hint = on
+      ? "Les visiteurs voient « le club est en maintenance ». Clique pour rouvrir."
+      : "Clique pour fermer le site aux visiteurs.";
+    ["panGong", "panGongReglages"].forEach((id) => {
+      const b = document.getElementById(id);
+      if (!b) return;
+      b.classList.toggle("is-on", on);
+      b.setAttribute("aria-pressed", String(on));
+      const k = b.querySelector(".bc-gong__kicker");
+      const t = b.querySelector(".bc-gong__title");
+      const h = b.querySelector(".bc-gong__hint");
+      if (k) k.textContent = kicker;
+      if (t) t.textContent = title;
+      if (h) h.textContent = hint;
+    });
+    const msg = $("#panGongMsg");
+    if (msg && state?.message && !msg.dataset.dirty) msg.value = state.message;
+    $(".pan-rail")?.classList.toggle("is-maint", on);
+  }
+
+  async function chargerGong() {
+    try {
+      const res = await fetch("/api/admin/maintenance", { credentials: "include" });
+      const data = await res.json();
+      if (data.ok) peindreGong(data);
+    } catch { /* silencieux : le bouton reste sur l’état par défaut */ }
+  }
+
+  async function basculerGong(enabled) {
+    const msg = $("#panGongMsg")?.value;
+    if (enabled && !window.confirm("Fermer le site aux visiteurs ? Ils verront la page « Round suspendu ».")) {
+      return;
+    }
+    try {
+      const res = await fetch("/api/admin/maintenance", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled, message: msg || undefined }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Erreur");
+      peindreGong(data);
+      if (data.warning) toast(data.warning, "err");
+      else toast(enabled ? "Site en maintenance — ring fermé" : "Site rouvert — ring ouvert", "ok");
+    } catch (err) {
+      toast(err.message || "Impossible de basculer la maintenance", "err");
+    }
+  }
+
+  /* ==================================================================
+     7. DÉMARRAGE
      ================================================================== */
   function demarrer() {
     const panneau = $("#adminPanel");
@@ -697,6 +771,16 @@
     poserSousOnglets();
 
     $("#panRefresh").onclick = () => { oublierCommandes(); chargerAujourdhui(); toast("Liste actualisée", "ok"); };
+    $("#panGong")?.addEventListener("click", () => {
+      const on = $("#panGong")?.classList.contains("is-on");
+      basculerGong(!on);
+    });
+    $("#panGongReglages")?.addEventListener("click", () => {
+      const on = $("#panGongReglages")?.classList.contains("is-on");
+      basculerGong(!on);
+    });
+    $("#panGongMsg")?.addEventListener("input", () => { $("#panGongMsg").dataset.dirty = "1"; });
+    chargerGong();
 
     [["ordersTable", "ordersSearch"], ["materielTable", "materielSearch"], ["coachingsTable", "coachingsSearch"]].forEach(([idT, idS]) => {
       const t = document.getElementById(idT);

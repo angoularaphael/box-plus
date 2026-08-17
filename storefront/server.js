@@ -202,6 +202,12 @@ const {
   stopWhatsAppBot,
   logoutWhatsAppBot,
 } = require('./lib/whatsapp-bot');
+const {
+  getMaintenance,
+  setMaintenance,
+  isMaintenanceBypass,
+  maintenancePageHtml,
+} = require('./lib/site-maintenance');
 
 function streamOrderFacturePdf(order, res) {
   const storedDossier = order.documents?.dossier_pdf;
@@ -865,6 +871,25 @@ function createApp() {
     runPaymentContext({ test: Boolean(getDevSession(req)) }, () => next());
   });
 
+  app.use(async (req, res, next) => {
+    if (isMaintenanceBypass(req)) return next();
+    try {
+      const state = await getMaintenance();
+      if (!state.enabled) return next();
+      if (req.path.startsWith('/api/')) {
+        return res.status(503).json({
+          ok: false,
+          error: 'maintenance',
+          message: state.message,
+        });
+      }
+      res.status(503).setHeader('Retry-After', '1800').type('html').send(maintenancePageHtml(state));
+    } catch (err) {
+      logWarn('Maintenance middleware', { error: err.message });
+      next();
+    }
+  });
+
   app.post('/api/auth/login', async (req, res) => {
     try {
       if (loginLocked(req)) {
@@ -1068,6 +1093,28 @@ function createApp() {
       res.json({ ok: true, reglage: neuf, ventes_en_ligne: ventes, affiche: neuf.restantes });
     } catch (err) {
       res.status(400).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/admin/maintenance', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const state = await getMaintenance();
+    res.json({ ok: true, ...state });
+  });
+
+  app.put('/api/admin/maintenance', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const session = await getAdminSession(req);
+      const state = await setMaintenance({
+        enabled: req.body?.enabled,
+        message: req.body?.message,
+        user: session?.email || session?.name || null,
+      });
+      logInfo('Maintenance boutique basculée', { enabled: state.enabled, by: state.updated_by });
+      res.json({ ok: true, ...state });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
     }
   });
 

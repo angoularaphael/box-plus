@@ -1,0 +1,84 @@
+.bc-maint {
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(232, 0, 28, 0.22), transparent 42%),
+    radial-gradient(ellipse at 50% 110%, rgba(200, 144, 47, 0.18), transparent 46%),
+    #0c1829;
+  color: #f4f5f7;
+  font-family: Montserrat, system-ui, sans-serif;
+  text-align: center;
+}
+
+.bc-maint__ring {
+  width: min(520px, 100%);
+  padding: 48px 32px 40px;
+  border-radius: 50%;
+  aspect-ratio: 1;
+  max-height: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 10px solid #c8902f;
+  box-shadow:
+    0 0 0 8px #20254b,
+    0 0 0 12px #e8001c,
+    0 24px 80px rgba(0, 0, 0, 0.45);
+  background: #161a2e;
+}
+
+.bc-maint__kicker {
+  margin: 0;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 700;
+  color: #c8902f;
+}
+
+.bc-maint__gong {
+  margin: 10px 0 0;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(56px, 14vw, 88px);
+  font-weight: 800;
+  line-height: 0.9;
+  color: #e8001c;
+  letter-spacing: 0.04em;
+  text-shadow: 0 4px 0 #6d3111;
+}
+
+.bc-maint h1 {
+  margin: 8px 0 14px;
+  font-family: "Barlow Condensed", "Arial Narrow", sans-serif;
+  font-size: clamp(28px, 7vw, 40px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.bc-maint__copy {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #d5d8e2;
+}
+
+.bc-maint__foot {
+  margin: 18px 0 0;
+  font-size: 12px;
+  color: #8b91a3;
+}
+
+@media (max-width: 520px) {
+  .bc-maint__ring {
+    border-radius: 28px;
+    aspect-ratio: auto;
+    max-height: none;
+    padding: 40px 22px;
+  }
+}
