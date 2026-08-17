@@ -14,7 +14,8 @@ const {
   drawPageFooter,
   drawSectionHeading,
 } = require('./pdf-layout');
-const { invoiceTypeLabel, paymentModeLabel, isComptantStyleProduct } = require('../../lib/billing-plan');
+const { invoiceTypeLabel, paymentModeLabel } = require('../../lib/billing-plan');
+const { offerDocumentCopy } = require('../../lib/offer-document-copy');
 
 const LEGAL_DIR = path.join(ROOT, 'storefront', 'legal');
 const DOCS_DIR =
@@ -58,22 +59,8 @@ function contractFilename(order) {
   return `Contrat-${name}-Boxing-Center.pdf`;
 }
 
-function offerDescription(product, full) {
-  const durationMatch = String(product.name || product.display_name || product.duration_label || '').match(
-    /(\d+)\s*mois|4\s*semaines/i
-  );
-  const durationBit = durationMatch
-    ? /semaine/i.test(durationMatch[0])
-      ? '4 semaines'
-      : `${durationMatch[1]} mois`
-    : product.duration_label || '';
-  return [
-    `Abonnement cours collectifs + accès libre 5 salles Boxing Center${durationBit ? ` ${durationBit}` : ''}`,
-    product.display_name || product.name || null,
-    full.gym ? `Salle principale : ${gymLabel(full.gym)}` : null,
-  ]
-    .filter(Boolean)
-    .join('\n');
+function offerDescription(product, full, order = {}) {
+  return offerDocumentCopy(product, { ...order, customer_full: full || order.customer_full }).description;
 }
 
 function createContractDoc() {
@@ -95,8 +82,11 @@ function renderContractBody(doc, order) {
     gym: full.gym ? gymLabel(full.gym) : undefined,
   });
 
+  const copy = offerDocumentCopy(product, order);
+  const descHeight = Math.max(52, 16 + copy.descriptionLines.length * 13);
+
   drawProHeaderCompact(doc, {
-    title: "Contrat d'adhésion — Boxing Center",
+    title: copy.contractTitle,
     date: contractDate,
     ref: order.order_id,
   });
@@ -116,12 +106,12 @@ function renderContractBody(doc, order) {
     ],
     rows: [
       {
-        type: invoiceTypeLabel(product, order.payment?.billing_plan),
-        description: offerDescription(product, full),
+        type: copy.typeLabel || invoiceTypeLabel(product, order.payment?.billing_plan),
+        description: copy.description,
         qty: '1',
         price: formatEuros(priceCents),
         total: formatEuros(priceCents),
-        height: 52,
+        height: descHeight,
       },
     ],
   });
@@ -134,15 +124,17 @@ function renderContractBody(doc, order) {
     order.payment?.stripe_session_id
       ? `Référence Stripe : ${order.payment.stripe_session_id}`
       : null,
-    order.payment?.iban
+    copy.showIban
       ? `IBAN enregistré : ****${String(order.payment.iban).replace(/\s/g, '').slice(-4)}`
-      : isComptantStyleProduct(product)
-        ? 'Paiement comptant — pas de prélèvement SEPA'
+      : copy.prestation || !copy.showSepa
+        ? 'Paiement unique — pas de prélèvement SEPA'
         : 'Prélèvement SEPA pour les échéances suivantes',
-    !isComptantStyleProduct(product)
-      ? 'Badge d\'accès : prélèvement différé ~72h après inscription (si applicable)'
-      : 'Pas de badge automatique sur les formules comptant',
-    `Accès : cours collectifs + accès libre 6j/7 (10h–21h) sur les 5 salles Boxing Center`,
+    copy.showBadge72h
+      ? 'Badge d\'accès : prélèvement différé ~72h après inscription'
+      : copy.prestation
+        ? 'Pas de badge d\'accès — cette offre n\'est pas un abonnement salle'
+        : 'Pas de badge automatique sur cette formule',
+    copy.accessLine,
     `Médical : ${order.signature?.consent_medical ? 'Oui — attestation sur l\'honneur' : 'Non'}`,
     `CGV : ${order.signature?.consent_cgv ? 'Oui' : 'Non'} · Règlement : ${order.signature?.consent_reglement ? 'Oui' : 'Non'}`,
   ].filter(Boolean);

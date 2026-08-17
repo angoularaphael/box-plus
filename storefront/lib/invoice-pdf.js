@@ -15,7 +15,8 @@ const {
   drawConditions,
   drawPageFooter,
 } = require('./pdf-layout');
-const { paymentModeLabel, invoiceTypeLabel, isComptantStyleProduct } = require('../../lib/billing-plan');
+const { paymentModeLabel, invoiceTypeLabel } = require('../../lib/billing-plan');
+const { offerDocumentCopy } = require('../../lib/offer-document-copy');
 const { BADGE_FEE_AMOUNT } = require('./storefront-copy');
 const { formatPickupLine } = require('./gym-pickup');
 
@@ -66,11 +67,13 @@ function renderInscriptionInvoice(doc, order) {
   const invoiceNo = `FAC-${order.order_id}`;
   const priceCents = product.price_cents || 0;
   const priceHt = Math.round(priceCents / 1.2);
-  const vatCents = priceCents - priceHt;
-
+  const copy = offerDocumentCopy(product, order);
   const badgeTiming = order.payment?.badge_timing || order.badge_timing;
   const badgeMethod = order.payment?.badge_method || order.badge_method;
-  const badgeOnStripe = badgeTiming === 'immediate' && (badgeMethod === 'card' || badgeMethod === 'cb');
+  const badgeOnStripe =
+    copy.showBadge72h &&
+    badgeTiming === 'immediate' &&
+    (badgeMethod === 'card' || badgeMethod === 'cb');
   const badgeCents = badgeOnStripe ? 3499 : 0;
   const badgeHt = Math.round(badgeCents / 1.2);
   const totalTtc = priceCents + badgeCents;
@@ -87,34 +90,21 @@ function renderInscriptionInvoice(doc, order) {
 
   drawSectionHeading(doc, 'Détail des prestations');
 
-  const durationMatch = String(product.name || product.display_name || product.duration_label || '').match(
-    /(\d+)\s*mois|4\s*semaines/i
-  );
-  const durationBit = durationMatch
-    ? /semaine/i.test(durationMatch[0])
-      ? '4 semaines'
-      : `${durationMatch[1]} mois`
-    : product.duration_label || '';
-  const invoiceDesc = [
-    `Abonnement cours collectifs + accès libre 5 salles Boxing Center${durationBit ? ` ${durationBit}` : ''}`,
-    full.gym ? `Salle : ${GYM_LABELS[full.gym] || full.gym}` : null,
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const descHeight = Math.max(48, 16 + copy.descriptionLines.length * 14);
 
   const rows = [
     {
-      type: invoiceTypeLabel(product, order.payment?.billing_plan),
-      description: invoiceDesc,
+      type: copy.typeLabel || invoiceTypeLabel(product, order.payment?.billing_plan),
+      description: copy.description,
       unit: formatEuros(priceHt),
       qty: '1',
       vat: '20 %',
       total: formatEuros(priceHt),
-      height: 48,
+      height: descHeight,
     },
   ];
 
-  if (badgeCents > 0) {
+  if (badgeCents > 0 && copy.showBadge72h) {
     rows.push({
       type: 'Badge',
       description: `Badge d'accès — payé immédiatement par carte\n${BADGE_FEE_AMOUNT} TTC`,
@@ -124,10 +114,7 @@ function renderInscriptionInvoice(doc, order) {
       total: formatEuros(badgeHt),
       height: 36,
     });
-  } else if (
-    !isComptantStyleProduct(product) &&
-    (badgeTiming === 'deferred' || (!badgeTiming && product.requires_iban))
-  ) {
+  } else if (copy.showBadge72h && (badgeTiming === 'deferred' || !badgeTiming)) {
     rows.push({
       type: 'Info',
       description: `Badge d'accès (${BADGE_FEE_AMOUNT}) — non inclus sur cette facture\nPrélèvement prévu ~72h après inscription (${badgeMethod === 'card' ? 'carte' : 'IBAN'})`,
@@ -165,20 +152,20 @@ function renderInscriptionInvoice(doc, order) {
   if (order.payment?.stripe_session_id) {
     conditions.push({ label: 'Réf. Stripe', value: order.payment.stripe_session_id });
   }
-  if (order.payment?.iban) {
+  if (copy.showIban) {
     const iban = String(order.payment.iban).replace(/\s/g, '');
     conditions.push({ label: 'IBAN', value: `•••• ${iban.slice(-4)}` });
   }
   if (full.gym) {
-    conditions.push({ label: 'Salle principale', value: GYM_LABELS[full.gym] || full.gym });
+    conditions.push({ label: 'Salle', value: GYM_LABELS[full.gym] || full.gym });
   }
   drawConditions(doc, conditions);
 
   doc.moveDown(0.4);
-  doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text(
-    'Détail établi suite à l\'inscription en ligne Boxing Center. TVA au taux en vigueur selon la nature de l\'offre.',
-    { align: 'justify', lineGap: 2 }
-  );
+  doc.fontSize(8).fillColor('#6B7280').font('Helvetica').text(copy.footerNote, {
+    align: 'justify',
+    lineGap: 2,
+  });
 
   drawPageFooter(doc, clubForOrder(order));
 }

@@ -39,6 +39,7 @@ const {
   productSupportsInstallmentChoice,
   requiresIbanForPlan,
   adultOfferAgeError,
+  productNeedsAutoBadge,
 } = require('../lib/billing-plan');
 const {
   createFourTimesPayment,
@@ -2458,8 +2459,9 @@ function createApp() {
       if (preferredCheckout !== 'paypal' && !display.show_payplug) {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
-      const badgeTiming = 'deferred';
-      const badgeMethod = 'iban';
+      const badgeOn = productNeedsAutoBadge(product);
+      const badgeTiming = badgeOn ? 'deferred' : null;
+      const badgeMethod = badgeOn ? 'iban' : null;
 
       order.payment = {
         ...(order.payment || {}),
@@ -2470,8 +2472,13 @@ function createApp() {
         badge_timing: badgeTiming,
         badge_method: badgeMethod,
       };
-      order.badge_timing = badgeTiming;
-      order.badge_method = badgeMethod;
+      if (badgeOn) {
+        order.badge_timing = badgeTiming;
+        order.badge_method = badgeMethod;
+      } else {
+        delete order.badge_timing;
+        delete order.badge_method;
+      }
       const { saveOrderAsync } = require('./lib/order-lifecycle');
       await saveOrderAsync(order);
 
@@ -3345,7 +3352,6 @@ function createApp() {
       res.status(500).json({ ok: false, error: err.message });
     }
   });
-
   // Fin de job changement d’abo (prélèvement → comptant) — e-mail client
   app.post('/api/internal/change-complete', async (req, res) => {
     if (!isAuthorizedSync(req)) {
