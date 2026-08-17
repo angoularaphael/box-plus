@@ -1766,7 +1766,7 @@ function createApp() {
         message: '40 destinataires maximum par diffusion',
       });
     }
-    const { sendResumeEmail } = require('./lib/inscription-nudge');
+    const { sendResumeEmail, canPayOrder } = require('./lib/inscription-nudge');
     const results = [];
     for (const id of ids) {
       const order = await loadOrderAsync(id);
@@ -1775,7 +1775,8 @@ function createApp() {
         continue;
       }
       try {
-        const mailed = await sendResumeEmail(order, { kind: 'resume' });
+        const kind = canPayOrder(order) ? 'pay' : 'resume';
+        const mailed = await sendResumeEmail(order, { kind });
         results.push({
           order_id: id,
           ok: Boolean(mailed.sent),

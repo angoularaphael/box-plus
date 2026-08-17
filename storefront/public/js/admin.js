@@ -217,7 +217,11 @@
       if (typeof window.panToast === 'function') window.panToast('Cochez les personnes à relancer', 'err');
       return;
     }
-    if (!confirm(`Envoyer le mail de reprise à ${ids.length} personne(s) ?`)) return;
+    if (!confirm(
+      document.getElementById('ordersFilter')?.value === 'failed'
+        ? `Envoyer le mail de paiement (carte refusée) à ${ids.length} personne(s) ?`
+        : `Envoyer le mail de reprise à ${ids.length} personne(s) ?`
+    )) return;
     const btn = document.getElementById('diffusionBtn');
     if (btn) btn.disabled = true;
     try {
@@ -411,6 +415,7 @@
       if (filter === 'progress' && o.signed) return false;
       if (filter === 'paid_unsigned' && !(o.payment_status === 'paid' && !o.signed)) return false;
       if (filter === 'unpaid' && o.payment_status !== 'past_due' && !o.access_blocked) return false;
+      if (filter === 'failed' && !isRefusedPayment(o)) return false;
       if (gym !== 'all' && String(o.gym || '') !== gym) return false;
       if (!inOrdersDateRange(o)) return false;
       const emptyName = !String(o.name || '').trim() || o.name === '—';
@@ -434,9 +439,15 @@
     });
   }
 
+  function isRefusedPayment(o) {
+    const st = String(o.payment_status || '').toLowerCase();
+    return st === 'failed' || st === 'refused' || st === 'canceled' || st === 'cancelled';
+  }
+
   function paymentBadge(o) {
     if (!o.payment_status) return '<span class="badge">—</span>';
     if (o.payment_status === 'paid') return '<span class="badge ok">Payé</span>';
+    if (isRefusedPayment(o)) return '<span class="badge err">Refusé</span>';
     if (o.payment_status === 'past_due') {
       return `<span class="badge pending">Impayé${o.access_blocked ? ' · bloqué' : ''}</span>`;
     }
@@ -562,7 +573,7 @@
       .map(
         (o) => `
       <tr>
-        <td><input type="checkbox" class="order-pick" data-id="${escapeHtml(o.order_id)}" ${o.email && o.email !== '—' && o.can_resume ? '' : 'disabled'} /></td>
+        <td><input type="checkbox" class="order-pick" data-id="${escapeHtml(o.order_id)}" ${o.email && o.email !== '—' && (o.can_resume || o.can_pay) ? '' : 'disabled'} /></td>
         <td><code style="font-size:11px">${escapeHtml(o.order_id)}</code></td>
         <td>${escapeHtml(o.name)}</td>
         <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>
