@@ -444,6 +444,18 @@
     return st === 'failed' || st === 'refused' || st === 'canceled' || st === 'cancelled';
   }
 
+  function ensureRefusedFilterOption() {
+    const sel = document.getElementById('ordersFilter');
+    if (!sel) return;
+    if ([...sel.options].some((o) => o.value === 'failed')) return;
+    const opt = document.createElement('option');
+    opt.value = 'failed';
+    opt.textContent = 'Paiements refusés';
+    const unpaid = [...sel.options].find((o) => o.value === 'unpaid');
+    if (unpaid) unpaid.after(opt);
+    else sel.appendChild(opt);
+  }
+
   function paymentBadge(o) {
     if (!o.payment_status) return '<span class="badge">—</span>';
     if (o.payment_status === 'paid') return '<span class="badge ok">Payé</span>';
@@ -1616,6 +1628,7 @@
 
   document.getElementById('refreshOrdersBtn').onclick = loadOrders;
   document.getElementById('ordersSearch').oninput = renderOrders;
+  ensureRefusedFilterOption();
   document.getElementById('ordersFilter').onchange = renderOrders;
   document.getElementById('ordersGymFilter')?.addEventListener('change', renderOrders);
   document.getElementById('ordersDateFrom')?.addEventListener('change', renderOrders);
@@ -1646,6 +1659,7 @@
 
   (async function init() {
     try {
+      ensureRefusedFilterOption();
       await ensureAuth();
       await loadMerch();
       if (location.hash === '#contracts' || location.pathname.endsWith('/contrats')) {

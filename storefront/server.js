@@ -4289,6 +4289,9 @@ function createApp() {
   for (const [route, file] of Object.entries(pageRoutes)) {
     app.get(route, (_req, res) => {
       res.type('text/html; charset=utf-8');
+      if (route.startsWith('/admin')) {
+        res.setHeader('Cache-Control', 'no-store');
+      }
       res.sendFile(path.join(PUBLIC_DIR, file));
     });
   }
@@ -4318,6 +4321,9 @@ function createApp() {
       setHeaders(res, filePath) {
         if (filePath.endsWith('.html')) {
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          if (filePath.replace(/\\/g, '/').includes('/admin/')) {
+            res.setHeader('Cache-Control', 'no-store');
+          }
         } else if (/\.(mp4|webm|jpg|jpeg|png|webp|woff2)$/i.test(filePath)) {
           res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         }
