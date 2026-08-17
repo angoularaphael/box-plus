@@ -21,6 +21,16 @@ describe('member photo pipeline', () => {
     fs.unlinkSync(resolved.path);
   });
 
+  it('URL morte → repli sur le base64', async () => {
+    const tiny =
+      'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAGfAP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAQUCf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQMBAT8Bf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQIBAT8Bf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEABj8Cf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8hf//Z';
+    const resolved = await resolvePhotoFile(null, tiny, 'http://127.0.0.1:1/missing.png');
+    assert.ok(resolved?.path);
+    assert.equal(resolved.cleanup, true);
+    assert.ok(fs.existsSync(resolved.path));
+    fs.unlinkSync(resolved.path);
+  });
+
   it('resolvePhotoFile keeps existing path', async () => {
     const p = path.join(os.tmpdir(), `bc-photo-exist-${Date.now()}.jpg`);
     fs.writeFileSync(p, Buffer.from([0xff, 0xd8, 0xff, 0xd9]));

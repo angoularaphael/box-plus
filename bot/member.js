@@ -1235,13 +1235,19 @@ async function resolvePhotoFile(photoPath, photoBase64, photoUrl) {
   if (photoPath && fs.existsSync(photoPath)) return { path: photoPath, cleanup: false };
 
   if (photoUrl && /^https?:\/\//i.test(String(photoUrl))) {
-    const res = await fetch(String(photoUrl));
-    if (!res.ok) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length < 32) return null;
-    const dest = path.join(os.tmpdir(), `bc-member-photo-${Date.now()}.jpg`);
-    fs.writeFileSync(dest, buf);
-    return { path: dest, cleanup: true };
+    try {
+      const res = await fetch(String(photoUrl));
+      if (res.ok) {
+        const buf = Buffer.from(await res.arrayBuffer());
+        if (buf.length >= 32) {
+          const dest = path.join(os.tmpdir(), `bc-member-photo-${Date.now()}.jpg`);
+          fs.writeFileSync(dest, buf);
+          return { path: dest, cleanup: true };
+        }
+      }
+    } catch {
+      /* URL injoignable depuis le bot (localhost, DNS) → repli base64 */
+    }
   }
 
   if (photoBase64) {
