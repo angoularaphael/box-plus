@@ -290,6 +290,9 @@ async function markSubscriptionPastDueAsync(orderId, data = {}) {
 
 async function findOrderBySubscriptionId(subscriptionId) {
   if (!subscriptionId) return null;
+  if (typeof persistence.findOrderBySubscriptionId === 'function') {
+    return persistence.findOrderBySubscriptionId(subscriptionId);
+  }
   const all = await listAllOrdersAsync();
   return (
     all.find(
@@ -374,19 +377,7 @@ function memberDisplayName(short = {}) {
 
 async function listAllOrdersAsync() {
   const all = await persistence.listAllOrders();
-  const valid = [];
-  for (const order of all) {
-    if (isValidOrder(order)) {
-      valid.push(order);
-    } else if (order?.order_id) {
-      try {
-        await persistence.deleteOrder(String(order.order_id));
-      } catch {
-        /* ignore */
-      }
-    }
-  }
-  return valid;
+  return all.filter(isValidOrder);
 }
 
 function actionProductLabel(order) {

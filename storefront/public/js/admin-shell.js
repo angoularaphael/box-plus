@@ -171,11 +171,6 @@
           <h1>Aujourd’hui</h1>
           <p>Ce qui demande une décision maintenant. Le reste attend.</p>
         </div>
-        <button type="button" class="bc-gong" id="panGong" aria-pressed="false">
-          <span class="bc-gong__kicker">RING OUVERT</span>
-          <span class="bc-gong__title">Maintenance</span>
-          <span class="bc-gong__hint">Clique pour fermer le site aux visiteurs.</span>
-        </button>
       </div>
       <div class="pan-kpis" id="panKpis">
         <div class="pan-kpi"><span class="pan-kpi__l">Chargement</span><span class="pan-kpi__v">—</span></div>
@@ -707,7 +702,7 @@
     const hint = on
       ? "Les visiteurs voient « le club est en maintenance ». Clique pour rouvrir."
       : "Clique pour fermer le site aux visiteurs.";
-    ["panGong", "panGongReglages"].forEach((id) => {
+    ["panGongReglages"].forEach((id) => {
       const b = document.getElementById(id);
       if (!b) return;
       b.classList.toggle("is-on", on);
@@ -771,10 +766,6 @@
     poserSousOnglets();
 
     $("#panRefresh").onclick = () => { oublierCommandes(); chargerAujourdhui(); toast("Liste actualisée", "ok"); };
-    $("#panGong")?.addEventListener("click", () => {
-      const on = $("#panGong")?.classList.contains("is-on");
-      basculerGong(!on);
-    });
     $("#panGongReglages")?.addEventListener("click", () => {
       const on = $("#panGongReglages")?.classList.contains("is-on");
       basculerGong(!on);

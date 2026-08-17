@@ -1056,9 +1056,9 @@ function createApp() {
 
   app.get('/api/offre-rentree/places', async (req, res) => {
     res.set('Access-Control-Allow-Origin', '*');
-    res.set('Cache-Control', 'public, max-age=60');
+    res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
     try {
-      await loadMerchFresh();
+      await hydrateMerchOnce();
       const ventes = await ventesOffreEnLigne();
       const o = placesRestantes(ventes);
       res.json({ ok: true, quota: o.quota, restantes: o.restantes, fin: o.fin || null });

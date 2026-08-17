@@ -74,14 +74,48 @@ async function saveOrderToRemote(order) {
   if (error) throw error;
 }
 
+const MATERIEL_SLIM_SELECT = [
+  'order_id',
+  'updated_at',
+  'created_at',
+  'payment:payload->payment',
+  'paid_at:payload->paid_at',
+  'total_cents:payload->total_cents',
+  'email_sent:payload->email_sent',
+  'customer:payload->customer',
+  'items:payload->items',
+].join(',');
+
 async function listOrdersFromRemote() {
   const sb = getSupabase();
-  const { data, error } = await sb
-    .from('boxplus_materiel_orders')
-    .select('payload')
-    .order('updated_at', { ascending: false });
-  if (error) throw error;
-  return (data || []).map((row) => row.payload).filter(Boolean);
+  const all = [];
+  let from = 0;
+  const page = 1000;
+  while (true) {
+    const { data, error } = await sb
+      .from('boxplus_materiel_orders')
+      .select(MATERIEL_SLIM_SELECT)
+      .order('updated_at', { ascending: false })
+      .range(from, from + page - 1);
+    if (error) throw error;
+    const batch = data || [];
+    for (const row of batch) {
+      all.push({
+        order_id: row.order_id,
+        updated_at: row.updated_at,
+        created_at: row.created_at || row.created_at,
+        payment: row.payment || {},
+        paid_at: row.paid_at || null,
+        total_cents: row.total_cents || 0,
+        email_sent: Boolean(row.email_sent),
+        customer: row.customer || {},
+        items: row.items || [],
+      });
+    }
+    if (batch.length < page) break;
+    from += page;
+  }
+  return all;
 }
 
 function listOrdersFromFs() {

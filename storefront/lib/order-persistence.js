@@ -1,12 +1,22 @@
 const fs = require('fs');
 const path = require('path');
-const { logError } = require('../../lib/logger');
+const { logError, logWarn } = require('../../lib/logger');
 const { getSupabase } = require('./supabase');
 const { sanitizeOrderId } = require('./security');
 
 const ORDERS_DIR =
   process.env.BOXPLUS_ORDERS_DIR ||
   (process.env.VERCEL ? '/tmp/boxplus-orders' : path.join(__dirname, '../../data/storefront/orders'));
+
+const PAGE_SIZE = 1000;
+const LIST_CACHE_MS = Number(process.env.BOXPLUS_ORDERS_LIST_CACHE_MS || 60 * 1000);
+const HEAVY_KEY = /base64|email_html|image_data|data_url/i;
+
+let listCache = { at: 0, rows: null };
+
+function invalidateOrderListCache() {
+  listCache = { at: 0, rows: null };
+}
 
 function useRemoteStore() {
   const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -25,6 +35,243 @@ function orderPath(orderId) {
 
 function ensureOrdersDir() {
   fs.mkdirSync(ORDERS_DIR, { recursive: true });
+}
+
+function stripHeavyFields(value, depth = 0) {
+  if (value == null || typeof value !== 'object' || depth > 8) return value;
+  if (Array.isArray(value)) return value.map((item) => stripHeavyFields(item, depth + 1));
+  const out = {};
+  for (const [key, nested] of Object.entries(value)) {
+    if (HEAVY_KEY.test(key)) continue;
+    if (typeof nested === 'string' && nested.length > 4000 && /^data:[^;]+;base64,/i.test(nested)) {
+      continue;
+    }
+    out[key] = typeof nested === 'object' ? stripHeavyFields(nested, depth + 1) : nested;
+  }
+  return out;
+}
+
+function pickSnapshot(snapshot) {
+  const s = snapshot || {};
+  return {
+    id: s.id || null,
+    legacy_id: s.legacy_id || null,
+    name: s.name || null,
+    display_name: s.display_name || null,
+    price_cents: s.price_cents || 0,
+    price_label: s.price_label || null,
+    requires_payment: s.requires_payment,
+    requires_iban: s.requires_iban,
+    sale_type: s.sale_type || null,
+  };
+}
+
+function pickPayment(payment) {
+  const p = payment || {};
+  return {
+    status: p.status || null,
+    paid_at: p.paid_at || null,
+    amount: p.amount || null,
+    billing_plan: p.billing_plan || null,
+    payment_plan: p.payment_plan || null,
+    stripe_subscription_id: p.stripe_subscription_id || null,
+    subscription_id: p.subscription_id || null,
+    payplug_payment_id: p.payplug_payment_id || null,
+    payplug_payment_ids: Array.isArray(p.payplug_payment_ids) ? p.payplug_payment_ids.slice(-8) : [],
+    has_iban: Boolean(p.iban),
+  };
+}
+
+function buildOrderSummary(order) {
+  if (!order || typeof order !== 'object') return null;
+  const short = order.customer_short || {};
+  const full = order.customer_full || {};
+  const customer = order.customer || {};
+  return {
+    order_id: order.order_id,
+    access_token: order.access_token || null,
+    action: order.action || null,
+    step: order.step || 1,
+    product_id: order.product_id || order.product_snapshot?.id || null,
+    product_name: order.product_name || null,
+    product_snapshot: pickSnapshot(order.product_snapshot),
+    payment: pickPayment(order.payment),
+    customer_short: {
+      first_name: short.first_name || null,
+      last_name: short.last_name || null,
+      email: short.email || null,
+      phone: short.phone || null,
+    },
+    customer_full: {
+      gym: full.gym || null,
+      email: full.email || null,
+    },
+    customer: {
+      name: customer.name || null,
+      email: customer.email || null,
+      phone: customer.phone || null,
+      gym: customer.gym || null,
+    },
+    gym: order.gym || full.gym || customer.gym || null,
+    activity: order.activity || null,
+    activity_label: order.activity_label || null,
+    booking_date: order.booking_date || null,
+    slot: order.slot || null,
+    slot_label: order.slot_label || null,
+    booking_status: order.booking_status || null,
+    cancel_status: order.cancel_status || null,
+    access_blocked: Boolean(order.access_blocked),
+    ready_for_dispatch: Boolean(order.ready_for_dispatch),
+    gestion_client_id: order.gestion_client_id || null,
+    signature: { signed_at: order.signature?.signed_at || null },
+    funnel: {
+      complete_deadline_at: order.funnel?.complete_deadline_at || null,
+      nudge_sent_at: order.funnel?.nudge_sent_at || null,
+      nudge_email_sent_at: order.funnel?.nudge_email_sent_at || null,
+      nudge_whatsapp_sent_at: order.funnel?.nudge_whatsapp_sent_at || null,
+      nudge_whatsapp_skipped_at: order.funnel?.nudge_whatsapp_skipped_at || null,
+      nudge_queued_at: order.funnel?.nudge_queued_at || null,
+    },
+    documents: {
+      photo: order.documents?.photo || null,
+      photo_filename: order.documents?.photo_filename || null,
+      has_photo: Boolean(order.documents?.photo || order.documents?.photo_base64 || order.documents?.photo_filename),
+    },
+    dispatched_at: order.dispatched_at || null,
+    email_sent_at: order.email_sent_at || null,
+    created_at: order.created_at || null,
+    updated_at: order.updated_at || null,
+  };
+}
+
+function unwrapJson(value) {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'))
+  ) {
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
+function rowValue(row, ...keys) {
+  for (const key of keys) {
+    if (row[key] !== undefined && row[key] !== null) return unwrapJson(row[key]);
+  }
+  return undefined;
+}
+
+function reconstructOrderFromListRow(row) {
+  if (!row || typeof row !== 'object') return null;
+  if (row.summary && typeof row.summary === 'object' && (row.summary.order_id || row.order_id)) {
+    return stripHeavyFields({
+      ...row.summary,
+      order_id: row.summary.order_id || row.order_id,
+      access_token: row.summary.access_token || row.access_token || null,
+      updated_at: row.summary.updated_at || row.updated_at,
+    });
+  }
+  if (row.payload && typeof row.payload === 'object') {
+    return stripHeavyFields(row.payload);
+  }
+  const signedAt = rowValue(row, 'signed_at', 'payload->signature->>signed_at');
+  const photo = rowValue(row, 'photo', 'payload->documents->>photo');
+  const photoFilename = rowValue(row, 'photo_filename', 'payload->documents->>photo_filename');
+  const reconstructed = {
+    order_id: row.order_id,
+    access_token: row.access_token || rowValue(row, 'token') || null,
+    action: rowValue(row, 'action', 'payload->action') || null,
+    step: rowValue(row, 'step', 'payload->step') || 1,
+    product_id: rowValue(row, 'product_id', 'payload->product_id') || null,
+    product_name: rowValue(row, 'product_name', 'payload->product_name') || null,
+    product_snapshot: stripHeavyFields(rowValue(row, 'product_snapshot', 'payload->product_snapshot') || {}),
+    payment: stripHeavyFields(rowValue(row, 'payment', 'payload->payment') || {}),
+    customer_short: stripHeavyFields(rowValue(row, 'customer_short', 'payload->customer_short') || {}),
+    customer_full: stripHeavyFields({
+      gym: rowValue(row, 'customer_gym', 'gym_full') || (rowValue(row, 'customer_full', 'payload->customer_full') || {}).gym || null,
+      email: rowValue(row, 'customer_email') || (rowValue(row, 'customer_full', 'payload->customer_full') || {}).email || null,
+    }),
+    customer: stripHeavyFields(rowValue(row, 'customer', 'payload->customer') || {}),
+    gym: rowValue(row, 'gym', 'payload->gym') || rowValue(row, 'customer_gym') || null,
+    activity: rowValue(row, 'activity', 'payload->activity') || null,
+    activity_label: rowValue(row, 'activity_label', 'payload->activity_label') || null,
+    booking_date: rowValue(row, 'booking_date', 'payload->booking_date') || null,
+    slot: rowValue(row, 'slot', 'payload->slot') || null,
+    slot_label: rowValue(row, 'slot_label', 'payload->slot_label') || null,
+    booking_status: rowValue(row, 'booking_status', 'payload->booking_status') || null,
+    cancel_status: rowValue(row, 'cancel_status', 'payload->cancel_status') || null,
+    access_blocked: Boolean(rowValue(row, 'access_blocked', 'payload->access_blocked')),
+    ready_for_dispatch: Boolean(rowValue(row, 'ready_for_dispatch', 'payload->ready_for_dispatch')),
+    gestion_client_id: rowValue(row, 'gestion_client_id', 'payload->gestion_client_id') || null,
+    signature: { signed_at: signedAt || null },
+    funnel: stripHeavyFields(rowValue(row, 'funnel', 'payload->funnel') || {}),
+    documents: {
+      photo: photo || null,
+      photo_filename: photoFilename || null,
+      has_photo: Boolean(photo || photoFilename),
+    },
+    dispatched_at: rowValue(row, 'dispatched_at', 'payload->dispatched_at') || null,
+    email_sent_at: rowValue(row, 'email_sent_at', 'payload->email_sent_at') || null,
+    created_at: rowValue(row, 'created_at', 'payload->created_at') || row.created_at || null,
+    updated_at: row.updated_at || rowValue(row, 'payload->updated_at') || null,
+  };
+  return stripHeavyFields(reconstructed);
+}
+
+const SLIM_SELECT = [
+  'order_id',
+  'updated_at',
+  'access_token',
+  'created_at',
+  'step:payload->step',
+  'action:payload->action',
+  'product_id:payload->product_id',
+  'product_name:payload->product_name',
+  'gym:payload->gym',
+  'dispatched_at:payload->dispatched_at',
+  'email_sent_at:payload->email_sent_at',
+  'booking_status:payload->booking_status',
+  'booking_date:payload->booking_date',
+  'activity:payload->activity',
+  'activity_label:payload->activity_label',
+  'slot:payload->slot',
+  'slot_label:payload->slot_label',
+  'cancel_status:payload->cancel_status',
+  'access_blocked:payload->access_blocked',
+  'ready_for_dispatch:payload->ready_for_dispatch',
+  'gestion_client_id:payload->gestion_client_id',
+  'payment:payload->payment',
+  'customer_short:payload->customer_short',
+  'customer:payload->customer',
+  'customer_gym:payload->customer_full->gym',
+  'customer_email:payload->customer_full->email',
+  'product_snapshot:payload->product_snapshot',
+  'funnel:payload->funnel',
+  'signed_at:payload->signature->signed_at',
+  'photo:payload->documents->photo',
+  'photo_filename:payload->documents->photo_filename',
+].join(',\n');
+
+async function fetchAllPages(makeQuery) {
+  const all = [];
+  let from = 0;
+  while (true) {
+    const to = from + PAGE_SIZE - 1;
+    const { data, error } = await makeQuery().range(from, to);
+    if (error) throw error;
+    const batch = data || [];
+    all.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return all;
 }
 
 function loadOrderFromFs(orderId) {
@@ -58,32 +305,75 @@ async function loadOrderFromRemote(orderId) {
 
 async function saveOrderToRemote(order) {
   const sb = getSupabase();
-  // access_token NOT NULL en base — les CANCEL-* n'en ont pas forcément
   const accessToken =
     order.access_token ||
     (order.action === 'cancel' ? `cancel-${order.order_id}` : null) ||
     `tok-${order.order_id}`;
   if (!order.access_token) order.access_token = accessToken;
-  const { error } = await sb.from('boxplus_orders').upsert(
-    {
-      order_id: order.order_id,
-      access_token: accessToken,
-      payload: order,
-      updated_at: order.updated_at || new Date().toISOString(),
-    },
-    { onConflict: 'order_id' }
-  );
+  const row = {
+    order_id: order.order_id,
+    access_token: accessToken,
+    payload: order,
+    summary: buildOrderSummary(order),
+    updated_at: order.updated_at || new Date().toISOString(),
+  };
+  let { error } = await sb.from('boxplus_orders').upsert(row, { onConflict: 'order_id' });
+  if (error && /summary/i.test(String(error.message || error.code || ''))) {
+    delete row.summary;
+    ({ error } = await sb.from('boxplus_orders').upsert(row, { onConflict: 'order_id' }));
+  }
   if (error) throw error;
+  invalidateOrderListCache();
+}
+
+async function listOrdersFromRemoteSlim() {
+  const sb = getSupabase();
+  const makeSlim = () =>
+    sb.from('boxplus_orders').select(SLIM_SELECT).order('updated_at', { ascending: false });
+  try {
+    const rows = await fetchAllPages(makeSlim);
+    return rows.map(reconstructOrderFromListRow).filter(Boolean);
+  } catch (err) {
+    logWarn('Liste commandes slim (json) indisponible, essai colonne summary', {
+      error: err.message,
+    });
+  }
+
+  const makeSummary = () =>
+    sb
+      .from('boxplus_orders')
+      .select('order_id, updated_at, access_token, created_at, summary')
+      .order('updated_at', { ascending: false });
+  const rows = await fetchAllPages(makeSummary);
+  return rows.map(reconstructOrderFromListRow).filter(Boolean);
 }
 
 async function listOrdersFromRemote() {
+  const now = Date.now();
+  if (listCache.rows && now - listCache.at < LIST_CACHE_MS) {
+    return listCache.rows;
+  }
+  const rows = await listOrdersFromRemoteSlim();
+  listCache = { at: now, rows };
+  return rows;
+}
+
+async function findRemoteOrderBySubscriptionId(subscriptionId) {
+  const id = String(subscriptionId || '').trim();
+  if (!id || !/^[A-Za-z0-9_\-]+$/.test(id)) return null;
   const sb = getSupabase();
+  const filter = [
+    `payload->payment->>stripe_subscription_id.eq.${id}`,
+    `payload->payment->>subscription_id.eq.${id}`,
+  ].join(',');
   const { data, error } = await sb
     .from('boxplus_orders')
     .select('payload')
-    .order('updated_at', { ascending: false });
+    .or(filter)
+    .limit(1)
+    .maybeSingle();
   if (error) throw error;
-  return (data || []).map((row) => row.payload).filter(Boolean);
+  return data?.payload || null;
 }
 
 function listOrdersFromFs() {
@@ -127,6 +417,7 @@ async function loadOrder(orderId) {
 function saveOrder(order) {
   order.updated_at = new Date().toISOString();
   saveOrderToFs(order);
+  invalidateOrderListCache();
   if (useRemoteStore()) {
     saveOrderToRemote(order).catch((err) => {
       logError('Sauvegarde commande Supabase', { order_id: order.order_id, error: err.message });
@@ -138,6 +429,7 @@ function saveOrder(order) {
 async function saveOrderAsync(order) {
   order.updated_at = new Date().toISOString();
   saveOrderToFs(order);
+  invalidateOrderListCache();
   if (useRemoteStore()) {
     await saveOrderToRemote(order);
   }
@@ -153,7 +445,29 @@ async function listAllOrders() {
       logError('Liste commandes Supabase', { error: err.message });
     }
   }
-  return listOrdersFromFs();
+  return listOrdersFromFs().map((order) => stripHeavyFields(order));
+}
+
+async function findOrderBySubscriptionId(subscriptionId) {
+  if (!subscriptionId) return null;
+  if (useRemoteStore()) {
+    try {
+      const remote = await findRemoteOrderBySubscriptionId(subscriptionId);
+      if (remote) return remote;
+    } catch (err) {
+      logWarn('Recherche abonnement ciblée indisponible, repli liste slim', {
+        error: err.message,
+      });
+    }
+  }
+  const all = await listAllOrders();
+  return (
+    all.find(
+      (o) =>
+        o.payment?.stripe_subscription_id === subscriptionId ||
+        o.payment?.subscription_id === subscriptionId
+    ) || null
+  );
 }
 
 function deleteOrderFromFs(orderId) {
@@ -170,6 +484,7 @@ async function deleteOrderFromRemote(orderId) {
 
 async function deleteOrder(orderId) {
   deleteOrderFromFs(orderId);
+  invalidateOrderListCache();
   if (useRemoteStore()) {
     await deleteOrderFromRemote(orderId);
   }
@@ -184,4 +499,9 @@ module.exports = {
   saveOrderAsync,
   listAllOrders,
   deleteOrder,
+  findOrderBySubscriptionId,
+  buildOrderSummary,
+  stripHeavyFields,
+  reconstructOrderFromListRow,
+  invalidateOrderListCache,
 };
