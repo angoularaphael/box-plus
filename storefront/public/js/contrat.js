@@ -22,41 +22,56 @@
     pdfUrl = `/api/orders/${encodeURIComponent(orderId)}/contract.pdf?${qs}`;
   }
 
-  frame.src = pdfUrl;
+  let objectUrl = null;
+
+  function showError(message) {
+    errEl.hidden = false;
+    errEl.textContent = message;
+  }
+
+  function errorFromStatus(status) {
+    if (status === 401) return 'Reconnectez-vous à l’espace admin pour voir la facture.';
+    if (status === 403) return 'Accès refusé — vérifiez votre lien d\'inscription.';
+    if (status === 404) return 'Facture introuvable — complétez d\'abord votre dossier.';
+    return 'Impossible d\'afficher la facture pour le moment.';
+  }
 
   fetch(pdfUrl, { credentials: 'include' })
-    .then((res) => {
+    .then(async (res) => {
       if (!res.ok) {
-        errEl.hidden = false;
-        errEl.textContent =
-          res.status === 403
-            ? 'Accès refusé — vérifiez votre lien d\'inscription.'
-            : res.status === 404
-              ? 'Facture introuvable — complétez d\'abord votre dossier.'
-              : 'Impossible d\'afficher la facture pour le moment.';
+        showError(errorFromStatus(res.status));
+        return;
       }
+      const type = String(res.headers.get('content-type') || '');
+      const blob = await res.blob();
+      if (!type.includes('pdf') && blob.type && !blob.type.includes('pdf')) {
+        showError(errorFromStatus(res.status));
+        return;
+      }
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      objectUrl = URL.createObjectURL(blob);
+      frame.src = objectUrl;
     })
     .catch(() => {
-      errEl.hidden = false;
-      errEl.textContent = 'Impossible de charger la facture.';
+      showError('Impossible de charger la facture.');
     });
 
   document.getElementById('downloadBtn').onclick = async () => {
     try {
-      const res = await fetch(pdfUrl, { credentials: 'include' });
+      const src = objectUrl || pdfUrl;
+      const res = objectUrl
+        ? await fetch(objectUrl)
+        : await fetch(pdfUrl, { credentials: 'include' });
       if (!res.ok) throw new Error('Téléchargement impossible');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const cd = res.headers.get('content-disposition') || '';
-      const match = cd.match(/filename="?([^"]+)"?/i);
-      a.download = match?.[1] || `Facture-Boxing-Center-${orderId}.pdf`;
+      a.download = `facture-${orderId}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      errEl.hidden = false;
-      errEl.textContent = err.message || 'Erreur lors du téléchargement';
+      showError(err.message || 'Erreur lors du téléchargement');
     }
   };
 })();

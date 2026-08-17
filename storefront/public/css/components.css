@@ -1585,6 +1585,12 @@ body:has(#adminPanel:not([hidden])) {
   background: #525659;
 }
 
+.contract-view-body .form-msg.err {
+  position: relative;
+  z-index: 5;
+  margin: 12px 16px 0;
+}
+
 .toggle-switch {
   position: relative;
   width: 44px;

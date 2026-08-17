@@ -183,7 +183,6 @@ const {
   deleteOrderAsync,
   toAdminSummary,
 } = require('./lib/order-lifecycle');
-const { streamContractPdf } = require('./lib/contract-pdf');
 const {
   generateInscriptionInvoicePdf,
   generateMaterielInvoicePdf,
@@ -210,43 +209,14 @@ const {
 } = require('./lib/site-maintenance');
 
 function streamOrderFacturePdf(order, res) {
-  const storedDossier = order.documents?.dossier_pdf;
-  if (storedDossier && fs.existsSync(storedDossier)) {
-    const name = order.documents?.dossier_filename || 'dossier-inscription.pdf';
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${name}"`);
-    fs.createReadStream(storedDossier).pipe(res);
-    return;
+  try {
+    streamInscriptionInvoicePdf(order, res);
+  } catch (err) {
+    logError('PDF facture', { order_id: order?.order_id, error: err.message });
+    if (!res.headersSent) {
+      res.status(500).json({ ok: false, error: 'pdf_failed' });
+    }
   }
-  // Génération à la volée du dossier fusionné (CGV + RI + médical + facture)
-  if (order.signature?.signed_at) {
-    const { generateInscriptionDossierPdf } = require('./lib/legal-pdf');
-    const { hydrateOrderMedia } = require('./lib/cloudinary');
-    hydrateOrderMedia(order)
-      .then((hydrated) => generateInscriptionDossierPdf(hydrated))
-      .then((dossier) => {
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader(
-          'Content-Disposition',
-          `inline; filename="${dossier.filename || 'dossier-inscription.pdf'}"`
-        );
-        fs.createReadStream(dossier.filepath).pipe(res);
-      })
-      .catch((err) => {
-        logWarn('Dossier PDF admin fallback facture', { order_id: order.order_id, error: err.message });
-        streamInscriptionInvoicePdf(order, res);
-      });
-    return;
-  }
-  const stored = order.documents?.invoice_pdf || order.documents?.contract_pdf;
-  const storedName = order.documents?.invoice_filename || order.documents?.contract_filename || 'facture.pdf';
-  if (stored && fs.existsSync(stored)) {
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `inline; filename="${storedName}"`);
-    fs.createReadStream(stored).pipe(res);
-    return;
-  }
-  streamContractPdf(order, res);
 }
 
 async function syncInscriptionClient(order) {

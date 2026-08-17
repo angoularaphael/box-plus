@@ -276,7 +276,16 @@ function streamInscriptionInvoicePdf(order, res) {
   res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
   const doc = new PDFDocument({ margin: 48, size: 'A4', bufferPages: true });
   doc.pipe(res);
-  renderInscriptionInvoice(doc, order);
+  try {
+    renderInscriptionInvoice(doc, order);
+  } catch (err) {
+    try {
+      doc.end();
+    } catch {
+      /* already ended */
+    }
+    throw err;
+  }
   doc.end();
 }
 
