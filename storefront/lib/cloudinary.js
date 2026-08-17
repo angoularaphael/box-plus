@@ -3,16 +3,35 @@
 const crypto = require('crypto');
 const { logWarn } = require('../../lib/logger');
 
+function cloudinaryCredentials() {
+  const fromUrl = String(process.env.CLOUDINARY_URL || '').trim();
+  if (fromUrl) {
+    try {
+      const parsed = new URL(fromUrl);
+      if (parsed.protocol === 'cloudinary:') {
+        const cloud = String(parsed.hostname || '').trim();
+        const apiKey = decodeURIComponent(parsed.username || '').trim();
+        const apiSecret = decodeURIComponent(parsed.password || '').trim();
+        if (cloud && apiKey && apiSecret) return { cloud, apiKey, apiSecret };
+      }
+    } catch {
+      /* ignore malformed CLOUDINARY_URL */
+    }
+  }
+  return {
+    cloud: String(process.env.CLOUDINARY_CLOUD_NAME || '').trim(),
+    apiKey: String(process.env.CLOUDINARY_API_KEY || '').trim(),
+    apiSecret: String(process.env.CLOUDINARY_API_SECRET || '').trim(),
+  };
+}
+
 function cloudName() {
-  return String(process.env.CLOUDINARY_CLOUD_NAME || '').trim();
+  return cloudinaryCredentials().cloud;
 }
 
 function isCloudinaryConfigured() {
-  return Boolean(
-    cloudName() &&
-      String(process.env.CLOUDINARY_API_KEY || '').trim() &&
-      String(process.env.CLOUDINARY_API_SECRET || '').trim()
-  );
+  const { cloud, apiKey, apiSecret } = cloudinaryCredentials();
+  return Boolean(cloud && apiKey && apiSecret);
 }
 
 function signParams(params, apiSecret) {
@@ -39,14 +58,12 @@ async function uploadImageBuffer({
   folder = 'boxplus/photos',
   publicId,
 } = {}) {
-  if (!isCloudinaryConfigured()) {
+  const { cloud, apiKey, apiSecret } = cloudinaryCredentials();
+  if (!cloud || !apiKey || !apiSecret) {
     throw new Error('cloudinary_not_configured');
   }
   if (!buffer || !buffer.length) throw new Error('empty_image');
 
-  const cloud = cloudName();
-  const apiKey = String(process.env.CLOUDINARY_API_KEY).trim();
-  const apiSecret = String(process.env.CLOUDINARY_API_SECRET).trim();
   const timestamp = Math.floor(Date.now() / 1000);
   const id = publicId || `${folder}/${Date.now()}`;
   const toSign = {
@@ -126,6 +143,7 @@ async function hydrateOrderMedia(order) {
 }
 
 module.exports = {
+  cloudinaryCredentials,
   isCloudinaryConfigured,
   signParams,
   imageUrl,
