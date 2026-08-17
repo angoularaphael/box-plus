@@ -1250,7 +1250,7 @@
       })
         .then((res) => res.json().catch(() => ({})))
         .then((data) => {
-          if (data?.sent || data?.skipped) return;
+          if (data?.complete || data?.skipped) return;
           window.setTimeout(fireNudge, 8000);
         })
         .catch(() => {

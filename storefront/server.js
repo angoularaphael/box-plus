@@ -3931,7 +3931,14 @@ function createApp() {
     if (!isPayplugEnabled()) return res.json({ ok: true, skipped: 'payplug_not_configured' });
     try {
       const out = await reconcilePayplugPayments({ listRecent: true, scanPending: false });
-      res.json(out);
+      let nudges = { count: 0 };
+      try {
+        const { dispatchDueNudges } = require('./lib/inscription-nudge');
+        nudges = await dispatchDueNudges();
+      } catch (err) {
+        logWarn('Relances inscription (cron PayPlug)', { error: err.message });
+      }
+      res.json({ ...out, nudges: { count: nudges.count || 0 } });
     } catch (err) {
       logError('Cron PayPlug réconciliation', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });

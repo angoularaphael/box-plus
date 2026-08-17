@@ -63,6 +63,7 @@ test('mails reprise / relance : vouvoiement, bouton payer visible', () => {
     resumeEmailHtml,
     nudgeEmailSubject,
     nudgeEmailHtml,
+    nudgeWhatsAppText,
   } = require('../storefront/lib/inscription-nudge');
   const token = 'b'.repeat(48);
   const unpaid = {
@@ -107,6 +108,12 @@ test('mails reprise / relance : vouvoiement, bouton payer visible', () => {
   assert.match(nudgeHtml, /boutique\.boxingcenter\.fr\/inscription/);
   assert.match(nudgeHtml, /\bvous\b|\bvotre\b/i);
   assert.doesNotMatch(nudgeHtml, /(?:^|[\s>])(?:tu |ton |tes |toi)|t'|Salut /i);
+  const wa = nudgeWhatsAppText(paid);
+  assert.match(wa, /Bonjour Diego/);
+  assert.match(wa, /dossier et la signature/);
+  assert.match(wa, /boutique\.boxingcenter\.fr\/inscription/);
+  assert.match(wa, /Terminez votre inscription/);
+  assert.doesNotMatch(wa, /(?:^|[\s\n])(?:tu |ton |tes |toi)/i);
   if (prev === undefined) delete process.env.STORE_URL;
   else process.env.STORE_URL = prev;
 });
@@ -126,6 +133,21 @@ test('relance 30 min : due seulement si payé, incomplet, deadline dépassée', 
       { ...base, funnel: { complete_deadline_at: '2026-08-13T17:50:00.000Z', nudge_sent_at: paid } },
       now
     ),
+    true,
+    'email déjà parti → encore dû pour le WhatsApp'
+  );
+  assert.equal(
+    isNudgeDue(
+      {
+        ...base,
+        funnel: {
+          complete_deadline_at: '2026-08-13T17:50:00.000Z',
+          nudge_email_sent_at: paid,
+          nudge_whatsapp_sent_at: paid,
+        },
+      },
+      now
+    ),
     false
   );
   assert.equal(
@@ -137,6 +159,18 @@ test('relance 30 min : due seulement si payé, incomplet, deadline dépassée', 
       now
     ),
     false
+  );
+  assert.equal(
+    isNudgeDue(
+      {
+        ...base,
+        funnel: { complete_deadline_at: '2026-08-13T17:50:00.000Z', nudge_queued_at: '2026-08-13T17:59:00.000Z' },
+      },
+      now,
+      { force: true }
+    ),
+    true,
+    'force ignore le cooldown de file'
   );
   assert.equal(
     isNudgeDue(

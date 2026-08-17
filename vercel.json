@@ -23,6 +23,10 @@
       "schedule": "0 6 * * *"
     },
     {
+      "path": "/api/cron/inscription-nudges",
+      "schedule": "*/10 * * * *"
+    },
+    {
       "path": "/api/cron/payplug-reconcile",
       "schedule": "20 6 * * *"
     }
