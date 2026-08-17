@@ -43,7 +43,7 @@ function signParams(params, apiSecret) {
   return crypto.createHash('sha1').update(filtered + apiSecret).digest('hex');
 }
 
-function imageUrl(publicId, { transform = 'f_auto,q_auto,w_900,c_limit' } = {}) {
+function imageUrl(publicId, { transform = 'f_jpg,q_auto,w_900,c_limit' } = {}) {
   const cloud = cloudName();
   if (!cloud || !publicId) return null;
   const id = String(publicId).replace(/^\/+/, '');
@@ -102,6 +102,21 @@ async function uploadImageBuffer({
   };
 }
 
+function photoPublicId(order) {
+  const docs = order?.documents || {};
+  if (docs.photo_public_id) return String(docs.photo_public_id);
+  const url = String(docs.photo_url || '');
+  const m = url.match(/(boxplus\/photos\/[A-Za-z0-9._-]+)/i);
+  if (m) return m[1];
+  if (order?.order_id) return `boxplus/photos/${order.order_id}`;
+  return null;
+}
+
+function deciplusPhotoUrl(order) {
+  const id = photoPublicId(order);
+  return id ? imageUrl(id, { transform: 'f_jpg,q_auto,w_900,c_limit' }) : null;
+}
+
 async function downloadImageBuffer(url) {
   const src = String(url || '').trim();
   if (!/^https:\/\/res\.cloudinary\.com\//i.test(src) && !/^https:\/\/.+\.cloudinary\.com\//i.test(src)) {
@@ -116,16 +131,17 @@ async function downloadImageBuffer(url) {
 
 async function hydrateOrderMedia(order) {
   if (!order || typeof order !== 'object') return order;
-  const next = { ...order };
-  if (next.documents?.photo_url && !next.documents?.photo_base64) {
-    try {
-      const buf = await downloadImageBuffer(next.documents.photo_url);
-      next.documents = {
-        ...next.documents,
-        photo_base64: `data:image/jpeg;base64,${buf.toString('base64')}`,
-      };
-    } catch (err) {
-      logWarn('Hydratation photo Cloudinary', { error: err.message, order_id: order.order_id });
+  const next = { ...order, documents: { ...(order.documents || {}) }, signature: order.signature ? { ...order.signature } : order.signature };
+  if (!next.documents.photo_base64) {
+    const url = next.documents.photo_url || deciplusPhotoUrl(next);
+    if (url) {
+      try {
+        const buf = await downloadImageBuffer(url);
+        next.documents.photo_url = next.documents.photo_url || url;
+        next.documents.photo_base64 = `data:image/jpeg;base64,${buf.toString('base64')}`;
+      } catch (err) {
+        logWarn('Hydratation photo Cloudinary', { error: err.message, order_id: order.order_id });
+      }
     }
   }
   if (next.signature?.image_url && !next.signature?.image_base64) {
@@ -144,6 +160,8 @@ async function hydrateOrderMedia(order) {
 
 module.exports = {
   cloudinaryCredentials,
+  photoPublicId,
+  deciplusPhotoUrl,
   isCloudinaryConfigured,
   signParams,
   imageUrl,

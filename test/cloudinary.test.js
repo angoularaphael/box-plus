@@ -7,6 +7,7 @@ const {
   imageUrl,
   isCloudinaryConfigured,
   cloudinaryCredentials,
+  photoPublicId,
 } = require('../storefront/lib/cloudinary');
 
 function snapshotCloudinaryEnv() {
@@ -53,7 +54,7 @@ test('imageUrl pose la transformation CDN', () => {
   try {
     assert.equal(
       imageUrl('boxplus/photos/BC-1'),
-      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_900,c_limit/boxplus/photos/BC-1'
+      'https://res.cloudinary.com/demo/image/upload/f_jpg,q_auto,w_900,c_limit/boxplus/photos/BC-1'
     );
   } finally {
     restoreCloudinaryEnv(prev);
@@ -84,4 +85,18 @@ test('isCloudinaryConfigured exige les 3 clés', () => {
   } finally {
     restoreCloudinaryEnv(prev);
   }
+});
+
+test('photoPublicId dérive du public_id, de l’URL ou de l’order_id', () => {
+  assert.equal(
+    photoPublicId({ documents: { photo_public_id: 'boxplus/photos/BC-9' } }),
+    'boxplus/photos/BC-9'
+  );
+  assert.equal(
+    photoPublicId({
+      documents: { photo_url: 'https://res.cloudinary.com/demo/image/upload/f_jpg/boxplus/photos/BC-8' },
+    }),
+    'boxplus/photos/BC-8'
+  );
+  assert.equal(photoPublicId({ order_id: 'BC-7', documents: {} }), 'boxplus/photos/BC-7');
 });

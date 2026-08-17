@@ -9,6 +9,7 @@ process.env.BOXPLUS_QUEUE_DIR = path.join(os.tmpdir(), `boxplus-queue-test-${Dat
 process.env.BOXPLUS_LOG_DIR = path.join(os.tmpdir(), `boxplus-logs-test-${Date.now()}`);
 
 const { normalizeOrder, validateOrder, validateCancelOrder, getJobId, getGymConfig } = require('../lib/normalize');
+const { isOpsOrder } = require('../lib/bot-forward');
 const { resolveProductConfig, buildProductConfig, isTrialOrder, resolveBadgeProductConfig, findBadgeProduct } = require('../bot/catalog');
 const { enqueue, isProcessed, markProcessed, listPending, STATUS } = require('../lib/queue');
 
@@ -125,6 +126,22 @@ test('résolution automatique produit Deciplus', () => {
 
   const gym = getGymConfig('st-cyprien');
   assert.equal(gym.deciplus_label, 'St-Cyprien');
+});
+
+test('member_photo — job_id distinct, pas une revente', () => {
+  const photo = normalizeOrder({
+    action: 'member_photo',
+    order_id: 'BC-photo-1',
+    gym: 'portet',
+    first_name: 'Vincent',
+    last_name: 'Torres',
+    photo_url: 'https://res.cloudinary.com/demo/image/upload/boxplus/photos/BC-photo-1',
+  });
+  assert.equal(photo.action, 'member_photo');
+  assert.equal(photo.job_id, 'BC-photo-1#photo');
+  assert.equal(getJobId(photo), 'BC-photo-1#photo');
+  assert.deepEqual(validateOrder(photo), []);
+  assert.equal(isOpsOrder(photo), false);
 });
 
 test('annulation — job_id et validation', () => {

@@ -467,8 +467,13 @@ async function maybeNotifyOffre29Friend(order, friendInput) {
 }
 
 async function dispatchLifecycleOrder(order) {
+  const { hydrateOrderMedia } = require('./lib/cloudinary');
+  const hydrated = await hydrateOrderMedia(order);
   const product = findProduct(order.product_id) || order.product_snapshot;
-  const payload = buildOrderFromLifecycle(order, product);
+  const payload = buildOrderFromLifecycle(hydrated, product);
+  if (payload.photo_path && /(?:^|[\\/])tmp[\\/]/i.test(String(payload.photo_path))) {
+    payload.photo_path = null;
+  }
   if (!payload.photo_base64 && !payload.photo_path && !payload.photo_url) {
     logWarn('Dispatch bot sans photo membre', { order_id: order.order_id });
   }
@@ -478,6 +483,35 @@ async function dispatchLifecycleOrder(order) {
   const { saveOrderAsync } = require('./lib/order-lifecycle');
   await saveOrderAsync(order);
   logInfo('Commande lifecycle → BOXPLUS', { order_id: order.order_id, queued: result.queued });
+  return result;
+}
+
+/** Photo seule — ne recrée pas la vente (job_id = {order_id}#photo). */
+async function dispatchMemberPhoto(order) {
+  const { hydrateOrderMedia } = require('./lib/cloudinary');
+  const hydrated = await hydrateOrderMedia(order);
+  const product = findProduct(order.product_id) || order.product_snapshot || {
+    id: 'photo',
+    name: 'Photo membre',
+    price_cents: 0,
+    requires_payment: false,
+    sale_type: 'none',
+  };
+  const payload = buildOrderFromLifecycle(hydrated, product);
+  payload.action = 'member_photo';
+  if (order.deciplus_member_id) payload.deciplus_member_id = order.deciplus_member_id;
+  if (payload.photo_path && /(?:^|[\\/])tmp[\\/]/i.test(String(payload.photo_path))) {
+    payload.photo_path = null;
+  }
+  if (!payload.photo_base64 && !payload.photo_url && !payload.photo_path) {
+    throw new Error('photo_manquante');
+  }
+  const result = await dispatchOrder(payload);
+  logInfo('Photo membre → bot ventes', {
+    order_id: order.order_id,
+    forwarded: result.forwarded,
+    queued: result.queued,
+  });
   return result;
 }
 
@@ -1870,6 +1904,27 @@ function createApp() {
     } catch (err) {
       logError('Redispatch admin échoué', { order_id: req.params.id, error: err.message });
       res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  /** Photo seule vers Deciplus — ne recrée pas l’abonnement. */
+  app.post('/api/admin/orders/:id/redispatch-photo', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const order = await loadOrderAsync(req.params.id);
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      const dispatch = await dispatchMemberPhoto(order);
+      res.json({
+        ok: true,
+        order_id: order.order_id,
+        action: 'member_photo',
+        queued: dispatch?.queued,
+        forwarded: dispatch?.forwarded,
+      });
+    } catch (err) {
+      logError('Redispatch photo admin', { order_id: req.params.id, error: err.message });
+      const status = err.message === 'photo_manquante' ? 400 : 500;
+      res.status(status).json({ ok: false, error: err.message });
     }
   });
 
