@@ -1227,6 +1227,15 @@ async function findOrCreateMember(page, order, gymConfig) {
   return { member_id: memberId, action: 'created' };
 }
 
+function sniffImageExt(buf) {
+  if (!buf || buf.length < 12) return '.jpg';
+  if (buf[0] === 0xff && buf[1] === 0xd8) return '.jpg';
+  if (buf[0] === 0x89 && buf[1] === 0x50) return '.png';
+  if (buf[0] === 0x47 && buf[1] === 0x49) return '.gif';
+  if (buf[0] === 0x52 && buf[1] === 0x49 && buf[8] === 0x57 && buf[9] === 0x45) return '.webp';
+  return '.jpg';
+}
+
 async function resolvePhotoFile(photoPath, photoBase64, photoUrl) {
   const fs = require('fs');
   const path = require('path');
@@ -1234,30 +1243,32 @@ async function resolvePhotoFile(photoPath, photoBase64, photoUrl) {
 
   if (photoPath && fs.existsSync(photoPath)) return { path: photoPath, cleanup: false };
 
+  if (photoBase64) {
+    const raw = String(photoBase64);
+    const m = raw.match(/^data:(image\/[\w+.-]+);base64,(.+)$/i);
+    const b64 = m ? m[2] : raw.replace(/^data:[^;]+;base64,/, '');
+    const buf = Buffer.from(b64, 'base64');
+    const ext =
+      m && /png/i.test(m[1]) ? '.png' : m && /webp/i.test(m[1]) ? '.webp' : sniffImageExt(buf);
+    const dest = path.join(os.tmpdir(), `bc-member-photo-${Date.now()}${ext}`);
+    fs.writeFileSync(dest, buf);
+    return { path: dest, cleanup: true };
+  }
+
   if (photoUrl && /^https?:\/\//i.test(String(photoUrl))) {
     try {
       const res = await fetch(String(photoUrl));
       if (res.ok) {
         const buf = Buffer.from(await res.arrayBuffer());
         if (buf.length >= 32) {
-          const dest = path.join(os.tmpdir(), `bc-member-photo-${Date.now()}.jpg`);
+          const dest = path.join(os.tmpdir(), `bc-member-photo-${Date.now()}${sniffImageExt(buf)}`);
           fs.writeFileSync(dest, buf);
           return { path: dest, cleanup: true };
         }
       }
     } catch {
-      /* URL injoignable depuis le bot (localhost, DNS) → repli base64 */
+      /* URL injoignable depuis le bot (localhost, DNS) */
     }
-  }
-
-  if (photoBase64) {
-    const raw = String(photoBase64);
-    const m = raw.match(/^data:(image\/[\w+.-]+);base64,(.+)$/i);
-    const b64 = m ? m[2] : raw.replace(/^data:[^;]+;base64,/, '');
-    const ext = m && /png/i.test(m[1]) ? '.png' : m && /webp/i.test(m[1]) ? '.webp' : '.jpg';
-    const dest = path.join(os.tmpdir(), `bc-member-photo-${Date.now()}${ext}`);
-    fs.writeFileSync(dest, Buffer.from(b64, 'base64'));
-    return { path: dest, cleanup: true };
   }
 
   return null;
@@ -1267,7 +1278,7 @@ function fileToDataUrl(filePath) {
   const fs = require('fs');
   const path = require('path');
   const buf = fs.readFileSync(filePath);
-  const ext = path.extname(filePath).toLowerCase();
+  const ext = sniffImageExt(buf) || path.extname(filePath).toLowerCase();
   const mime =
     ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : ext === '.gif' ? 'image/gif' : 'image/jpeg';
   return `data:${mime};base64,${buf.toString('base64')}`;
@@ -1329,7 +1340,14 @@ async function uploadMemberPhotoViaApi(page, memberId, dataUrl) {
   if (!token) return { ok: false, reason: 'no_staff_token' };
   if (!memberId) return { ok: false, reason: 'no_member_id' };
 
-  const normalized = await normalizePhotoDataUrl(page, dataUrl);
+  let normalized = dataUrl;
+  try {
+    normalized = await normalizePhotoDataUrl(page, dataUrl);
+  } catch (err) {
+    if (!/^data:image\/jpeg;base64,/i.test(String(dataUrl || ''))) {
+      return { ok: false, reason: err.message || 'normalize_failed' };
+    }
+  }
   const url = `https://api.deciplus.pro/staff/v1/member/${memberId}/photo`;
   const res = await page.context().request.fetch(url, {
     method: 'PUT',
