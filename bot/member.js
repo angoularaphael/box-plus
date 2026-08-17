@@ -859,6 +859,8 @@ async function startNewMemberFromSelect(page, customer) {
 }
 
 async function fillMemberForm(page, customer, gymConfig, order) {
+  const { applySeanceOfferteCustomerDefaults } = require('../lib/info-compta-note');
+  customer = applySeanceOfferteCustomerDefaults(customer, order || {});
   const sel = getSelectors().member_form_selectors || {};
   const ctx = await getMemberFormContext(page);
   const phone = phoneForDeciplus(customer.phone);

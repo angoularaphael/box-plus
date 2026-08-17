@@ -469,8 +469,16 @@ async function processSaleJob(page, order, jobMeta = {}) {
       badge_action: saleResult.badge_action || null,
     });
   } else if (productConfig.sale_type === 'none') {
-    saleResult = { action: 'trial_only' };
-    saveCheckpoint({ step: 'sale', deciplus_member_id: memberId, sale_done: true });
+    saleResult = await recordSale(page, order, productConfig, memberId, gymConfig, {
+      badgeProductConfig,
+    });
+    mark('sale');
+    saveCheckpoint({
+      step: 'sale',
+      deciplus_member_id: memberId,
+      sale_done: true,
+      deciplus_sale_id: null,
+    });
   }
 
   const finalStatus =
@@ -718,6 +726,60 @@ async function maybeTriggerInscriptionNudges() {
 let lastNudgePollAt = 0;
 const NUDGE_POLL_MS = Number(process.env.BOT_NUDGE_POLL_MS || 60 * 1000);
 
+async function processCheckSaleJob(page, order) {
+  const { findActiveContracts } = require('./cancel-sale');
+  let memberId = order.deciplus_member_id || null;
+  if (!memberId) {
+    const found = await findMemberByIdentity(page, {
+      first_name: order.customer?.first_name,
+      last_name: order.customer?.last_name,
+      birthdate: order.customer?.birthdate,
+      phone: order.customer?.phone,
+      email: order.customer?.email,
+    }).catch(() => null);
+    memberId = found?.found ? found.member_id : found?.member_id || null;
+  }
+  if (!memberId) {
+    return { status: STATUS.MANUAL_REVIEW, action: 'check_sale', error: 'membre introuvable', has_sale: false };
+  }
+
+  await openMemberCheck(page, memberId).catch(() => {});
+  const contracts = await findActiveContracts(page).catch(() => []);
+  const hasSale = contracts.some((c) => c && !c.isBadge);
+  const paidLike = contracts.length > 0;
+
+  const storeBase = String(order.status_callback_base || process.env.SEANCE_OFFERTE_URL || '')
+    .replace(/\/$/, '');
+  const secret = process.env.SYNC_SECRET || process.env.BRIDGE_SECRET || '';
+  if (storeBase && secret) {
+    await fetch(`${storeBase}/api/internal/relance-check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-sync-secret': secret },
+      body: JSON.stringify({
+        order_id: order.order_id,
+        deciplus_member_id: memberId,
+        has_sale: hasSale || paidLike,
+        contracts: contracts.map((c) => c.label).slice(0, 8),
+      }),
+    }).catch((err) => {
+      logWarn('Callback relance-check échoué', { error: err.message, order_id: order.order_id });
+    });
+  }
+
+  logInfo('Vérif vente séance offerte', {
+    order_id: order.order_id,
+    member_id: memberId,
+    has_sale: hasSale || paidLike,
+    contracts: contracts.length,
+  });
+  return {
+    status: STATUS.SUCCESS,
+    action: 'check_sale',
+    deciplus_member_id: memberId,
+    has_sale: hasSale || paidLike,
+  };
+}
+
 async function processJob(page, job) {
   const order = normalizeOrder(job);
   const errors = validateOrder(order);
@@ -755,6 +817,10 @@ async function processJob(page, job) {
 
   if (order.action === 'verify_identity') {
     return processVerifyIdentityJob(page, order);
+  }
+
+  if (order.action === 'check_sale') {
+    return processCheckSaleJob(page, order);
   }
 
   return processSaleJob(page, order, {
@@ -1096,4 +1162,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { processJob, processOneJob, runLoop, processCancelJob, processSaleJob, processMemberPhotoJob };
+module.exports = { processJob, processOneJob, runLoop, processCancelJob, processSaleJob, processMemberPhotoJob, processCheckSaleJob };

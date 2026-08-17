@@ -2366,7 +2366,7 @@ async function buyCarteBadge(page, productConfig, gymConfig, memberId = null) {
 }
 
 async function annotateMember(page, order, productConfig, memberId = null) {
-  const { buildFourXInfoComptaNote } = require('../lib/info-compta-note');
+    const { buildFourXInfoComptaNote, buildSeanceOfferteInfoComptaNote } = require('../lib/info-compta-note');
   try {
     const { getMemberFormContext, openMemberEditForm } = require('./member');
     if (memberId) {
@@ -2390,14 +2390,17 @@ async function annotateMember(page, order, productConfig, memberId = null) {
     }
 
     const current = String((await ta.inputValue().catch(() => '')) || '');
+    const offreNote = buildSeanceOfferteInfoComptaNote(order, productConfig);
     const fourXNote = buildFourXInfoComptaNote(order, productConfig);
+    const note = offreNote || fourXNote;
 
-    if (fourXNote) {
-      await ta.fill(fourXNote);
-      logInfo('Info Compte/Paiement — note 4× sans frais écrite', {
+    if (note) {
+      await ta.fill(note);
+      logInfo('Info Compte/Paiement — note écrite', {
         order_id: order?.order_id,
         member_id: memberId,
-        chars: fourXNote.length,
+        chars: note.length,
+        kind: offreNote ? 'seance_offerte' : '4x',
       });
     } else if (/Source:\s*|Produit:\s*|UTM\s|Commande:\s*|Montant PrestaShop|4× sans frais|4x sans frais/i.test(current)) {
       await ta.fill('');
@@ -2456,7 +2459,12 @@ async function verifyCreatedContract(page, memberId, { badge = false, label = ''
 async function recordSale(page, order, productConfig, memberId, gymConfig = {}, options = {}) {
   if (productConfig.create_sale === false || productConfig.sale_type === 'none') {
     logInfo('Essai — fiche membre seulement', { order_id: order.order_id });
-    if (memberId) await openMemberCheck(page, memberId, gymConfig);
+    if (memberId) {
+      await openMemberCheck(page, memberId, gymConfig);
+      await annotateMember(page, order, productConfig, memberId).catch((err) => {
+        logWarn('Annotation essai ignorée', { error: err.message, order_id: order.order_id });
+      });
+    }
     return { sale_id: null, action: 'skipped_essai' };
   }
 
@@ -2786,4 +2794,5 @@ module.exports = {
   buyAbonnement,
   buyCarteBadge,
   isBadgeSale,
+  annotateMember,
 };
