@@ -29,7 +29,7 @@ const CLUB = {
 /** Émetteur factures salle Portet — association Noble Art Portésien. */
 const CLUB_PORTET = {
   name: 'NOBLE ART PORTESIEN',
-  brand: 'Boxing Center Portet',
+  brand: 'Noble Art Portésien',
   legalForm: 'Association loi 1901',
   address: '61 route d\'Espagne',
   city: '31120 Portet-sur-Garonne',
@@ -40,7 +40,7 @@ const CLUB_PORTET = {
   naf: '9312Z',
   phone: '06 87 90 02 16',
   email: 'nobleartportesien@gmail.com',
-  web: 'boxingcenter.fr',
+  web: '',
 };
 
 function isPortetIssuerGym(gym) {
@@ -95,10 +95,35 @@ function contentWidth(doc) {
   return doc.page.width - doc.page.margins.left - doc.page.margins.right;
 }
 
-function drawProHeader(doc, { title, date, ref }) {
+function drawIssuerMark(doc, club, { x, y, width, fontSize = 11 }) {
+  const issuer = club || CLUB;
+  const portet = isPortetIssuerGym(issuer.city) || issuer === CLUB_PORTET || issuer.legalForm;
+  if (portet) {
+    doc.fontSize(fontSize).fillColor(NAVY).font('Helvetica-Bold').text(issuer.brand || issuer.name, x, y, {
+      width,
+      align: 'right',
+    });
+    return;
+  }
+  if (fs.existsSync(LOGO_PATH)) {
+    try {
+      doc.image(LOGO_PATH, x, y, { width });
+      return;
+    } catch {
+      /* fallback texte */
+    }
+  }
+  doc.fontSize(fontSize).fillColor(NAVY).font('Helvetica-Bold').text(issuer.brand || issuer.name, x, y + 8, {
+    width,
+    align: 'right',
+  });
+}
+
+function drawProHeader(doc, { title, date, ref, club }) {
   const left = doc.page.margins.left;
   const width = contentWidth(doc);
   const top = doc.page.margins.top;
+  const issuer = club || CLUB;
 
   doc.fontSize(22).fillColor(NAVY).font('Helvetica-Bold').text(title, left, top, { width: width * 0.62 });
   doc.fontSize(10).fillColor(MUTED).font('Helvetica').text(formatDateFr(date), left, doc.y + 4);
@@ -107,22 +132,7 @@ function drawProHeader(doc, { title, date, ref }) {
   }
 
   const logoW = 72;
-  const logoX = left + width - logoW;
-  if (fs.existsSync(LOGO_PATH)) {
-    try {
-      doc.image(LOGO_PATH, logoX, top, { width: logoW });
-    } catch {
-      doc.fontSize(14).fillColor(NAVY).font('Helvetica-Bold').text(CLUB.brand, logoX, top + 8, {
-        width: logoW,
-        align: 'right',
-      });
-    }
-  } else {
-    doc.fontSize(14).fillColor(NAVY).font('Helvetica-Bold').text(CLUB.brand, logoX, top + 8, {
-      width: logoW,
-      align: 'right',
-    });
-  }
+  drawIssuerMark(doc, issuer, { x: left + width - logoW, y: top, width: logoW, fontSize: 10 });
 
   doc.y = Math.max(doc.y, top + 78) + 12;
 }
@@ -371,27 +381,18 @@ function drawTwoPartiesCompact(doc, emitterRows, recipientRows) {
   doc.y = Math.max(h1, h2) + 8;
 }
 
-function drawProHeaderCompact(doc, { title, date, ref }) {
+function drawProHeaderCompact(doc, { title, date, ref, club }) {
   const left = doc.page.margins.left;
   const width = contentWidth(doc);
   const top = doc.page.margins.top;
+  const issuer = club || CLUB;
 
   doc.fontSize(16).fillColor(NAVY).font('Helvetica-Bold').text(title, left, top, { width: width * 0.65 });
   doc.fontSize(8).fillColor(MUTED).font('Helvetica');
   doc.text(`${formatDateFr(date)}${ref ? `  ·  Réf. ${ref}` : ''}`, left, doc.y + 2);
 
   const logoW = 52;
-  const logoX = left + width - logoW;
-  if (fs.existsSync(LOGO_PATH)) {
-    try {
-      doc.image(LOGO_PATH, logoX, top, { width: logoW });
-    } catch {
-      doc.fontSize(11).fillColor(NAVY).font('Helvetica-Bold').text(CLUB.brand, logoX, top + 4, {
-        width: logoW,
-        align: 'right',
-      });
-    }
-  }
+  drawIssuerMark(doc, issuer, { x: left + width - logoW, y: top, width: logoW, fontSize: 9 });
   doc.y = Math.max(doc.y, top + 56) + 6;
 }
 
@@ -475,7 +476,9 @@ function drawPageFooter(doc, clubOrOrder) {
   const club = resolveClubArg(clubOrOrder);
   const range = doc.bufferedPageRange();
   const total = range.count;
-  const footerText = `${club.name} — SIRET ${club.siret} — ${club.web}`;
+  const footerText = [club.name, club.siret ? `SIRET ${club.siret}` : null, club.web]
+    .filter(Boolean)
+    .join(' — ');
 
   for (let i = 0; i < total; i += 1) {
     doc.switchToPage(range.start + i);

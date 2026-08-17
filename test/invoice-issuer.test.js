@@ -22,6 +22,9 @@ describe('émetteur facture', () => {
     assert.equal(club.siret, '444 152 482 00022');
     assert.equal(club.tva, 'FR80444152482');
     assert.equal(club.naf, '9312Z');
+    assert.equal(club.brand, 'Noble Art Portésien');
+    assert.doesNotMatch(club.brand, /Boxing Center/i);
+    assert.ok(!club.web);
   });
 
   it('détecte Portet via salle de retrait matériel', () => {

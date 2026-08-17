@@ -88,4 +88,19 @@ describe('textes facture / contrat selon l’offre', () => {
     assert.match(copy.description, /5 séances/);
     assert.equal(copy.showBadge72h, false);
   });
+
+  it('Portet : pas de mention Boxing Center', () => {
+    const product = {
+      id: 'dp-100',
+      name: 'OFFRE PROMO 12 MOIS',
+      price_cents: 25900,
+      supports_installment_choice: true,
+    };
+    const copy = offerDocumentCopy(product, { customer_full: { gym: 'portet' } });
+    assert.doesNotMatch(copy.description, /Boxing Center/i);
+    assert.doesNotMatch(copy.footerNote, /Boxing Center/i);
+    assert.doesNotMatch(copy.contractTitle, /Boxing Center/i);
+    assert.match(copy.description, /Portet/i);
+    assert.match(copy.contractTitle, /Noble Art Portésien/i);
+  });
 });

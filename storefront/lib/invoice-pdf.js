@@ -80,13 +80,15 @@ function renderInscriptionInvoice(doc, order) {
   const totalHt = priceHt + badgeHt;
   const totalVat = totalTtc - totalHt;
 
+  const club = clubForOrder(order);
   drawProHeader(doc, {
     title: `Facture ${invoiceNo}`,
     date: invoiceDate,
     ref: order.order_id,
+    club,
   });
 
-  drawTwoParties(doc, clubEmitterRows(clubForOrder(order)), invoiceRecipientRows({ ...short, ...full }));
+  drawTwoParties(doc, clubEmitterRows(club), invoiceRecipientRows({ ...short, ...full }));
 
   drawSectionHeading(doc, 'Détail des prestations');
 
@@ -167,7 +169,7 @@ function renderInscriptionInvoice(doc, order) {
     lineGap: 2,
   });
 
-  drawPageFooter(doc, clubForOrder(order));
+  drawPageFooter(doc, club);
 }
 
 function renderMaterielInvoice(doc, order) {
@@ -177,13 +179,15 @@ function renderMaterielInvoice(doc, order) {
   const lines = order.lines || order.items || [];
   const totalCents = order.total_cents || 0;
 
+  const club = clubForOrder(order);
   drawProHeader(doc, {
     title: `Facture ${invoiceNo}`,
     date: invoiceDate,
     ref: order.order_id,
+    club,
   });
 
-  drawTwoParties(doc, clubEmitterRows(clubForOrder(order)), invoiceRecipientRows(customer));
+  drawTwoParties(doc, clubEmitterRows(club), invoiceRecipientRows(customer));
 
   drawSectionHeading(doc, 'Détail des articles');
 
@@ -243,14 +247,14 @@ function renderMaterielInvoice(doc, order) {
     },
   ]);
 
-  drawPageFooter(doc, clubForOrder(order));
+  drawPageFooter(doc, club);
 }
 
 async function writePdf(renderFn, order, suffix) {
   ensureDocsDir();
   const filename = `facture-${suffix}.pdf`;
   const filepath = path.join(DOCS_DIR, filename);
-  const doc = new PDFDocument({ margin: 48, size: 'A4' });
+  const doc = new PDFDocument({ margin: 48, size: 'A4', bufferPages: true });
   const stream = fs.createWriteStream(filepath);
   doc.pipe(stream);
   renderFn(doc, order);
@@ -270,7 +274,7 @@ function streamInscriptionInvoicePdf(order, res) {
   const filename = order.documents?.invoice_filename || inscriptionInvoiceFilename(order);
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
-  const doc = new PDFDocument({ margin: 48, size: 'A4' });
+  const doc = new PDFDocument({ margin: 48, size: 'A4', bufferPages: true });
   doc.pipe(res);
   renderInscriptionInvoice(doc, order);
   doc.end();

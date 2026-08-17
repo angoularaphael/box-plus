@@ -89,6 +89,7 @@ function renderContractBody(doc, order) {
     title: copy.contractTitle,
     date: contractDate,
     ref: order.order_id,
+    club: clubForOrder(order),
   });
 
   drawTwoPartiesCompact(doc, clubEmitterRowsCompact(clubForOrder(order)), recipient);
