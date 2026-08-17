@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 const { ensureDir } = require('../../lib/utils');
-const { CLUB, NAVY, MUTED, drawPageFooter } = require('./pdf-layout');
+const { NAVY, MUTED, drawPageFooter, clubForOrder } = require('./pdf-layout');
 
 /** Toujours relatif à ce fichier — fiable sur Vercel (pas de dépendance à process.cwd). */
 const LEGAL_DIR = path.join(__dirname, '..', 'legal');
@@ -151,6 +151,7 @@ function stampSignature(doc, order, { title = 'Signature électronique' } = {}) 
 function renderLegalPdf(doc, { title, md, order = null, stamp = true }) {
   const left = doc.page.margins.left;
   const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const club = clubForOrder(order);
 
   doc.font('Helvetica-Bold').fontSize(16).fillColor(NAVY).text(title, left, doc.y, { width });
   doc.moveDown(0.35);
@@ -158,7 +159,7 @@ function renderLegalPdf(doc, { title, md, order = null, stamp = true }) {
     .font('Helvetica')
     .fontSize(9)
     .fillColor(MUTED)
-    .text(`${CLUB.name} — ${CLUB.address}, ${CLUB.city}`, { width });
+    .text(`${club.name} — ${club.address}, ${club.city}`, { width });
   doc.moveDown(1);
 
   for (const block of parseBlocks(md)) {
@@ -199,7 +200,7 @@ function renderLegalPdf(doc, { title, md, order = null, stamp = true }) {
   }
 
   if (stamp && order) stampSignature(doc, order);
-  drawPageFooter(doc);
+  drawPageFooter(doc, order || club);
 }
 
 function signerFullName(order) {
