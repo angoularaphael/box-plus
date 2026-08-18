@@ -766,3 +766,38 @@ button.pan-kpi:hover {
   background: #e8001c;
   color: #fff;
 }
+
+.flux-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  min-height: 160px;
+  padding: 16px 8px 8px;
+  border: 1px solid var(--pan-line, #e4e7ed);
+  border-radius: 12px;
+  background: var(--pan-card, #fff);
+  overflow-x: auto;
+}
+.flux-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 36px;
+}
+.flux-stack {
+  position: relative;
+  width: 22px;
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.flux-bar {
+  width: 18px;
+  border-radius: 4px 4px 0 0;
+}
+.flux-bar--all { background: #20254b; position: absolute; bottom: 0; left: 2px; }
+.flux-bar--flyer { background: #e8001c; position: absolute; bottom: 0; left: 2px; width: 10px; }
+.flux-n { font-size: 11px; font-weight: 700; color: #20254b; }
+.flux-col small { font-size: 10px; color: #5c6370; }

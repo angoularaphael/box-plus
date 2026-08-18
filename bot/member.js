@@ -1373,50 +1373,67 @@ async function uploadMemberPhotoViaApi(page, memberId, dataUrl) {
     return { ok: false, reason: `api_${status}`, body: String(text).slice(0, 200) };
   }
 
-  // Vérifier que Deciplus a bien stocké la photo
-  let hasPhoto = false;
-  for (let attempt = 0; attempt < 5 && !hasPhoto; attempt += 1) {
-    const check = await page.context().request.get(
-      `https://api.deciplus.pro/staff/v1/member/${memberId}`,
-      {
-        headers: {
-          'x-access-token': token,
-          'Deciplus-Client-Type': 'manager',
-          Accept: 'application/json',
-        },
-      }
-    );
-    try {
-      const body = await check.json();
-      hasPhoto = Boolean(
-        body?.response?.photo ||
-          body?.photo ||
-          body?.member?.photo ||
-          body?.data?.photo ||
-          body?.picture ||
-          body?.avatar
-      );
-    } catch {
-      hasPhoto = false;
-    }
-    if (!hasPhoto) await page.waitForTimeout(500);
+  let storedBytes = 0;
+  for (let attempt = 0; attempt < 5 && storedBytes < 10000; attempt += 1) {
+    storedBytes = await measureStoredMemberPhoto(page, memberId, token);
+    if (storedBytes < 10000) await page.waitForTimeout(500);
   }
-  // PUT JPEG 200 : ne pas passer par le legacy (ça pouvait écraser une photo déjà collée).
-  const jpegOk = isJpegDataUrl(normalized);
-  const ok = hasPhoto || jpegOk;
+  const ok = storedBytes >= 10000;
   logInfo('Photo membre uploadée (API Deciplus)', {
     member_id: memberId,
     status,
-    verified: hasPhoto,
-    jpeg: jpegOk,
+    verified: ok,
+    stored_bytes: storedBytes,
   });
   return {
     ok,
     via: 'api',
     status,
-    verified: hasPhoto,
-    reason: ok ? null : 'api_photo_not_visible_after_upload',
+    verified: ok,
+    stored_bytes: storedBytes,
+    reason: ok ? null : 'api_photo_blank_or_missing',
   };
+}
+
+async function measureStoredMemberPhoto(page, memberId, token) {
+  const origin = new URL(process.env.DECIPLUS_URL || page.url() || 'https://boxingcenter.deciplus.pro/').origin;
+  const urls = [
+    `${origin}/get_photo.php?idj=${encodeURIComponent(memberId)}`,
+    `${origin}/photomembre.php?idj=${encodeURIComponent(memberId)}`,
+    `${origin}/photos/${memberId}.jpg`,
+    `https://api.deciplus.pro/staff/v1/member/${memberId}/photo`,
+  ];
+  for (const url of urls) {
+    try {
+      const headers = url.includes('api.deciplus.pro')
+        ? { 'x-access-token': token, 'Deciplus-Client-Type': 'manager', Accept: '*/*' }
+        : { Accept: 'image/*,*/*' };
+      const res = await page.context().request.get(url, { headers, timeout: 12000 });
+      if (!res.ok()) continue;
+      const buf = Buffer.from(await res.body());
+      const jpeg = buf.length >= 12 && buf[0] === 0xff && buf[1] === 0xd8;
+      const png = buf.length >= 12 && buf[0] === 0x89 && buf[1] === 0x50;
+      if ((jpeg || png) && buf.length >= 10000) return buf.length;
+    } catch {
+      /* essayer l’URL suivante */
+    }
+  }
+  try {
+    const check = await page.context().request.get(`https://api.deciplus.pro/staff/v1/member/${memberId}`, {
+      headers: { 'x-access-token': token, 'Deciplus-Client-Type': 'manager', Accept: 'application/json' },
+    });
+    const body = await check.json();
+    const photo =
+      body?.response?.photo || body?.photo || body?.member?.photo || body?.data?.photo || body?.picture || null;
+    if (typeof photo === 'string' && photo.startsWith('data:image')) {
+      const b64 = photo.replace(/^data:image\/[^;]+;base64,/, '');
+      const buf = Buffer.from(b64, 'base64');
+      if (buf.length >= 10000) return buf.length;
+    }
+  } catch {
+    /* ignore */
+  }
+  return 0;
 }
 
 /** Repli legacy : Greybox photo_upload.php via bouton openUpload. */
@@ -1503,11 +1520,6 @@ async function uploadMemberPhoto(page, photoPath, photoBase64 = null, memberId =
         cleanup();
         return api;
       }
-      // PUT JPEG accepté par Deciplus : ne pas ouvrir photo_upload.php (repli cassé).
-      if (api.status >= 200 && api.status < 300 && isJpegDataUrl(dataUrl)) {
-        cleanup();
-        return { ...api, ok: true };
-      }
     }
 
     if (resolved?.path) {
@@ -1548,4 +1560,23 @@ module.exports = {
   uploadMemberPhoto,
   resolvePhotoFile,
   isJpegDataUrl,
+  defaultSeancePhotoPath,
+  memberHasRealPhoto,
+  measureStoredMemberPhoto,
 };
+
+function defaultSeancePhotoPath() {
+  const fs = require('fs');
+  const path = require('path');
+  const candidates = [
+    path.join(__dirname, '..', 'assets', 'seance-essai-photo.jpg'),
+    path.join(process.cwd(), 'assets', 'seance-essai-photo.jpg'),
+  ];
+  return candidates.find((p) => fs.existsSync(p)) || null;
+}
+
+async function memberHasRealPhoto(page, memberId) {
+  const token = await getStaffAccessToken(page);
+  if (!token || !memberId) return false;
+  return (await measureStoredMemberPhoto(page, memberId, token)) >= 20000;
+}

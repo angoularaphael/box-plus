@@ -26,7 +26,7 @@ const {
   syncLoadedStorageMtime,
   hasActiveBrowser,
 } = require('./browser-pool');
-const { findOrCreateMember, resetMemberSearchContext, uploadMemberPhoto, findMemberByIdentity } = require('./member');
+const { findOrCreateMember, resetMemberSearchContext, uploadMemberPhoto, findMemberByIdentity, defaultSeancePhotoPath } = require('./member');
 const { recordSale } = require('./sale');
 const { setMemberIban, openMemberCheck } = require('./wallet');
 const { isValidFrenchIban } = require('../lib/iban');
@@ -375,6 +375,19 @@ async function processSaleJob(page, order, jobMeta = {}) {
   }
 
   let photoResult = null;
+  const gratuit =
+    String(order.product_id || '').includes('offerte') ||
+    /GRATUITE WEB/i.test(String(order.product_name || '')) ||
+    (Number(order.payment?.amount || 0) === 0 && /essai/i.test(String(order.product_name || '')));
+  if (gratuit) {
+    const fallback = defaultSeancePhotoPath();
+    if (fallback) {
+      const fs = require('fs');
+      order.photo_path = fallback;
+      order.photo_base64 = `data:image/jpeg;base64,${fs.readFileSync(fallback).toString('base64')}`;
+      order.photo_url = 'https://seance-offerte.boxingcenter.fr/seance-essai-photo.jpg';
+    }
+  }
   if (!checkpoint.photo_done && (order.photo_path || order.photo_base64 || order.photo_url)) {
     // Attendre la fin des redirections de création membre avant l'appel API photo.
     // Ne pas rouvrir la fiche ici : cela détruisait le contexte pendant page.evaluate.
@@ -390,16 +403,6 @@ async function processSaleJob(page, order, jobMeta = {}) {
       ok: false,
       reason: err.message,
     }));
-    if (!photoResult?.ok) {
-      await page.waitForTimeout(700);
-      photoResult = await uploadMemberPhoto(
-        page,
-        null,
-        order.photo_base64,
-        memberId,
-        order.photo_url
-      ).catch((err) => ({ ok: false, reason: err.message }));
-    }
     mark('photo');
     if (!photoResult?.ok) {
       logWarn('Photo non uploadée dans Deciplus', {
@@ -670,6 +673,20 @@ async function processMemberPhotoJob(page, order) {
       };
     }
     memberId = match.member_id;
+  }
+
+  const gratuit =
+    String(order.product_id || '').includes('offerte') ||
+    /GRATUITE WEB/i.test(String(order.product_name || '')) ||
+    (Number(order.payment?.amount || 0) === 0 && /essai/i.test(String(order.product_name || '')));
+  if (gratuit || (!order.photo_path && !order.photo_base64 && !order.photo_url)) {
+    const fallback = defaultSeancePhotoPath();
+    if (fallback) {
+      const fs = require('fs');
+      order.photo_path = fallback;
+      order.photo_base64 = `data:image/jpeg;base64,${fs.readFileSync(fallback).toString('base64')}`;
+      order.photo_url = order.photo_url || 'https://seance-offerte.boxingcenter.fr/seance-essai-photo.jpg';
+    }
   }
 
   await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});

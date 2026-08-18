@@ -1508,6 +1508,35 @@
         if (visitsWrap) visitsWrap.hidden = false;
       }
 
+      const flux = data.seance_offerte;
+      const fluxWrap = document.getElementById('fluxWrap');
+      const fluxChart = document.getElementById('fluxChart');
+      const fluxSummary = document.getElementById('fluxSummary');
+      if (fluxWrap && fluxChart) {
+        const daily = flux?.days || [];
+        const max = Math.max(1, ...daily.map((d) => d.total || 0));
+        fluxChart.innerHTML = daily.length
+          ? daily
+              .map((d) => {
+                const h = Math.max(8, Math.round(((d.total || 0) / max) * 120));
+                const flyerH = Math.round(((d.flyer || 0) / max) * 120);
+                return `<div class="flux-col" title="${escapeHtml(d.day)} : ${d.total} visites dont ${d.flyer} flyer">
+                  <div class="flux-stack">
+                    <div class="flux-bar flux-bar--all" style="height:${h}px"></div>
+                    <div class="flux-bar flux-bar--flyer" style="height:${flyerH}px"></div>
+                  </div>
+                  <span class="flux-n">${d.total}</span>
+                  <small>${escapeHtml(String(d.day).slice(5))}</small>
+                </div>`;
+              })
+              .join('')
+          : '<p class="admin-section-desc">Pas encore de visites séance offerte.</p>';
+        if (fluxSummary) {
+          fluxSummary.textContent = `${flux?.total || 0} visites · ${flux?.flyer || 0} depuis le flyer QR · ${flux?.other || 0} autres`;
+        }
+        fluxWrap.hidden = false;
+      }
+
       const unpaidWrap = document.getElementById('unpaidWrap');
       const unpaidBody = document.getElementById('unpaidBody');
       if (unpaidBody) {

@@ -1421,6 +1421,7 @@ function createApp() {
         rows,
         totals,
         visits: summarizeVisits(30),
+        seance_offerte: await require('./lib/seance-offerte-visits').summarizeSeanceOfferteVisits(14),
         funnel: summarizeFunnelFromOrders(allOrders),
         funnel_events: summarizeFunnelEvents(30),
         unpaid,
