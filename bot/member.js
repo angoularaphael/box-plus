@@ -13,6 +13,9 @@ function navTimeout() {
   return Number(process.env.DECIPLUS_NAV_TIMEOUT || 90000);
 }
 
+/** Deciplus stocke les portraits en 200×200 (~6–8 Ko). En dessous = blanc / vide. */
+const MIN_STORED_PHOTO_BYTES = 5000;
+
 function getSelectors() {
   try {
     return loadJson('config/deciplus-selectors.json');
@@ -1374,11 +1377,11 @@ async function uploadMemberPhotoViaApi(page, memberId, dataUrl) {
   }
 
   let storedBytes = 0;
-  for (let attempt = 0; attempt < 5 && storedBytes < 10000; attempt += 1) {
+  for (let attempt = 0; attempt < 5 && storedBytes < MIN_STORED_PHOTO_BYTES; attempt += 1) {
     storedBytes = await measureStoredMemberPhoto(page, memberId, token);
-    if (storedBytes < 10000) await page.waitForTimeout(500);
+    if (storedBytes < MIN_STORED_PHOTO_BYTES) await page.waitForTimeout(500);
   }
-  const ok = storedBytes >= 10000;
+  const ok = storedBytes >= MIN_STORED_PHOTO_BYTES;
   if (ok) {
     logInfo('Photo membre uploadée (API Deciplus)', {
       member_id: memberId,
@@ -1411,7 +1414,7 @@ async function measureStoredMemberPhoto(page, memberId, token) {
     const jpeg = buf[0] === 0xff && buf[1] === 0xd8;
     const png = buf[0] === 0x89 && buf[1] === 0x50;
     if (!(jpeg || png)) return 0;
-    return buf.length >= 10000 ? buf.length : 0;
+    return buf.length >= MIN_STORED_PHOTO_BYTES ? buf.length : 0;
   };
 
   const fetchBuf = async (url, headers = { Accept: 'image/*,*/*' }) => {
@@ -1514,11 +1517,11 @@ async function uploadMemberPhotoViaLegacyUi(page, photoPath, memberId) {
           await randomDelay(900, 1400);
           const token = await getStaffAccessToken(page);
           let storedBytes = 0;
-          for (let attempt = 0; attempt < 5 && storedBytes < 10000; attempt += 1) {
+          for (let attempt = 0; attempt < 5 && storedBytes < MIN_STORED_PHOTO_BYTES; attempt += 1) {
             storedBytes = await measureStoredMemberPhoto(page, memberId, token);
-            if (storedBytes < 10000) await page.waitForTimeout(500);
+            if (storedBytes < MIN_STORED_PHOTO_BYTES) await page.waitForTimeout(500);
           }
-          const ok = storedBytes >= 10000;
+          const ok = storedBytes >= MIN_STORED_PHOTO_BYTES;
           logInfo('Photo membre envoyée (legacy photo_upload)', {
             member_id: memberId,
             url,
@@ -1633,5 +1636,5 @@ function defaultSeancePhotoPath() {
 async function memberHasRealPhoto(page, memberId) {
   const token = await getStaffAccessToken(page);
   if (!token || !memberId) return false;
-  return (await measureStoredMemberPhoto(page, memberId, token)) >= 20000;
+  return (await measureStoredMemberPhoto(page, memberId, token)) >= MIN_STORED_PHOTO_BYTES;
 }
