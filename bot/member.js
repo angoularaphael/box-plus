@@ -1379,12 +1379,20 @@ async function uploadMemberPhotoViaApi(page, memberId, dataUrl) {
     if (storedBytes < 10000) await page.waitForTimeout(500);
   }
   const ok = storedBytes >= 10000;
-  logInfo('Photo membre uploadée (API Deciplus)', {
-    member_id: memberId,
-    status,
-    verified: ok,
-    stored_bytes: storedBytes,
-  });
+  if (ok) {
+    logInfo('Photo membre uploadée (API Deciplus)', {
+      member_id: memberId,
+      status,
+      verified: ok,
+      stored_bytes: storedBytes,
+    });
+  } else {
+    logWarn('Photo API Deciplus blanche ou trop légère', {
+      member_id: memberId,
+      status,
+      stored_bytes: storedBytes,
+    });
+  }
   return {
     ok,
     via: 'api',
@@ -1397,8 +1405,40 @@ async function uploadMemberPhotoViaApi(page, memberId, dataUrl) {
 
 async function measureStoredMemberPhoto(page, memberId, token) {
   const origin = new URL(process.env.DECIPLUS_URL || page.url() || 'https://boxingcenter.deciplus.pro/').origin;
+
+  const sizeIfReal = (buf) => {
+    if (!buf || buf.length < 12) return 0;
+    const jpeg = buf[0] === 0xff && buf[1] === 0xd8;
+    const png = buf[0] === 0x89 && buf[1] === 0x50;
+    if (!(jpeg || png)) return 0;
+    return buf.length >= 10000 ? buf.length : 0;
+  };
+
+  const fetchBuf = async (url, headers = { Accept: 'image/*,*/*' }) => {
+    const res = await page.context().request.get(url, { headers, timeout: 12000 });
+    if (!res.ok()) return null;
+    return Buffer.from(await res.body());
+  };
+
+  try {
+    const htmlBuf = await fetchBuf(`${origin}/get_photo.php?idj=${encodeURIComponent(memberId)}`);
+    if (htmlBuf) {
+      const direct = sizeIfReal(htmlBuf);
+      if (direct) return direct;
+      const html = htmlBuf.toString('utf8');
+      const src = (html.match(/src=['"]([^'"]+)['"]/i) || [])[1] || '';
+      if (src && !/charte\/photo_xy|photo_xy\.png|nophoto|placeholder/i.test(src)) {
+        const abs = /^https?:\/\//i.test(src) ? src : new URL(src, `${origin}/`).href;
+        const img = await fetchBuf(abs);
+        const n = sizeIfReal(img);
+        if (n) return n;
+      }
+    }
+  } catch {
+    /* essayer l’URL suivante */
+  }
+
   const urls = [
-    `${origin}/get_photo.php?idj=${encodeURIComponent(memberId)}`,
     `${origin}/photomembre.php?idj=${encodeURIComponent(memberId)}`,
     `${origin}/photos/${memberId}.jpg`,
     `https://api.deciplus.pro/staff/v1/member/${memberId}/photo`,
@@ -1408,12 +1448,9 @@ async function measureStoredMemberPhoto(page, memberId, token) {
       const headers = url.includes('api.deciplus.pro')
         ? { 'x-access-token': token, 'Deciplus-Client-Type': 'manager', Accept: '*/*' }
         : { Accept: 'image/*,*/*' };
-      const res = await page.context().request.get(url, { headers, timeout: 12000 });
-      if (!res.ok()) continue;
-      const buf = Buffer.from(await res.body());
-      const jpeg = buf.length >= 12 && buf[0] === 0xff && buf[1] === 0xd8;
-      const png = buf.length >= 12 && buf[0] === 0x89 && buf[1] === 0x50;
-      if ((jpeg || png) && buf.length >= 10000) return buf.length;
+      const buf = await fetchBuf(url, headers);
+      const n = sizeIfReal(buf);
+      if (n) return n;
     } catch {
       /* essayer l’URL suivante */
     }
@@ -1428,7 +1465,13 @@ async function measureStoredMemberPhoto(page, memberId, token) {
     if (typeof photo === 'string' && photo.startsWith('data:image')) {
       const b64 = photo.replace(/^data:image\/[^;]+;base64,/, '');
       const buf = Buffer.from(b64, 'base64');
-      if (buf.length >= 10000) return buf.length;
+      const n = sizeIfReal(buf);
+      if (n) return n;
+    }
+    if (typeof photo === 'string' && /^https?:\/\//i.test(photo) && !/photo_xy/i.test(photo)) {
+      const buf = await fetchBuf(photo);
+      const n = sizeIfReal(buf);
+      if (n) return n;
     }
   } catch {
     /* ignore */
@@ -1469,8 +1512,20 @@ async function uploadMemberPhotoViaLegacyUi(page, photoPath, memberId) {
           ).catch(() => false);
           if (!submitted) continue;
           await randomDelay(900, 1400);
-          logInfo('Photo membre envoyée (legacy photo_upload)', { member_id: memberId, url });
-          return { ok: true, via: 'legacy_ui', url };
+          const token = await getStaffAccessToken(page);
+          let storedBytes = 0;
+          for (let attempt = 0; attempt < 5 && storedBytes < 10000; attempt += 1) {
+            storedBytes = await measureStoredMemberPhoto(page, memberId, token);
+            if (storedBytes < 10000) await page.waitForTimeout(500);
+          }
+          const ok = storedBytes >= 10000;
+          logInfo('Photo membre envoyée (legacy photo_upload)', {
+            member_id: memberId,
+            url,
+            verified: ok,
+            stored_bytes: storedBytes,
+          });
+          return { ok, via: 'legacy_ui', url, verified: ok, stored_bytes: storedBytes, reason: ok ? null : 'legacy_photo_blank_or_missing' };
         } catch {
           /* frame legacy remplacée pendant le chargement : essayer le contexte suivant */
         }
