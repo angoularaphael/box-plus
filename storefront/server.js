@@ -12,6 +12,15 @@ const multer = require('multer');
 const { logInfo, logError, logWarn } = require('../lib/logger');
 const { getStoreUrl, getCheckoutBaseUrl, PRODUCTION_STORE_URL } = require('../lib/app-urls');
 const {
+  isAventureHost,
+  validateBalmaSwitchPayload,
+  buildBalmaSwitchOrder,
+  inscriptionUrl,
+  isBalmaRetourSource,
+  balmaBadgePaymentFields,
+} = require('../lib/balma');
+const { forwardJobToBot } = require('../lib/bot-forward');
+const {
   buildOrderPayload,
   buildOrderFromLifecycle,
   validateCheckoutForm,
@@ -861,6 +870,30 @@ function createApp() {
   /* Le site vitrine WordPress consomme le chat Chloe et les places restantes :
      sans en-tête CORS le navigateur bloquait la réponse (préflight en 404). */
   app.use('/api', corsMiddleware());
+
+  app.use((req, res, next) => {
+    if (!isAventureHost(req)) return next();
+    const p = String(req.path || '/');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    const allowed =
+      p === '/' ||
+      p === '/aventure' ||
+      p === '/aventure.html' ||
+      p === '/api/balma-switch' ||
+      p === '/robots.txt' ||
+      p.startsWith('/css/') ||
+      p.startsWith('/js/') ||
+      p.startsWith('/assets/') ||
+      p.startsWith('/img/') ||
+      p.startsWith('/fonts/');
+    if (p === '/robots.txt') {
+      return res.type('text/plain').send('User-agent: *\nDisallow: /\n');
+    }
+    if (!allowed) {
+      return res.status(404).type('text/html; charset=utf-8').sendFile(path.join(PUBLIC_DIR, '404.html'));
+    }
+    next();
+  });
 
   app.use(
     express.json({
@@ -1918,6 +1951,37 @@ function createApp() {
     }
   });
 
+  app.post('/api/balma-switch', async (req, res) => {
+    try {
+      const parsed = validateBalmaSwitchPayload(req.body || {});
+      if (parsed.errors.length) {
+        return res.status(400).json({ ok: false, errors: parsed.errors, error: parsed.errors[0] });
+      }
+      const order = buildBalmaSwitchOrder(parsed);
+      let forwarded = { forwarded: false };
+      try {
+        forwarded = await forwardJobToBot(order);
+      } catch (err) {
+        logError('balma_switch forward', { error: err.message, order_id: order.order_id });
+      }
+      const redirect = inscriptionUrl({
+        productId: parsed.offer,
+        firstName: parsed.first_name,
+        lastName: parsed.last_name,
+        boutiqueBase: getStoreUrl(),
+      });
+      res.json({
+        ok: true,
+        order_id: order.order_id,
+        queued: Boolean(forwarded.forwarded),
+        redirect,
+      });
+    } catch (err) {
+      logError('API balma-switch', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   app.post('/api/orders/draft', async (req, res) => {
     try {
       const { product_id, gym, ...rest } = req.body;
@@ -1942,8 +2006,9 @@ function createApp() {
         product_id,
         product,
         customer_short,
-        gym: gym || undefined,
+        gym: gym || (isBalmaRetourSource(rest.source) ? 'minimes' : undefined),
         referral_friend: sanitizeFriend(rest.referral_friend || rest.friend) || undefined,
+        source: rest.source || undefined,
       });
       if (customer_short) {
         await syncInscriptionClient(order).catch((err) =>
@@ -1952,7 +2017,9 @@ function createApp() {
         await maybeRecordTunnelLeadFromOrder(order).catch((err) =>
           logError('Lead tunnel (draft)', { order_id: order.order_id, error: err.message })
         );
-        await maybeNotifyOffre29Friend(order, rest.referral_friend || rest.friend).catch(() => {});
+        await maybeNotifyOffre29Friend(order, rest.referral_friend || rest.friend).catch((err) =>
+          logWarn('Notif ami offre 29 (draft)', { order_id: order.order_id, error: err.message })
+        );
       }
       res.json({
         ok: true,
@@ -2021,7 +2088,9 @@ function createApp() {
       await syncInscriptionClient(updated).catch((err) =>
         logError('Sync client inscription (identity)', { order_id: order.order_id, error: err.message })
       );
-      await maybeNotifyOffre29Friend(updated, friend).catch(() => {});
+      await maybeNotifyOffre29Friend(updated, friend).catch((err) =>
+        logWarn('Notif ami offre 29 (identity)', { order_id: order.order_id, error: err.message })
+      );
       res.json({ ok: true, step: updated.step });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
@@ -2560,7 +2629,9 @@ function createApp() {
       await syncInscriptionClient(orderForSync).catch((err) =>
         logError('Sync client inscription (pay)', { order_id: order.order_id, error: err.message })
       );
-      await maybeNotifyOffre29Friend(order).catch(() => {});
+      await maybeNotifyOffre29Friend(order).catch((err) =>
+        logWarn('Notif ami offre 29 (pay)', { order_id: order.order_id, error: err.message })
+      );
 
       const short = order.customer_short;
       const rawBilling = String(req.body.billing_plan || '').trim().toLowerCase();
@@ -2585,8 +2656,9 @@ function createApp() {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
       const badgeOn = productNeedsAutoBadge(product);
-      const badgeTiming = badgeOn ? 'deferred' : null;
-      const badgeMethod = badgeOn ? 'iban' : null;
+      const giftBadge = balmaBadgePaymentFields(order, product);
+      const badgeTiming = giftBadge ? giftBadge.badge_timing : badgeOn ? 'deferred' : null;
+      const badgeMethod = giftBadge ? giftBadge.badge_method : badgeOn ? 'iban' : null;
 
       order.payment = {
         ...(order.payment || {}),
@@ -2597,9 +2669,10 @@ function createApp() {
         badge_timing: badgeTiming,
         badge_method: badgeMethod,
       };
-      if (badgeOn) {
+      if (badgeOn || giftBadge) {
         order.badge_timing = badgeTiming;
         order.badge_method = badgeMethod;
+        if (giftBadge) order.source = order.source || 'balma_retour';
       } else {
         delete order.badge_timing;
         delete order.badge_method;
@@ -4271,6 +4344,7 @@ function createApp() {
     '/materiel/produit': 'materiel-produit.html',
     '/panier': 'panier.html',
     '/inscription': 'inscription.html',
+    '/aventure': 'aventure.html',
     '/faq': 'faq.html',
     '/politique-confidentialite': 'legal/confidentialite.html',
     '/cgv': 'cgv.html',
@@ -4290,14 +4364,22 @@ function createApp() {
   for (const [route, file] of Object.entries(pageRoutes)) {
     app.get(route, (_req, res) => {
       res.type('text/html; charset=utf-8');
-      if (route.startsWith('/admin')) {
+      if (route.startsWith('/admin') || route === '/aventure') {
         res.setHeader('Cache-Control', 'no-store');
+      }
+      if (route === '/aventure') {
+        res.setHeader('X-Robots-Tag', 'noindex, nofollow');
       }
       res.sendFile(path.join(PUBLIC_DIR, file));
     });
   }
 
-  app.get('/', (_req, res) => {
+  app.get('/', (req, res) => {
+    if (isAventureHost(req)) {
+      res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+      res.type('text/html; charset=utf-8');
+      return res.sendFile(path.join(PUBLIC_DIR, 'aventure.html'));
+    }
     res.type('text/html; charset=utf-8');
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
   });

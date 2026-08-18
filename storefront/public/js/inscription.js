@@ -110,6 +110,14 @@
     tunnelComplete: false,
   };
 
+  function isBalmaRetour() {
+    return (
+      params.get('source') === 'balma_retour' ||
+      state.order?.source === 'balma_retour' ||
+      state.order?.utm?.source === 'balma_retour'
+    );
+  }
+
   const stepContent = document.getElementById('stepContent');
   const formMsg = document.getElementById('formMsg');
 
@@ -632,10 +640,13 @@
     const orderLike = state.order || { product_snapshot: state.product };
     const hideIban = !productRequiresIban(orderLike);
     const hidePay = !orderRequiresPayment(orderLike);
+    const hideGym = isBalmaRetour();
+    const hideOffer = isBalmaRetour();
     const visible = [];
     document.querySelectorAll('.stepper-step').forEach((el) => {
       const s = Number(el.dataset.step);
-      const hide = (s === 5 && hideIban) || (s === 4 && hidePay);
+      const hide =
+        (s === 5 && hideIban) || (s === 4 && hidePay) || (s === 2 && hideGym) || (s === 1 && hideOffer);
       el.hidden = hide;
       el.classList.toggle('stepper-skipped', hide);
       if (!hide) visible.push(el);
@@ -944,6 +955,10 @@
       : '';
     const emptyPayHtml =
       '<p class="portet-pay-notice">Paiement temporairement indisponible. Contactez le club.</p>';
+    const balmaBadgeNotice =
+      isBalmaRetour() && (state.productId === 'offre-duo' || /29/.test(String(state.productId || '')))
+        ? `<p class="portet-pay-notice">Badge d’accès : ton ancien badge est réactivé. Il n’est <strong>pas prélevé</strong> (offert, déjà réglé).</p>`
+        : '';
     const previewNotice = payFlags.preview
       ? '<p class="portet-pay-notice">Studio : tous les moyens branchés s’affichent. Les visiteurs verront les cases enregistrées après déconnexion.</p>'
       : '';
@@ -1077,6 +1092,7 @@
     stepContent.innerHTML = `
       <h1>Paiement</h1>
       <p class="sub">${firstPaymentCaption(p)}</p>
+      ${balmaBadgeNotice}
       <form id="payForm">
         ${billingHtml}
         <button type="submit" class="btn stripe block" id="payBtn">${
@@ -1186,8 +1202,13 @@
         body.paypal_landing = wasPaypalTile ? 'login' : 'billing';
         body.paypal_guest_card = !wasPaypalTile && body.payment_plan !== '4x';
       }
-      body.badge_timing = 'deferred';
-      body.badge_method = 'iban';
+      if (isBalmaRetour() && (state.productId === 'offre-duo' || /29/.test(state.productId || ''))) {
+        body.badge_timing = 'immediate';
+        body.badge_method = 'comptant';
+      } else {
+        body.badge_timing = 'deferred';
+        body.badge_method = 'iban';
+      }
       const res = await fetch(`/api/orders/${state.orderId}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1338,7 +1359,14 @@
       </div>
       </div>
       <button type="button" class="btn block" id="toStep2">Continuer</button>`;
-    document.getElementById('toStep2').onclick = () => goToStep(2);
+    document.getElementById('toStep2').onclick = () => {
+      if (isBalmaRetour()) {
+        state.gymDraft = 'minimes';
+        goToStep(3);
+        return;
+      }
+      goToStep(2);
+    };
   }
 
   function renderStep2() {
@@ -1368,7 +1396,11 @@
         const res = await fetch('/api/orders/draft', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ product_id: state.productId, gym }),
+          body: JSON.stringify({
+            product_id: state.productId,
+            gym,
+            source: params.get('source') || undefined,
+          }),
         });
         const data = await res.json();
         if (!data.ok) {
@@ -1465,7 +1497,7 @@
       }
       setMsg('Envoi…');
       body.token = state.token;
-      body.gym = state.order?.customer_full?.gym || state.gymDraft;
+      body.gym = state.order?.customer_full?.gym || state.gymDraft || (isBalmaRetour() ? 'minimes' : undefined);
       state.shortDraft = body;
       saveProgress();
 
@@ -1473,7 +1505,12 @@
       const res = await fetch('/api/orders/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...body, product_id: state.productId, ...referralFriendPayload() }),
+          body: JSON.stringify({
+            ...body,
+            product_id: state.productId,
+            source: params.get('source') || undefined,
+            ...referralFriendPayload(),
+          }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -2174,6 +2211,10 @@
 
   async function init() {
     restoreProgress();
+    if (isBalmaRetour() && state.step < 3) {
+      state.gymDraft = 'minimes';
+      state.step = 3;
+    }
     await loadConfig();
 
     if (state.orderId && state.token && !params.get('order')) {

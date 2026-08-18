@@ -2036,6 +2036,7 @@ async function applyBadgeConfigModal(page, productConfig, _memberId = null) {
       badge_timing: timing,
       badge_method: productConfig.badge_method || null,
     });
+    await ensurePaiementComptantOn(page, { strict: false }).catch(() => {});
   } else {
     await ensurePaiementComptantOff(page, { strict: true });
     await randomDelay(200, 400);
@@ -2245,6 +2246,20 @@ async function applyConfigModal(page, productConfig, memberId = null) {
     await ensurePaiementComptantOn(page, { strict: true });
   } else if (productConfig.paiement_comptant === false) {
     await ensurePaiementComptantOff(page);
+  }
+
+  if (productConfig.restore_start_fr || productConfig.restore_end_fr) {
+    const dateCtx = await resolveDeciplusWorkPage(page);
+    if (productConfig.restore_start_fr) {
+      await badgeDomEvaluate(dateCtx, 'fillDu', productConfig.restore_start_fr).catch(() => false);
+    }
+    if (productConfig.restore_end_fr) {
+      await badgeDomEvaluate(dateCtx, 'fillAu', productConfig.restore_end_fr).catch(() => false);
+    }
+    logInfo('Vente Deciplus — dates abo restaurées', {
+      start: productConfig.restore_start_fr,
+      end: productConfig.restore_end_fr,
+    });
   }
 
   if (

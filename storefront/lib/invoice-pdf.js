@@ -17,6 +17,7 @@ const {
 } = require('./pdf-layout');
 const { paymentModeLabel, invoiceTypeLabel } = require('../../lib/billing-plan');
 const { offerDocumentCopy } = require('../../lib/offer-document-copy');
+const { shouldGiftBadgeComptant } = require('../../lib/balma');
 const { BADGE_FEE_AMOUNT } = require('./storefront-copy');
 const { formatPickupLine } = require('./gym-pickup');
 
@@ -120,6 +121,16 @@ function renderInscriptionInvoice(doc, order) {
     rows.push({
       type: 'Info',
       description: `Badge d'accès (${BADGE_FEE_AMOUNT}) — non inclus sur cette facture\nPrélèvement prévu ~72h après inscription (${badgeMethod === 'card' ? 'carte' : 'IBAN'})`,
+      unit: '—',
+      qty: '—',
+      vat: '—',
+      total: '—',
+      height: 40,
+    });
+  } else if (shouldGiftBadgeComptant(order, product)) {
+    rows.push({
+      type: 'Badge',
+      description: `Badge d'accès — ancien badge réactivé, offert (pas de prélèvement)\n${BADGE_FEE_AMOUNT} TTC`,
       unit: '—',
       qty: '—',
       vat: '—',

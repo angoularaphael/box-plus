@@ -7,7 +7,7 @@ test('app-urls — prod Vercel par défaut si STORE_URL absent', () => {
   delete process.env.VERCEL_URL;
   const { getStoreUrl, PRODUCTION_STORE_URL } = require('../lib/app-urls');
   assert.equal(getStoreUrl(), 'http://localhost:3040');
-  assert.equal(PRODUCTION_STORE_URL, 'https://box-plus.vercel.app');
+  assert.equal(PRODUCTION_STORE_URL, 'https://boutique.boxingcenter.fr');
 });
 
 test('app-urls — VERCEL_URL auto', () => {
@@ -16,21 +16,21 @@ test('app-urls — VERCEL_URL auto', () => {
   delete process.env.STORE_URL;
   delete require.cache[require.resolve('../lib/app-urls')];
   const { getStoreUrl } = require('../lib/app-urls');
-  assert.equal(getStoreUrl(), 'https://box-plus.vercel.app');
+  assert.equal(getStoreUrl(), 'https://boutique.boxingcenter.fr');
   delete process.env.VERCEL;
   delete process.env.VERCEL_URL;
 });
 
 test('app-urls — ingest catalogue', () => {
-  process.env.STORE_URL = 'https://box-plus.vercel.app';
+  process.env.STORE_URL = 'https://boutique.boxingcenter.fr';
   delete require.cache[require.resolve('../lib/app-urls')];
   const { getCatalogIngestUrl } = require('../lib/app-urls');
-  assert.equal(getCatalogIngestUrl(), 'https://box-plus.vercel.app/api/admin/ingest-catalog');
+  assert.equal(getCatalogIngestUrl(), 'https://boutique.boxingcenter.fr/api/admin/ingest-catalog');
   delete process.env.STORE_URL;
 });
 
 test('app-urls — checkout base URL suit localhost en dev', () => {
-  process.env.STORE_URL = 'https://box-plus.vercel.app';
+  process.env.STORE_URL = 'https://boutique.boxingcenter.fr';
   delete require.cache[require.resolve('../lib/app-urls')];
   const { getCheckoutBaseUrl } = require('../lib/app-urls');
   const req = { get: (h) => (h === 'host' ? 'localhost:3040' : 'http'), protocol: 'http' };

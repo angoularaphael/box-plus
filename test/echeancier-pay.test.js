@@ -49,6 +49,7 @@ describe('bot-forward ops', () => {
   it('route encaisser vers le bot ops', () => {
     assert.equal(isOpsOrder({ action: 'encaisser' }), true);
     assert.equal(isOpsOrder({ action: 'echeancier' }), true);
+    assert.equal(isOpsOrder({ action: 'balma_switch' }), true);
     assert.equal(isOpsOrder({ action: 'sale' }), false);
   });
 });

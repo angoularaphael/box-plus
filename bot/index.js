@@ -158,7 +158,7 @@ async function processCancelJob(page, order) {
       <p>Nous avons bien reçu votre demande de résiliation, mais <strong>les informations renseignées ne correspondent pas</strong> à celles enregistrées sur votre fiche adhérent Boxing Center.</p>
       <p>Pour des raisons de sécurité, une seule information incorrecte (nom, prénom, téléphone ou date de naissance) empêche le traitement automatique.</p>
       ${fields.length ? `<p>Champ(s) en cause : <strong>${fields.join(', ')}</strong>.</p>` : ''}
-      <p>Merci de vérifier vos informations puis de renouveler la demande depuis <a href="https://box-plus.vercel.app/gerer-abonnement">Gérer mon abonnement</a>.</p>
+      <p>Merci de vérifier vos informations puis de renouveler la demande depuis <a href="https://boutique.boxingcenter.fr/gerer-abonnement">Gérer mon abonnement</a>.</p>
       <p>Sportivement,<br/>Boxing Center</p>`;
     try {
       const res = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -318,10 +318,22 @@ async function processSaleJob(page, order, jobMeta = {}) {
   let badgeProductConfig = null;
   if (productConfig.auto_badge && !isCartePrestationConfig(productConfig)) {
     try {
-      badgeProductConfig = resolveBadgeProductConfig(catalog, {
-        badge_timing: 'deferred',
-        badge_method: 'iban',
+      const { shouldGiftBadgeComptant } = require('../lib/balma');
+      const giftBadge = shouldGiftBadgeComptant(order, {
+        id: order.product_id,
+        name: order.product_name,
       });
+      badgeProductConfig = resolveBadgeProductConfig(catalog, giftBadge
+        ? {
+            badge_timing: 'immediate',
+            badge_method: 'comptant',
+            paiement_comptant: true,
+            prelevement_delay_days: 0,
+          }
+        : {
+            badge_timing: order.badge_timing || order.payment?.badge_timing || 'deferred',
+            badge_method: order.badge_method || order.payment?.badge_method || 'iban',
+          });
     } catch (err) {
       logWarn('Badge non ajouté automatiquement', { order_id: order.order_id, error: err.message });
     }
@@ -848,6 +860,14 @@ async function processJob(page, job) {
 
   if (order.action === 'check_sale') {
     return processCheckSaleJob(page, order);
+  }
+
+  if (order.action === 'balma_switch') {
+    if (role === 'sales') {
+      throw new Error('Bot ventes refuse « balma_switch » — utiliser BOXPLUS_BOT_URL_OPS');
+    }
+    const { runBalmaSwitch } = require('./migrate-gym');
+    return runBalmaSwitch(page, order);
   }
 
   return processSaleJob(page, order, {

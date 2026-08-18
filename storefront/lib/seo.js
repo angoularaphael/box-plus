@@ -484,6 +484,8 @@ const NOINDEX_PATHS = [
   '/mon-inscription',
   '/contrat',
   '/gerer-abonnement',
+  '/aventure',
+  '/balma',
   '/regulariser',
   '/checkout.html',
   '/success.html',
@@ -626,6 +628,8 @@ function robotsTxt() {
     'Disallow: /mon-inscription',
     'Disallow: /contrat',
     'Disallow: /gerer-abonnement',
+    'Disallow: /aventure',
+    'Disallow: /regulariser',
   ];
   return [
     '# Boxing Center Toulouse — boutique officielle https://boutique.boxingcenter.fr',

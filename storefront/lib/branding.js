@@ -4,7 +4,7 @@ const { DEFAULT_SENDER_EMAIL, DEFAULT_SENDER_NAME } = require('./brevo-send');
 const CGV_URL = '/cgv';
 const REGLEMENT_URL = '/reglement-interieur';
 const SITE_URL = 'https://boxingcenter.fr';
-const BOUTIQUE_URL = 'https://box-plus.vercel.app';
+const BOUTIQUE_URL = 'https://boutique.boxingcenter.fr';
 const DEFAULT_MAIL_FROM = `${DEFAULT_SENDER_NAME} <${DEFAULT_SENDER_EMAIL}>`;
 
 function getMailFrom() {

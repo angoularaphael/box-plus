@@ -330,6 +330,16 @@
     ensureTracking();
     ensureGiftPromo();
     ensureChloe();
+    ensureFavicon();
+  }
+
+  function ensureFavicon() {
+    if (document.querySelector('link[rel="icon"]')) return;
+    const svg = document.createElement('link');
+    svg.rel = 'icon';
+    svg.type = 'image/svg+xml';
+    svg.href = A('/assets/favicon.svg');
+    document.head.appendChild(svg);
   }
 
   if (document.readyState === 'loading') {

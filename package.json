@@ -15,6 +15,7 @@
     "store:start": "node storefront/server.js",
     "store:sync": "node storefront/scripts/sync-and-test.js",
     "stripe:listen": "node storefront/scripts/stripe-listen.js",
+    "headed:balma": "node scripts/headed-balma-switch-demo.js",
     "test": "node --test test/*.test.js",
     "test:offers": "node --test test/all-offers.test.js",
     "test:offers:live": "node scripts/test-all-offers.js --live",

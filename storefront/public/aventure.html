@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="googlebot" content="noindex, nofollow" />
+  <title>Continuer l’aventure — Boxing Center</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/boutique.css?v=8" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <style>
+    .aventure-wrap { max-width: 640px; margin: 48px auto 80px; padding: 0 20px; }
+    .aventure-card { background: #fff; border-radius: 18px; padding: 32px 28px; box-shadow: 0 4px 24px rgba(22,26,46,.08); }
+    .aventure-card .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 560px) { .aventure-card .form-grid { grid-template-columns: 1fr; } }
+    .aventure-card .lead { color: #5C6370; margin-bottom: 24px; }
+    .aventure-offers { display: grid; gap: 12px; margin: 16px 0 24px; }
+    .aventure-offers label { display: flex; gap: 12px; align-items: flex-start; border: 1px solid #E4E7ED; border-radius: 12px; padding: 14px 16px; cursor: pointer; }
+    .aventure-offers label:has(input:checked) { border-color: #E8001C; box-shadow: 0 0 0 1px #E8001C; }
+    .aventure-offers strong { display: block; font-family: 'Barlow Condensed', sans-serif; font-size: 22px; }
+    .aventure-check { margin: 8px 0 20px; }
+    .aventure-err { color: #dc2626; min-height: 1.4em; margin-top: 12px; }
+    .aventure-note { font-size: 13px; color: #5C6370; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <main class="aventure-wrap">
+    <div class="aventure-card">
+      <p class="eyebrow">Boxing Center</p>
+      <h1>On continue l’aventure ensemble</h1>
+      <p class="lead">
+        Ta salle Balma a changé d’opérateur. Pour rester aux 5 salles Boxing Center,
+        confirme ton nom, que tu es bien en <strong>prélèvement</strong>, puis choisis
+        l’offre rentrée. On s’occupe de basculer ta fiche — ensuite tu finalises l’inscription.
+      </p>
+      <form id="aventureForm">
+        <div class="form-grid">
+          <div>
+            <label for="first_name">Prénom *</label>
+            <input id="first_name" name="first_name" required autocomplete="given-name" />
+          </div>
+          <div>
+            <label for="last_name">Nom *</label>
+            <input id="last_name" name="last_name" required autocomplete="family-name" />
+          </div>
+        </div>
+        <div class="aventure-offers" role="radiogroup" aria-label="Offre">
+          <label>
+            <input type="radio" name="offer" value="29" required />
+            <span>
+              <strong>29,99 € / 4 semaines</strong>
+              Sans engagement — badge réactivé, non prélevé.
+            </span>
+          </label>
+          <label>
+            <input type="radio" name="offer" value="259" />
+            <span>
+              <strong>259 € / 12 mois</strong>
+              Offre saison — paiement en une fois.
+            </span>
+          </label>
+        </div>
+        <label class="aventure-check">
+          <input type="checkbox" name="prelevement" value="1" required />
+          Je confirme que je suis en <strong>prélèvement</strong> (pas en paiement comptant).
+        </label>
+        <p class="aventure-note">
+          Paiement comptant ? Cette page ne s’applique pas — contacte le club
+          (<a href="mailto:boxingcenter31@gmail.com">boxingcenter31@gmail.com</a>).
+        </p>
+        <button type="submit" class="btn btn--lg block" id="aventureSubmit">Enregistrer et continuer</button>
+        <p class="aventure-err" id="aventureErr" role="alert"></p>
+      </form>
+    </div>
+  </main>
+  <script src="/js/aventure.js"></script>
+</body>
+</html>

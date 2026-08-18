@@ -79,19 +79,22 @@ function productSnapshot(product) {
   };
 }
 
-function createDraft({ product_id, product, customer_short, gym, referral_friend }) {
+function createDraft({ product_id, product, customer_short, gym, referral_friend, source }) {
   initDirs();
   const order_id = generateOrderId();
   const access_token = generateAccessToken();
+  const isBalma = String(source || '').toLowerCase() === 'balma_retour';
+  const gymForced = gym || (isBalma ? 'minimes' : null);
   const order = {
     order_id,
     access_token,
-    step: customer_short ? STEPS.PAYMENT : gym ? STEPS.IDENTITY : STEPS.GYM,
+    step: customer_short ? STEPS.PAYMENT : gymForced ? STEPS.IDENTITY : STEPS.GYM,
     product_id,
     product_snapshot: productSnapshot(product),
     customer_short: customer_short || null,
-    customer_full: gym ? { gym } : null,
+    customer_full: gymForced ? { gym: gymForced } : null,
     referral_friend: referral_friend || null,
+    source: source || null,
     payment: { status: 'pending' },
     signature: null,
     documents: {},
@@ -103,8 +106,8 @@ function createDraft({ product_id, product, customer_short, gym, referral_friend
   return order;
 }
 
-async function createDraftAsync({ product_id, product, customer_short, gym, referral_friend }) {
-  const order = createDraft({ product_id, product, customer_short, gym, referral_friend });
+async function createDraftAsync({ product_id, product, customer_short, gym, referral_friend, source }) {
+  const order = createDraft({ product_id, product, customer_short, gym, referral_friend, source });
   await persistence.saveOrderAsync(order);
   return order;
 }

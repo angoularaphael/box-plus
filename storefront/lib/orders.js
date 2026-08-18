@@ -125,11 +125,11 @@ function buildOrderPayload(input, product) {
       medium: input.utm_medium || null,
       campaign: input.utm_campaign || 'rentree-2026',
     },
-    source: isFree
+    source: input.source || (isFree
       ? 'storefront-free'
       : paymentMethod === 'payplug'
         ? 'storefront-payplug'
-        : 'storefront-paypal',
+        : 'storefront-paypal'),
   };
 }
 
@@ -261,6 +261,7 @@ function buildOrderFromLifecycle(order, product) {
       photo_url: photoUrl,
       badge_timing: order.badge_timing || order.payment?.badge_timing || null,
       badge_method: order.badge_method || order.payment?.badge_method || null,
+      source: order.source || null,
     },
     product
   );
