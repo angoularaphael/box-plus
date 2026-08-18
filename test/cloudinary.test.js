@@ -54,7 +54,7 @@ test('imageUrl pose la transformation CDN', () => {
   try {
     assert.equal(
       imageUrl('boxplus/photos/BC-1'),
-      'https://res.cloudinary.com/demo/image/upload/f_jpg,q_auto,w_900,c_limit/boxplus/photos/BC-1'
+      'https://res.cloudinary.com/demo/image/upload/f_jpg,q_auto,w_600,h_600,c_fill,g_auto/boxplus/photos/BC-1'
     );
   } finally {
     restoreCloudinaryEnv(prev);
@@ -99,4 +99,24 @@ test('photoPublicId dérive du public_id, de l’URL ou de l’order_id', () => 
     'boxplus/photos/BC-8'
   );
   assert.equal(photoPublicId({ order_id: 'BC-7', documents: {} }), 'boxplus/photos/BC-7');
+});
+
+test('deciplusPhotoUrl utilise le JPEG carré 600×600', () => {
+  const prev = snapshotCloudinaryEnv();
+  clearCloudinaryEnv();
+  process.env.CLOUDINARY_CLOUD_NAME = 'demo';
+  try {
+    const { deciplusPhotoUrl, applyDeciplusPhoto } = require('../storefront/lib/cloudinary');
+    assert.equal(
+      deciplusPhotoUrl({ documents: { photo_public_id: 'boxplus/photos/BC-10' } }),
+      'https://res.cloudinary.com/demo/image/upload/f_jpg,q_auto,w_600,h_600,c_fill,g_auto/boxplus/photos/BC-10'
+    );
+    const payload = applyDeciplusPhoto(
+      { photo_url: 'https://res.cloudinary.com/demo/image/upload/raw/boxplus/photos/BC-10' },
+      { documents: { photo_public_id: 'boxplus/photos/BC-10' } }
+    );
+    assert.match(payload.photo_url, /c_fill,g_auto\/boxplus\/photos\/BC-10$/);
+  } finally {
+    restoreCloudinaryEnv(prev);
+  }
 });

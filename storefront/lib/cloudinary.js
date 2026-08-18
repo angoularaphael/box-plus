@@ -43,7 +43,9 @@ function signParams(params, apiSecret) {
   return crypto.createHash('sha1').update(filtered + apiSecret).digest('hex');
 }
 
-function imageUrl(publicId, { transform = 'f_jpg,q_auto,w_900,c_limit' } = {}) {
+const DECIPLUS_PHOTO_TRANSFORM = 'f_jpg,q_auto,w_600,h_600,c_fill,g_auto';
+
+function imageUrl(publicId, { transform = DECIPLUS_PHOTO_TRANSFORM } = {}) {
   const cloud = cloudName();
   if (!cloud || !publicId) return null;
   const id = String(publicId).replace(/^\/+/, '');
@@ -114,7 +116,24 @@ function photoPublicId(order) {
 
 function deciplusPhotoUrl(order) {
   const id = photoPublicId(order);
-  return id ? imageUrl(id, { transform: 'f_jpg,q_auto,w_900,c_limit' }) : null;
+  return id ? imageUrl(id, { transform: DECIPLUS_PHOTO_TRANSFORM }) : null;
+}
+
+function sniffImageMime(buf) {
+  if (!buf || buf.length < 12) return 'image/jpeg';
+  if (buf[0] === 0xff && buf[1] === 0xd8) return 'image/jpeg';
+  if (buf[0] === 0x89 && buf[1] === 0x50) return 'image/png';
+  if (buf[0] === 0x47 && buf[1] === 0x49) return 'image/gif';
+  if (buf[0] === 0x52 && buf[1] === 0x49 && buf[8] === 0x57 && buf[9] === 0x45) return 'image/webp';
+  return 'image/jpeg';
+}
+
+/** Force l’URL JPEG carré Deciplus sur le payload bot (10 € / 29 € / 259 €). */
+function applyDeciplusPhoto(payload, order) {
+  if (!payload || typeof payload !== 'object') return payload;
+  const url = deciplusPhotoUrl(order) || payload.photo_url || null;
+  if (url) payload.photo_url = url;
+  return payload;
 }
 
 async function downloadImageBuffer(url) {
@@ -132,17 +151,24 @@ async function downloadImageBuffer(url) {
 async function hydrateOrderMedia(order) {
   if (!order || typeof order !== 'object') return order;
   const next = { ...order, documents: { ...(order.documents || {}) }, signature: order.signature ? { ...order.signature } : order.signature };
-  if (!next.documents.photo_base64) {
-    const url = next.documents.photo_url || deciplusPhotoUrl(next);
+  const jpegUrl = deciplusPhotoUrl(next);
+  const existingB64 = String(next.documents.photo_base64 || '');
+  const alreadyJpeg = /^data:image\/jpeg;base64,/i.test(existingB64);
+  if (!alreadyJpeg) {
+    const url = jpegUrl || next.documents.photo_url;
     if (url) {
       try {
         const buf = await downloadImageBuffer(url);
-        next.documents.photo_url = next.documents.photo_url || url;
-        next.documents.photo_base64 = `data:image/jpeg;base64,${buf.toString('base64')}`;
+        const mime = sniffImageMime(buf);
+        next.documents.photo_url = jpegUrl || url;
+        next.documents.photo_base64 = `data:${mime};base64,${buf.toString('base64')}`;
       } catch (err) {
         logWarn('Hydratation photo Cloudinary', { error: err.message, order_id: order.order_id });
+        if (jpegUrl) next.documents.photo_url = jpegUrl;
       }
     }
+  } else if (jpegUrl) {
+    next.documents.photo_url = jpegUrl;
   }
   if (next.signature?.image_url && !next.signature?.image_base64) {
     try {
@@ -159,9 +185,12 @@ async function hydrateOrderMedia(order) {
 }
 
 module.exports = {
+  DECIPLUS_PHOTO_TRANSFORM,
   cloudinaryCredentials,
   photoPublicId,
   deciplusPhotoUrl,
+  applyDeciplusPhoto,
+  sniffImageMime,
   isCloudinaryConfigured,
   signParams,
   imageUrl,

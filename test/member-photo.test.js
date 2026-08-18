@@ -6,7 +6,8 @@ const os = require('os');
 const { buildOrderFromLifecycle } = require('../storefront/lib/orders');
 const { createDraft, saveOrder, loadOrder } = require('../storefront/lib/order-lifecycle');
 const { findEnrichedProduct } = require('../storefront/lib/merch');
-const { resolvePhotoFile } = require('../bot/member');
+const { resolvePhotoFile, isJpegDataUrl } = require('../bot/member');
+const { applyDeciplusPhoto, deciplusPhotoUrl } = require('../storefront/lib/cloudinary');
 
 describe('member photo pipeline', () => {
   it('resolvePhotoFile materializes base64 to temp file', async () => {
@@ -72,5 +73,33 @@ describe('member photo pipeline', () => {
     assert.equal(payload.photo_path, '/tmp/fake.jpg');
     assert.equal(payload.photo_base64, 'data:image/jpeg;base64,AAAA');
     assert.equal(payload.photo_url, 'https://res.cloudinary.com/demo/image/upload/boxplus/photos/BC-1');
+  });
+
+  it('isJpegDataUrl refuse un PNG étiqueté JPEG', () => {
+    const png =
+      'data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    assert.equal(isJpegDataUrl(png), false);
+    const jpeg =
+      'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAGfAP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAQUCf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQMBAT8Bf//EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQIBAT8Bf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEABj8Cf//EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8hf//Z';
+    assert.equal(isJpegDataUrl(jpeg), true);
+  });
+
+  it('applyDeciplusPhoto force le JPEG carré Cloudinary', () => {
+    const prev = process.env.CLOUDINARY_CLOUD_NAME;
+    process.env.CLOUDINARY_CLOUD_NAME = 'demo';
+    try {
+      const payload = applyDeciplusPhoto(
+        { photo_url: 'https://res.cloudinary.com/demo/image/upload/f_jpg,q_auto,w_900,c_limit/boxplus/photos/BC-1' },
+        { documents: { photo_public_id: 'boxplus/photos/BC-1' } }
+      );
+      assert.equal(
+        payload.photo_url,
+        'https://res.cloudinary.com/demo/image/upload/f_jpg,q_auto,w_600,h_600,c_fill,g_auto/boxplus/photos/BC-1'
+      );
+      assert.match(deciplusPhotoUrl({ order_id: 'BC-essai' }), /w_600,h_600,c_fill/);
+    } finally {
+      if (prev) process.env.CLOUDINARY_CLOUD_NAME = prev;
+      else delete process.env.CLOUDINARY_CLOUD_NAME;
+    }
   });
 });

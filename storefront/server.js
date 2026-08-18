@@ -437,10 +437,10 @@ async function maybeNotifyOffre29Friend(order, friendInput) {
 }
 
 async function dispatchLifecycleOrder(order) {
-  const { hydrateOrderMedia } = require('./lib/cloudinary');
+  const { hydrateOrderMedia, applyDeciplusPhoto } = require('./lib/cloudinary');
   const hydrated = await hydrateOrderMedia(order);
   const product = findProduct(order.product_id) || order.product_snapshot;
-  const payload = buildOrderFromLifecycle(hydrated, product);
+  const payload = applyDeciplusPhoto(buildOrderFromLifecycle(hydrated, product), hydrated);
   if (payload.photo_path && /(?:^|[\\/])tmp[\\/]/i.test(String(payload.photo_path))) {
     payload.photo_path = null;
   }
@@ -458,7 +458,7 @@ async function dispatchLifecycleOrder(order) {
 
 /** Photo seule — ne recrée pas la vente (job_id = {order_id}#photo). */
 async function dispatchMemberPhoto(order) {
-  const { hydrateOrderMedia } = require('./lib/cloudinary');
+  const { hydrateOrderMedia, applyDeciplusPhoto } = require('./lib/cloudinary');
   const hydrated = await hydrateOrderMedia(order);
   const product = findProduct(order.product_id) || order.product_snapshot || {
     id: 'photo',
@@ -467,7 +467,7 @@ async function dispatchMemberPhoto(order) {
     requires_payment: false,
     sale_type: 'none',
   };
-  const payload = buildOrderFromLifecycle(hydrated, product);
+  const payload = applyDeciplusPhoto(buildOrderFromLifecycle(hydrated, product), hydrated);
   payload.action = 'member_photo';
   if (order.deciplus_member_id) payload.deciplus_member_id = order.deciplus_member_id;
   if (payload.photo_path && /(?:^|[\\/])tmp[\\/]/i.test(String(payload.photo_path))) {

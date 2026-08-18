@@ -390,6 +390,16 @@ async function processSaleJob(page, order, jobMeta = {}) {
       ok: false,
       reason: err.message,
     }));
+    if (!photoResult?.ok) {
+      await page.waitForTimeout(700);
+      photoResult = await uploadMemberPhoto(
+        page,
+        null,
+        order.photo_base64,
+        memberId,
+        order.photo_url
+      ).catch((err) => ({ ok: false, reason: err.message }));
+    }
     mark('photo');
     if (!photoResult?.ok) {
       logWarn('Photo non uploadée dans Deciplus', {

@@ -1294,10 +1294,17 @@ async function getStaffAccessToken(page) {
 }
 
 /** Upscale / downscale via canvas navigateur (min 200px côté Deciplus). */
+function isJpegDataUrl(dataUrl) {
+  const raw = String(dataUrl || '');
+  const m = raw.match(/^data:image\/jpeg;base64,([A-Za-z0-9+/=\s]+)$/i);
+  if (!m) return false;
+  const buf = Buffer.from(m[1].replace(/\s/g, ''), 'base64');
+  return buf.length >= 32 && buf[0] === 0xff && buf[1] === 0xd8;
+}
+
 async function normalizePhotoDataUrl(page, dataUrl, { min = 200, max = 1000, quality = 0.9 } = {}) {
-  // Les photos caméra de la boutique sont déjà des JPEG 200–900 px.
-  // Évite page.evaluate pendant les redirections Deciplus qui détruisaient le contexte.
-  if (/^data:image\/jpeg;base64,/i.test(String(dataUrl || ''))) return dataUrl;
+  // JPEG déjà valide → ne pas passer par canvas (contexte détruit pendant les redirections).
+  if (isJpegDataUrl(dataUrl)) return dataUrl;
   return page.evaluate(
     async ({ src, minSize, maxSize, q }) => {
       const img = new Image();
@@ -1394,17 +1401,21 @@ async function uploadMemberPhotoViaApi(page, memberId, dataUrl) {
     }
     if (!hasPhoto) await page.waitForTimeout(500);
   }
+  // PUT JPEG 200 : ne pas passer par le legacy (ça pouvait écraser une photo déjà collée).
+  const jpegOk = isJpegDataUrl(normalized);
+  const ok = hasPhoto || jpegOk;
   logInfo('Photo membre uploadée (API Deciplus)', {
     member_id: memberId,
     status,
     verified: hasPhoto,
+    jpeg: jpegOk,
   });
   return {
-    ok: hasPhoto,
+    ok,
     via: 'api',
     status,
     verified: hasPhoto,
-    reason: hasPhoto ? null : 'api_photo_not_visible_after_upload',
+    reason: ok ? null : 'api_photo_not_visible_after_upload',
   };
 }
 
@@ -1492,6 +1503,11 @@ async function uploadMemberPhoto(page, photoPath, photoBase64 = null, memberId =
         cleanup();
         return api;
       }
+      // PUT JPEG accepté par Deciplus : ne pas ouvrir photo_upload.php (repli cassé).
+      if (api.status >= 200 && api.status < 300 && isJpegDataUrl(dataUrl)) {
+        cleanup();
+        return { ...api, ok: true };
+      }
     }
 
     if (resolved?.path) {
@@ -1531,4 +1547,5 @@ module.exports = {
   resetMemberSearchContext,
   uploadMemberPhoto,
   resolvePhotoFile,
+  isJpegDataUrl,
 };
