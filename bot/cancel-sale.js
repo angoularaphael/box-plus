@@ -630,7 +630,7 @@ async function confirmResiliationModal(page) {
 async function clickResilierEtEnvoyerMail(page, { timeoutMs = 15000 } = {}) {
   const start = Date.now();
   const buttonRe =
-    /Résilier le contrat et envoyer le mail|Résilier le contrat et l['’]?envoyer/i;
+    /Résilier le contrat et envoyer le mail|Résilier le contrat et l['’]?envoyer|Résilier et envoyer|Envoyer le mail|Envoyer un e-?mail/i;
 
   while (Date.now() - start < timeoutMs) {
     for (const ctx of getScopes(page)) {
@@ -667,7 +667,7 @@ async function clickResilierEtEnvoyerMail(page, { timeoutMs = 15000 } = {}) {
     const viaEval = await page
       .evaluate(() => {
         const hit = [...document.querySelectorAll('button, a, [role="button"]')].find((el) =>
-          /Résilier le contrat et envoyer le mail|Résilier le contrat et l['’]envoyer/i.test(
+          /Résilier le contrat et envoyer le mail|Résilier le contrat et l['’]envoyer|Résilier et envoyer|Envoyer le mail/i.test(
             String(el.textContent || '').replace(/\s+/g, ' ').trim()
           )
         );
@@ -770,10 +770,21 @@ async function cancelOneContract(page, contract, { cancelDate = null } = {}) {
   }
   await randomDelay(500, 900);
 
-  // Étape essentielle : aperçu email → « Résilier le contrat et envoyer le mail »
+  // Aperçu email Deciplus — parfois absent (contrat déjà clos après Confirmer).
   const mailed = await clickResilierEtEnvoyerMail(page);
   if (!mailed) {
-    return { cancelled: false, reason: 'resilier_envoyer_mail_missing', idc: contract.idc };
+    logWarn('Modale mail de résiliation absente — contrat déjà confirmé, on continue', {
+      idc: contract.idc,
+    });
+    return {
+      cancelled: true,
+      reason: 'ok_mail_skipped',
+      mode: 'resilier',
+      idc: contract.idc,
+      label: contract.label,
+      cancel_date: dateStr,
+      mail_skipped: true,
+    };
   }
 
   await randomDelay(800, 1200);
@@ -923,6 +934,19 @@ async function cancelSale(page, memberId, options = {}) {
   });
   if (outcome.cancelled_count === 0) {
     const reason = outcome.details[0]?.reason || 'inconnu';
+    if (reason === 'no_active_sale') {
+      logInfo('Aucun contrat actif à résilier — déjà clos', {
+        member_id: memberId,
+      });
+      return {
+        action: 'sale_cancelled',
+        sale_type: 'cancel',
+        cancelled_count: 0,
+        already: true,
+        reason: 'no_active_sale',
+        details: outcome.details,
+      };
+    }
     // Changement d’abo : le but est la vente. Déjà résilié / panneau absent → on continue.
     if (isChange) {
       logInfo('Changement abo — résiliation non bloquante, on continue la vente', {
