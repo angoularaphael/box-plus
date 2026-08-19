@@ -282,3 +282,15 @@ test('requestAccessToken préfère bc_token / hex 48 face au token PayPal', () =
     hex
   );
 });
+
+test('POST /api/orders/:id/pay ne redéclare pas saveOrderAsync (TDZ)', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'server.js'), 'utf8');
+  const start = src.indexOf("app.post('/api/orders/:id/pay'");
+  assert.ok(start >= 0);
+  const end = src.indexOf("app.post('/api/gdpr/erase-request'", start);
+  const pay = src.slice(start, end > start ? end : start + 20000);
+  assert.match(pay, /await saveOrderAsync\(order\)/);
+  assert.doesNotMatch(pay, /const \{ saveOrderAsync \}/);
+});

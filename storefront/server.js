@@ -2709,7 +2709,6 @@ function createApp() {
         delete order.badge_timing;
         delete order.badge_method;
       }
-      const { saveOrderAsync } = require('./lib/order-lifecycle');
       await saveOrderAsync(order);
 
       const isFreeProduct =
