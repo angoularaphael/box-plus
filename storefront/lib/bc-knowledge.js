@@ -275,8 +275,54 @@ const GYM_INDEX = `
 - États-Unis : Boxe Anglaise, Boxe Pieds-Poings, MMA, Grappling, Jiu-Jitsu Brésilien, HYROX, Cross Training, Boxing HIIT, Lady Punch.
 Cours 100 % féminins, par salle exacte : **Boxing Lady** à Minimes et Portet · **Lady Punch** à Ramonville, Saint-Cyprien et États-Unis · **Lady Kick** à Portet.
 Ne jamais inverser cette liste : ne cite une discipline que pour les salles où elle est écrite ici.
-Tu n'as PAS le détail des créneaux ici : demande dans quelle salle la personne souhaite venir, puis donne les horaires exacts.
+ATTENTION — cet index ne contient AUCUN horaire et AUCUN nom de coach. Tant qu'aucune salle n'est nommée, il t'est INTERDIT d'annoncer un jour, une heure ou un coach : demande d'abord dans quelle salle la personne souhaite venir.
 `.trim();
+
+/**
+ * Disciplines rattachées à leurs salles, pour répondre à « où puis-je faire X ? »
+ * avec de vrais créneaux plutôt qu'un renvoi. Les disciplines proposées presque
+ * partout (Boxe Anglaise, Boxe Éducative…) sont volontairement absentes :
+ * pour celles-là, on demande la salle au lieu de charger cinq plannings.
+ */
+const DISCIPLINE_GYMS = [
+  { test: /\bmma\b|arts martiaux mixtes/i, gyms: ['etats-unis', 'ramonville'] },
+  { test: /grappling|lutte au sol|sol sans frappe/i, gyms: ['etats-unis', 'st-cyprien', 'ramonville'] },
+  { test: /jjb|jiu[-\s]?jitsu/i, gyms: ['etats-unis'] },
+  { test: /hyrox/i, gyms: ['st-cyprien', 'etats-unis'] },
+  { test: /cross[-\s]?training|crossfit/i, gyms: ['st-cyprien', 'etats-unis'] },
+  { test: /boxing hiit|\bhiit\b/i, gyms: ['etats-unis'] },
+  { test: /lady punch/i, gyms: ['ramonville', 'st-cyprien', 'etats-unis'] },
+  { test: /boxing lady/i, gyms: ['minimes', 'portet'] },
+  { test: /lady kick/i, gyms: ['portet'] },
+  { test: /savate|boxe fran[çc]aise/i, gyms: ['portet'] },
+  { test: /open sparring/i, gyms: ['minimes'] },
+  { test: /boxing camp/i, gyms: ['minimes', 'ramonville', 'st-cyprien'] },
+  { test: /pr[ée]paration physique|prépa physique/i, gyms: ['portet'] },
+];
+
+/** Budget de caractères pour les plannings, pour rester sous le quota du modèle. */
+const PLANNING_BUDGET = 7000;
+
+/** Empile des plannings tant que le budget le permet, et nomme les salles écartées. */
+function packPlannings(ids) {
+  const kept = [];
+  const skipped = [];
+  let size = 0;
+  for (const id of ids) {
+    const block = PLANNINGS[id];
+    if (!block) continue;
+    if (kept.length && size + block.length > PLANNING_BUDGET) {
+      skipped.push(GYMS[id] ? GYMS[id].label : id);
+      continue;
+    }
+    kept.push(block);
+    size += block.length;
+  }
+  const note = skipped.length
+    ? `\n\nCette discipline existe aussi à ${skipped.join(' et ')} : tu peux le mentionner et proposer d'en donner les horaires, mais tu n'as pas ces créneaux sous les yeux — ne les invente pas.`
+    : '';
+  return kept.join('\n\n') + note;
+}
 
 /**
  * Renvoie le ou les plannings utiles pour la question posée.
@@ -287,16 +333,13 @@ Tu n'as PAS le détail des créneaux ici : demande dans quelle salle la personne
 function planningContext(text) {
   const t = String(text || '');
   const gyms = detectGyms(t);
-  if (gyms.length) {
-    return gyms
-      .slice(0, 2)
-      .map((id) => PLANNINGS[id])
-      .filter(Boolean)
-      .join('\n\n');
-  }
-  if (PLANNING_INTENT.test(t) || DISCIPLINE_INTENT.test(t)) {
-    return GYM_INDEX;
-  }
+  if (gyms.length) return packPlannings(gyms);
+
+  /* Discipline nommée sans salle : on charge les plannings des salles concernées. */
+  const byDiscipline = DISCIPLINE_GYMS.find((d) => d.test.test(t));
+  if (byDiscipline) return packPlannings(byDiscipline.gyms);
+
+  if (PLANNING_INTENT.test(t) || DISCIPLINE_INTENT.test(t)) return GYM_INDEX;
   return '';
 }
 
