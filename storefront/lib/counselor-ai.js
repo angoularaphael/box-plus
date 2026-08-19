@@ -7,6 +7,7 @@ const {
   pickVariant,
 } = require('./welcome-knowledge');
 const { resolvePersona } = require('./counselor-personas');
+const { buildKnowledge } = require('./bc-knowledge');
 
 const KNOWLEDGE = `
 Tu es David, conseiller virtuel Boxing Center (Toulouse). Tu aides les adhérents sur le parcours « Gérer mon abonnement ».
@@ -36,13 +37,22 @@ IDENTITÉ
 - N’invente pas un dossier, un tarif personnalisé, ni un statut d’abonnement.
 
 CONNAISSANCES CLUB
-- 5 salles : Minimes (12 rue de Fenouillet, 31200), Ramonville (33 rue des Ormes, 31530), Portet (61 route d'Espagne, 31120), États-Unis (388 avenue des États-Unis, 31200), St-Cyprien (11 Rue Sainte-Lucie, 31300).
+- 5 salles : Minimes (12 rue de Fenouillet, 31200), Ramonville (33 rue des Ormes, 31520), Portet (61 route d'Espagne, 31120), États-Unis (388 avenue des États-Unis, 31200), St-Cyprien (11 Rue Sainte-Lucie, 31300).
 - Managers (EXACT) : Minimes = Medhi, Ramonville = Pascal, St-Cyprien = Daddy, Portet = Valentin, États-Unis = Sébastien. Ne jamais inventer un autre prénom.
-- Accès multi-salles selon formule ; accès libre 6j/7 environ 10h–21h.
+- Accès multi-salles selon formule ; pages salles : lundi au samedi, 10h00–21h30. Ne jamais inventer d’horaire du dimanche.
 - Séance d’essai et offres (29,99 € / 259 €) via la boutique.
 - Résiliation web : uniquement les formules par prélèvement (pas les comptants / forfaits).
 - Changement d’abonnement (prélèvement → comptant) via « Gérer mon abo ».
 - Badge / accès en panne → manager de salle.
+
+RÉSILIATION — RÈGLES À CONNAÎTRE (ne jamais les contredire)
+- La demande n’est définitive que lorsque le membre la valide électroniquement dans le parcours en ligne. Un message ici, un mot au coach ou à l’accueil ne valent pas résiliation.
+- Délai technique : la demande doit être enregistrée PLUS DE 72 HEURES avant la date du prochain prélèvement. À 72 h ou moins, l’échéance reste due et est prélevée : le membre garde son accès pendant la nouvelle période de 4 semaines et la résiliation prend effet à la fin de celle-ci, sans nouvelle demande.
+- La résiliation prend effet à la fin de la période déjà payée — ce n’est PAS un arrêt sous 72 h. Pas de remboursement au prorata d’une période de 4 semaines commencée, sauf obligation légale.
+- Formules payées comptant (3 / 6 / 12 mois) : durée ferme, non résiliables avant terme pour changement d’avis ou non-utilisation.
+- Vente à distance : 14 jours de rétractation légale selon les CGV.
+- Badge (34,99 €) : non remboursé du seul fait de la résiliation, ce n’est pas une caution.
+- La simple non-utilisation de l’abonnement ne donne droit ni à remboursement ni à prolongation.
 
 ALTERNATIVES RÉSILATION (à adapter, sans promettre d’action)
 - Manque de temps → autres créneaux / salles / accès libre.
@@ -61,7 +71,7 @@ RÈGLES DE CONVERSATION
 `.trim();
 
 const FALLBACKS = {
-  time: 'Avec les cinq salles et l’accès libre 10h–21h, on peut souvent trouver un créneau plus simple. C’est plutôt les horaires, la distance, ou une période chargée en ce moment ?',
+  time: 'Avec les cinq salles et l’accès libre du lundi au samedi 10h–21h30, on peut souvent trouver un créneau plus simple. C’est plutôt les horaires, la distance, ou une période chargée en ce moment ?',
   move: 'Votre abo multi-salles couvre souvent un déménagement en région toulousaine. Dans quel secteur vous installez-vous ? Je vous oriente vers la salle la plus pratique.',
   medical:
     'Désolé pour votre blessure. Souhaitez-vous suspendre votre abonnement le temps de votre rétablissement ?',
@@ -332,8 +342,8 @@ const FAQ_VARIANTS = {
     'Saison à **259 €** : un an d’accès 5 salles. 1× carte/PayPal, ou 4× PayPal. Le souci 4× vient de PayPlug, pas de PayPal.',
   ],
   gyms: [
-    '5 salles : **Minimes**, **Ramonville**, **St-Cyprien**, **Portet**, **États-Unis**. Accès libre ~**10h–21h30**, 7j/7. Managers : Medhi, Pascal, Daddy, Valentin, Sébastien.',
-    'Tu as le choix entre Minimes, Ramonville, St-Cyprien, Portet et États-Unis — accès libre ~10h–21h30. Quelle zone te parle ?',
+    '5 salles : **Minimes**, **Ramonville**, **St-Cyprien**, **Portet**, **États-Unis**. Accès **du lundi au samedi, 10h–21h30**. Managers : Medhi, Pascal, Daddy, Valentin, Sébastien.',
+    'Tu as le choix entre Minimes, Ramonville, St-Cyprien, Portet et États-Unis — accès du lundi au samedi, 10h–21h30. Quelle zone te parle ?',
     'Réseau toulousain : 5 clubs, même abo multi-salles selon formule. Dis-moi ton quartier, je te pointe la plus pratique.',
   ],
   legal: [
@@ -444,13 +454,15 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     const transcript = buildTranscript(messages, freeText).replace(/David:/g, `${persona.name}:`);
     const { content } = await chatCompletion(
       [
-        { role: 'system', content: WELCOME_KNOWLEDGE },
+        /* Base validée du 18/08/2026 : socle commun + planning de la salle concernée. */
+        { role: 'system', content: buildKnowledge(`${lastUser}\n${freeText || ''}`) },
         /* Même base de connaissances pour tous : seule la voix change. */
         { role: 'system', content: persona.tone },
         {
           role: 'user',
           content: [
             'Réponds au visiteur boutique. Réponse directe, factuelle, sans formule de fin. Si managers : noms exacts de la base.',
+            'Si la question porte sur un horaire : uniquement des créneaux présents dans les plannings fournis, avec le coach. Aucun créneau inventé.',
             'Rédige une réponse utile et **différente** de ta précédente (autre angle / autre formulation).',
             `Reste dans la voix de ${persona.name} : les faits ne changent pas, la façon de les dire oui.`,
             transcript ? `Conversation:\n${transcript}` : '',
