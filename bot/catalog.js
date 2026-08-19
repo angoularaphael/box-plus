@@ -151,14 +151,23 @@ async function fetchDeciplusCatalog(page, { force = false } = {}) {
   return products;
 }
 
+const MATCH_STOP = new Set(['a', 'de', 'du', 'au', 'et', 'le', 'la', 'les', 'des', 'en']);
+
+function matchTokens(text) {
+  return normalizeText(text)
+    .replace(/\b(\d+)e\b/g, '$1')
+    .split(' ')
+    .filter((t) => t && !MATCH_STOP.has(t));
+}
+
 function scoreMatch(query, product) {
   const q = normalizeText(query);
   const title = normalizeText(product.title);
   if (!q || !title) return 0;
   if (q === title) return 100;
   if (title.includes(q) || q.includes(title)) return 80;
-  const qTokens = q.split(' ').filter(Boolean);
-  const tTokens = new Set(title.split(' ').filter(Boolean));
+  const qTokens = matchTokens(query);
+  const tTokens = new Set(matchTokens(product.title));
   const overlap = qTokens.filter((t) => tTokens.has(t)).length;
   if (overlap >= 2) return 50 + overlap * 5;
   if (overlap === 1 && qTokens.length === 1) return 40;

@@ -12,6 +12,7 @@ const {
   isAventureHost,
 } = require('../lib/balma');
 const { parseFrDates, productSearchFromLabel } = require('../bot/migrate-gym');
+const { findProductInCatalog } = require('../bot/catalog');
 const { BALMA_WA, fill } = require('../lib/campaign-templates');
 const { robotsTxt } = require('../storefront/lib/seo');
 
@@ -93,6 +94,21 @@ test('parseFrDates + productSearchFromLabel', () => {
   assert.equal(d.start, '01/09/2025');
   assert.equal(d.end, '29/09/2025');
   assert.ok(productSearchFromLabel('OFFRE A 29€ du 01/09/2025').includes('OFFRE A 29'));
+});
+
+test('catalogue — OFFRE A 29 matche OFFRE DUO 29€', () => {
+  const matched = findProductInCatalog(
+    [
+      { id: 12, title: 'Badge', price: 34.99, type: 'decipass' },
+      { id: 104, title: 'OFFRE DUO 29€', price: 29, type: 'abo', categoryId: 'abo' },
+    ],
+    {
+      product_name: 'OFFRE A 29',
+      deciplus_product_search: 'OFFRE A 29',
+      payment: { amount: 29 },
+    }
+  );
+  assert.equal(matched?.id, 104);
 });
 
 test('robots.txt Disallow /aventure', () => {

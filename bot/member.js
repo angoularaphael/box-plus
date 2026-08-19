@@ -1605,6 +1605,7 @@ module.exports = {
   DEFAULT_MATCH_FIELDS,
   CHANGE_MATCH_FIELDS,
   getMemberFormContext,
+  setMemberGymZone,
   openMemberEditForm,
   startNewMemberFromSelect,
   openNewMemberForm,
