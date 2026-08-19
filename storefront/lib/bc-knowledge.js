@@ -249,8 +249,9 @@ SAMEDI : 11h00-12h00 Cross Training (Clément)
  * SÉLECTION DU PLANNING À INJECTER
  * ------------------------------------------------------------------ */
 
+/* Bornes de mots obligatoires : sans elles, « bonjour » déclenchait « jour ». */
 const PLANNING_INTENT =
-  /planning|horaire|creneau|cr[ée]neau|quelle?\s+heure|quand|cours\s+(de|du|le|la)?|s[ée]ance|programme|jour|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|midi|soir/i;
+  /planning|horaire|cr[ée]?neau|quelle?\s+heure|\bquand\b|\bcours\b|s[ée]ance|programme|\bjours?\b|\blundi\b|\bmardi\b|\bmercredi\b|\bjeudi\b|\bvendredi\b|\bsamedi\b|\bdimanche\b|\bmidi\b|\bsoirs?\b|\bmatin\b/i;
 
 const DISCIPLINE_INTENT =
   /boxe|boxing|anglaise|tha[iï]|k1|kick|pieds[-\s]?poings|mma|grappling|jjb|jiu|savate|fran[çc]aise|hyrox|cross|hiit|lady|sparring|baby|[ée]ducative|camp|enfant|ado/i;
@@ -261,9 +262,24 @@ function detectGyms(text) {
 }
 
 /**
+ * Index compact « quelle discipline dans quelle salle », servi quand la question
+ * porte sur un horaire sans nommer de salle. Injecter les 5 plannings dans ce cas
+ * faisait exploser le quota de tokens du modèle : le conseiller demande la salle.
+ */
+const GYM_INDEX = `
+# OÙ SE PRATIQUE QUOI (pour orienter avant de donner un horaire)
+- Minimes : Boxe Anglaise (loisirs et compétiteurs), Boxing Camp, Boxing Lady, Boxe Pieds-Poings, Boxe Éducative, Baby Boxe, Open Sparring.
+- Ramonville : Boxe Anglaise, Boxe Pieds-Poings, Boxing Camp, Lady Punch, Grappling, MMA, Boxe Éducative, Baby Boxe.
+- Saint-Cyprien : Boxe Anglaise, Boxe Thaï / K1, Boxing Camp, Cross Training, HYROX, Grappling, Lady Punch, Boxe Éducative, Baby Boxe.
+- Portet : Boxe Anglaise (loisirs, amateurs et pros), Kick / K1, Boxe Française, Lady Kick, Boxing Lady, préparation physique, Sparring, Boxe Éducative, Baby Boxe. Planning PROVISOIRE.
+- États-Unis : Boxe Anglaise, Boxe Pieds-Poings, MMA, Grappling, Jiu-Jitsu Brésilien, HYROX, Cross Training, Boxing HIIT, Lady Punch.
+Tu n'as PAS le détail des créneaux ici : demande dans quelle salle la personne souhaite venir, puis donne les horaires exacts.
+`.trim();
+
+/**
  * Renvoie le ou les plannings utiles pour la question posée.
- * - salle(s) citée(s) → planning de ces salles ;
- * - question d'horaire ou de discipline sans salle → les 5 plannings ;
+ * - salle(s) citée(s) → planning détaillé de ces salles ;
+ * - horaire ou discipline sans salle → index compact, et on demande la salle ;
  * - sinon → rien (on n'alourdit pas le prompt).
  */
 function planningContext(text) {
@@ -271,17 +287,76 @@ function planningContext(text) {
   const gyms = detectGyms(t);
   if (gyms.length) {
     return gyms
-      .slice(0, 3)
+      .slice(0, 2)
       .map((id) => PLANNINGS[id])
       .filter(Boolean)
       .join('\n\n');
   }
   if (PLANNING_INTENT.test(t) || DISCIPLINE_INTENT.test(t)) {
-    return Object.keys(PLANNINGS)
-      .map((id) => PLANNINGS[id])
-      .join('\n\n');
+    return GYM_INDEX;
   }
   return '';
+}
+
+/* ------------------------------------------------------------------ *
+ * SÉLECTION DES SECTIONS DU SOCLE
+ *
+ * Le socle complet fait ~13 500 caractères. L'envoyer en entier à chaque
+ * message, plannings compris, dépassait le quota de tokens par minute du
+ * modèle : l'appel échouait et le conseiller retombait sur une réponse
+ * générique. On ne charge donc que les sections utiles à la question.
+ * ------------------------------------------------------------------ */
+
+/** Découpe le socle en sections indexées par mot-clé de titre. */
+const SECTIONS = CORE.split(/\n(?=# )/).reduce((acc, block) => {
+  const title = block.split('\n', 1)[0];
+  const key = [
+    ['RÈGLES', 'regles'],
+    ['DISCIPLINES', 'disciplines'],
+    ['SALLES', 'salles'],
+    ['MANAGERS', 'managers'],
+    ['COACHS', 'coachs'],
+    ['TARIFS', 'tarifs'],
+    ["SÉANCE D'ESSAI", 'essai'],
+    ['INSCRIPTION', 'inscription'],
+    ['RÉSILIATION', 'resiliation'],
+    ['SANTÉ', 'sante'],
+    ['RÈGLEMENT', 'reglement'],
+    ['INFOS PRATIQUES', 'pratique'],
+    ['VIGILANCE', 'vigilance'],
+  ].find(([needle]) => title.includes(needle));
+  if (key) acc[key[1]] = block.trim();
+  return acc;
+}, {});
+
+/** Sections envoyées à chaque message : identité, salles, prix, garde-fous. */
+const ALWAYS = ['regles', 'salles', 'managers', 'tarifs', 'essai', 'vigilance'];
+
+/** Sections chargées seulement si la question les concerne. */
+const ON_DEMAND = [
+  {
+    key: 'disciplines',
+    test: new RegExp(
+      `discipline|pratiqu|d[ée]butant|niveau|sport|entra[îi]n|apprendre|essayer|commencer|maigrir|forme|self[-\\s]?d[ée]fense|combat|${DISCIPLINE_INTENT.source}`,
+      'i'
+    ),
+  },
+  { key: 'coachs', test: /coach|prof|entra[îi]neur|encadr|qui\s+(donne|anime|s'occupe)|mehdi|dadi|brice|j[ée]r[ôo]me|zouhir|valentin|sonia|renaud|samuel|nicolas|enzo|mourad|ingrid|farouk|hicham|tawee|yannis|cl[ée]ment|chlo[ée]|david/i },
+  { key: 'inscription', test: /inscri|s'abonner|abonner|dossier|mineur|enfant|parent|papier|document|contrat|adh[ée]sion|activ/i },
+  /* « partir » est volontairement absent : « à partir de quel âge » n'est pas une résiliation. */
+  { key: 'resiliation', test: /r[ée]sili|annul|arr[êe]ter|stopper|pr[ée]l[èe]vement|rembours|engagement|r[ée]tractation|badge|quitter|me d[ée]sinscrire/i },
+  { key: 'sante', test: /m[ée]dical|certificat|sant[ée]|bless|douleur|malaise|prot[èe]ge|gant|casque|s[ée]curit[ée]|retard|sparring|enceinte|op[ée]r/i },
+  { key: 'reglement', test: /r[èe]glement|tenue|vestiaire|douche|casier|photo|vid[ée]o|alcool|fum|interdit|badge|comportement/i },
+  { key: 'pratique', test: /douche|vestiaire|casier|r[ée]server|r[ée]servation|chauff|climatis|t[ée]l[ée]phone|contact|appeler|f[ée]d[ée]ration|femme|mixte|plusieurs salles|multi/i },
+];
+
+function selectSections(text) {
+  const t = String(text || '');
+  const keys = [...ALWAYS];
+  for (const { key, test } of ON_DEMAND) {
+    if (test.test(t) && !keys.includes(key)) keys.push(key);
+  }
+  return keys.map((k) => SECTIONS[k]).filter(Boolean);
 }
 
 const STYLE_RULES = `
@@ -305,7 +380,7 @@ function buildKnowledge(userText) {
   const planning = planningContext(userText);
   return [
     'Tu réponds aux visiteurs du site Boxing Center Toulouse et de la boutique en ligne. Mission : informer avec exactitude ET donner envie de venir essayer.',
-    CORE,
+    ...selectSections(userText),
     planning ? `# PLANNINGS RENTRÉE 2026-2027 (source unique des horaires)\n${planning}` : '',
     STYLE_RULES,
   ]
@@ -316,8 +391,11 @@ function buildKnowledge(userText) {
 module.exports = {
   GYMS,
   CORE,
+  SECTIONS,
   PLANNINGS,
+  GYM_INDEX,
   detectGyms,
   planningContext,
+  selectSections,
   buildKnowledge,
 };
