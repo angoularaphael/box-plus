@@ -10,7 +10,7 @@
 
   const GYMS = [
     { id: 'minimes', label: 'Minimes', address: '12 rue de Fenouillet, 31200 Toulouse' },
-    { id: 'ramonville', label: 'Ramonville', address: '33 rue des Ormes, 31530 Ramonville' },
+    { id: 'ramonville', label: 'Ramonville', address: '33 rue des Ormes, 31520 Ramonville-Saint-Agne' },
     { id: 'portet', label: 'Portet', address: '61 route d\'Espagne, 31120 Portet-sur-Garonne' },
     { id: 'etats-unis', label: 'États-Unis', address: '388 avenue des États-Unis, 31200 Toulouse' },
     { id: 'st-cyprien', label: 'St-Cyprien', address: '11 Rue Sainte-Lucie, 31300 Toulouse' },
@@ -204,7 +204,7 @@
     showConfirmBox({
       id: 'cancelCongrats',
       title: 'Demande enregistrée',
-      lead: 'Votre résiliation est prise en charge. Elle sera effective sous 72 heures — une confirmation vous sera envoyée par e-mail.',
+      lead: 'Votre résiliation est prise en charge. Elle prend effet à la fin de la période déjà payée — une confirmation vous sera envoyée par e-mail avec la date exacte.',
       cta: 'Compris',
     });
   }
@@ -277,7 +277,7 @@
         // Dès que l’identité est OK (verified) — pas besoin d’attendre la fin Deciplus
         if (s.ok && (s.status === 'verified' || s.status === 'done')) {
           msgEl.innerHTML =
-            '<strong>Votre résiliation sera traitée.</strong><br/>Les informations correspondent : la demande est prise en charge. Elle sera effective sous 72 heures ; une confirmation vous sera envoyée par e-mail.';
+            '<strong>Votre résiliation sera traitée.</strong><br/>Les informations correspondent : la demande est prise en charge. Elle prend effet à la fin de la période déjà payée ; une confirmation vous sera envoyée par e-mail avec la date exacte.';
           msgEl.className = 'form-msg';
           if (submitBtn) submitBtn.disabled = false;
           showCancelCongrats();
