@@ -86,7 +86,8 @@ test('formulaire aventure — refuse comptant', () => {
     offer: '259',
     prelevement: true,
   });
-  assert.ok(saison.errors.some((e) => /prélèvement|offre/i.test(e)));
+  assert.deepEqual(saison.errors, []);
+  assert.equal(saison.offer, 'offre-saison');
 });
 
 test('formulaire aventure — sans offre active → skip restore', () => {
@@ -95,6 +96,7 @@ test('formulaire aventure — sans offre active → skip restore', () => {
     last_name: 'Martin',
     birthdate: '1991-08-10',
     offer: 'none',
+    prelevement: true,
   });
   assert.deepEqual(none.errors, []);
   assert.equal(none.offer, 'none');

@@ -14,6 +14,7 @@ const { getStoreUrl, getCheckoutBaseUrl, PRODUCTION_STORE_URL } = require('../li
 const {
   validateBalmaSwitchPayload,
   buildBalmaSwitchOrder,
+  inscriptionUrl,
   listBalmaPrelevementOffers,
   isBalmaRetourSource,
   balmaBadgePaymentFields,
@@ -1943,11 +1944,21 @@ function createApp() {
       } catch (err) {
         logError('balma_switch forward', { error: err.message, order_id: order.order_id });
       }
+      const redirect = parsed.skip_restore && parsed.offer === 'none'
+        ? null
+        : inscriptionUrl({
+            productId: parsed.offer,
+            firstName: parsed.first_name,
+            lastName: parsed.last_name,
+            birthdate: parsed.birthdate,
+            boutiqueBase: getStoreUrl(),
+          });
       res.json({
         ok: true,
         order_id: order.order_id,
         queued: Boolean(forwarded.forwarded),
         skip_restore: Boolean(parsed.skip_restore),
+        redirect,
       });
     } catch (err) {
       logError('API balma-switch', { error: err.message });
