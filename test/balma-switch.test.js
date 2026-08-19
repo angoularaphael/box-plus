@@ -10,6 +10,7 @@ const {
   validateBalmaSwitchPayload,
   inscriptionUrl,
   isAventureHost,
+  listBalmaPrelevementOffers,
 } = require('../lib/balma');
 const { parseFrDates, productSearchFromLabel } = require('../bot/migrate-gym');
 const { findProductInCatalog } = require('../bot/catalog');
@@ -71,12 +72,21 @@ test('formulaire aventure — refuse comptant', () => {
     prenom: 'Lea',
     nom: 'Martin',
     birthdate: '1991-08-10',
-    offer: '259',
+    offer: 'offre-duo',
     prelevement: true,
   });
   assert.deepEqual(ok.errors, []);
-  assert.equal(ok.offer, 'offre-saison');
+  assert.equal(ok.offer, 'offre-duo');
   assert.equal(ok.birthdate, '1991-08-10');
+
+  const saison = validateBalmaSwitchPayload({
+    first_name: 'Lea',
+    last_name: 'Martin',
+    birthdate: '1991-08-10',
+    offer: '259',
+    prelevement: true,
+  });
+  assert.ok(saison.errors.some((e) => /prélèvement/i.test(e)));
 });
 
 test('formulaire aventure — date de naissance requise', () => {
@@ -150,6 +160,15 @@ test('catalogue — OFFRE A 29 matche OFFRE DUO 29€', () => {
     }
   );
   assert.equal(matched?.id, 104);
+});
+
+test('offres aventure — prélèvement uniquement, pas 259', () => {
+  const offers = listBalmaPrelevementOffers();
+  assert.ok(offers.length >= 1);
+  assert.ok(offers.every((o) => !/259|saison|comptant/i.test(`${o.id} ${o.name} ${o.price_label}`)));
+  assert.ok(
+    offers.some((o) => o.id === 'offre-duo' || o.product_id === 'offre-duo' || /29/.test(o.price_label || ''))
+  );
 });
 
 test('robots.txt Disallow /aventure', () => {

@@ -15,6 +15,7 @@ const {
   validateBalmaSwitchPayload,
   buildBalmaSwitchOrder,
   inscriptionUrl,
+  listBalmaPrelevementOffers,
   isBalmaRetourSource,
   balmaBadgePaymentFields,
 } = require('../lib/balma');
@@ -1959,6 +1960,16 @@ function createApp() {
     } catch (err) {
       logError('API balma-switch', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/balma-offers', async (_req, res) => {
+    try {
+      await hydrateMerchOnce();
+      res.json({ ok: true, offers: listBalmaPrelevementOffers() });
+    } catch (err) {
+      logError('API balma-offers', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message, offers: [] });
     }
   });
 

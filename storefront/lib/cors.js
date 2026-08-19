@@ -9,7 +9,8 @@
  * autorisés, ce qui empêche d'atteindre les routes authentifiées par cookie.
  */
 
-const DEFAULT_ALLOWED_ORIGINS = 'https://boxingcenter.fr,https://www.boxingcenter.fr';
+const DEFAULT_ALLOWED_ORIGINS =
+  'https://boxingcenter.fr,https://www.boxingcenter.fr,https://aventure.boxingcenter.fr,https://balma-bc.vercel.app';
 
 function parseAllowedOrigins(value) {
   return new Set(

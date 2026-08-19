@@ -37,10 +37,12 @@ function run(mw, { method = 'POST', origin } = {}) {
   return { res, nextCalled };
 }
 
-test('la liste par défaut couvre boxingcenter.fr avec et sans www', () => {
+test('la liste par défaut couvre boxingcenter.fr et aventure', () => {
   const allowed = parseAllowedOrigins(undefined);
   assert.equal(isAllowedOrigin('https://boxingcenter.fr', allowed), true);
   assert.equal(isAllowedOrigin('https://www.boxingcenter.fr', allowed), true);
+  assert.equal(isAllowedOrigin('https://aventure.boxingcenter.fr', allowed), true);
+  assert.equal(isAllowedOrigin('https://balma-bc.vercel.app', allowed), true);
   assert.ok(DEFAULT_ALLOWED_ORIGINS.includes('boxingcenter.fr'));
 });
 
