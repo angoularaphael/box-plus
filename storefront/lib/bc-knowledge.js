@@ -74,6 +74,8 @@ const CORE = `
 - Sur un horaire, donner : salle, jour, heure de début, heure de fin, cours, coach, et le public si nécessaire.
 - INTERDIT d'inventer un cours, un horaire, un coach, un diplôme ou un palmarès absent de cette base. Si l'information manque : le dire et proposer d'appeler le club ou de voir le manager.
 - « ACCÈS LIBRE » = entraînement autonome au badge, ce n'est PAS un cours encadré : ne jamais lui attribuer de coach.
+- Pour un enfant ou un adolescent, propose TOUJOURS le cours de sa tranche d'âge (Baby Boxe dès 3 ans, Boxe Éducative 7-11 ans, 12-16 ans, MMA Enfants / Ados 10-16 ans) et jamais un créneau adulte.
+- Un créneau = une ligne du planning. Ne fusionne jamais deux lignes : l'horaire, le cours et le coach d'une ligne vont ensemble.
 
 # DISCIPLINES
 - MMA : frappes debout + lutte + sol (contrôles, soumissions). Encadré et progressif, débutants acceptés. Le libellé planning « ASSO MMA » = MMA tous niveaux.
@@ -176,43 +178,162 @@ Badge / QR personnel et incessible, interdiction de faire entrer une personne sa
 const PLANNINGS = {
   minimes: `
 ## PLANNING 2026-2027 — MINIMES / BARRIÈRE DE PARIS (12 rue de Fenouillet, 31200 Toulouse)
-LUNDI : 10h00-12h00 Accès libre | 12h40-13h20 Boxing Camp (Mehdi B., tous niveaux) | 13h20-18h00 Accès libre | 18h00-19h30 Boxe Compétiteurs (Mehdi B., confirmés uniquement) | 18h30-19h30 Boxing Lady (Chloé, 100 % féminin) | 19h40-21h00 Boxe Anglaise Loisirs (Mehdi B., tous niveaux)
-MARDI : 10h00-12h00 Accès libre | 12h40-13h20 Boxe Anglaise Loisirs (Mehdi B.) | 13h20-18h00 Accès libre | 18h00-19h30 Boxe Compétiteurs (Mehdi B., confirmés) | 18h30-19h30 Boxing Camp (Clément) | 19h40-21h00 Boxe Anglaise Loisirs (Mehdi B.)
-MERCREDI : 10h00-12h00 Accès libre | 12h40-13h20 Boxe Anglaise Loisirs (Mehdi B.) | 13h20-15h00 Accès libre | 15h00-16h00 Boxe Éducative 7-11 ans (Mehdi B.) | 16h00-17h00 Boxe Éducative 12-16 ans (Mehdi B.) | 17h00-18h30 Boxe Éducative Compétiteurs (Mehdi B., jeunes confirmés) | 18h30-19h30 Boxing Lady (David, 100 % féminin) | 19h40-21h00 Boxe Pieds-Poings (David)
-JEUDI : 10h00-12h00 Accès libre | 12h40-13h20 Boxe Anglaise Loisirs (Mehdi B.) | 13h20-18h00 Accès libre | 18h00-19h30 Boxe Compétiteurs (Mehdi B., confirmés) | 18h30-19h30 Boxing Camp (David) | 19h40-21h00 Boxe Anglaise Loisirs (Mehdi B.)
-VENDREDI : 10h00-12h00 Accès libre | 12h40-13h20 Boxing Camp (Mehdi B.) | 13h20-18h00 Accès libre | 18h00-19h30 Boxe Compétiteurs (Mehdi B., confirmés) | 19h40-21h00 Boxe Anglaise Loisirs (Mehdi B.)
-SAMEDI : 10h00-11h00 Accès libre | 11h00-12h00 Boxing Camp (Mehdi B.) | 12h40-14h15 Accès libre | 14h15-15h00 Baby Boxe dès 3 ans (Mehdi B.) | 15h00-16h00 Boxe Éducative 7-11 ans (Mehdi B.) | 16h00-17h00 Boxe Éducative 12-16 ans (Mehdi B.) | 17h00-18h30 Boxe Éducative Compétiteurs (Mehdi B.) | 18h30-19h30 Open Sparring (Mehdi B., pas pour un débutant complet)
+LUNDI 10h00-12h00 Accès libre
+LUNDI 12h40-13h20 Boxing Camp (Mehdi B., tous niveaux)
+LUNDI 13h20-18h00 Accès libre
+LUNDI 18h00-19h30 Boxe Compétiteurs (Mehdi B., confirmés uniquement)
+LUNDI 18h30-19h30 Boxing Lady (Chloé, 100 % féminin)
+LUNDI 19h40-21h00 Boxe Anglaise Loisirs (Mehdi B., tous niveaux)
+MARDI 10h00-12h00 Accès libre
+MARDI 12h40-13h20 Boxe Anglaise Loisirs (Mehdi B.)
+MARDI 13h20-18h00 Accès libre
+MARDI 18h00-19h30 Boxe Compétiteurs (Mehdi B., confirmés)
+MARDI 18h30-19h30 Boxing Camp (Clément)
+MARDI 19h40-21h00 Boxe Anglaise Loisirs (Mehdi B.)
+MERCREDI 10h00-12h00 Accès libre
+MERCREDI 12h40-13h20 Boxe Anglaise Loisirs (Mehdi B.)
+MERCREDI 13h20-15h00 Accès libre
+MERCREDI 15h00-16h00 Boxe Éducative 7-11 ans (Mehdi B.)
+MERCREDI 16h00-17h00 Boxe Éducative 12-16 ans (Mehdi B.)
+MERCREDI 17h00-18h30 Boxe Éducative Compétiteurs (Mehdi B., jeunes confirmés)
+MERCREDI 18h30-19h30 Boxing Lady (David, 100 % féminin)
+MERCREDI 19h40-21h00 Boxe Pieds-Poings (David)
+JEUDI 10h00-12h00 Accès libre
+JEUDI 12h40-13h20 Boxe Anglaise Loisirs (Mehdi B.)
+JEUDI 13h20-18h00 Accès libre
+JEUDI 18h00-19h30 Boxe Compétiteurs (Mehdi B., confirmés)
+JEUDI 18h30-19h30 Boxing Camp (David)
+JEUDI 19h40-21h00 Boxe Anglaise Loisirs (Mehdi B.)
+VENDREDI 10h00-12h00 Accès libre
+VENDREDI 12h40-13h20 Boxing Camp (Mehdi B.)
+VENDREDI 13h20-18h00 Accès libre
+VENDREDI 18h00-19h30 Boxe Compétiteurs (Mehdi B., confirmés)
+VENDREDI 19h40-21h00 Boxe Anglaise Loisirs (Mehdi B.)
+SAMEDI 10h00-11h00 Accès libre
+SAMEDI 11h00-12h00 Boxing Camp (Mehdi B.)
+SAMEDI 12h40-14h15 Accès libre
+SAMEDI 14h15-15h00 Baby Boxe dès 3 ans (Mehdi B.)
+SAMEDI 15h00-16h00 Boxe Éducative 7-11 ans (Mehdi B.)
+SAMEDI 16h00-17h00 Boxe Éducative 12-16 ans (Mehdi B.)
+SAMEDI 17h00-18h30 Boxe Éducative Compétiteurs (Mehdi B.)
+SAMEDI 18h30-19h30 Open Sparring (Mehdi B., pas pour un débutant complet)
 `.trim(),
 
   ramonville: `
 ## PLANNING 2026-2027 — RAMONVILLE-SAINT-AGNE (33 rue des Ormes, 31520)
-LUNDI : 12h40-13h20 Boxing Camp (Sonia) | 18h00-18h40 Lady Punch (Sonia, 100 % féminin) | 18h40-19h40 Boxe Pieds-Poings (Sonia) | 19h45-21h15 Boxe Anglaise Loisirs (Farouk)
-MARDI : 12h40-13h20 Boxe Anglaise (Hicham) | 18h40-19h40 Grappling (Jérôme) | 19h45-21h15 MMA tous niveaux (Jérôme, débutants acceptés)
-MERCREDI : 12h40-13h20 Boxing Camp (Hicham) | 15h00-16h00 Boxe Éducative 7-11 ans (Valentin Guth) | 16h00-17h00 Boxe Éducative 12-16 ans (Valentin Guth) | 18h45-20h15 Boxe Anglaise (Farouk)
-JEUDI : 12h40-13h20 Boxe Pieds-Poings (Sonia) | 18h40-19h40 Boxing Camp (Jérôme) | 19h45-21h15 MMA tous niveaux (Jérôme, débutants acceptés)
-VENDREDI : 12h40-13h20 Boxe Anglaise (Hicham) | 18h00-18h40 Lady Punch (Sonia, 100 % féminin) | 18h40-19h40 Boxe Pieds-Poings (Sonia) | 19h45-21h15 Boxe Anglaise Loisirs (Farouk)
-SAMEDI : 11h00-12h00 Boxing Camp (Valentin Guth) | 14h15-15h00 Baby Boxe dès 3 ans (Valentin Guth) | 15h00-16h00 Boxe Éducative 7-11 ans (Valentin Guth) | 16h00-17h00 Boxe Éducative 12-16 ans (Valentin Guth)
+LUNDI 12h40-13h20 Boxing Camp (Sonia)
+LUNDI 18h00-18h40 Lady Punch (Sonia, 100 % féminin)
+LUNDI 18h40-19h40 Boxe Pieds-Poings (Sonia)
+LUNDI 19h45-21h15 Boxe Anglaise Loisirs (Farouk)
+MARDI 12h40-13h20 Boxe Anglaise (Hicham)
+MARDI 18h40-19h40 Grappling (Jérôme)
+MARDI 19h45-21h15 MMA tous niveaux (Jérôme, débutants acceptés)
+MERCREDI 12h40-13h20 Boxing Camp (Hicham)
+MERCREDI 15h00-16h00 Boxe Éducative 7-11 ans (Valentin Guth)
+MERCREDI 16h00-17h00 Boxe Éducative 12-16 ans (Valentin Guth)
+MERCREDI 18h45-20h15 Boxe Anglaise (Farouk)
+JEUDI 12h40-13h20 Boxe Pieds-Poings (Sonia)
+JEUDI 18h40-19h40 Boxing Camp (Jérôme)
+JEUDI 19h45-21h15 MMA tous niveaux (Jérôme, débutants acceptés)
+VENDREDI 12h40-13h20 Boxe Anglaise (Hicham)
+VENDREDI 18h00-18h40 Lady Punch (Sonia, 100 % féminin)
+VENDREDI 18h40-19h40 Boxe Pieds-Poings (Sonia)
+VENDREDI 19h45-21h15 Boxe Anglaise Loisirs (Farouk)
+SAMEDI 11h00-12h00 Boxing Camp (Valentin Guth)
+SAMEDI 14h15-15h00 Baby Boxe dès 3 ans (Valentin Guth)
+SAMEDI 15h00-16h00 Boxe Éducative 7-11 ans (Valentin Guth)
+SAMEDI 16h00-17h00 Boxe Éducative 12-16 ans (Valentin Guth)
 `.trim(),
 
   'st-cyprien': `
 ## PLANNING 2026-2027 — SAINT-CYPRIEN (11 rue Sainte-Lucie, 31300 Toulouse)
-LUNDI : 10h00-12h00 Accès libre | 12h40-13h20 Boxing Camp (Dadi) | 14h15-18h15 Accès libre | 18h20-19h00 Boxing Camp (Brice) | 19h00-20h00 Cross Training (Brice) | 20h00-21h15 Boxe Anglaise (Dadi)
-MARDI : 10h00-12h00 Accès libre | 12h40-13h20 Boxe Thaï / K1 (Tawee) | 14h15-18h15 Accès libre | 18h20-19h00 Lady Punch (Dadi, 100 % féminin) | 19h00-20h00 Grappling (Brice) | 20h00-21h15 Boxe Thaï / K1 (Brice)
-MERCREDI : 10h00-12h00 Accès libre | 12h40-13h20 Boxe Anglaise (Dadi) | 13h20-15h00 Accès libre | 15h00-16h00 Boxe Éducative 7-11 ans (Dadi) | 16h00-17h00 Boxe Éducative 12-16 ans (Dadi) | 17h00-18h15 Boxe Éducative Compétiteurs (Dadi, jeunes confirmés) | 18h20-19h00 HYROX (Brice) | 19h00-20h00 Cross Training (Brice) | 20h00-21h15 Boxe Anglaise (Dadi)
-JEUDI : 10h00-12h00 Accès libre | 12h40-13h20 Boxe Thaï / K1 (Tawee) | 14h15-18h15 Accès libre | 18h20-19h00 Lady Punch (Dadi, 100 % féminin) | 19h00-20h00 Grappling (Brice) | 20h00-21h15 Boxe Thaï / K1 (Brice)
-VENDREDI : 10h00-12h00 Accès libre | 12h40-13h20 Boxe Anglaise (Dadi) | 14h15-18h15 Accès libre | 18h20-19h00 Boxing Camp (Dadi) | 19h00-20h00 Boxe Thaï / K1 (Tawee) | 20h00-21h15 Boxe Anglaise (Dadi)
-SAMEDI : 10h00-11h00 Accès libre | 11h00-12h00 Boxing Camp (Dadi) | 12h40-14h15 Accès libre | 14h15-15h00 Baby Boxe dès 3 ans (Dadi) | 15h00-16h00 Boxe Éducative 7-11 ans (Dadi) | 16h00-17h00 Boxe Éducative 12-16 ans (Dadi) | 17h00-18h15 Boxe Éducative Compétiteurs (Dadi) | 18h20-20h00 Boxe Thaï / K1 (Brice)
+LUNDI 10h00-12h00 Accès libre
+LUNDI 12h40-13h20 Boxing Camp (Dadi)
+LUNDI 14h15-18h15 Accès libre
+LUNDI 18h20-19h00 Boxing Camp (Brice)
+LUNDI 19h00-20h00 Cross Training (Brice)
+LUNDI 20h00-21h15 Boxe Anglaise (Dadi)
+MARDI 10h00-12h00 Accès libre
+MARDI 12h40-13h20 Boxe Thaï / K1 (Tawee)
+MARDI 14h15-18h15 Accès libre
+MARDI 18h20-19h00 Lady Punch (Dadi, 100 % féminin)
+MARDI 19h00-20h00 Grappling (Brice)
+MARDI 20h00-21h15 Boxe Thaï / K1 (Brice)
+MERCREDI 10h00-12h00 Accès libre
+MERCREDI 12h40-13h20 Boxe Anglaise (Dadi)
+MERCREDI 13h20-15h00 Accès libre
+MERCREDI 15h00-16h00 Boxe Éducative 7-11 ans (Dadi)
+MERCREDI 16h00-17h00 Boxe Éducative 12-16 ans (Dadi)
+MERCREDI 17h00-18h15 Boxe Éducative Compétiteurs (Dadi, jeunes confirmés)
+MERCREDI 18h20-19h00 HYROX (Brice)
+MERCREDI 19h00-20h00 Cross Training (Brice)
+MERCREDI 20h00-21h15 Boxe Anglaise (Dadi)
+JEUDI 10h00-12h00 Accès libre
+JEUDI 12h40-13h20 Boxe Thaï / K1 (Tawee)
+JEUDI 14h15-18h15 Accès libre
+JEUDI 18h20-19h00 Lady Punch (Dadi, 100 % féminin)
+JEUDI 19h00-20h00 Grappling (Brice)
+JEUDI 20h00-21h15 Boxe Thaï / K1 (Brice)
+VENDREDI 10h00-12h00 Accès libre
+VENDREDI 12h40-13h20 Boxe Anglaise (Dadi)
+VENDREDI 14h15-18h15 Accès libre
+VENDREDI 18h20-19h00 Boxing Camp (Dadi)
+VENDREDI 19h00-20h00 Boxe Thaï / K1 (Tawee)
+VENDREDI 20h00-21h15 Boxe Anglaise (Dadi)
+SAMEDI 10h00-11h00 Accès libre
+SAMEDI 11h00-12h00 Boxing Camp (Dadi)
+SAMEDI 12h40-14h15 Accès libre
+SAMEDI 14h15-15h00 Baby Boxe dès 3 ans (Dadi)
+SAMEDI 15h00-16h00 Boxe Éducative 7-11 ans (Dadi)
+SAMEDI 16h00-17h00 Boxe Éducative 12-16 ans (Dadi)
+SAMEDI 17h00-18h15 Boxe Éducative Compétiteurs (Dadi)
+SAMEDI 18h20-20h00 Boxe Thaï / K1 (Brice)
 `.trim(),
 
   portet: `
 ## PLANNING PROVISOIRE 2026-2027 — PORTET-SUR-GARONNE (61 route d'Espagne, 31120)
 ⚠ Planning annoncé comme PROVISOIRE : le préciser si on demande si les horaires sont définitifs.
-LUNDI : 10h00-12h00 Accès libre | 12h30-13h30 Boxe Anglaise (Valentin Tapia, tous niveaux) | 14h00-18h00 Accès libre | 18h00-19h00 Boxe Éducative Confirmés (Valentin Tapia) | 19h00-21h30 Boxe Amateurs et Pros (Valentin Tapia, compétition uniquement)
-MARDI : 10h00-12h00 Accès libre | 12h30-13h30 Préparation physique (Samuel Pinto) | 14h00-18h00 Accès libre | 18h00-19h00 Lady Kick (Samuel Pinto, 100 % féminin) | 19h00-20h00 Kick / K1 (Samuel Pinto) | 20h00-21h30 Boxe Anglaise Loisirs (Valentin Tapia)
-MERCREDI : 10h00-12h00 Accès libre | 12h30-13h30 Kick / K1 (Samuel Pinto) | 14h00-15h00 Kick Enfants (Ingrid) | 15h00-16h00 Kick Ados (Ingrid) | 16h00-17h00 Boxe Éducative 7-11 ans (Mourad) | 17h00-18h00 Boxe Éducative 12-16 ans (Mourad) | 18h00-19h00 Boxing Lady (Samuel Pinto, 100 % féminin) | 19h00-20h00 Préparation physique (Samuel Pinto) | 20h00-21h30 Kick / K1 (Samuel Pinto)
-JEUDI : 10h00-12h00 Accès libre | 12h30-13h30 Boxe Anglaise (Valentin Tapia) | 14h00-18h00 Accès libre | 18h00-19h00 Lady Kick (Samuel Pinto, 100 % féminin) | 19h00-20h00 Kick / K1 (Samuel Pinto) | 20h00-21h30 Boxe Anglaise Loisirs (Valentin Tapia)
-VENDREDI : 10h00-12h00 Accès libre | 12h30-13h30 Sparring Anglaise et Kick (Valentin Tapia + Samuel Pinto, bases techniques requises) | 14h00-18h00 Accès libre | 18h00-19h00 Boxe Amateurs et Pros (Valentin Tapia, compétition) | 19h00-21h30 Sparring Anglaise et Kick (Valentin Tapia + Samuel Pinto)
-SAMEDI : 10h00-11h00 Boxe Française (Samuel Pinto) ET 10h00-11h00 Kick Enfants (Ingrid) | 11h00-12h00 Préparation physique (Samuel Pinto) ET 11h00-12h00 Kick Ados (Ingrid) | 12h30-13h30 Boxe Anglaise (Valentin Tapia) | 14h00-15h00 Accès libre | 15h00-16h00 Baby Boxe dès 3 ans (Valentin Tapia, Mourad et Ingrid — encadrement collectif renforcé) | 16h00-17h00 Boxe Éducative 7-11 ans (Mourad) | 17h00-18h00 Boxe Éducative 12-16 ans (Mourad) | 18h00-21h30 Accès libre
+LUNDI 10h00-12h00 Accès libre
+LUNDI 12h30-13h30 Boxe Anglaise (Valentin Tapia, tous niveaux)
+LUNDI 14h00-18h00 Accès libre
+LUNDI 18h00-19h00 Boxe Éducative Confirmés (Valentin Tapia)
+LUNDI 19h00-21h30 Boxe Amateurs et Pros (Valentin Tapia, compétition uniquement)
+MARDI 10h00-12h00 Accès libre
+MARDI 12h30-13h30 Préparation physique (Samuel Pinto)
+MARDI 14h00-18h00 Accès libre
+MARDI 18h00-19h00 Lady Kick (Samuel Pinto, 100 % féminin)
+MARDI 19h00-20h00 Kick / K1 (Samuel Pinto)
+MARDI 20h00-21h30 Boxe Anglaise Loisirs (Valentin Tapia)
+MERCREDI 10h00-12h00 Accès libre
+MERCREDI 12h30-13h30 Kick / K1 (Samuel Pinto)
+MERCREDI 14h00-15h00 Kick Enfants (Ingrid)
+MERCREDI 15h00-16h00 Kick Ados (Ingrid)
+MERCREDI 16h00-17h00 Boxe Éducative 7-11 ans (Mourad)
+MERCREDI 17h00-18h00 Boxe Éducative 12-16 ans (Mourad)
+MERCREDI 18h00-19h00 Boxing Lady (Samuel Pinto, 100 % féminin)
+MERCREDI 19h00-20h00 Préparation physique (Samuel Pinto)
+MERCREDI 20h00-21h30 Kick / K1 (Samuel Pinto)
+JEUDI 10h00-12h00 Accès libre
+JEUDI 12h30-13h30 Boxe Anglaise (Valentin Tapia)
+JEUDI 14h00-18h00 Accès libre
+JEUDI 18h00-19h00 Lady Kick (Samuel Pinto, 100 % féminin)
+JEUDI 19h00-20h00 Kick / K1 (Samuel Pinto)
+JEUDI 20h00-21h30 Boxe Anglaise Loisirs (Valentin Tapia)
+VENDREDI 10h00-12h00 Accès libre
+VENDREDI 12h30-13h30 Sparring Anglaise et Kick (Valentin Tapia + Samuel Pinto, bases techniques requises)
+VENDREDI 14h00-18h00 Accès libre
+VENDREDI 18h00-19h00 Boxe Amateurs et Pros (Valentin Tapia, compétition)
+VENDREDI 19h00-21h30 Sparring Anglaise et Kick (Valentin Tapia + Samuel Pinto)
+SAMEDI 10h00-11h00 Boxe Française (Samuel Pinto)
+SAMEDI 10h00-11h00 Kick Enfants (Ingrid)
+SAMEDI 11h00-12h00 Préparation physique (Samuel Pinto)
+SAMEDI 11h00-12h00 Kick Ados (Ingrid)
+SAMEDI 12h30-13h30 Boxe Anglaise (Valentin Tapia)
+SAMEDI 14h00-15h00 Accès libre
+SAMEDI 15h00-16h00 Baby Boxe dès 3 ans (Valentin Tapia, Mourad et Ingrid — encadrement collectif renforcé)
+SAMEDI 16h00-17h00 Boxe Éducative 7-11 ans (Mourad)
+SAMEDI 17h00-18h00 Boxe Éducative 12-16 ans (Mourad)
+SAMEDI 18h00-21h30 Accès libre
 Note : Nicolas Tramaçon et Enzo Pioppo sont les référents Grappling / MMA de Portet, mais aucune séance Grappling ou MMA ne figure sur ce planning provisoire.
 `.trim(),
 
@@ -220,28 +341,56 @@ Note : Nicolas Tramaçon et Enzo Pioppo sont les référents Grappling / MMA de 
 ## PLANNING 2026-2027 — ÉTATS-UNIS (388 avenue des États-Unis, 31200 Toulouse) — 3 zones distinctes
 
 ### Zone A — Salle Boxe
-LUNDI : 12h40-13h20 Boxe Pieds-Poings (Renaud) | 18h30-19h40 Boxe Pieds-Poings (Renaud) | 19h50-21h15 Boxe Anglaise (Renaud)
-MARDI : 12h40-13h20 Boxe Anglaise (Renaud) | 18h30-19h40 Boxe Anglaise (Renaud) | 19h50-21h15 Boxe Pieds-Poings (Renaud)
-MERCREDI : 12h40-13h20 Boxe Pieds-Poings (Renaud) | 15h00-16h00 Boxe Pieds-Poings 7-11 ans (Renaud) | 16h00-17h00 Boxe Pieds-Poings 12-16 ans (Renaud) | 18h30-19h40 Boxe Pieds-Poings (Renaud) | 19h50-21h15 Boxe Anglaise (Renaud)
-JEUDI : 12h40-13h20 Boxe Anglaise (Valentin Guth) | 18h30-19h40 Boxe Anglaise (Renaud) | 19h50-21h15 Boxe Pieds-Poings (Renaud)
-VENDREDI : 18h30-19h40 Boxe Pieds-Poings (David) | 19h50-21h15 Boxe Anglaise (David)
-SAMEDI : 11h00-12h00 Boxe Anglaise (Renaud) | 14h15-15h00 Boxe Pieds-Poings 3-6 ans (Renaud) | 15h00-16h00 Boxe Pieds-Poings 7-11 ans (Renaud) | 16h00-17h00 Boxe Pieds-Poings 12-16 ans (Renaud)
+LUNDI 12h40-13h20 Boxe Pieds-Poings (Renaud)
+LUNDI 18h30-19h40 Boxe Pieds-Poings (Renaud)
+LUNDI 19h50-21h15 Boxe Anglaise (Renaud)
+MARDI 12h40-13h20 Boxe Anglaise (Renaud)
+MARDI 18h30-19h40 Boxe Anglaise (Renaud)
+MARDI 19h50-21h15 Boxe Pieds-Poings (Renaud)
+MERCREDI 12h40-13h20 Boxe Pieds-Poings (Renaud)
+MERCREDI 15h00-16h00 Boxe Pieds-Poings 7-11 ans (Renaud)
+MERCREDI 16h00-17h00 Boxe Pieds-Poings 12-16 ans (Renaud)
+MERCREDI 18h30-19h40 Boxe Pieds-Poings (Renaud)
+MERCREDI 19h50-21h15 Boxe Anglaise (Renaud)
+JEUDI 12h40-13h20 Boxe Anglaise (Valentin Guth)
+JEUDI 18h30-19h40 Boxe Anglaise (Renaud)
+JEUDI 19h50-21h15 Boxe Pieds-Poings (Renaud)
+VENDREDI 18h30-19h40 Boxe Pieds-Poings (David)
+VENDREDI 19h50-21h15 Boxe Anglaise (David)
+SAMEDI 11h00-12h00 Boxe Anglaise (Renaud)
+SAMEDI 14h15-15h00 Boxe Pieds-Poings 3-6 ans (Renaud)
+SAMEDI 15h00-16h00 Boxe Pieds-Poings 7-11 ans (Renaud)
+SAMEDI 16h00-17h00 Boxe Pieds-Poings 12-16 ans (Renaud)
 
 ### Zone B — Salle MMA / Sol (coach : Zouhir)
-LUNDI : 18h20-19h30 Jiu-Jitsu Brésilien | 19h40-21h00 MMA tous niveaux (débutants acceptés)
-MARDI : 18h20-19h30 Grappling | 19h40-21h00 MMA tous niveaux
-MERCREDI : 18h00-19h00 MMA Enfants / Ados 10-16 ans | 19h40-21h00 Grappling
-JEUDI : 18h20-19h30 Grappling | 19h40-21h00 MMA tous niveaux
-VENDREDI : 18h20-19h30 Jiu-Jitsu Brésilien | 19h40-21h00 MMA tous niveaux
-SAMEDI : 18h00-19h00 MMA Enfants / Ados 10-16 ans
+LUNDI 18h20-19h30 Jiu-Jitsu Brésilien
+LUNDI 19h40-21h00 MMA tous niveaux (débutants acceptés)
+MARDI 18h20-19h30 Grappling
+MARDI 19h40-21h00 MMA tous niveaux
+MERCREDI 18h00-19h00 MMA Enfants / Ados 10-16 ans
+MERCREDI 19h40-21h00 Grappling
+JEUDI 18h20-19h30 Grappling
+JEUDI 19h40-21h00 MMA tous niveaux
+VENDREDI 18h20-19h30 Jiu-Jitsu Brésilien
+VENDREDI 19h40-21h00 MMA tous niveaux
+SAMEDI 18h00-19h00 MMA Enfants / Ados 10-16 ans
 
 ### Zone C — Salle Boxing Fitness
-LUNDI : 12h40-13h20 HYROX (Yannis Chouet) | 18h40-19h20 HYROX (Yannis Chouet) | 19h30-20h30 Cross Training (Yannis Chouet)
-MARDI : 12h40-13h20 Boxing HIIT (David) | 18h40-19h20 Lady Punch (David, 100 % féminin) | 19h30-20h30 Boxing HIIT (David)
-MERCREDI : 18h40-19h20 Lady Punch (Yannis Chouet, 100 % féminin) | 19h30-20h30 Cross Training (Yannis Chouet)
-JEUDI : 12h40-13h20 Cross Training (Yannis Chouet) | 18h40-19h20 HYROX (Yannis Chouet) | 19h30-20h30 Boxing HIIT (Yannis Chouet)
-VENDREDI : 12h40-13h20 Boxing HIIT (David) | 18h40-19h20 Lady Punch (Valentin Guth, 100 % féminin) | 19h30-20h30 Boxing HIIT (Valentin Guth)
-SAMEDI : 11h00-12h00 Cross Training (Clément)
+LUNDI 12h40-13h20 HYROX (Yannis Chouet)
+LUNDI 18h40-19h20 HYROX (Yannis Chouet)
+LUNDI 19h30-20h30 Cross Training (Yannis Chouet)
+MARDI 12h40-13h20 Boxing HIIT (David)
+MARDI 18h40-19h20 Lady Punch (David, 100 % féminin)
+MARDI 19h30-20h30 Boxing HIIT (David)
+MERCREDI 18h40-19h20 Lady Punch (Yannis Chouet, 100 % féminin)
+MERCREDI 19h30-20h30 Cross Training (Yannis Chouet)
+JEUDI 12h40-13h20 Cross Training (Yannis Chouet)
+JEUDI 18h40-19h20 HYROX (Yannis Chouet)
+JEUDI 19h30-20h30 Boxing HIIT (Yannis Chouet)
+VENDREDI 12h40-13h20 Boxing HIIT (David)
+VENDREDI 18h40-19h20 Lady Punch (Valentin Guth, 100 % féminin)
+VENDREDI 19h30-20h30 Boxing HIIT (Valentin Guth)
+SAMEDI 11h00-12h00 Cross Training (Clément)
 `.trim(),
 };
 
@@ -301,7 +450,7 @@ const DISCIPLINE_GYMS = [
 ];
 
 /** Budget de caractères pour les plannings, pour rester sous le quota du modèle. */
-const PLANNING_BUDGET = 7000;
+const PLANNING_BUDGET = 3000;
 
 /** Empile des plannings tant que le budget le permet, et nomme les salles écartées. */
 function packPlannings(ids) {
