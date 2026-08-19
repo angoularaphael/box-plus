@@ -28,6 +28,25 @@ function formatFrDate(date = new Date()) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+function parseFrDatesFromLabel(label) {
+  return (String(label || '').match(/\d{2}\/\d{2}\/\d{4}/g) || []).map((s) => {
+    const [d, m, y] = s.split('/').map(Number);
+    return new Date(y, m - 1, d);
+  });
+}
+
+/** Contrats « en attente » / qui commencent après aujourd’hui — pas l’abo en cours. */
+function isPendingOrFutureContract(label) {
+  const t = String(label || '');
+  if (/en attente/i.test(t)) return true;
+  const dates = parseFrDatesFromLabel(t);
+  if (!dates.length) return false;
+  const start = dates[0];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return start > today;
+}
+
 function parseCancelDate(raw) {
   if (!raw) return new Date();
   if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw;
@@ -54,7 +73,24 @@ function getScopes(page) {
 /**
  * Liste les contrats actifs via #prestation_XXXX (structure Deciplus réelle).
  */
+async function expandContractSections(page) {
+  for (const ctx of getScopes(page)) {
+    try {
+      await ctx
+        .locator('div, span, a, button')
+        .filter({ hasText: /^en attente$/i })
+        .first()
+        .click({ force: true, timeout: 1500 })
+        .catch(() => {});
+    } catch {
+      /* frame */
+    }
+  }
+  await page.waitForTimeout(400);
+}
+
 async function findActiveContracts(page, options = {}) {
+  await expandContractSections(page);
   for (let attempt = 0; attempt < 12; attempt += 1) {
     let ready = false;
     for (const ctx of getScopes(page)) {
@@ -93,12 +129,17 @@ async function findActiveContracts(page, options = {}) {
       const count = await items.count();
       for (let i = 0; i < count; i += 1) {
         const item = items.nth(i);
-        if (!(await item.isVisible().catch(() => false))) continue;
         const idAttr = (await item.getAttribute('id').catch(() => '')) || '';
         const idc = (idAttr.match(/prestation_(\d+)/i) || [])[1];
         if (!idc || seen.has(idc)) continue;
 
-        const label = ((await item.innerText().catch(() => '')) || '').replace(/\s+/g, ' ').trim();
+        const label = (
+          (await item.innerText().catch(() => '')) ||
+          (await item.evaluate((el) => (el.textContent || '').replace(/\s+/g, ' ').trim()).catch(() => '')) ||
+          ''
+        )
+          .replace(/\s+/g, ' ')
+          .trim();
         if (!label) continue;
         // Déjà résiliés / terminés : pas d’action « Résilier » → évite action_panel_missing.
         // Exception : séance d’essai / coaching « Expiré » le jour même (1 crédit) — c’est la vente.
@@ -832,7 +873,7 @@ async function reopenMemberAfterCancel(page, memberId) {
   await randomDelay(600, 1000);
 }
 
-async function cancelAllMemberSales(page, memberId, { maxSales = 15, cancelDate = null } = {}) {
+async function cancelAllMemberSales(page, memberId, { maxSales = 15, cancelDate = null, filter = null } = {}) {
   let total = 0;
   const details = [];
   const doneIds = new Set();
@@ -855,6 +896,15 @@ async function cancelAllMemberSales(page, memberId, { maxSales = 15, cancelDate 
 
     let contracts = await findActiveContracts(page);
     contracts = contracts.filter((c) => !doneIds.has(c.idc));
+    if (typeof filter === 'function') {
+      contracts = contracts.filter((c) => {
+        try {
+          return filter(c);
+        } catch {
+          return false;
+        }
+      });
+    }
 
     logInfo('Contrats actifs à résilier', {
       member_id: memberId,
@@ -909,6 +959,20 @@ async function cancelSale(page, memberId, options = {}) {
   const cancelReason = String(options.cancelReason || options.cancel_reason || '').toLowerCase();
   const isChange =
     cancelReason === 'change_to_comptant' || cancelReason.startsWith('change_');
+
+  if (options.pendingOnly) {
+    const outcome = await cancelAllMemberSales(page, memberId, {
+      maxSales: 15,
+      cancelDate,
+      filter: (c) => !c.isBadge && isPendingOrFutureContract(c.label),
+    });
+    return {
+      action: 'sale_cancelled',
+      sale_type: 'cancel',
+      pending_only: true,
+      ...outcome,
+    };
+  }
 
   if (!isChange) {
     try {
@@ -995,4 +1059,6 @@ module.exports = {
   cancelAllMemberSales,
   cancelSale,
   formatFrDate,
+  isPendingOrFutureContract,
+  parseFrDatesFromLabel,
 };

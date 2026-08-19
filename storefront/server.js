@@ -17,6 +17,7 @@ const {
   inscriptionUrl,
   listBalmaPrelevementOffers,
   isBalmaRetourSource,
+  isBalmaRetourOrder,
   balmaBadgePaymentFields,
 } = require('../lib/balma');
 const { forwardJobToBot } = require('../lib/bot-forward');
@@ -447,6 +448,7 @@ async function maybeNotifyOffre29Friend(order, friendInput) {
 
 async function dispatchLifecycleOrder(order) {
   const { hydrateOrderMedia, applyDeciplusPhoto } = require('./lib/cloudinary');
+  const { isBalmaRetourOrder } = require('../lib/balma');
   const hydrated = await hydrateOrderMedia(order);
   const product = findProduct(order.product_id) || order.product_snapshot;
   const payload = applyDeciplusPhoto(buildOrderFromLifecycle(hydrated, product), hydrated);
@@ -455,6 +457,12 @@ async function dispatchLifecycleOrder(order) {
   }
   if (!payload.photo_base64 && !payload.photo_path && !payload.photo_url) {
     logWarn('Dispatch bot sans photo membre', { order_id: order.order_id });
+  }
+  if (isBalmaRetourOrder(order) || order.aventure) {
+    payload.action = 'balma_switch';
+    payload.skip_restore = true;
+    payload.offer = order.product_id;
+    payload.gym = payload.gym || 'minimes';
   }
   const result = await dispatchOrder(payload);
   order.dispatched_at = new Date().toISOString();
@@ -1933,31 +1941,50 @@ function createApp() {
 
   app.post('/api/balma-switch', async (req, res) => {
     try {
+      await hydrateMerchOnce();
       const parsed = validateBalmaSwitchPayload(req.body || {});
       if (parsed.errors.length) {
         return res.status(400).json({ ok: false, errors: parsed.errors, error: parsed.errors[0] });
       }
-      const order = buildBalmaSwitchOrder(parsed);
-      let forwarded = { forwarded: false };
-      try {
-        forwarded = await forwardJobToBot(order);
-      } catch (err) {
-        logError('balma_switch forward', { error: err.message, order_id: order.order_id });
+      if (!parsed.offer || parsed.offer === 'none' || !parsed.product) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Choisis l’offre 29,99 € ou 259 €',
+        });
       }
-      const redirect = parsed.skip_restore && parsed.offer === 'none'
-        ? null
-        : inscriptionUrl({
-            productId: parsed.offer,
-            firstName: parsed.first_name,
-            lastName: parsed.last_name,
-            birthdate: parsed.birthdate,
-            boutiqueBase: getStoreUrl(),
-          });
+      const product = findProduct(parsed.offer) || parsed.product;
+      if (!product?.id) {
+        return res.status(400).json({ ok: false, error: 'Offre introuvable' });
+      }
+      const draft = await createDraftAsync({
+        product_id: product.id || parsed.offer,
+        product,
+        customer_short: {
+          first_name: parsed.first_name,
+          last_name: parsed.last_name,
+          birthdate: parsed.birthdate,
+          email: String(req.body.email || '').trim() || '',
+          phone: String(req.body.phone || '').trim() || '',
+        },
+        gym: 'minimes',
+        source: 'balma_retour',
+      });
+      draft.aventure = true;
+      draft.skip_dossier = true;
+      draft.step = STEPS.PAYMENT;
+      await saveOrderAsync(draft);
+      const redirect = inscriptionUrl({
+        productId: draft.product_id,
+        orderId: draft.order_id,
+        token: draft.access_token,
+        boutiqueBase: getStoreUrl(),
+      });
       res.json({
         ok: true,
-        order_id: order.order_id,
-        queued: Boolean(forwarded.forwarded),
-        skip_restore: Boolean(parsed.skip_restore),
+        order_id: draft.order_id,
+        aventure_id: draft.order_id,
+        queued: false,
+        skip_restore: true,
         redirect,
       });
     } catch (err) {
@@ -2589,6 +2616,17 @@ function createApp() {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
 
+      const payEmail = String(req.body.email || req.body.customer_short?.email || '').trim();
+      const payPhone = String(req.body.phone || req.body.customer_short?.phone || '').trim();
+      if (payEmail || payPhone) {
+        order.customer_short = {
+          ...(order.customer_short || {}),
+          ...(payEmail ? { email: payEmail } : {}),
+          ...(payPhone ? { phone: payPhone } : {}),
+        };
+        await saveOrderAsync(order);
+      }
+
       if (req.body.gym) {
         order = await updateGymAsync(order.order_id, req.body.gym);
       }
@@ -2686,7 +2724,10 @@ function createApp() {
         return res.json({
           ok: true,
           mode: 'free',
-          redirect: inscriptionRedirect(order, STEPS.DOSSIER),
+          redirect: inscriptionRedirect(
+            order,
+            isBalmaRetourOrder(order) || order.aventure ? STEPS.SIGNATURE : STEPS.DOSSIER
+          ),
         });
       }
 

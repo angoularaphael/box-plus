@@ -200,8 +200,10 @@ async function markPaymentPaidAsync(orderId, paymentData) {
   const plan = order.payment?.billing_plan;
   const snap = order.product_snapshot || {};
   const { requiresIbanForPlan } = require('../../lib/billing-plan');
+  const { isBalmaRetourOrder } = require('../../lib/balma');
   const needsIban = !order.payment?.iban && requiresIbanForPlan(snap, plan);
-  order.step = needsIban ? STEPS.IBAN : STEPS.DOSSIER;
+  const aventure = isBalmaRetourOrder(order) || order.aventure || order.skip_dossier;
+  order.step = needsIban ? STEPS.IBAN : aventure ? STEPS.SIGNATURE : STEPS.DOSSIER;
   const saved = await saveOrderAsync(order);
   try {
     const { collapseUnpaidDraftsForEmail } = require('./order-prune');

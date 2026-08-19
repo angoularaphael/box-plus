@@ -113,9 +113,15 @@
   function isBalmaRetour() {
     return (
       params.get('source') === 'balma_retour' ||
+      params.get('aventure') === '1' ||
       state.order?.source === 'balma_retour' ||
+      state.order?.aventure === true ||
       state.order?.utm?.source === 'balma_retour'
     );
+  }
+
+  function aventureAfterPayStep() {
+    return productRequiresIban(state.order || { product_snapshot: state.product }) ? 5 : 7;
   }
 
   const stepContent = document.getElementById('stepContent');
@@ -572,6 +578,12 @@
     const missingIban = orderNeedsIban(order);
 
     if (order.signature?.signed_at || order.step >= 8) return needsPay && !paid ? 4 : 8;
+    if (isBalmaRetour()) {
+      if (order.step >= 7) return needsPay && !paid ? 4 : 7;
+      if (paid || !needsPay) return missingIban ? 5 : 7;
+      if (order.customer_short) return 4;
+      return 4;
+    }
     if (order.step >= 7) return needsPay && !paid ? 4 : 7;
     if (order.step >= 6) return needsPay && !paid ? 4 : 6;
     if (order.step >= 5) return needsPay && !paid ? 4 : missingIban ? 5 : 6;
@@ -642,11 +654,18 @@
     const hidePay = !orderRequiresPayment(orderLike);
     const hideGym = isBalmaRetour();
     const hideOffer = isBalmaRetour();
+    const hideIdentity = isBalmaRetour();
+    const hideDossier = isBalmaRetour();
     const visible = [];
     document.querySelectorAll('.stepper-step').forEach((el) => {
       const s = Number(el.dataset.step);
       const hide =
-        (s === 5 && hideIban) || (s === 4 && hidePay) || (s === 2 && hideGym) || (s === 1 && hideOffer);
+        (s === 5 && hideIban) ||
+        (s === 4 && hidePay) ||
+        (s === 2 && hideGym) ||
+        (s === 1 && hideOffer) ||
+        (s === 3 && hideIdentity) ||
+        (s === 6 && hideDossier);
       el.hidden = hide;
       el.classList.toggle('stepper-skipped', hide);
       if (!hide) visible.push(el);
@@ -812,16 +831,20 @@
 
   function payRequestBody(extra = {}) {
     const short = state.order?.customer_short || state.shortDraft;
+    const email = document.getElementById('pay_email')?.value?.trim() || short?.email;
+    const phone = document.getElementById('pay_phone')?.value?.trim() || short?.phone;
     return {
       token: state.token,
       product_id: state.productId,
       gym: state.order?.customer_full?.gym || state.gymDraft || undefined,
+      email,
+      phone,
       customer_short: short
         ? {
             first_name: short.first_name,
             last_name: short.last_name,
-            email: short.email,
-            phone: short.phone,
+            email,
+            phone,
             birthdate: short.birthdate,
           }
         : undefined,
@@ -1089,11 +1112,22 @@
         </div>`;
     }
 
+    const shortPay = state.order?.customer_short || state.shortDraft || {};
+    const needAventureContact = isBalmaRetour() && (!shortPay.email || !shortPay.phone);
+    const aventureContactHtml = needAventureContact
+      ? `<div class="form-grid" style="margin-bottom:16px">
+          <div class="full"><label for="pay_email">Email *</label>
+            <input id="pay_email" name="email" type="email" required value="${esc(shortPay.email || '')}" autocomplete="email" /></div>
+          <div class="full"><label for="pay_phone">Téléphone mobile *</label>
+            <input id="pay_phone" name="phone" type="tel" required value="${esc(shortPay.phone || '')}" autocomplete="tel" /></div>
+        </div>`
+      : '';
     stepContent.innerHTML = `
       <h1>Paiement</h1>
       <p class="sub">${firstPaymentCaption(p)}</p>
       ${balmaBadgeNotice}
       <form id="payForm">
+        ${aventureContactHtml}
         ${billingHtml}
         <button type="submit" class="btn stripe block" id="payBtn">${
           p?.requires_payment === false ? 'Continuer' : 'Payer'
@@ -1362,7 +1396,7 @@
     document.getElementById('toStep2').onclick = () => {
       if (isBalmaRetour()) {
         state.gymDraft = 'minimes';
-        goToStep(3);
+        goToStep(4);
         return;
       }
       goToStep(2);
@@ -1578,7 +1612,7 @@
     if (guardPaidStep()) return;
     // Offre sans IBAN → passer. Sinon toujours afficher (même si déjà saisi) pour pouvoir modifier.
     if (!productRequiresIban(state.order)) {
-      goToStep(6);
+      goToStep(isBalmaRetour() ? 7 : 6);
       return;
     }
     const existingIban = state.order?.payment?.iban || '';
@@ -1636,13 +1670,17 @@
       if (!state.order?.payment?.iban) {
         state.order.payment = { ...(state.order.payment || {}), iban: String(iban || '').replace(/\s+/g, '').toUpperCase() };
       }
-      goToStep(6);
+      goToStep(isBalmaRetour() ? 7 : 6);
     };
     bindRoundClock();
   }
 
   function renderStep6() {
     if (guardPaidStep()) return;
+    if (isBalmaRetour()) {
+      goToStep(7);
+      return;
+    }
     if (orderNeedsIban(state.order)) {
       goToStep(5);
       return;
@@ -1947,7 +1985,7 @@
       </div>
       <button type="button" class="btn block" id="signBtn">Valider</button>
       <button type="button" class="btn secondary block" id="previewContractBtn" style="margin-top:12px">Prévisualiser la facture</button>
-      ${backButton('← Retour', 6)}`;
+      ${backButton('← Retour', isBalmaRetour() ? (productRequiresIban(state.order) ? 5 : 4) : 6)}`;
 
     const pad = initSignaturePad(document.getElementById('sigPad'));
     document.getElementById('clearSig').onclick = () => pad.clear();
@@ -2211,9 +2249,9 @@
 
   async function init() {
     restoreProgress();
-    if (isBalmaRetour() && state.step < 3) {
+    if (isBalmaRetour() && state.step < 4) {
       state.gymDraft = 'minimes';
-      state.step = 3;
+      state.step = 4;
     }
     await loadConfig();
 

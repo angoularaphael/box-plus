@@ -296,8 +296,45 @@ async function migrateMemberViaApi(page, memberId, gymConfig) {
   return { ok: false, reason: `api_${legacy.status()}` };
 }
 
+function shouldCreateChosenOfferSale(order = {}) {
+  const paid = String(order.payment?.status || '').toLowerCase() === 'paid';
+  if (!paid) return false;
+  const id = String(order.product_id || order.offer || '').trim();
+  if (!id) return false;
+  const { isNoneOffer } = require('../lib/balma');
+  return !isNoneOffer(id);
+}
+
+async function createChosenOfferSale(page, memberId, gymConfig, order) {
+  const { recordSale } = require('./sale');
+  const { fetchDeciplusCatalog, resolveProductConfig } = require('./catalog');
+  let catalog = [];
+  try {
+    catalog = await fetchDeciplusCatalog(page);
+  } catch (err) {
+    logWarn('Catalogue Deciplus indisponible pour vente Aventure', { error: err.message });
+  }
+  const productConfig = resolveProductConfig(order, catalog || []);
+  const is259 = /saison|259|offre-saison|dp-100/i.test(
+    `${order.product_id || ''} ${order.offer || ''} ${order.product_name || ''}`
+  );
+  if (is259) {
+    productConfig.paiement_comptant = true;
+    productConfig.requires_iban = false;
+    productConfig.auto_badge = false;
+  }
+  productConfig.skip_rib_prompt = true;
+  logInfo('Vente Aventure après migration', {
+    member_id: memberId,
+    product: order.product_id || order.offer,
+  });
+  return recordSale(page, order, productConfig, memberId, gymConfig, {
+    badgeProductConfig: null,
+  });
+}
+
 async function restoreContracts(page, memberId, snapshots, gymConfig, order) {
-  if (!snapshots.length) {
+  if (order.skip_restore !== false || !snapshots.length) {
     return { restored: 0, skipped: true };
   }
   const { recordSale } = require('./sale');
@@ -425,13 +462,22 @@ async function runBalmaSwitch(page, order) {
         return { restored: 0 };
       });
 
+  let sale = null;
+  if (skipRestore && shouldCreateChosenOfferSale(order)) {
+    sale = await createChosenOfferSale(page, memberId, gymConfig, order).catch((err) => {
+      logWarn('Vente Aventure après migration échouée', { error: err.message, member_id: memberId });
+      return { error: err.message };
+    });
+  }
+
   return {
-    status: STATUS.SUCCESS,
+    status: sale?.error ? STATUS.MANUAL_REVIEW : STATUS.SUCCESS,
     action: 'balma_switch',
     deciplus_member_id: memberId,
     snapshots,
     unpaid,
     restore,
+    sale,
   };
 }
 

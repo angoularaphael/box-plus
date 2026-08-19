@@ -135,7 +135,7 @@ test('formulaire aventure — date de naissance requise', () => {
   assert.ok(missing.errors.some((e) => /naissance/i.test(e)));
 });
 
-test('redirect inscription 29/259 avec source et préfill', () => {
+test('redirect inscription 29/259 avec source, aventure et préfill', () => {
   const url = inscriptionUrl({
     productId: 'offre-duo',
     firstName: 'Léa',
@@ -145,6 +145,8 @@ test('redirect inscription 29/259 avec source et préfill', () => {
   });
   assert.match(url, /product=offre-duo/);
   assert.match(url, /source=balma_retour/);
+  assert.match(url, /aventure=1/);
+  assert.match(url, /step=4/);
   assert.match(url, /prenom=/);
   assert.match(url, /nom=Martin/);
   assert.match(url, /birthdate=1991-08-10/);

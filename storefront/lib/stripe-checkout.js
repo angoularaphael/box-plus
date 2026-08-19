@@ -6,6 +6,7 @@
 
 const Stripe = require('stripe');
 const { requiresIbanForPlan, isComptantStyleProduct } = require('../../lib/billing-plan');
+const { isBalmaRetourOrder } = require('../../lib/balma');
 
 function stripeClientForGym(gym) {
   const key =
@@ -44,7 +45,8 @@ function createCheckoutSessionParams({
   const gym = order.customer_full?.gym || payload?.gym || '';
   const plan = billingPlan || order.payment?.billing_plan || null;
   const needsIban = requiresIbanForPlan(product, plan);
-  const successStep = needsIban ? 5 : 6;
+  const aventure = isBalmaRetourOrder(order) || order.aventure || order.skip_dossier;
+  const successStep = needsIban ? 5 : aventure ? 7 : 6;
 
   const customerEmail =
     order.customer_short?.email ||
