@@ -273,6 +273,8 @@ const GYM_INDEX = `
 - Saint-Cyprien : Boxe Anglaise, Boxe Thaï / K1, Boxing Camp, Cross Training, HYROX, Grappling, Lady Punch, Boxe Éducative, Baby Boxe.
 - Portet : Boxe Anglaise (loisirs, amateurs et pros), Kick / K1, Boxe Française, Lady Kick, Boxing Lady, préparation physique, Sparring, Boxe Éducative, Baby Boxe. Planning PROVISOIRE.
 - États-Unis : Boxe Anglaise, Boxe Pieds-Poings, MMA, Grappling, Jiu-Jitsu Brésilien, HYROX, Cross Training, Boxing HIIT, Lady Punch.
+Cours 100 % féminins, par salle exacte : **Boxing Lady** à Minimes et Portet · **Lady Punch** à Ramonville, Saint-Cyprien et États-Unis · **Lady Kick** à Portet.
+Ne jamais inverser cette liste : ne cite une discipline que pour les salles où elle est écrite ici.
 Tu n'as PAS le détail des créneaux ici : demande dans quelle salle la personne souhaite venir, puis donne les horaires exacts.
 `.trim();
 
