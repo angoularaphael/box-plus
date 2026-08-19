@@ -60,6 +60,7 @@ test('formulaire aventure — refuse comptant', () => {
   const bad = validateBalmaSwitchPayload({
     first_name: 'Lea',
     last_name: 'Martin',
+    birthdate: '1991-08-10',
     offer: '29',
     prelevement: false,
   });
@@ -69,11 +70,23 @@ test('formulaire aventure — refuse comptant', () => {
   const ok = validateBalmaSwitchPayload({
     prenom: 'Lea',
     nom: 'Martin',
+    birthdate: '1991-08-10',
     offer: '259',
     prelevement: true,
   });
   assert.deepEqual(ok.errors, []);
   assert.equal(ok.offer, 'offre-saison');
+  assert.equal(ok.birthdate, '1991-08-10');
+});
+
+test('formulaire aventure — date de naissance requise', () => {
+  const missing = validateBalmaSwitchPayload({
+    first_name: 'Lea',
+    last_name: 'Martin',
+    offer: '29',
+    prelevement: true,
+  });
+  assert.ok(missing.errors.some((e) => /naissance/i.test(e)));
 });
 
 test('redirect inscription 29/259 avec source et préfill', () => {
@@ -81,12 +94,14 @@ test('redirect inscription 29/259 avec source et préfill', () => {
     productId: 'offre-duo',
     firstName: 'Léa',
     lastName: 'Martin',
+    birthdate: '1991-08-10',
     boutiqueBase: 'https://boutique.boxingcenter.fr',
   });
   assert.match(url, /product=offre-duo/);
   assert.match(url, /source=balma_retour/);
   assert.match(url, /prenom=/);
   assert.match(url, /nom=Martin/);
+  assert.match(url, /birthdate=1991-08-10/);
 });
 
 test('parseFrDates + productSearchFromLabel', () => {
@@ -94,6 +109,32 @@ test('parseFrDates + productSearchFromLabel', () => {
   assert.equal(d.start, '01/09/2025');
   assert.equal(d.end, '29/09/2025');
   assert.ok(productSearchFromLabel('OFFRE A 29€ du 01/09/2025').includes('OFFRE A 29'));
+  const cleaned = productSearchFromLabel(
+    'OFFRE DUO 29€ CONTRAT N°C2026-042313 vendu le 18/08/2026'
+  );
+  assert.match(cleaned, /OFFRE DUO 29/i);
+  assert.doesNotMatch(cleaned, /CONTRAT/i);
+});
+
+test('catalogue — étudiant 34,99 ne matche pas DUO 29', () => {
+  const catalog = [
+    { id: 12, title: 'Badge', price: 34.99, type: 'decipass' },
+    { id: 104, title: 'OFFRE DUO 29€', price: 29, type: 'abo', categoryId: 'abo' },
+    { id: 87, title: 'OFFRE PROMO 34.99€ ETUDIANTS', price: 34.99, type: 'abo', categoryId: 'abo' },
+    { id: 88, title: 'OFFRE PROMO 38.99€ ADULTE', price: 38.99, type: 'abo', categoryId: 'abo' },
+  ];
+  const etu = findProductInCatalog(catalog, {
+    product_name: 'OFFRE PROMO 34.99€ ETUDIANTS',
+    deciplus_product_search: 'ETUDIANTS 34.99',
+    payment: { amount: 34.99 },
+  });
+  assert.equal(etu?.id, 87);
+  const adu = findProductInCatalog(catalog, {
+    product_name: 'OFFRE PROMO 38.99€ ADULTE',
+    deciplus_product_search: 'ADULTE 38.99',
+    payment: { amount: 38.99 },
+  });
+  assert.equal(adu?.id, 88);
 });
 
 test('catalogue — OFFRE A 29 matche OFFRE DUO 29€', () => {
@@ -140,10 +181,9 @@ test('selectors migration + impayés présents', () => {
   assert.ok(sel.member_unpaid?.delete);
 });
 
-test('page aventure noindex', () => {
-  const html = fs.readFileSync(
-    path.join(__dirname, '..', 'storefront', 'public', 'aventure.html'),
-    'utf8'
-  );
-  assert.match(html, /noindex/);
+test('boutique ne sert plus /aventure', () => {
+  const htmlPath = path.join(__dirname, '..', 'storefront', 'public', 'aventure.html');
+  assert.equal(fs.existsSync(htmlPath), false);
+  const vercel = fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8');
+  assert.match(vercel, /aventure\.boxingcenter\.fr/);
 });

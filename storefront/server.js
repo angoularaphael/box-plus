@@ -12,7 +12,6 @@ const multer = require('multer');
 const { logInfo, logError, logWarn } = require('../lib/logger');
 const { getStoreUrl, getCheckoutBaseUrl, PRODUCTION_STORE_URL } = require('../lib/app-urls');
 const {
-  isAventureHost,
   validateBalmaSwitchPayload,
   buildBalmaSwitchOrder,
   inscriptionUrl,
@@ -871,28 +870,8 @@ function createApp() {
      sans en-tête CORS le navigateur bloquait la réponse (préflight en 404). */
   app.use('/api', corsMiddleware());
 
-  app.use((req, res, next) => {
-    if (!isAventureHost(req)) return next();
-    const p = String(req.path || '/');
-    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-    const allowed =
-      p === '/' ||
-      p === '/aventure' ||
-      p === '/aventure.html' ||
-      p === '/api/balma-switch' ||
-      p === '/robots.txt' ||
-      p.startsWith('/css/') ||
-      p.startsWith('/js/') ||
-      p.startsWith('/assets/') ||
-      p.startsWith('/img/') ||
-      p.startsWith('/fonts/');
-    if (p === '/robots.txt') {
-      return res.type('text/plain').send('User-agent: *\nDisallow: /\n');
-    }
-    if (!allowed) {
-      return res.status(404).type('text/html; charset=utf-8').sendFile(path.join(PUBLIC_DIR, '404.html'));
-    }
-    next();
+  app.get(['/aventure', '/aventure.html'], (_req, res) => {
+    res.redirect(301, 'https://aventure.boxingcenter.fr/');
   });
 
   app.use(
@@ -1968,6 +1947,7 @@ function createApp() {
         productId: parsed.offer,
         firstName: parsed.first_name,
         lastName: parsed.last_name,
+        birthdate: parsed.birthdate,
         boutiqueBase: getStoreUrl(),
       });
       res.json({
@@ -4344,7 +4324,6 @@ function createApp() {
     '/materiel/produit': 'materiel-produit.html',
     '/panier': 'panier.html',
     '/inscription': 'inscription.html',
-    '/aventure': 'aventure.html',
     '/faq': 'faq.html',
     '/politique-confidentialite': 'legal/confidentialite.html',
     '/cgv': 'cgv.html',
@@ -4364,22 +4343,14 @@ function createApp() {
   for (const [route, file] of Object.entries(pageRoutes)) {
     app.get(route, (_req, res) => {
       res.type('text/html; charset=utf-8');
-      if (route.startsWith('/admin') || route === '/aventure') {
+      if (route.startsWith('/admin')) {
         res.setHeader('Cache-Control', 'no-store');
-      }
-      if (route === '/aventure') {
-        res.setHeader('X-Robots-Tag', 'noindex, nofollow');
       }
       res.sendFile(path.join(PUBLIC_DIR, file));
     });
   }
 
-  app.get('/', (req, res) => {
-    if (isAventureHost(req)) {
-      res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-      res.type('text/html; charset=utf-8');
-      return res.sendFile(path.join(PUBLIC_DIR, 'aventure.html'));
-    }
+  app.get('/', (_req, res) => {
     res.type('text/html; charset=utf-8');
     res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
   });
