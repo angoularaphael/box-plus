@@ -324,10 +324,18 @@ const WELCOME_FALLBACKS = [
 
 const WELCOME_FALLBACK = WELCOME_FALLBACKS[0];
 
+/* Le délai de 72 h est une règle contractuelle : il doit figurer dès la première
+   réponse sur la résiliation, pas seulement dans le parcours de David. */
 const REDIRECT_DAVID = [
-  'Pour résilier un abo **par prélèvement**, ouvre « Gérer mon abo » : **David** t’accompagne. Les formules **comptant** se voient avec le **manager** en salle.',
-  'Résiliation en ligne = parcours **David** (prélèvements sans engagement). Comptant / forfait → ton **manager** en présentiel via « Gérer mon abo ».',
-  'Je ne gère pas les résils ici. Passe par « Gérer mon abo » : **David** pour le prélèvement, **manager** pour le comptant.',
+  'Pour résilier un abo **par prélèvement**, ouvre « Gérer mon abo » : **David** t’accompagne. Enregistre ta demande **plus de 72 h avant ta prochaine échéance**, sinon elle est encore prélevée. Les formules **comptant** se voient avec le **manager** en salle.',
+  'Résiliation en ligne = parcours **David** (prélèvements sans engagement), à faire **plus de 72 h avant le prochain prélèvement**. Comptant / forfait → ton **manager** en présentiel.',
+  'Je ne gère pas les résils ici. Passe par « Gérer mon abo » : **David** pour le prélèvement, **manager** pour le comptant. Compte **72 h avant l’échéance** pour éviter le prochain prélèvement.',
+];
+
+const REDIRECT_DAVID_VOUS = [
+  'Pour résilier un abonnement **par prélèvement**, ouvrez « Gérer mon abo » : **David** vous accompagne. Votre demande doit être enregistrée **plus de 72 h avant votre prochaine échéance**, sans quoi elle sera encore prélevée. Les formules **comptant** se règlent avec le **manager** en salle.',
+  'La résiliation en ligne passe par le parcours **David** (prélèvements sans engagement), **plus de 72 h avant le prochain prélèvement**. Pour un forfait comptant, voyez votre **manager** en présentiel.',
+  'Je ne traite pas les résiliations ici. Rendez-vous sur « Gérer mon abo » : **David** pour le prélèvement, le **manager** pour le comptant. Prévoyez **72 h avant l’échéance**.',
 ];
 
 const FAQ_VARIANTS = {
@@ -426,11 +434,12 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
   const lastBot = lastAssistantMessage(messages);
 
   if (/résili|resili|annul.*abo|arrêter.*abo|arreter.*abo/i.test(lastUser)) {
-    let reply = pickVariant(REDIRECT_DAVID);
+    const variants = persona.id === 'fabien' ? REDIRECT_DAVID_VOUS : REDIRECT_DAVID;
+    let reply = pickVariant(variants);
     if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
-      reply = REDIRECT_DAVID.find((v) => similarityScore(v, lastBot) < 0.55) || reply;
+      reply = variants.find((v) => similarityScore(v, lastBot) < 0.55) || reply;
     }
-    return { reply, source: 'redirect-david' };
+    return { reply, source: 'redirect-david', persona: persona.id };
   }
 
   const managerReply = matchManagerFromText(lastUser);
