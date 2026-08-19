@@ -112,6 +112,11 @@
             ? `<button type="button" class="btn sm secondary" id="resumeSendBtn">Envoyer par e-mail</button>`
             : ''
         }
+        ${
+          data.phone
+            ? `<button type="button" class="btn sm secondary" id="resumeWaBtn">Envoyer par WhatsApp</button>`
+            : ''
+        }
       </div>`;
     const input = document.getElementById('resumeLinkUrl');
     input?.focus();
@@ -122,6 +127,7 @@
       if (btn) btn.textContent = ok ? 'Copié' : 'Sélectionnez le lien';
     });
     document.getElementById('resumeSendBtn')?.addEventListener('click', () => sendResumeEmail(data));
+    document.getElementById('resumeWaBtn')?.addEventListener('click', () => sendResumeWhatsApp(data));
   }
 
   async function sendResumeEmail(data) {
@@ -145,6 +151,37 @@
         msg.className = 'form-msg ok';
       }
       if (typeof window.panToast === 'function') window.panToast(out.message || 'E-mail envoyé', 'ok');
+    } catch (err) {
+      if (btn) btn.disabled = false;
+      if (msg) {
+        msg.textContent = err.message;
+        msg.className = 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
+    }
+  }
+
+  async function sendResumeWhatsApp(data) {
+    const btn = document.getElementById('resumeWaBtn');
+    const msg = document.getElementById('ordersMsg');
+    if (btn) btn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(data.order_id)}/send-resume-whatsapp`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true),
+        body: JSON.stringify({ kind: data.kind || 'resume' }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok || !out.ok) {
+        throw new Error(out.message || out.error || 'Envoi WhatsApp impossible');
+      }
+      if (btn) btn.textContent = 'Envoyé';
+      if (msg) {
+        msg.textContent = out.message || `WhatsApp envoyé au ${out.to}`;
+        msg.className = 'form-msg ok';
+      }
+      if (typeof window.panToast === 'function') window.panToast(out.message || 'WhatsApp envoyé', 'ok');
     } catch (err) {
       if (btn) btn.disabled = false;
       if (msg) {
@@ -206,9 +243,16 @@
     return [...document.querySelectorAll('.order-pick:checked')].map((el) => el.dataset.id).filter(Boolean);
   }
 
-  async function sendDiffusion() {
+  function canDiffuseOrder(o) {
+    const hasMail = o.email && o.email !== '—';
+    const hasPhone = Boolean(o.phone);
+    return (o.can_resume || o.can_pay) && (hasMail || hasPhone);
+  }
+
+  async function sendDiffusion(channel = 'email') {
     const ids = selectedOrderIds();
     const msg = document.getElementById('ordersMsg');
+    const viaWa = channel === 'whatsapp';
     if (!ids.length) {
       if (msg) {
         msg.textContent = 'Cochez les personnes à relancer.';
@@ -217,26 +261,35 @@
       if (typeof window.panToast === 'function') window.panToast('Cochez les personnes à relancer', 'err');
       return;
     }
-    if (!confirm(
-      document.getElementById('ordersFilter')?.value === 'failed'
+    const failed = document.getElementById('ordersFilter')?.value === 'failed';
+    const confirmText = viaWa
+      ? `Envoyer le WhatsApp de reprise à ${ids.length} personne(s) ?`
+      : failed
         ? `Envoyer le mail de paiement (carte refusée) à ${ids.length} personne(s) ?`
-        : `Envoyer le mail de reprise à ${ids.length} personne(s) ?`
-    )) return;
-    const btn = document.getElementById('diffusionBtn');
+        : `Envoyer le mail de reprise à ${ids.length} personne(s) ?`;
+    if (!confirm(confirmText)) return;
+    const btn = document.getElementById(viaWa ? 'diffusionWaBtn' : 'diffusionBtn');
     if (btn) btn.disabled = true;
     try {
-      const res = await fetch('/api/admin/orders/send-resume-email-batch', {
-        method: 'POST',
-        credentials: 'include',
-        headers: headers(true),
-        body: JSON.stringify({ order_ids: ids }),
-      });
+      const res = await fetch(
+        viaWa
+          ? '/api/admin/orders/send-resume-whatsapp-batch'
+          : '/api/admin/orders/send-resume-email-batch',
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: headers(true),
+          body: JSON.stringify({ order_ids: ids }),
+        }
+      );
       const out = await res.json().catch(() => ({}));
       if (!res.ok && !out.sent) {
         throw new Error(out.message || out.error || 'Diffusion impossible');
       }
       if (msg) {
-        msg.textContent = out.message || `${out.sent || 0} e-mail(s) envoyé(s)`;
+        msg.textContent =
+          out.message ||
+          (viaWa ? `${out.sent || 0} WhatsApp envoyé(s)` : `${out.sent || 0} e-mail(s) envoyé(s)`);
         msg.className = out.sent ? 'form-msg ok' : 'form-msg err';
       }
       if (typeof window.panToast === 'function') {
@@ -416,6 +469,7 @@
       if (filter === 'paid_unsigned' && !(o.payment_status === 'paid' && !o.signed)) return false;
       if (filter === 'unpaid' && o.payment_status !== 'past_due' && !o.access_blocked) return false;
       if (filter === 'failed' && !isRefusedPayment(o)) return false;
+      if (filter === 'aventure' && !(o.aventure || o.source === 'balma_retour')) return false;
       if (gym !== 'all' && String(o.gym || '') !== gym) return false;
       if (!inOrdersDateRange(o)) return false;
       const emptyName = !String(o.name || '').trim() || o.name === '—';
@@ -434,7 +488,7 @@
         return false;
       }
       if (!q) return true;
-      const hay = `${o.order_id} ${o.name} ${o.email} ${o.product} ${o.gym || ''} ${o.gym_label || gymLabel(o.gym)}`.toLowerCase();
+      const hay = `${o.order_id} ${o.name} ${o.email} ${o.product} ${o.gym || ''} ${o.gym_label || gymLabel(o.gym)} ${o.aventure ? 'aventure balma' : ''}`.toLowerCase();
       return hay.includes(q);
     });
   }
@@ -585,12 +639,16 @@
       .map(
         (o) => `
       <tr>
-        <td><input type="checkbox" class="order-pick" data-id="${escapeHtml(o.order_id)}" ${o.email && o.email !== '—' && (o.can_resume || o.can_pay) ? '' : 'disabled'} /></td>
+        <td><input type="checkbox" class="order-pick" data-id="${escapeHtml(o.order_id)}" ${canDiffuseOrder(o) ? '' : 'disabled'} /></td>
         <td><code style="font-size:11px">${escapeHtml(o.order_id)}</code></td>
         <td>${escapeHtml(o.name)}</td>
         <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>
         <td>${escapeHtml(o.product)}</td>
-        <td>${escapeHtml(o.gym_label || gymLabel(o.gym))}</td>
+        <td>${
+          o.aventure || o.source === 'balma_retour'
+            ? `${escapeHtml(o.gym_label || gymLabel(o.gym))} <span class="badge">Aventure</span>`
+            : escapeHtml(o.gym_label || gymLabel(o.gym))
+        }</td>
         <td>${escapeHtml(o.step_label || STEP_LABELS[o.step] || o.step)}</td>
         <td>${paymentBadge(o)}</td>
         <td>${o.signed ? `✓ ${formatDate(o.signed_at)}` : '—'}</td>
@@ -1670,7 +1728,8 @@
     const id = document.getElementById('resumeRefInput')?.value || '';
     generateResumeLink(id, document.getElementById('payLinkBtn'), 'pay');
   });
-  document.getElementById('diffusionBtn')?.addEventListener('click', sendDiffusion);
+  document.getElementById('diffusionBtn')?.addEventListener('click', () => sendDiffusion('email'));
+  document.getElementById('diffusionWaBtn')?.addEventListener('click', () => sendDiffusion('whatsapp'));
   document.getElementById('ordersSelectAll')?.addEventListener('change', (e) => {
     const on = Boolean(e.target.checked);
     document.querySelectorAll('.order-pick:not(:disabled)').forEach((cb) => {

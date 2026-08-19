@@ -127,6 +127,7 @@ function describeResume(order, { kind } = {}) {
     can_resume: isInscriptionTunnel(order) && !completed,
     can_pay: canPayOrder(order),
     email: customerEmail(order),
+    phone: customerPhone(order) || null,
     name: [short.first_name, short.last_name].filter(Boolean).join(' ').trim(),
     product: order.product_snapshot?.display_name || order.product_snapshot?.name || '',
   };
@@ -275,6 +276,38 @@ async function sendResumeEmail(order, { kind = 'resume', to } = {}) {
   });
   if (!result) return { sent: false, error: 'brevo_not_configured' };
   return { sent: true, via: result.via || 'brevo', to: dest };
+}
+
+function resumeWhatsAppText(order, { kind } = {}) {
+  const info = describeResume(order, { kind });
+  const pay = wantsPayCta(order, { kind });
+  const hello = firstName(order) ? `Bonjour ${firstName(order)},` : 'Bonjour,';
+  const offer = productLabel(order);
+  const gym = gymLabel(order.customer_full?.gym) || '';
+  const step = info.step_label || 'inscription';
+  if (pay) {
+    return (
+      `${hello}\n\n` +
+      `Votre inscription ${offer}${gym ? ` à ${gym}` : ''} est presque terminée. Il ne reste plus qu’à régler en ligne pour débloquer l’accès aux 5 salles.\n\n` +
+      `Payez ici (carte bancaire ou PayPal) :\n${info.url}\n\n` +
+      `Sportivement,\nL’équipe Boxing Center`
+    );
+  }
+  return (
+    `${hello}\n\n` +
+    `Vous avez commencé votre inscription ${offer}${gym ? ` à ${gym}` : ''} et vous vous êtes arrêté à l’étape ${step}.\n\n` +
+    `Reprenez exactement là où vous en étiez :\n${info.url}\n\n` +
+    `Sportivement,\nL’équipe Boxing Center`
+  );
+}
+
+async function sendResumeWhatsApp(order, { kind = 'resume' } = {}) {
+  const { toWhatsAppPhone, sendWhatsAppMessage } = require('./whatsapp-bot');
+  const raw = customerPhone(order);
+  const dest = toWhatsAppPhone(raw);
+  if (!dest) return { sent: false, error: 'no_phone' };
+  await sendWhatsAppMessage(raw, resumeWhatsAppText(order, { kind }));
+  return { sent: true, to: dest };
 }
 
 function summarizeNudge(order) {
@@ -484,7 +517,9 @@ module.exports = {
   STEP_LABELS,
   resumeEmailSubject,
   resumeEmailHtml,
+  resumeWhatsAppText,
   sendResumeEmail,
+  sendResumeWhatsApp,
   nudgeEmailSubject,
   nudgeEmailHtml,
   nudgeWhatsAppText,

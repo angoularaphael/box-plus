@@ -22,7 +22,7 @@ test('lien de reprise : étape réelle, produit et jeton', () => {
     access_token: token,
     product_id: 'abo-mensuel',
     step: 3,
-    customer_short: { first_name: 'Léa', last_name: 'Martin', email: 'lea@test.local' },
+    customer_short: { first_name: 'Léa', last_name: 'Martin', email: 'lea@test.local', phone: '0612345678' },
     product_snapshot: { id: 'abo-mensuel', price_cents: 2999, requires_payment: true },
   };
   const url = resumeUrl(order);
@@ -36,6 +36,7 @@ test('lien de reprise : étape réelle, produit et jeton', () => {
   assert.equal(info.can_resume, true);
   assert.equal(info.step_label, 'Identité');
   assert.equal(info.email, 'lea@test.local');
+  assert.equal(info.phone, '0612345678');
   assert.equal(describeResume({ ...order, step: 8 }).can_resume, false);
   const pay = describeResume(order, { kind: 'pay' });
   assert.equal(pay.kind, 'pay');
@@ -61,6 +62,7 @@ test('mails reprise / relance : vouvoiement, bouton payer visible', () => {
   const {
     resumeEmailSubject,
     resumeEmailHtml,
+    resumeWhatsAppText,
     nudgeEmailSubject,
     nudgeEmailHtml,
     nudgeWhatsAppText,
@@ -87,6 +89,13 @@ test('mails reprise / relance : vouvoiement, bouton payer visible', () => {
   assert.match(payHtml, /order=BC-MAIL/);
   assert.match(payHtml, /\bvous\b|\bvotre\b/i);
   assert.doesNotMatch(payHtml, /(?:^|[\s>])(?:tu |ton |tes |toi)|t'|Salut /i);
+  const payWa = resumeWhatsAppText(unpaid, { kind: 'pay' });
+  assert.match(payWa, /Bonjour Diego/);
+  assert.match(payWa, /Payez ici/);
+  assert.match(payWa, /carte bancaire/i);
+  assert.match(payWa, /boutique\.boxingcenter\.fr\/inscription/);
+  assert.match(payWa, /order=BC-MAIL/);
+  assert.doesNotMatch(payWa, /(?:^|[\s\n])(?:tu |ton |tes |toi)/i);
 
   const identity = { ...unpaid, step: 3, payment: { status: 'pending' } };
   const resumeHtml = resumeEmailHtml(identity);
@@ -94,6 +103,10 @@ test('mails reprise / relance : vouvoiement, bouton payer visible', () => {
   assert.match(resumeHtml, /Identité/);
   assert.match(resumeHtml, /\bvous\b|\bvotre\b/i);
   assert.doesNotMatch(resumeHtml, /(?:^|[\s>])(?:tu |ton |tes |toi)|t'|Salut /i);
+  const resumeWa = resumeWhatsAppText(identity);
+  assert.match(resumeWa, /Reprenez exactement là où vous en étiez/);
+  assert.match(resumeWa, /Identité/);
+  assert.doesNotMatch(resumeWa, /(?:^|[\s\n])(?:tu |ton |tes |toi)/i);
 
   const paid = {
     ...unpaid,

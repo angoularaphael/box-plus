@@ -448,7 +448,7 @@ function toAdminSummary(order) {
     step_label: actionStepLabel(order),
     product,
     email,
-    phone: short.phone || customer.phone || null,
+    phone: short.phone || customer.phone || full.phone || full.mobile || null,
     name: nameFromCustomer,
     gym: full.gym || order.gym || customer.gym || null,
     gym_label: gymLabel(full.gym || order.gym || customer.gym),
@@ -462,6 +462,8 @@ function toAdminSummary(order) {
     signed_at: order.signature?.signed_at || null,
     dispatched: Boolean(order.dispatched_at),
     email_sent: Boolean(order.email_sent_at),
+    source: order.source || order.utm?.source || null,
+    aventure: Boolean(order.aventure || order.source === 'balma_retour'),
     created_at: order.created_at,
     updated_at: order.updated_at,
     can_resume:

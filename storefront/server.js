@@ -1820,6 +1820,112 @@ function createApp() {
     });
   });
 
+  app.post('/api/admin/orders/:id/send-resume-whatsapp', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const order = await loadOrderAsync(String(req.params.id || '').trim());
+    if (!order) {
+      return res.status(404).json({ ok: false, error: 'not_found', message: 'Référence introuvable' });
+    }
+    const { describeResume, canPayOrder, sendResumeWhatsApp } = require('./lib/inscription-nudge');
+    if (order.action || !order.access_token) {
+      return res.status(400).json({
+        ok: false,
+        error: 'not_inscription',
+        message: 'Cette référence n’est pas une inscription boutique',
+      });
+    }
+    const kind = String(req.body?.kind || req.query.kind || '').toLowerCase() === 'pay' ? 'pay' : 'resume';
+    if (kind === 'pay' && !canPayOrder(order)) {
+      return res.status(400).json({
+        ok: false,
+        error: 'cannot_pay',
+        message: 'Impossible d’envoyer un lien de paiement',
+      });
+    }
+    try {
+      const sent = await sendResumeWhatsApp(order, { kind });
+      if (!sent.sent) {
+        const message =
+          sent.error === 'no_phone'
+            ? 'Pas de numéro de téléphone sur ce dossier'
+            : sent.error || 'WhatsApp non envoyé';
+        return res.status(400).json({ ok: false, error: sent.error || 'whatsapp_failed', message });
+      }
+      const info = describeResume(order, { kind });
+      logInfo('WhatsApp reprise admin', { order_id: order.order_id, to: sent.to, kind });
+      res.json({
+        ok: true,
+        sent: true,
+        to: sent.to,
+        kind,
+        message: `WhatsApp envoyé au ${sent.to}`,
+        ...info,
+      });
+    } catch (err) {
+      logError('Envoi WhatsApp de reprise', { order_id: order.order_id, error: err.message });
+      res.status(500).json({
+        ok: false,
+        error: err.message,
+        message: 'Envoi WhatsApp échoué — vérifiez que le bot est connecté',
+      });
+    }
+  });
+
+  app.post('/api/admin/orders/send-resume-whatsapp-batch', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const ids = [
+      ...new Set(
+        (Array.isArray(req.body?.order_ids) ? req.body.order_ids : [])
+          .map((id) => String(id || '').trim())
+          .filter(Boolean)
+      ),
+    ];
+    if (!ids.length) {
+      return res.status(400).json({ ok: false, error: 'empty', message: 'Aucune personne sélectionnée' });
+    }
+    if (ids.length > 12) {
+      return res.status(400).json({
+        ok: false,
+        error: 'too_many',
+        message: '12 destinataires maximum par diffusion WhatsApp',
+      });
+    }
+    const { sendResumeWhatsApp, canPayOrder } = require('./lib/inscription-nudge');
+    const results = [];
+    for (let i = 0; i < ids.length; i += 1) {
+      const id = ids[i];
+      const order = await loadOrderAsync(id);
+      if (!order || order.action || !order.access_token) {
+        results.push({ order_id: id, ok: false, error: 'not_inscription' });
+        continue;
+      }
+      try {
+        const kind = canPayOrder(order) ? 'pay' : 'resume';
+        const sent = await sendResumeWhatsApp(order, { kind });
+        results.push({
+          order_id: id,
+          ok: Boolean(sent.sent),
+          to: sent.to || null,
+          error: sent.error || null,
+        });
+      } catch (err) {
+        results.push({ order_id: id, ok: false, error: err.message });
+      }
+      if (i < ids.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+    const sent = results.filter((r) => r.ok).length;
+    logInfo('Diffusion WhatsApp de reprise', { sent, total: ids.length });
+    res.json({
+      ok: sent > 0,
+      sent,
+      total: ids.length,
+      results,
+      message: `${sent} WhatsApp envoyé(s) sur ${ids.length}`,
+    });
+  });
+
   app.get('/api/admin/orders/:id', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const order = await loadOrderAsync(req.params.id);
