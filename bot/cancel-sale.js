@@ -54,7 +54,7 @@ function getScopes(page) {
 /**
  * Liste les contrats actifs via #prestation_XXXX (structure Deciplus réelle).
  */
-async function findActiveContracts(page) {
+async function findActiveContracts(page, options = {}) {
   for (let attempt = 0; attempt < 12; attempt += 1) {
     let ready = false;
     for (const ctx of getScopes(page)) {
@@ -100,8 +100,17 @@ async function findActiveContracts(page) {
 
         const label = ((await item.innerText().catch(() => '')) || '').replace(/\s+/g, ' ').trim();
         if (!label) continue;
-        // Déjà résiliés / terminés : pas d’action « Résilier » → évite action_panel_missing
-        if (/r[ée]sili[ée]|annul[ée]e?|termin[ée]|expir[ée]|inactif|cl[ôo]tur/i.test(label)) {
+        // Déjà résiliés / terminés : pas d’action « Résilier » → évite action_panel_missing.
+        // Exception : séance d’essai / coaching « Expiré » le jour même (1 crédit) — c’est la vente.
+        const expiredPrestation =
+          options.includeExpiredPrestation &&
+          /essai|coaching/i.test(label) &&
+          /expir[ée]/i.test(label) &&
+          !/r[ée]sili[ée]|annul[ée]/i.test(label);
+        if (
+          !expiredPrestation &&
+          /r[ée]sili[ée]|annul[ée]e?|termin[ée]|expir[ée]|inactif|cl[ôo]tur/i.test(label)
+        ) {
           continue;
         }
 

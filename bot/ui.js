@@ -56,6 +56,13 @@ async function dismissDeciplusModals(page) {
     return false;
   }
 
+  // L’écran « Choisissez un site » est lui-même une .modal-mask : ne pas la fermer
+  // (sinon on vend sur « Tous les sites » et la prestation n’apparaît pas sur la fiche).
+  const zonePicker = page.locator('text=/Choisissez un site/i').first();
+  if ((await zonePicker.count()) > 0 && (await zonePicker.isVisible().catch(() => false))) {
+    return false;
+  }
+
   logInfo('Modale Deciplus détectée — fermeture avant sélection site');
 
   const closeBtns = [

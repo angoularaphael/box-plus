@@ -5,7 +5,7 @@
 const path = require('path');
 const { randomDelay, ensureDir, timestamp } = require('../lib/utils');
 const { logInfo, logWarn } = require('../lib/logger');
-const { openMemberCheck, clickFirst, fillFirst, sel, closeGreyboxIfOpen } = require('./wallet');
+const { openMemberCheck, clickFirst, fillFirst, sel, closeGreyboxIfOpen, ribAddressFields } = require('./wallet');
 const { cancelSale } = require('./cancel-sale');
 const { ensureDeciplusSaleZone, isChooseZoneScreen } = require('./deciplus-zone');
 const { dismissJqueryUiOverlay } = require('./ui');
@@ -2296,7 +2296,108 @@ async function applyConfigModal(page, productConfig, memberId = null) {
   }
 }
 
-async function finalizePayment(page, productConfig) {
+async function fillNf525InvoiceAddressIfNeeded(page, gymConfig = {}) {
+  const heading = page.getByText(/Informations obligatoires|Norme NF525/i).first();
+  if ((await heading.count()) === 0 || !(await heading.isVisible().catch(() => false))) {
+    return false;
+  }
+
+  const addr = ribAddressFields({}, gymConfig);
+  logInfo('Vente Deciplus — adresse NF525 obligatoire', {
+    postal_code: addr.postal_code,
+    city: addr.city,
+    address: addr.address,
+  });
+
+  const filled = await page.evaluate(
+    ({ postal, city, street, country }) => {
+      const setNative = (input, value) => {
+        if (!input) return false;
+        input.focus();
+        const proto = window.HTMLInputElement.prototype;
+        const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+        if (setter) setter.call(input, value);
+        else input.value = value;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        input.dispatchEvent(new Event('blur', { bubbles: true }));
+        return true;
+      };
+      const visible = (el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && el.offsetParent !== null;
+      };
+      const nodes = [...document.querySelectorAll('div')].filter((el) => {
+        const t = el.innerText || '';
+        return /Norme NF525/i.test(t) && /Code postal/i.test(t) && /Ville/i.test(t);
+      });
+      if (!nodes.length) return { ok: false, reason: 'root_missing' };
+      const root = nodes.sort((a, b) => (a.innerText || '').length - (b.innerText || '').length)[0];
+      const inputs = [...root.querySelectorAll('input')].filter(
+        (el) => visible(el) && el.type !== 'hidden' && el.type !== 'checkbox' && el.type !== 'radio'
+      );
+      const labels = inputs.map((el) => ({
+        placeholder: el.placeholder || '',
+        value: el.value || '',
+        aria: el.getAttribute('aria-label') || '',
+      }));
+
+      const skip = [...root.querySelectorAll('label, span, div')].find((el) =>
+        /ne souhaite pas partager/i.test(el.textContent || '')
+      );
+      if (skip) skip.click();
+
+      // Ordre Deciplus : CP, Pays, Ville, Rue
+      setNative(inputs[0], postal);
+      if (inputs[1]) {
+        inputs[1].click();
+        setNative(inputs[1], country);
+      }
+      setNative(inputs[2], city);
+      setNative(inputs[3], street);
+
+      const ok = [...root.querySelectorAll('button')].find((btn) =>
+        /^ok$/i.test(String(btn.textContent || '').trim())
+      );
+      if (ok) ok.click();
+      return { ok: true, inputCount: inputs.length, labels };
+    },
+    {
+      postal: addr.postal_code,
+      city: addr.city,
+      street: addr.address,
+      country: addr.country || 'France',
+    }
+  );
+
+  logInfo('Vente Deciplus — NF525 rempli', filled);
+  if (filled?.ok) {
+    await randomDelay(400, 700);
+    const suggestion = page.locator('.el-autocomplete-suggestion li, .el-select-dropdown li').first();
+    if ((await suggestion.count()) > 0 && (await suggestion.isVisible().catch(() => false))) {
+      await suggestion.click({ force: true }).catch(() => {});
+      await randomDelay(250, 400);
+    }
+    const france = page
+      .locator('.el-select-dropdown__item, li[role="option"], [role="option"]')
+      .filter({ hasText: /^France$/i })
+      .first();
+    if ((await france.count()) > 0 && (await france.isVisible().catch(() => false))) {
+      await france.click({ force: true }).catch(() => {});
+    }
+    const okBtn = page
+      .locator('button:has-text("Ok"), button:has-text("OK")')
+      .filter({ has: page.locator('xpath=ancestor::*[contains(., "NF525") or contains(., "Informations obligatoires")]') })
+      .first();
+    if ((await okBtn.count()) > 0 && (await okBtn.isVisible().catch(() => false))) {
+      await okBtn.click({ force: true }).catch(() => {});
+    }
+    await randomDelay(800, 1200);
+  }
+  return Boolean(filled?.ok);
+}
+
+async function finalizePayment(page, productConfig, gymConfig = {}) {
   const mode = productConfig.payment_mode || 'virement';
   const badge = isBadgeSale(productConfig);
 
@@ -2308,6 +2409,9 @@ async function finalizePayment(page, productConfig) {
   // Comptant Stripe : Deciplus est déjà soldé via Paiement Comptant — Clôturer / Terminer
   if (productConfig.paiement_comptant === true) {
     const work = await resolveDeciplusWorkPage(page);
+    await fillNf525InvoiceAddressIfNeeded(page, gymConfig).catch((err) => {
+      logWarn('Adresse NF525 ignorée avant CB', { error: err.message });
+    });
     let cardRecorded = await clickFirst(work, sel('payment_finalize.carte_bancaire'), {
       force: true,
     }).catch(() => false);
@@ -2321,6 +2425,9 @@ async function finalizePayment(page, productConfig) {
     }
     logInfo('Vente comptant — règlement CB enregistré');
     await randomDelay(800, 1200);
+    await fillNf525InvoiceAddressIfNeeded(page, gymConfig).catch((err) => {
+      logWarn('Adresse NF525 ignorée après CB', { error: err.message });
+    });
 
     let clotured = await clickVenteFooterAction(page, /Cl[ôo]turer(\s+la\s+note)?/i);
     if (!clotured) {
@@ -2342,6 +2449,16 @@ async function finalizePayment(page, productConfig) {
     // Selon la version Deciplus, « Appliquer » enregistre immédiatement la vente
     // comptant et aucun footer Clôturer/Terminer n'est affiché. La vérification
     // stricte du contrat exécutée juste après décide alors du succès réel.
+    if (!done) {
+      const nf525 = await fillNf525InvoiceAddressIfNeeded(page, gymConfig).catch(() => false);
+      if (nf525) {
+        clotured = await clickVenteFooterAction(page, /Cl[ôo]turer(\s+la\s+note)?/i);
+        if (clotured) {
+          done = await clickTerminerVente(page);
+          if (!done) done = await clickVenteFooterAction(page, /\bTerminer\b/i);
+        }
+      }
+    }
     if (!done) {
       logWarn('Vente comptant — aucun footer de finalisation, vérification du contrat requise', {
         ui: await venteUiSnapshot(page).catch(() => []),
@@ -2366,15 +2483,15 @@ async function finalizePayment(page, productConfig) {
 async function buyAbonnement(page, productConfig, gymConfig) {
   await openSaleFlow(page, productConfig, gymConfig, 'abonnement');
   await applyConfigModal(page, productConfig);
-  await finalizePayment(page, productConfig);
+  await finalizePayment(page, productConfig, gymConfig);
 
   return { action: 'abonnement_created', sale_type: 'abonnement' };
 }
 
 async function buyCarteBadge(page, productConfig, gymConfig, memberId = null) {
   await openSaleFlow(page, productConfig, gymConfig, 'carte');
-  await applyConfigModal(page, productConfig, memberId);
-  await finalizePayment(page, productConfig);
+    await applyConfigModal(page, productConfig, memberId);
+  await finalizePayment(page, productConfig, gymConfig);
 
   const action = isBadgeSale(productConfig) ? 'carte_badge_created' : 'carte_created';
   return { action, sale_type: 'carte' };
@@ -2445,7 +2562,9 @@ async function verifyCreatedContract(page, memberId, { badge = false, label = ''
     await closeGreyboxIfOpen(page).catch(() => {});
     await openMemberCheck(page, memberId).catch(() => {});
     await randomDelay(badge ? 500 : 700, badge ? 800 : 1100);
-    const contracts = await findActiveContracts(page).catch(() => []);
+    const contracts = await findActiveContracts(page, {
+      includeExpiredPrestation: true,
+    }).catch(() => []);
     const needle = String(label || '').toLowerCase();
     const contract = contracts.find((item) => {
       const itemLabel = String(item.label || '');

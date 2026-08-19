@@ -6,6 +6,16 @@
       "has": [{ "type": "host", "value": "box-plus.vercel.app" }],
       "destination": "https://boutique.boxingcenter.fr/$1",
       "permanent": true
+    },
+    {
+      "source": "/aventure",
+      "destination": "https://aventure.boxingcenter.fr/",
+      "permanent": true
+    },
+    {
+      "source": "/aventure.html",
+      "destination": "https://aventure.boxingcenter.fr/",
+      "permanent": true
     }
   ],
   "rewrites": [

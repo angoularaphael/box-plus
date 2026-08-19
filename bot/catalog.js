@@ -176,11 +176,14 @@ function scoreMatch(query, product) {
 
 function findProductInCatalog(catalog, order) {
   const wantBadge = isBadgeCatalogTitle(order.product_name || order.offer || '');
+  const hint = `${order.product_name || ''} ${order.offer || ''} ${order.deciplus_product_search || ''}`;
+  const wantStudent = /etudiant/i.test(hint);
+  const wantAdult = /adulte/i.test(hint);
   const candidates = [
-    order.deciplus_product_search,
-    order.deciplus_product_name,
     order.product_name,
+    order.deciplus_product_name,
     order.offer,
+    order.deciplus_product_search,
     order.product_reference,
   ].filter(Boolean);
 
@@ -199,8 +202,19 @@ function findProductInCatalog(catalog, order) {
       }
       if (order.payment?.amount > 0 && product.price > 0) {
         const diff = Math.abs(product.price - order.payment.amount);
-        if (diff < 1) score += 15;
+        if (diff < 0.05) score += 25;
+        else if (diff < 1) score += 15;
         else if (diff < 5) score += 5;
+        else score -= 20;
+      }
+      const title = product.title || '';
+      if (wantStudent) {
+        if (/etudiant/i.test(title)) score += 40;
+        else score -= 25;
+      }
+      if (wantAdult) {
+        if (/adulte/i.test(title)) score += 40;
+        else if (/etudiant/i.test(title)) score -= 30;
       }
       if (score > bestScore) {
         bestScore = score;

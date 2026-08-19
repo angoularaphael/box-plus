@@ -49,7 +49,7 @@ function scenarios(stamp) {
         order_id: `DEMO-BALMA-ETU-${stamp}`,
         product_id: 'offre-promo-etudiant',
         product_name: 'OFFRE PROMO 34.99€ ETUDIANTS',
-        deciplus_product_search: '34.99',
+        deciplus_product_search: 'ETUDIANTS 34.99',
         gym: 'balma',
         customer: customer(stamp, 'TestEtu', 'Balma', '2004-03-12'),
         payment: {
@@ -67,7 +67,7 @@ function scenarios(stamp) {
         order_id: `DEMO-BALMA-ADU-${stamp + 1}`,
         product_id: 'offre-promo-adulte',
         product_name: 'OFFRE PROMO 38.99€ ADULTE',
-        deciplus_product_search: '38.99',
+        deciplus_product_search: 'ADULTE 38.99',
         gym: 'balma',
         customer: customer(stamp + 1, 'TestAdu', 'Balma', '1991-08-10'),
         payment: {

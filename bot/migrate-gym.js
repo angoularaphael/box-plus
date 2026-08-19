@@ -43,9 +43,17 @@ function productSearchFromLabel(label) {
   return String(label || '')
     .replace(/\s+/g, ' ')
     .replace(/\d{2}\/\d{2}\/\d{4}/g, '')
+    .replace(/contrat\s*n[°o]?\s*c?\d[\d-]*/gi, '')
+    .replace(/\bvendu\s+le\b/gi, '')
     .replace(/\b(badge|impayé|résilié)\b/gi, '')
     .trim()
     .slice(0, 48);
+}
+
+function priceFromSnap(snap) {
+  const raw = `${snap.search || ''} ${snap.label || ''}`.replace(',', '.');
+  const m = raw.match(/(\d+(?:\.\d+)?)/);
+  return m ? Number(m[1]) : 0;
 }
 
 async function countNameHits(page) {
@@ -97,7 +105,6 @@ async function snapshotContracts(page, memberId, gymConfig) {
   const contracts = await findActiveContracts(page).catch(() => []);
   const snapshots = [];
   for (const c of contracts) {
-    if (c.isBadge) continue;
     const dates = parseFrDates(c.label);
     snapshots.push({
       idc: c.idc,
@@ -294,7 +301,7 @@ async function restoreContracts(page, memberId, snapshots, gymConfig, order) {
     return { restored: 0, skipped: true };
   }
   const { recordSale } = require('./sale');
-  const { fetchDeciplusCatalog, resolveProductConfig } = require('./catalog');
+  const { fetchDeciplusCatalog, resolveProductConfig, resolveBadgeProductConfig } = require('./catalog');
   let catalog = null;
   try {
     catalog = await fetchDeciplusCatalog(page);
@@ -303,29 +310,30 @@ async function restoreContracts(page, memberId, snapshots, gymConfig, order) {
   }
 
   let restored = 0;
-  for (const snap of snapshots) {
-    if (!snap.search) continue;
-    const priceHint = Number(
-      String(snap.search)
-        .replace(',', '.')
-        .match(/\b(\d+(?:\.\d+)?)\b/)?.[1] || 0
-    );
+  const ordered = [
+    ...snapshots.filter((s) => !s.isBadge),
+    ...snapshots.filter((s) => s.isBadge),
+  ];
+  for (const snap of ordered) {
+    if (!snap.search && !snap.isBadge) continue;
+    const priceHint = priceFromSnap(snap);
     const fakeOrder = {
       ...order,
       product_name: snap.label || snap.search,
       deciplus_product_search: snap.search,
-      offer: /29/.test(String(snap.search)) ? 'OFFRE DUO' : order.offer,
       gym: gymConfig.key || 'minimes',
       payment: {
         ...(order.payment || {}),
         status: 'paid',
-        amount: order.payment?.amount || priceHint || 29,
+        amount: priceHint || order.payment?.amount || 29,
       },
       paiement_comptant: false,
     };
     let productConfig;
     try {
-      productConfig = resolveProductConfig(fakeOrder, catalog || []);
+      productConfig = snap.isBadge
+        ? resolveBadgeProductConfig(catalog || [], { skip_rib_prompt: true })
+        : resolveProductConfig(fakeOrder, catalog || []);
     } catch (err) {
       logWarn('Restore abo — produit introuvable', {
         search: snap.search,
@@ -333,9 +341,11 @@ async function restoreContracts(page, memberId, snapshots, gymConfig, order) {
       });
       continue;
     }
-    productConfig.restore_start_fr = snap.start;
-    productConfig.restore_end_fr = snap.end;
     productConfig.skip_rib_prompt = true;
+    if (!snap.isBadge) {
+      productConfig.restore_start_fr = snap.start;
+      productConfig.restore_end_fr = snap.end;
+    }
     try {
       await recordSale(page, fakeOrder, productConfig, memberId, gymConfig, {
         badgeProductConfig: null,
@@ -378,8 +388,12 @@ async function runBalmaSwitch(page, order) {
   }
   const memberId = match.member_id;
 
-  const snapshots =
-    Array.isArray(order.snapshots) && order.snapshots.length
+  const { isNoneOffer } = require('../lib/balma');
+  const skipRestore = Boolean(order.skip_restore) || isNoneOffer(order.offer);
+
+  const snapshots = skipRestore
+    ? []
+    : Array.isArray(order.snapshots) && order.snapshots.length
       ? order.snapshots
       : await snapshotContracts(page, memberId, gymConfig);
 
@@ -404,12 +418,12 @@ async function runBalmaSwitch(page, order) {
     await migrateMemberToGym(page, memberId, gymConfig);
   }
 
-  const restore = await restoreContracts(page, memberId, snapshots, gymConfig, order).catch(
-    (err) => {
-      logWarn('Restore abo après migration échoué', { error: err.message, member_id: memberId });
-      return { restored: 0 };
-    }
-  );
+  const restore = skipRestore
+    ? { restored: 0, skipped: true }
+    : await restoreContracts(page, memberId, snapshots, gymConfig, order).catch((err) => {
+        logWarn('Restore abo après migration échoué', { error: err.message, member_id: memberId });
+        return { restored: 0 };
+      });
 
   return {
     status: STATUS.SUCCESS,
@@ -430,4 +444,5 @@ module.exports = {
   runBalmaSwitch,
   parseFrDates,
   productSearchFromLabel,
+  priceFromSnap,
 };

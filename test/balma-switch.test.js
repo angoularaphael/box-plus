@@ -86,7 +86,41 @@ test('formulaire aventure — refuse comptant', () => {
     offer: '259',
     prelevement: true,
   });
-  assert.ok(saison.errors.some((e) => /prélèvement/i.test(e)));
+  assert.ok(saison.errors.some((e) => /prélèvement|offre/i.test(e)));
+});
+
+test('formulaire aventure — sans offre active → skip restore', () => {
+  const none = validateBalmaSwitchPayload({
+    first_name: 'Lea',
+    last_name: 'Martin',
+    birthdate: '1991-08-10',
+    offer: 'none',
+  });
+  assert.deepEqual(none.errors, []);
+  assert.equal(none.offer, 'none');
+  assert.equal(none.skip_restore, true);
+
+  const empty = validateBalmaSwitchPayload({
+    first_name: 'Lea',
+    last_name: 'Martin',
+    birthdate: '1991-08-10',
+    prelevement: true,
+  });
+  assert.ok(empty.errors.some((e) => /offre/i.test(e)));
+});
+
+test('balma_switch — skip_restore persisté', () => {
+  const { buildBalmaSwitchOrder } = require('../lib/balma');
+  const built = buildBalmaSwitchOrder({
+    first_name: 'Lea',
+    last_name: 'Martin',
+    birthdate: '1991-08-10',
+    offer: 'none',
+  });
+  const order = normalizeOrder(built);
+  assert.equal(order.skip_restore, true);
+  assert.equal(order.offer, 'none');
+  assert.deepEqual(order.snapshots, []);
 });
 
 test('formulaire aventure — date de naissance requise', () => {

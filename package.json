@@ -17,6 +17,8 @@
     "stripe:listen": "node storefront/scripts/stripe-listen.js",
     "headed:balma": "node scripts/headed-balma-switch-demo.js",
     "headed:balma3": "node scripts/headed-balma-3-abos.js",
+    "headed:balma-migrate3": "node scripts/headed-balma-migrate-3.js",
+    "headed:balma-noabo": "node scripts/headed-balma-no-abo.js",
     "test": "node --test test/*.test.js",
     "test:offers": "node --test test/all-offers.test.js",
     "test:offers:live": "node scripts/test-all-offers.js --live",

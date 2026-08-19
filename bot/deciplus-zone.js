@@ -41,11 +41,14 @@ async function selectSiteInPicker(page, siteLabel) {
   const pattern = new RegExp(escapeRegExp(label), 'i');
   logInfo('Sélection site Deciplus', { site: label });
 
-  await dismissDeciplusModals(page).catch(() => {});
-  await dismissJqueryUiOverlay(page).catch(() => {});
-  await page.keyboard.press('Escape').catch(() => {});
-  await randomDelay(200, 400);
-  await dismissDeciplusModals(page).catch(() => {});
+  const onZonePicker = await isChooseZoneScreen(page);
+  if (!onZonePicker) {
+    await dismissDeciplusModals(page).catch(() => {});
+    await dismissJqueryUiOverlay(page).catch(() => {});
+    await page.keyboard.press('Escape').catch(() => {});
+    await randomDelay(200, 400);
+    await dismissDeciplusModals(page).catch(() => {});
+  }
 
   const customSelect = page.locator('.ari-select').first();
   if ((await customSelect.count()) > 0 && (await customSelect.isVisible().catch(() => false))) {
@@ -68,9 +71,14 @@ async function selectSiteInPicker(page, siteLabel) {
             String(s || '')
               .normalize('NFD')
               .replace(/[\u0300-\u036f]/g, '')
-              .toLowerCase();
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, ' ')
+              .replace(/\bst\b/g, 'saint')
+              .replace(/\bste\b/g, 'sainte')
+              .replace(/\bboxing center\b/g, '')
+              .replace(/\s+/g, ' ')
+              .trim();
           const wantN = norm(want);
-          document.querySelectorAll('.modal-mask').forEach((el) => el.remove());
           const sel = document.querySelector('.ari-select');
           if (sel) sel.click();
           const opts = [
@@ -80,7 +88,7 @@ async function selectSiteInPicker(page, siteLabel) {
           ];
           const hit = opts.find((el) => {
             const t = norm(el.textContent || '');
-            return t.includes(wantN) || wantN.includes(t);
+            return t && wantN && (t === wantN || t.includes(wantN) || wantN.includes(t));
           });
           if (!hit) return { ok: false, options: opts.map((o) => (o.textContent || '').trim()).slice(0, 12) };
           hit.click();
