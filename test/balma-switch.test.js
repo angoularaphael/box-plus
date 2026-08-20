@@ -467,6 +467,10 @@ test('salles Boxing Center — Balma exclue de la vérif résil / changement', (
   assert.equal(boxingCenterGymsExceptBalma('minimes')[0], 'minimes');
   assert.ok(!boxingCenterGymsExceptBalma('balma').includes('balma'));
   assert.ok(boxingCenterGymsExceptBalma().includes('portet'));
+  const { isBalmaSaleTarget, assertNotBalmaSale, BALMA_SALE_ERROR } = require('../lib/gym-slugs');
+  assert.equal(isBalmaSaleTarget({ key: 'balma' }), true);
+  assert.equal(isBalmaSaleTarget({ key: 'minimes' }), false);
+  assert.throws(() => assertNotBalmaSale({ deciplus_label: 'Balma' }, {}), (e) => e.message === BALMA_SALE_ERROR);
 });
 
 test('David, backoffice et tunnel Aventure — hors Balma / pas de retour', () => {

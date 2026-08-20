@@ -163,6 +163,11 @@ async function createChosenOfferSale(page, memberId, gymConfig, order) {
   const { fetchDeciplusCatalog, resolveProductConfig, resolveBadgeProductConfig } = require('./catalog');
   const { applyBillingPlanToProductConfig } = require('../lib/billing-plan');
   const { shouldGiftBadgeComptant } = require('../lib/balma');
+  const { assertNotBalmaSale } = require('../lib/gym-slugs');
+  const minimesConfig = { ...(getGymConfig('minimes') || gymConfig), key: 'minimes' };
+  assertNotBalmaSale(minimesConfig, { ...order, gym: 'minimes' });
+  const switched = await switchDeciplusSite(page, minimesConfig.deciplus_label || 'Minimes');
+  if (!switched) throw new Error('Impossible d’ouvrir Minimes pour la vente Aventure');
   let catalog = [];
   try {
     catalog = await fetchDeciplusCatalog(page);
@@ -214,7 +219,7 @@ async function createChosenOfferSale(page, memberId, gymConfig, order) {
     product: order.product_id || order.offer,
     badge: Boolean(badgeProductConfig),
   });
-  return recordSale(page, order, productConfig, memberId, gymConfig, {
+  return recordSale(page, order, productConfig, memberId, minimesConfig, {
     badgeProductConfig,
   });
 }

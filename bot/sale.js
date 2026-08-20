@@ -8,6 +8,7 @@ const { logInfo, logWarn } = require('../lib/logger');
 const { openMemberCheck, clickFirst, fillFirst, sel, closeGreyboxIfOpen, ribAddressFields } = require('./wallet');
 const { cancelSale } = require('./cancel-sale');
 const { ensureDeciplusSaleZone, isChooseZoneScreen } = require('./deciplus-zone');
+const { assertNotBalmaSale } = require('../lib/gym-slugs');
 const { dismissJqueryUiOverlay } = require('./ui');
 const { buildDeciplusProductSearch, buildSearchTokens, normalizeText } = require('./catalog');
 const {
@@ -2656,6 +2657,7 @@ async function verifyCreatedContract(page, memberId, { badge = false, label = ''
 }
 
 async function recordSale(page, order, productConfig, memberId, gymConfig = {}, options = {}) {
+  assertNotBalmaSale(gymConfig, order);
   if (productConfig.create_sale === false || productConfig.sale_type === 'none') {
     logInfo('Essai — fiche membre seulement', { order_id: order.order_id });
     if (memberId) {
