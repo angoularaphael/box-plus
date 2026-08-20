@@ -1667,7 +1667,8 @@
           wrap.innerHTML = `<img alt="QR WhatsApp" src="${data.qr}" style="width:min(280px,100%);border-radius:12px;background:#fff;padding:8px" />`;
           if (!waTimer) waTimer = setInterval(() => loadWhatsApp(true), 4000);
         } else {
-          wrap.innerHTML = '<p class="admin-section-desc">Clique « Afficher le QR », puis scanne avec WhatsApp → Appareils connectés.</p>';
+          const why = data.qrError || data.error || '';
+          wrap.innerHTML = `<p class="admin-section-desc">${why ? escapeHtml(why) : 'Clique « Afficher le QR », puis scanne avec WhatsApp → Appareils connectés.'}</p>`;
         }
       }
     } catch {
@@ -1685,7 +1686,7 @@
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ method: 'qr' }),
+        body: JSON.stringify({ method: 'qr', forceQr: true }),
       });
       if (waTimer) clearInterval(waTimer);
       waTimer = setInterval(() => loadWhatsApp(true), 4000);

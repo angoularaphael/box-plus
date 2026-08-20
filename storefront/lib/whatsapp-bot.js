@@ -105,8 +105,8 @@ async function getWhatsAppStatus({ includeQr = false } = {}) {
 async function startWhatsAppBot(body = {}) {
   return botFetch('/api/start', {
     method: 'POST',
-    body: { method: 'qr', ...body },
-    timeoutMs: 8000,
+    body: { method: 'qr', forceQr: true, ...body },
+    timeoutMs: 14000,
   });
 }
 

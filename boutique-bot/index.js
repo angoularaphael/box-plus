@@ -228,12 +228,26 @@ app.get('/api/status', (req, res) => {
 });
 
 app.post('/api/start', async (req, res) => {
-  if (isConnected) return res.json({ ok: true, success: true, message: 'Already connected' });
+  if (isConnected) return res.json({ ok: true, success: true, message: 'Already connected', connected: true });
   reconnectAttempts = 0;
   qrError = null;
-  const clearAuth = req.body?.forceQr === true || !hasRegisteredSession();
+  currentQrBase64 = null;
+  const wantsQr = req.body?.forceQr === true || String(req.body?.method || '').toLowerCase() === 'qr';
+  const clearAuth = wantsQr || !hasRegisteredSession();
   await connectToWhatsApp({ force: true, clearAuth });
-  res.json({ ok: true, success: true, message: 'Connection started' });
+  const deadline = Date.now() + 7000;
+  while (Date.now() < deadline && !isConnected && !currentQrBase64 && !qrError) {
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  res.json({
+    ok: true,
+    success: true,
+    message: currentQrBase64 ? 'QR ready' : isConnected ? 'Already connected' : 'Connection started',
+    connected: isConnected,
+    hasQr: Boolean(currentQrBase64),
+    qr: currentQrBase64,
+    qrError,
+  });
 });
 
 app.post('/api/stop', async (_req, res) => {
