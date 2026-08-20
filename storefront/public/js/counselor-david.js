@@ -128,7 +128,7 @@ window.BCCounselor = (function () {
           </div>`;
       } else if (step === 'form') {
         footer = `
-          <p class="chat-form-hint">Les informations doivent être <strong>identiques à celles de votre inscription</strong> : nom, prénom, date de naissance et téléphone (majuscules / minuscules indifférentes).</p>
+          <p class="chat-form-hint">Les informations doivent être <strong>identiques à celles de votre inscription</strong> : nom, prénom, date de naissance et téléphone (majuscules / minuscules indifférentes). On vérifie ta fiche sur les <strong>5 salles Boxing Center</strong> (Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet) — <strong>pas Balma</strong>.</p>
           <form id="cancelForm" class="chat-form form-grid">
             <div><label>Prénom *</label><input name="first_name" required /></div>
             <div><label>Nom *</label><input name="last_name" required /></div>

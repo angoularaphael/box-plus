@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Aventure (studio) — Boxing Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/boutique.css" />
+  <style>
+    body.dev-body {
+      background: var(--bc-navy-deep);
+      color: #f4f5f7;
+      min-height: 100vh;
+    }
+    .dev-wrap { max-width: 640px; margin: 0 auto; padding: 32px 20px 80px; }
+    .dev-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+    .dev-top h1 {
+      color: #fff;
+      font-size: clamp(28px, 5vw, 40px);
+      margin: 6px 0 0;
+    }
+    .dev-banner {
+      background: rgba(200, 144, 47, 0.16);
+      border: 1px solid rgba(200, 144, 47, 0.45);
+      color: #f3d9a0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 14px;
+      margin-bottom: 22px;
+    }
+    .dev-card {
+      background: #fff;
+      color: var(--bc-text);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: var(--shadow-lg);
+    }
+    .dev-card .lead { color: var(--bc-muted); font-size: 14px; margin-bottom: 18px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 14px;
+    }
+    @media (max-width: 620px) {
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    .aventure-field { margin-bottom: 4px; }
+    .aventure-field label,
+    .offers-legend {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin: 0 0 6px;
+    }
+    .aventure-field input {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--bc-border);
+      font-size: 15px;
+      font-family: inherit;
+    }
+    .offers-legend { margin-top: 18px; }
+    .aventure-offers { display: grid; gap: 10px; margin: 8px 0 16px; }
+    .aventure-offers label {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      border: 1px solid var(--bc-border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .aventure-offers label:has(input:checked) {
+      border-color: var(--bc-red);
+      box-shadow: 0 0 0 1px var(--bc-red);
+    }
+    .aventure-offers strong {
+      display: block;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 22px;
+    }
+    .aventure-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .aventure-check input { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; }
+    .aventure-note { font-size: 13px; color: var(--bc-muted); margin: 14px 0 0; }
+    .aventure-err { color: var(--bc-error); min-height: 1.4em; margin: 8px 0 0; }
+    .btn.block { width: 100%; margin-top: 22px; }
+  </style>
+</head>
+<body class="dev-body">
+  <div class="dev-wrap">
+    <div class="dev-top">
+      <div>
+        <span class="eyebrow" style="color:var(--bc-gold)">Studio</span>
+        <h1>Aventure Balma</h1>
+      </div>
+      <a class="btn secondary sm" href="/dev">Retour</a>
+    </div>
+    <p class="dev-banner">
+      Preview du parcours Aventure. Le formulaire crée un brouillon boutique, puis ouvre le <strong>paiement sandbox</strong> (29 € → IBAN + signature, 259 € → signature).
+    </p>
+    <div class="dev-card">
+      <p class="lead">
+        Ta salle Balma a changé de propriétaire. Pour rejoindre nos 5 salles Boxing Center
+        (Minimes, États-Unis, Saint-Cyprien, Ramonville et Portet),
+        remplis les infos suivantes et choisis ta nouvelle formule.
+      </p>
+      <form id="aventureForm">
+        <div class="form-grid">
+          <div class="aventure-field">
+            <label for="first_name">Prénom *</label>
+            <input id="first_name" name="first_name" required autocomplete="given-name" />
+          </div>
+          <div class="aventure-field">
+            <label for="last_name">Nom *</label>
+            <input id="last_name" name="last_name" required autocomplete="family-name" />
+          </div>
+          <div class="aventure-field" style="grid-column: 1 / -1">
+            <label for="birthdate">Date de naissance *</label>
+            <input id="birthdate" name="birthdate" type="date" required min="1900-01-01" autocomplete="bday" />
+          </div>
+        </div>
+        <p class="offers-legend">Choisis ton offre *</p>
+        <div class="aventure-offers" role="radiogroup" aria-label="Offre">
+          <label>
+            <input type="radio" name="offer" value="29" required />
+            <span>
+              <strong>29,99 € / 4 semaines</strong>
+              Sans engagement — badge réactivé, non prélevé.
+            </span>
+          </label>
+          <label>
+            <input type="radio" name="offer" value="259" />
+            <span>
+              <strong>259 € / 12 mois</strong>
+              Offre saison — paiement en une fois.
+            </span>
+          </label>
+        </div>
+        <label class="aventure-check">
+          <input type="checkbox" name="prelevement" value="1" required />
+          <span>Je confirme que je suis en <strong>prélèvement</strong> (pas en paiement comptant).</span>
+        </label>
+        <p class="aventure-note">Paiement comptant ? Cette page ne s’applique pas.</p>
+        <button type="submit" class="btn block" id="aventureSubmit">Enregistrer et continuer</button>
+        <p class="aventure-err" id="aventureErr" role="alert"></p>
+      </form>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const form = document.getElementById('aventureForm');
+      const err = document.getElementById('aventureErr');
+      const submit = document.getElementById('aventureSubmit');
+      const birth = document.getElementById('birthdate');
+      if (birth) birth.max = new Date().toISOString().slice(0, 10);
+      if (!form) return;
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        err.textContent = '';
+        const data = Object.fromEntries(new FormData(form).entries());
+        submit.disabled = true;
+        submit.textContent = 'On s’occupe de ta fiche…';
+        try {
+          const res = await fetch('/api/balma-switch', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              first_name: data.first_name,
+              last_name: data.last_name,
+              birthdate: data.birthdate,
+              offer: data.offer,
+              prelevement: data.prelevement === '1',
+            }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok || !json.ok) {
+            err.textContent = json.error || (json.errors && json.errors[0]) || 'Impossible d’enregistrer.';
+            submit.disabled = false;
+            submit.textContent = 'Enregistrer et continuer';
+            return;
+          }
+          window.location.replace(json.redirect || '/inscription');
+        } catch {
+          err.textContent = 'Réseau indisponible. Réessaie dans un instant.';
+          submit.disabled = false;
+          submit.textContent = 'Enregistrer et continuer';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -10,6 +10,7 @@ const {
   validateBalmaSwitchPayload,
   inscriptionUrl,
   isAventureHost,
+  shouldServeAventurePreview,
   listBalmaPrelevementOffers,
 } = require('../lib/balma');
 const { parseFrDates, productSearchFromLabel } = require('../bot/migrate-gym');
@@ -219,13 +220,15 @@ test('isAventureHost', () => {
   assert.equal(isAventureHost({ headers: { host: 'boutique.boxingcenter.fr' } }), false);
 });
 
-test('12 variantes WhatsApp {prenom}', () => {
-  assert.equal(BALMA_WA.length, 12);
+test('14 variantes WhatsApp {prenom}', () => {
+  assert.equal(BALMA_WA.length, 14);
   for (const tpl of BALMA_WA) {
     assert.match(tpl, /\{prenom\}/);
+    assert.doesNotMatch(tpl, /###/);
     const filled = fill(tpl, { prenom: 'Léa', lien: 'https://aventure.boxingcenter.fr' });
     assert.doesNotMatch(filled, /\{prenom\}/);
     assert.match(filled, /Léa/);
+    assert.match(filled, /aventure\.boxingcenter\.fr/);
   }
 });
 
@@ -243,4 +246,124 @@ test('boutique ne sert plus /aventure', () => {
   assert.equal(fs.existsSync(htmlPath), false);
   const vercel = fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8');
   assert.match(vercel, /aventure\.boxingcenter\.fr/);
+});
+
+test('preview Aventure en local ou studio, pas en prod anonyme', () => {
+  assert.equal(shouldServeAventurePreview({ headers: { host: 'localhost:3040' } }), true);
+  assert.equal(shouldServeAventurePreview({ headers: { host: '127.0.0.1:3040' } }), true);
+  assert.equal(
+    shouldServeAventurePreview({ headers: { host: 'boutique.boxingcenter.fr' } }),
+    false
+  );
+  assert.equal(
+    shouldServeAventurePreview({ headers: { host: 'boutique.boxingcenter.fr' } }, { studio: true }),
+    true
+  );
+  const preview = path.join(__dirname, '..', 'storefront', 'views', 'aventure.html');
+  const studio = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'views', 'dev.html'), 'utf8');
+  assert.equal(fs.existsSync(preview), true);
+  assert.match(studio, /\/dev\/aventure/);
+});
+
+test('Aventure — doublon Minimes, jamais migrer ni résilier', () => {
+  const { aventureBotPolicy, isAventureOrder } = require('../lib/aventure-policy');
+  const p = aventureBotPolicy();
+  assert.equal(p.skip_cancel, true);
+  assert.equal(p.skip_migrate, true);
+  assert.equal(p.skip_restore, true);
+  assert.equal(p.create_duplicate, true);
+  assert.equal(p.search_gym, 'balma');
+  assert.equal(p.create_gym, 'minimes');
+  assert.equal(p.dispatch_after, 'payment');
+  assert.equal(isAventureOrder({ source: 'balma_retour' }), true);
+  const src = fs.readFileSync(path.join(__dirname, '..', 'bot', 'aventure-clone.js'), 'utf8');
+  assert.doesNotMatch(src, /cancelSale\s*\(/);
+  assert.doesNotMatch(src, /migrateMemberToGym\s*\(/);
+  assert.match(src, /allowDuplicate/);
+  assert.match(src, /applyMinimesDuplicateIdentity/);
+  assert.match(src, /skipIdentityPrefill:\s*true/);
+  const memberSrc = fs.readFileSync(path.join(__dirname, '..', 'bot', 'member.js'), 'utf8');
+  assert.match(memberSrc, /Créer quand même/);
+  assert.match(memberSrc, /detectHardDuplicatePage/);
+  assert.doesNotMatch(memberSrc, /Doublon accepté — second Valider/);
+  assert.match(src, /createMinimesDuplicate/);
+});
+
+test('Aventure — prénom + Balma sur le doublon Minimes', () => {
+  const {
+    appendBalmaToFirstName,
+    applyMinimesDuplicateIdentity,
+  } = require('../lib/aventure-duplicate-address');
+  assert.equal(appendBalmaToFirstName('Clara'), 'Clara Balma');
+  assert.equal(appendBalmaToFirstName('Clara Balma'), 'Clara Balma');
+  assert.equal(appendBalmaToFirstName(''), 'Balma');
+  const balma = {
+    last_name: 'Dup56075',
+    first_name: 'Aventure',
+    birthdate: '1992-03-15',
+    email: 'aventure.dup56075@boxplus-test.local',
+    phone: '0617871642',
+    address: '8 rue Theron de Montauge',
+    postal_code: '31130',
+    city: 'Balma',
+  };
+  const minimes = applyMinimesDuplicateIdentity(balma);
+  assert.equal(minimes.last_name, balma.last_name);
+  assert.equal(minimes.first_name, 'Aventure Balma');
+  assert.equal(minimes.birthdate, balma.birthdate);
+  assert.equal(minimes.email, balma.email);
+  assert.equal(minimes.phone, balma.phone);
+  assert.equal(minimes.address, balma.address);
+  assert.equal(balma.first_name, 'Aventure');
+});
+
+test('salles Boxing Center — Balma exclue de la vérif résil / changement', () => {
+  const {
+    boxingCenterGymsExceptBalma,
+    isBalmaGymSlug,
+    BOXING_CENTER_GYM_SLUGS,
+  } = require('../lib/gym-slugs');
+  assert.equal(isBalmaGymSlug('balma'), true);
+  assert.equal(isBalmaGymSlug('minimes'), false);
+  assert.ok(!BOXING_CENTER_GYM_SLUGS.includes('balma'));
+  assert.equal(boxingCenterGymsExceptBalma('minimes')[0], 'minimes');
+  assert.ok(!boxingCenterGymsExceptBalma('balma').includes('balma'));
+  assert.ok(boxingCenterGymsExceptBalma().includes('portet'));
+});
+
+test('David, backoffice et tunnel Aventure — hors Balma / pas de retour', () => {
+  const david = fs.readFileSync(
+    path.join(__dirname, '..', 'storefront', 'public', 'js', 'counselor-david.js'),
+    'utf8'
+  );
+  const adminHtml = fs.readFileSync(
+    path.join(__dirname, '..', 'storefront', 'public', 'admin', 'index.html'),
+    'utf8'
+  );
+  const ai = fs.readFileSync(
+    path.join(__dirname, '..', 'storefront', 'lib', 'counselor-ai.js'),
+    'utf8'
+  );
+  const insc = fs.readFileSync(
+    path.join(__dirname, '..', 'storefront', 'public', 'js', 'inscription.js'),
+    'utf8'
+  );
+  assert.match(david, /pas Balma/);
+  assert.match(adminHtml, /Aventure Balma/);
+  assert.match(ai, /JAMAIS sur Balma/);
+  assert.match(insc, /lockAventureBackNav/);
+  assert.match(insc, /if \(isBalmaRetour\(\)\) return ''/);
+});
+
+test('toAdminSummary — flag Aventure', () => {
+  const { toAdminSummary } = require('../storefront/lib/order-lifecycle');
+  const s = toAdminSummary({
+    order_id: 'AV-1',
+    source: 'balma_retour',
+    aventure: true,
+    customer_short: { first_name: 'Lea', last_name: 'Martin' },
+    gym: 'minimes',
+  });
+  assert.equal(s.aventure, true);
+  assert.equal(s.source, 'balma_retour');
 });

@@ -5,7 +5,9 @@ const { getStoreUrl } = require('../../lib/app-urls');
 const { logInfo, logWarn } = require('../../lib/logger');
 
 const NUDGE_AFTER_MS = Number(process.env.BOXPLUS_INSCRIPTION_NUDGE_MS || 30 * 60 * 1000);
+const MAX_NUDGE_ATTEMPTS = 3;
 const LEGACY_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const QUEUE_RETRY_MS = 3 * 60 * 1000;
 
 function nudgeDelayMs() {
   return NUDGE_AFTER_MS;
@@ -25,8 +27,6 @@ function isPaidIncomplete(order) {
   return true;
 }
 
-const QUEUE_RETRY_MS = 3 * 60 * 1000;
-
 function nudgeEmailDone(order) {
   return Boolean(order?.funnel?.nudge_email_sent_at || order?.funnel?.nudge_sent_at);
 }
@@ -35,22 +35,77 @@ function nudgeWhatsappDone(order) {
   return Boolean(order?.funnel?.nudge_whatsapp_sent_at || order?.funnel?.nudge_whatsapp_skipped_at);
 }
 
+function nudgeAttemptCount(order) {
+  const n = Number(order?.funnel?.nudge_attempts || 0);
+  if (n > 0) return n;
+  if (nudgeEmailDone(order) && nudgeWhatsappDone(order)) return 1;
+  return 0;
+}
+
+function lastNudgeAtMs(order) {
+  const explicit = Date.parse(order?.funnel?.last_nudge_at || '');
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  const stamps = [
+    order?.funnel?.nudge_whatsapp_sent_at,
+    order?.funnel?.nudge_email_sent_at,
+    order?.funnel?.nudge_sent_at,
+    order?.funnel?.nudge_whatsapp_skipped_at,
+  ];
+  let latest = 0;
+  for (const stamp of stamps) {
+    const t = Date.parse(stamp || '');
+    if (Number.isFinite(t) && t > latest) latest = t;
+  }
+  return latest;
+}
+
 function nudgeFullySent(order) {
-  return nudgeEmailDone(order) && nudgeWhatsappDone(order);
+  return nudgeAttemptCount(order) >= MAX_NUDGE_ATTEMPTS;
+}
+
+function isStuckIncomplete(order) {
+  if (!isInscriptionTunnel(order)) return false;
+  if (Number(order.step || 0) >= STEPS.CONFIRMED || order.signature?.signed_at) return false;
+  if (!customerEmail(order) && !customerPhone(order)) return false;
+  return true;
+}
+
+function stepEnteredMs(order) {
+  const entered = Date.parse(order?.funnel?.step_entered_at || '');
+  if (Number.isFinite(entered)) return entered;
+  const deadline = Date.parse(order?.funnel?.complete_deadline_at || '');
+  if (Number.isFinite(deadline)) return deadline - NUDGE_AFTER_MS;
+  const paid = Date.parse(order?.payment?.paid_at || '');
+  if (Number.isFinite(paid)) return paid;
+  const fallback = Date.parse(order?.updated_at || order?.created_at || '');
+  return Number.isFinite(fallback) ? fallback : 0;
+}
+
+function firstAttemptIncomplete(order) {
+  if (nudgeAttemptCount(order) > 0) return false;
+  const email = nudgeEmailDone(order);
+  const wa = nudgeWhatsappDone(order);
+  return (email && !wa) || (!email && wa);
 }
 
 function isNudgeDue(order, now = Date.now(), { force = false } = {}) {
-  if (!isPaidIncomplete(order)) return false;
+  if (!isStuckIncomplete(order)) return false;
   if (nudgeFullySent(order)) return false;
-  const paidAt = Date.parse(order.payment?.paid_at || '');
-  if (!Number.isFinite(paidAt)) return false;
-  const hasDeadline = Boolean(order.funnel?.complete_deadline_at);
-  if (!hasDeadline && now - paidAt > LEGACY_MAX_AGE_MS) return false;
-  if (force) return true;
   const queuedAt = Date.parse(order.funnel?.nudge_queued_at || '');
-  if (Number.isFinite(queuedAt) && now - queuedAt < QUEUE_RETRY_MS) return false;
-  const deadline = Date.parse(completeDeadlineAt(order) || '');
-  return Number.isFinite(deadline) && now >= deadline;
+  if (!force && Number.isFinite(queuedAt) && now - queuedAt < QUEUE_RETRY_MS) return false;
+  const last = lastNudgeAtMs(order);
+  if (last && now - last < NUDGE_AFTER_MS) return false;
+  if (firstAttemptIncomplete(order)) {
+    const entered = stepEnteredMs(order);
+    if (force || (entered && now - entered >= NUDGE_AFTER_MS) || last) return true;
+  }
+  const entered = stepEnteredMs(order);
+  if (!entered) return false;
+  if (!order.funnel?.step_entered_at && !order.funnel?.complete_deadline_at) {
+    if (now - entered > LEGACY_MAX_AGE_MS) return false;
+  }
+  if (force) return true;
+  return now - entered >= NUDGE_AFTER_MS;
 }
 
 const STEP_LABELS = {
@@ -229,24 +284,35 @@ function resumeEmailHtml(order, { kind } = {}) {
 }
 
 function nudgeEmailSubject() {
-  return 'Dernière étape : validez votre inscription Boxing Center';
+  return 'Vous n’avez pas finalisé votre inscription Boxing Center';
 }
 
 function nudgeResumeUrl(order) {
-  return resumeUrl(order, { minStep: STEPS.IBAN, fallbackStep: STEPS.DOSSIER });
+  if (isPaidIncomplete(order) && resumeStep(order) >= STEPS.IBAN) {
+    return resumeUrl(order, { minStep: STEPS.IBAN, fallbackStep: STEPS.DOSSIER });
+  }
+  return resumeUrl(order);
 }
 
 function nudgeEmailHtml(order) {
   const hello = firstName(order) ? `Bonjour ${escapeHtml(firstName(order))},` : 'Bonjour,';
   const url = nudgeResumeUrl(order);
-  const inner = `<p>${hello}</p>
-    <p>Votre règlement est bien reçu. Il reste <strong>le dossier et la signature</strong> (environ 2 minutes). Tant que ce n’est pas validé, <strong>vous n’êtes pas encore inscrit en salle</strong>.</p>
+  const step = escapeHtml(STEP_LABELS[resumeStep(order)] || 'inscription');
+  const paidDossier = isPaidIncomplete(order) && resumeStep(order) >= STEPS.IBAN;
+  const inner = paidDossier
+    ? `<p>${hello}</p>
+    <p>Vous n’avez <strong>pas finalisé</strong> votre inscription. Votre règlement est bien reçu, mais il reste <strong>le dossier et la signature</strong> (environ 2 minutes). Tant que ce n’est pas validé, <strong>vous n’êtes pas encore inscrit en salle</strong>.</p>
     <p>Cliquez sur le bouton : vous reprenez directement à l’étape restante.</p>
-    ${ctaButton(url, 'Terminer mon inscription')}
-    <p style="font-size:14px;color:#334155">Sans cette validation, les coachs ne vous verront pas sur la feuille d’émargement.</p>`;
+    ${ctaButton(url, 'Finaliser mon inscription')}
+    <p style="font-size:14px;color:#334155">Sans cette validation, les coachs ne vous verront pas sur la feuille d’émargement.</p>`
+    : `<p>${hello}</p>
+    <p>Vous n’avez <strong>pas finalisé</strong> votre inscription Boxing Center — vous êtes encore à l’étape <strong>${step}</strong>.</p>
+    <p>Un clic suffit pour reprendre exactement là où vous en étiez, sans tout recommencer.</p>
+    ${ctaButton(url, 'Finaliser mon inscription')}
+    <p style="font-size:14px;color:#334155">Sans cette validation, votre inscription n’est pas enregistrée en salle.</p>`;
   return wrapCommercialEmail({
-    kicker: 'Boxing Center — Dossier à finaliser',
-    title: 'Plus que 2 minutes pour être inscrit',
+    kicker: 'Boxing Center — Inscription à finaliser',
+    title: 'Vous n’avez pas finalisé votre inscription',
     inner,
   });
 }
@@ -254,10 +320,20 @@ function nudgeEmailHtml(order) {
 function nudgeWhatsAppText(order) {
   const hello = firstName(order) ? `Bonjour ${firstName(order)},` : 'Bonjour,';
   const url = nudgeResumeUrl(order);
+  const step = STEP_LABELS[resumeStep(order)] || 'inscription';
+  const paidDossier = isPaidIncomplete(order) && resumeStep(order) >= STEPS.IBAN;
+  if (paidDossier) {
+    return (
+      `${hello}\n\n` +
+      `Vous n’avez pas finalisé votre inscription Boxing Center. Votre règlement est bien reçu, mais il reste le dossier et la signature (environ 2 minutes). Tant que ce n’est pas validé, vous n’êtes pas encore inscrit en salle.\n\n` +
+      `Finalisez ici :\n${url}\n\n` +
+      `Sportivement,\nL’équipe Boxing Center`
+    );
+  }
   return (
     `${hello}\n\n` +
-    `Votre règlement Boxing Center est bien reçu. Il reste le dossier et la signature (environ 2 minutes). Tant que ce n’est pas validé, vous n’êtes pas encore inscrit en salle.\n\n` +
-    `Terminez votre inscription ici :\n${url}\n\n` +
+    `Vous n’avez pas finalisé votre inscription Boxing Center — vous êtes encore à l’étape ${step}.\n\n` +
+    `Reprenez ici :\n${url}\n\n` +
     `Sportivement,\nL’équipe Boxing Center`
   );
 }
@@ -395,89 +471,95 @@ async function dispatchOneNudge(orderId, { force = false } = {}) {
 }
 
 async function sendAndMarkNudge(order) {
-  const alreadyEmail = nudgeEmailDone(order);
-  const alreadyWa = nudgeWhatsappDone(order);
   await markNudgeQueued(order.order_id);
   const out = {
     ok: true,
     sent: false,
     complete: false,
-    email: { sent: alreadyEmail, already: alreadyEmail },
-    whatsapp: { sent: alreadyWa, already: alreadyWa },
+    email: { sent: false },
+    whatsapp: { sent: false },
   };
 
-  if (!alreadyEmail) {
-    try {
-      const mailed = await sendNudgeEmail(order);
-      if (mailed.sent) {
-        await patchNudgeFunnel(order.order_id, { nudge_email_sent_at: new Date().toISOString() });
-        out.email = { sent: true, via: mailed.via };
-        out.sent = true;
-      } else if (mailed.skipped) {
-        await patchNudgeFunnel(order.order_id, {
-          nudge_email_sent_at: new Date().toISOString(),
-          nudge_email_skipped: mailed.reason,
-        });
-        out.email = { sent: false, skipped: true, reason: mailed.reason };
-      } else {
-        out.ok = false;
-        out.email = { sent: false, error: mailed.reason || 'email_not_sent' };
-        logWarn('Relance inscription — email non envoyé', {
-          order_id: order.order_id,
-          reason: mailed.reason || mailed.skipped,
-        });
-      }
-    } catch (err) {
+  try {
+    const mailed = await sendNudgeEmail(order);
+    if (mailed.sent) {
+      await patchNudgeFunnel(order.order_id, { nudge_email_sent_at: new Date().toISOString() });
+      out.email = { sent: true, via: mailed.via };
+      out.sent = true;
+    } else if (mailed.skipped) {
+      await patchNudgeFunnel(order.order_id, {
+        nudge_email_sent_at: new Date().toISOString(),
+        nudge_email_skipped: mailed.reason,
+      });
+      out.email = { sent: false, skipped: true, reason: mailed.reason };
+    } else {
       out.ok = false;
-      out.email = { sent: false, error: err.message };
-      logWarn('Relance inscription — email échoué', {
+      out.email = { sent: false, error: mailed.reason || 'email_not_sent' };
+      logWarn('Relance inscription — email non envoyé', {
         order_id: order.order_id,
-        error: err.message,
+        reason: mailed.reason || mailed.skipped,
       });
     }
+  } catch (err) {
+    out.ok = false;
+    out.email = { sent: false, error: err.message };
+    logWarn('Relance inscription — email échoué', {
+      order_id: order.order_id,
+      error: err.message,
+    });
   }
 
-  if (!alreadyWa) {
-    try {
-      const wa = await sendNudgeWhatsApp(order);
-      if (wa.sent) {
-        await patchNudgeFunnel(order.order_id, { nudge_whatsapp_sent_at: new Date().toISOString() });
-        out.whatsapp = { sent: true, phone: wa.phone };
-        out.sent = true;
-      } else if (wa.skipped) {
-        await patchNudgeFunnel(order.order_id, {
-          nudge_whatsapp_skipped_at: new Date().toISOString(),
-          nudge_whatsapp_skipped: wa.reason,
-        });
-        out.whatsapp = { sent: false, skipped: true, reason: wa.reason };
-        logWarn('Relance inscription — WhatsApp ignoré', {
-          order_id: order.order_id,
-          reason: wa.reason,
-        });
-      } else {
-        out.ok = false;
-        out.whatsapp = { sent: false, error: wa.error || 'whatsapp_not_sent' };
-      }
-    } catch (err) {
-      out.ok = false;
-      out.whatsapp = { sent: false, error: err.message };
-      logWarn('Relance inscription — WhatsApp échoué', {
-        order_id: order.order_id,
-        error: err.message,
+  try {
+    const wa = await sendNudgeWhatsApp(order);
+    if (wa.sent) {
+      await patchNudgeFunnel(order.order_id, { nudge_whatsapp_sent_at: new Date().toISOString() });
+      out.whatsapp = { sent: true, phone: wa.phone };
+      out.sent = true;
+    } else if (wa.skipped) {
+      await patchNudgeFunnel(order.order_id, {
+        nudge_whatsapp_skipped_at: new Date().toISOString(),
+        nudge_whatsapp_skipped: wa.reason,
       });
+      out.whatsapp = { sent: false, skipped: true, reason: wa.reason };
+      logWarn('Relance inscription — WhatsApp ignoré', {
+        order_id: order.order_id,
+        reason: wa.reason,
+      });
+    } else {
+      out.ok = false;
+      out.whatsapp = { sent: false, error: wa.error || 'whatsapp_not_sent' };
     }
+  } catch (err) {
+    out.ok = false;
+    out.whatsapp = { sent: false, error: err.message };
+    logWarn('Relance inscription — WhatsApp échoué', {
+      order_id: order.order_id,
+      error: err.message,
+    });
   }
 
   const latest = await loadOrderAsync(order.order_id);
-  out.complete = nudgeFullySent(latest);
-  if (out.complete && latest && !latest.funnel?.nudge_sent_at) {
-    await patchNudgeFunnel(order.order_id, { nudge_sent_at: new Date().toISOString() });
+  const delivered = Boolean(out.email.sent || out.whatsapp.sent);
+  const emailDone = Boolean(out.email.sent || out.email.skipped);
+  const waDone = Boolean(out.whatsapp.sent || out.whatsapp.skipped);
+  if (delivered || (emailDone && waDone)) {
+    const nextAttempts = Math.min(MAX_NUDGE_ATTEMPTS, nudgeAttemptCount(latest || order) + 1);
+    const patch = {
+      nudge_attempts: nextAttempts,
+      last_nudge_at: new Date().toISOString(),
+    };
+    if (nextAttempts >= MAX_NUDGE_ATTEMPTS) patch.nudge_sent_at = patch.last_nudge_at;
+    await patchNudgeFunnel(order.order_id, patch);
   }
+  const after = await loadOrderAsync(order.order_id);
+  out.complete = nudgeFullySent(after);
+  out.attempts = nudgeAttemptCount(after);
   if (out.sent || out.complete) {
     logInfo('Relance inscription envoyée', {
       order_id: order.order_id,
       email: out.email.sent,
       whatsapp: out.whatsapp.sent,
+      attempts: out.attempts,
       complete: out.complete,
     });
   }
@@ -504,10 +586,13 @@ async function dispatchDueNudges() {
 
 module.exports = {
   NUDGE_AFTER_MS,
+  MAX_NUDGE_ATTEMPTS,
   nudgeDelayMs,
   completeDeadlineAt,
   isPaidIncomplete,
+  isStuckIncomplete,
   isNudgeDue,
+  nudgeAttemptCount,
   resumeUrl,
   resumeStep,
   describeResume,

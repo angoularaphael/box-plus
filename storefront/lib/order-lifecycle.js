@@ -133,12 +133,31 @@ async function loadOrderAsync(orderId) {
 
 function saveOrder(order) {
   initDirs();
+  applyFunnelStepClock(order);
   return persistence.saveOrder(order);
 }
 
 async function saveOrderAsync(order) {
   initDirs();
+  applyFunnelStepClock(order);
   return persistence.saveOrderAsync(order);
+}
+
+function applyFunnelStepClock(order) {
+  if (!order || order.action) return order;
+  const id = String(order.order_id || '');
+  if (/^(COACH|CHANGE|VERIFY)-/i.test(id)) return order;
+  if (!order.access_token) return order;
+  if (order.signature?.signed_at || Number(order.step || 0) >= STEPS.CONFIRMED) return order;
+  const key = String(Number(order.step || 0));
+  const funnel = order.funnel || {};
+  if (String(funnel.tracked_step || '') === key && funnel.step_entered_at) return order;
+  order.funnel = {
+    ...funnel,
+    tracked_step: key,
+    step_entered_at: new Date().toISOString(),
+  };
+  return order;
 }
 
 function verifyAccess(order, token) {
@@ -212,6 +231,12 @@ async function markPaymentPaidAsync(orderId, paymentData) {
   } catch {
     /* ignore */
   }
+  try {
+    const { notifyAventurePaid } = require('./aventure-dispatch');
+    await notifyAventurePaid(saved);
+  } catch {
+    /* le dispatch Aventure ne doit pas bloquer le paiement */
+  }
   return saved;
 }
 
@@ -239,7 +264,9 @@ async function updateIbanAsync(orderId, iban) {
   const clean = normalizeIban(iban);
   order.payment = { ...(order.payment || {}), iban: clean };
   order.customer_full = { ...(order.customer_full || {}), iban: clean };
-  order.step = Math.max(order.step || 1, STEPS.DOSSIER);
+  const { isBalmaRetourOrder } = require('../../lib/balma');
+  const aventure = isBalmaRetourOrder(order) || order.aventure || order.skip_dossier;
+  order.step = aventure ? STEPS.SIGNATURE : Math.max(order.step || 1, STEPS.DOSSIER);
   return saveOrderAsync(order);
 }
 

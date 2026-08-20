@@ -307,6 +307,10 @@
       qs.set('session_id', state.sessionId);
     }
     qs.set('step', String(state.step));
+    if (isBalmaRetour()) {
+      qs.set('aventure', '1');
+      qs.set('source', 'balma_retour');
+    }
     const path = '/inscription';
     const next = `${path}?${qs}`;
     if (location.pathname !== path || location.search !== `?${qs}`) {
@@ -613,6 +617,11 @@
   }
 
   function goToStep(step) {
+    if (isBalmaRetour()) {
+      const paid = ['paid', 'free'].includes(String(state.order?.payment?.status || ''));
+      const min = paid ? aventureAfterPayStep() : 4;
+      if (Number(step) < min) step = min;
+    }
     setMsg('');
     state.step = step;
     try {
@@ -639,7 +648,17 @@
   }
 
   function backButton(label, targetStep) {
+    if (isBalmaRetour()) return '';
     return `<button type="button" class="btn secondary block step-back" data-step="${targetStep}">${label}</button>`;
+  }
+
+  function lockAventureBackNav() {
+    if (!isBalmaRetour() || window.__bcAventureLock) return;
+    window.__bcAventureLock = true;
+    history.pushState({ aventureLock: true }, '', location.href);
+    window.addEventListener('popstate', () => {
+      history.pushState({ aventureLock: true }, '', location.href);
+    });
   }
 
   function bindBackButtons() {
@@ -2253,6 +2272,7 @@
       state.gymDraft = 'minimes';
       state.step = 4;
     }
+    lockAventureBackNav();
     await loadConfig();
 
     if (state.orderId && state.token && !params.get('order')) {

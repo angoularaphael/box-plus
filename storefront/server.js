@@ -19,6 +19,7 @@ const {
   isBalmaRetourSource,
   isBalmaRetourOrder,
   balmaBadgePaymentFields,
+  shouldServeAventurePreview,
 } = require('../lib/balma');
 const { forwardJobToBot } = require('../lib/bot-forward');
 const {
@@ -459,10 +460,15 @@ async function dispatchLifecycleOrder(order) {
     logWarn('Dispatch bot sans photo membre', { order_id: order.order_id });
   }
   if (isBalmaRetourOrder(order) || order.aventure) {
+    const { aventureBotPolicy } = require('../lib/aventure-policy');
+    const policy = aventureBotPolicy();
     payload.action = 'balma_switch';
-    payload.skip_restore = true;
+    payload.skip_restore = policy.skip_restore;
+    payload.skip_cancel = policy.skip_cancel;
+    payload.skip_migrate = policy.skip_migrate;
+    payload.create_duplicate = policy.create_duplicate;
     payload.offer = order.product_id;
-    payload.gym = payload.gym || 'minimes';
+    payload.gym = payload.gym || policy.create_gym;
   }
   const result = await dispatchOrder(payload);
   order.dispatched_at = new Date().toISOString();
@@ -472,6 +478,11 @@ async function dispatchLifecycleOrder(order) {
   logInfo('Commande lifecycle → BOXPLUS', { order_id: order.order_id, queued: result.queued });
   return result;
 }
+
+const { setAventurePaidHandler } = require('./lib/aventure-dispatch');
+setAventurePaidHandler(async (order) => {
+  await dispatchLifecycleOrder(order);
+});
 
 /** Photo seule — ne recrée pas la vente (job_id = {order_id}#photo). */
 async function dispatchMemberPhoto(order) {
@@ -879,7 +890,17 @@ function createApp() {
      sans en-tête CORS le navigateur bloquait la réponse (préflight en 404). */
   app.use('/api', corsMiddleware());
 
-  app.get(['/aventure', '/aventure.html'], (_req, res) => {
+  function sendAventurePreview(res) {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    res.setHeader('Cache-Control', 'no-store');
+    res.type('text/html; charset=utf-8');
+    res.sendFile(path.join(__dirname, 'views', 'aventure.html'));
+  }
+
+  app.get(['/aventure', '/aventure.html'], (req, res) => {
+    if (shouldServeAventurePreview(req, { studio: Boolean(getDevSession(req)) })) {
+      return sendAventurePreview(res);
+    }
     res.redirect(301, 'https://aventure.boxingcenter.fr/');
   });
 
@@ -1863,11 +1884,7 @@ function createApp() {
       });
     } catch (err) {
       logError('Envoi WhatsApp de reprise', { order_id: order.order_id, error: err.message });
-      res.status(500).json({
-        ok: false,
-        error: err.message,
-        message: 'Envoi WhatsApp échoué — vérifiez que le bot est connecté',
-      });
+      res.status(500).json({ ok: false, error: err.message, message: 'Envoi WhatsApp échoué — vérifiez que le bot est connecté' });
     }
   });
 
@@ -2083,7 +2100,7 @@ function createApp() {
         productId: draft.product_id,
         orderId: draft.order_id,
         token: draft.access_token,
-        boutiqueBase: getStoreUrl(),
+        boutiqueBase: getCheckoutBaseUrl(req),
       });
       res.json({
         ok: true,
@@ -4526,6 +4543,11 @@ function createApp() {
     res.setHeader('Cache-Control', 'no-store');
     res.type('text/html; charset=utf-8');
     res.sendFile(path.join(__dirname, 'views', 'dev.html'));
+  });
+
+  app.get(['/dev/aventure', '/dev/aventure/'], (req, res) => {
+    if (!getDevSession(req)) return sendNotFoundPage(res);
+    return sendAventurePreview(res);
   });
 
   app.get(['/404', '/404.html'], (_req, res) => sendNotFoundPage(res));

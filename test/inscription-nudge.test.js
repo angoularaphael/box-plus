@@ -114,31 +114,40 @@ test('mails reprise / relance : vouvoiement, bouton payer visible', () => {
     payment: { status: 'paid', paid_at: '2026-08-16T08:00:00.000Z' },
   };
   const nudgeHtml = nudgeEmailHtml(paid);
-  assert.match(nudgeEmailSubject(), /validez votre inscription/i);
+  assert.match(nudgeEmailSubject(), /pas finalisé/i);
   assert.match(nudgeHtml, /Bonjour Diego/);
-  assert.match(nudgeHtml, /Terminer mon inscription/);
+  assert.match(nudgeHtml, /Finaliser mon inscription/);
+  assert.match(nudgeHtml, /pas finalisé/);
   assert.match(nudgeHtml, /dossier et la signature/);
   assert.match(nudgeHtml, /boutique\.boxingcenter\.fr\/inscription/);
   assert.match(nudgeHtml, /\bvous\b|\bvotre\b/i);
   assert.doesNotMatch(nudgeHtml, /(?:^|[\s>])(?:tu |ton |tes |toi)|t'|Salut /i);
   const wa = nudgeWhatsAppText(paid);
   assert.match(wa, /Bonjour Diego/);
+  assert.match(wa, /pas finalisé/);
   assert.match(wa, /dossier et la signature/);
   assert.match(wa, /boutique\.boxingcenter\.fr\/inscription/);
-  assert.match(wa, /Terminez votre inscription/);
+  assert.match(wa, /Finalisez ici/);
   assert.doesNotMatch(wa, /(?:^|[\s\n])(?:tu |ton |tes |toi)/i);
   if (prev === undefined) delete process.env.STORE_URL;
   else process.env.STORE_URL = prev;
 });
 
-test('relance 30 min : due seulement si payé, incomplet, deadline dépassée', () => {
+test('relance 30 min : due si bloqué à une étape, max 3 tentatives', () => {
+  const { isNudgeDue, completeDeadlineAt, MAX_NUDGE_ATTEMPTS } = require('../storefront/lib/inscription-nudge');
   const now = Date.parse('2026-08-13T18:00:00.000Z');
   const paid = '2026-08-13T17:20:00.000Z';
+  const identity = {
+    access_token: 't'.repeat(48),
+    customer_short: { first_name: 'Diego', email: 'd@test.local', phone: '0612345678' },
+  };
   const base = {
+    ...identity,
     step: 6,
     payment: { status: 'paid', paid_at: paid },
     funnel: { complete_deadline_at: '2026-08-13T17:50:00.000Z' },
   };
+  assert.equal(MAX_NUDGE_ATTEMPTS, 3);
   assert.equal(isNudgeDue(base, now), true);
   assert.equal(isNudgeDue({ ...base, step: 8 }, now), false);
   assert.equal(
@@ -161,7 +170,69 @@ test('relance 30 min : due seulement si payé, incomplet, deadline dépassée', 
       },
       now
     ),
-    false
+    true,
+    'legacy 1re tentative complète, 40 min plus tard → 2e relance'
+  );
+  assert.equal(
+    isNudgeDue(
+      {
+        ...base,
+        funnel: {
+          complete_deadline_at: '2026-08-13T17:50:00.000Z',
+          nudge_email_sent_at: '2026-08-13T17:40:00.000Z',
+          nudge_whatsapp_sent_at: '2026-08-13T17:40:00.000Z',
+        },
+      },
+      now
+    ),
+    false,
+    'legacy 1re tentative il y a 20 min → pas encore la 2e'
+  );
+  assert.equal(
+    isNudgeDue(
+      {
+        ...base,
+        funnel: {
+          complete_deadline_at: '2026-08-13T17:50:00.000Z',
+          nudge_attempts: 1,
+          last_nudge_at: '2026-08-13T17:30:00.000Z',
+        },
+      },
+      now
+    ),
+    true,
+    '2e tentative 30 min après la 1re'
+  );
+  assert.equal(
+    isNudgeDue(
+      {
+        ...base,
+        funnel: {
+          complete_deadline_at: '2026-08-13T17:50:00.000Z',
+          nudge_attempts: 3,
+          last_nudge_at: '2026-08-13T16:00:00.000Z',
+        },
+      },
+      now
+    ),
+    false,
+    'plafond 3 tentatives'
+  );
+  assert.equal(
+    isNudgeDue(
+      {
+        ...base,
+        funnel: {
+          complete_deadline_at: '2026-08-13T17:50:00.000Z',
+          nudge_attempts: 1,
+          last_nudge_at: '2026-08-13T17:55:00.000Z',
+        },
+      },
+      now,
+      { force: true }
+    ),
+    false,
+    'force n’ignore pas le délai 30 min entre 2 relances'
   );
   assert.equal(
     isNudgeDue(
@@ -198,7 +269,33 @@ test('relance 30 min : due seulement si payé, incomplet, deadline dépassée', 
   assert.equal(isNudgeDue(base, Date.parse('2026-08-13T17:49:00.000Z'), { force: true }), true);
   assert.equal(
     isNudgeDue({ ...base, payment: { status: 'pending', paid_at: paid } }, now),
-    false
+    true,
+    'impayé bloqué 30 min à une étape → relance aussi'
+  );
+  assert.equal(
+    isNudgeDue(
+      {
+        ...identity,
+        step: 4,
+        payment: { status: 'pending' },
+        funnel: { step_entered_at: '2026-08-13T17:50:00.000Z' },
+      },
+      now
+    ),
+    false,
+    'moins de 30 min sur l’étape → pas encore'
+  );
+  assert.equal(
+    isNudgeDue(
+      {
+        ...identity,
+        step: 4,
+        payment: { status: 'pending' },
+        funnel: { step_entered_at: '2026-08-13T17:20:00.000Z' },
+      },
+      now
+    ),
+    true
   );
   assert.equal(
     completeDeadlineAt({ payment: { paid_at: paid }, funnel: { complete_deadline_at: '2026-08-13T17:50:00.000Z' } }),
