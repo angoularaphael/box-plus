@@ -90,7 +90,7 @@ window.BCChloe = (function () {
           <button type="submit" class="btn sm" ${busy ? 'disabled' : ''}>Envoyer</button>
         </form>
         <div class="chat-quick">
-          <a class="chat-chip" href="${link('/offre/29')}">Offre 29,99 €</a>
+          <a class="chat-chip" href="${link('/offre/29')}">Offre 29 €</a>
           <a class="chat-chip" href="${link('/offre/259')}">Offre 259 €</a>
           <a class="chat-chip" href="${link('/gerer-abonnement')}">Gérer mon abo</a>
         </div>`;

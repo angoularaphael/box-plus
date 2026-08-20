@@ -2088,7 +2088,7 @@ function createApp() {
       if (!parsed.offer || parsed.offer === 'none' || !parsed.product) {
         return res.status(400).json({
           ok: false,
-          error: 'Choisis l’offre 29,99 € ou 259 €',
+          error: 'Choisis l’offre 29 € ou 259 €',
         });
       }
       const product = findProduct(parsed.offer) || parsed.product;

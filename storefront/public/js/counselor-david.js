@@ -15,7 +15,7 @@ window.BCCounselor = (function () {
     minimes: {
       label: 'Minimes',
       manager: 'Medhi',
-      url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/',
+      url: 'https://boxe-toulouse.com/',
     },
     ramonville: {
       label: 'Ramonville',
@@ -25,7 +25,7 @@ window.BCCounselor = (function () {
     portet: {
       label: 'Portet',
       manager: 'Valentin',
-      url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/',
+      url: 'https://boxing-center-portet.fr/',
     },
     'etats-unis': {
       label: 'États-Unis',

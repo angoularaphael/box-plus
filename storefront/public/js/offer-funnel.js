@@ -24,7 +24,7 @@
     if (!tarifEl) return;
     tarifEl.classList.toggle('is-unlocked', Boolean(unlocked));
     tarifEl.innerHTML = unlocked
-      ? 'Tarif actuel&nbsp;: <strong>29,99&nbsp;€</strong>'
+      ? 'Tarif actuel&nbsp;: <strong>29&nbsp;€</strong>'
       : 'Tarif actuel&nbsp;: <strong>44,99&nbsp;€</strong>';
   }
 

@@ -41,7 +41,7 @@ describe('textes facture / contrat selon l’offre', () => {
     assert.match(copy.description, /essai/i);
   });
 
-  it('offre 29,99 € : abo prélèvement + badge 72h', () => {
+  it('offre 29 € : abo prélèvement + badge 72h', () => {
     const product = {
       id: 'dp-104',
       legacy_id: 'offre-duo',

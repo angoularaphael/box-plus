@@ -24,7 +24,7 @@ const GYMS = {
     fullLabel: 'Toulouse Minimes / Barrière de Paris',
     address: '12 rue de Fenouillet, 31200 Toulouse',
     manager: 'Medhi',
-    url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/',
+    url: 'https://boxe-toulouse.com/',
     match: /minimes|barri[eè]re\s*de\s*paris|fenouillet/i,
   },
   ramonville: {
@@ -48,7 +48,7 @@ const GYMS = {
     fullLabel: 'Portet-sur-Garonne',
     address: "61 route d'Espagne, 31120 Portet-sur-Garonne",
     manager: 'Valentin',
-    url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/',
+    url: 'https://boxing-center-portet.fr/',
     match: /portet|route\s+d['’]espagne/i,
   },
   'etats-unis': {
@@ -120,7 +120,7 @@ Minimes = Medhi · Ramonville = Pascal · St-Cyprien = Daddy · Portet = Valenti
 - Remus (Minimes) et Pascal (Ramonville) sont commerciaux, pas coachs de cours.
 
 # TARIFS ET OFFRES
-- Promo sans engagement : 29,99 € TOUTES LES 4 SEMAINES (soit tous les 28 jours). Ne JAMAIS dire « par mois » ni « environ 29 € ». Ancien tarif ~44,99 €. Cours illimités toutes disciplines, accès aux salles incluses, résiliation sans préavis sous réserve du délai technique de 72 h.
+- Promo sans engagement : 29 € TOUTES LES 4 SEMAINES (soit tous les 28 jours). Ne JAMAIS dire « par mois » ni « environ 29 € ». Ancien tarif ~44,99 €. Cours illimités toutes disciplines, accès aux salles incluses, résiliation sans préavis sous réserve du délai technique de 72 h.
 - Promo année : 259 € pour 12 mois (prix normal affiché 400 €). C'est l'option la plus économique sur 12 mois — à recommander clairement à qui pratique toute l'année. Paiement en une fois (carte ou PayPal) ou en 4× via PayPal (64,75 € par échéance, sans frais) ; le 4× carte PayPlug/Oney est momentanément indisponible.
 - Autres formules : sans engagement adulte et étudiant (prélèvement 4 semaines), comptant 3 / 6 / 12 mois, Baby Boxe, Boxe Éducative, coachings individuels, matériel.
 - Badge d'accès : 34,99 € TTC sauf offre particulière. C'est la fourniture et l'activation du moyen d'accès, pas une caution : il n'est pas remboursé du seul fait de la résiliation.

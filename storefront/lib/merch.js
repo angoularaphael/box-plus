@@ -240,19 +240,15 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
     enriched.id === 'offre-duo' ||
     enriched.legacy_id === 'offre-duo' ||
     /offre\s*a\s*29/i.test(String(enriched.name || enriched.display_name || ''));
-  // Garde-fou : l'offre 29 doit toujours rester à 29,99 € / 2999 cents,
-  // même si la sync Deciplus remonte 29,00 côté paiement initial.
+  // Offre 29 € (Deciplus « OFFRE A 29€ ») — ne pas réafficher l'ancien tarif PrestaShop 29,99 €.
   if (isOffer29 && Number(staticP.price_cents) > 0) {
-    enriched.price_cents = Number(staticP.price_cents);
+    enriched.price_cents = Number(staticP.price_cents) === 2999 ? 2900 : Number(staticP.price_cents);
   }
-  if (Number(enriched.price_cents) === 2999) {
-    enriched.price_label = '29,99 €';
-    if (!enriched.stripe_price_label || enriched.stripe_price_label === '29,00 €') {
-      enriched.stripe_price_label = '29,99 €';
-    }
-    if (!enriched.pay_today_label || enriched.pay_today_label === '29,00 €') {
-      enriched.pay_today_label = '29,99 €';
-    }
+  if (isOffer29 && (Number(enriched.price_cents) === 2999 || Number(enriched.price_cents) === 2900)) {
+    enriched.price_cents = 2900;
+    enriched.price_label = '29 €';
+    enriched.stripe_price_label = '29 €';
+    enriched.pay_today_label = '29 €';
   }
   enriched.supports_billing_choice = productSupportsBillingChoice(enriched);
   enriched.supports_installment_choice = productSupportsInstallmentChoice(enriched);
@@ -266,7 +262,7 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
     )
   ) {
     if (enriched.id === 'offre-duo' || /offre\s*a\s*29/i.test(String(enriched.name || ''))) {
-      enriched.installments_note = '29,99 € / 4 semaines — 1ʳᵉ échéance CB puis prélèvement';
+      enriched.installments_note = '29 € / 4 semaines — 1ʳᵉ échéance CB puis prélèvement';
     } else {
       enriched.installments_note = '1ʳᵉ échéance par carte · prélèvement sans engagement';
     }

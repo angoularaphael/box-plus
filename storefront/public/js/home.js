@@ -58,14 +58,13 @@
     /* optional */
   }
 
-  // Real per-salle facts (researched) + official salle pages on boxingcenter.fr
-  // (same URLs as the ExerciseGym JSON-LD entities in lib/seo.js).
+  // Pages salles (même URLs que le JSON-LD ExerciseGym dans lib/seo.js).
   const gyms = [
-    { name: 'Minimes', desc: 'Le berceau du club (2016) · 3 rings', img: 'img/bc/gym/gym-01.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/' },
+    { name: 'Minimes', desc: 'Le berceau du club (2016) · 3 rings', img: 'img/bc/gym/gym-01.jpg', url: 'https://boxe-toulouse.com/' },
     { name: 'Ramonville', desc: 'Octogone 7 m · 300 m² extérieur', img: 'img/bc/gym/gym-06.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/' },
     { name: 'États-Unis', desc: 'Cage MMA · large choix de disciplines', img: 'img/bc/gym/gym-11.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/' },
     { name: 'Saint-Cyprien', desc: '1 200 m² · la plus récente (2025)', img: 'img/bc/gym/gym-16.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/' },
-    { name: 'Portet', desc: 'Boxe, cross training et MMA', img: 'img/bc/gym/portet-exterior.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/' },
+    { name: 'Portet', desc: 'Boxe, cross training et MMA', img: 'img/bc/gym/portet-exterior.jpg', url: 'https://boxing-center-portet.fr/' },
   ];
 
   if (gymsEl) {

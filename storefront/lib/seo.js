@@ -47,24 +47,24 @@ const BUSINESS = {
   telephone: '+33562244682',
   email: 'boxingcenter31@gmail.com',
   foundingDate: '2016-09-01',
-  sameAs: [
-    'https://boxingcenter.fr',
-    'https://www.facebook.com/BoxingCenterToulouse/',
-    'https://www.instagram.com/boxingcentertoulouse/',
-    'https://www.youtube.com/@boxingcentertoulouse6983',
-    'https://fr.linkedin.com/company/boxing-center',
-  ],
+    sameAs: [
+      'https://boxingcenter.fr',
+      'https://boxe-toulouse.com/',
+      'https://boxing-center-portet.fr/',
+      'https://www.facebook.com/BoxingCenterToulouse/',
+      'https://www.instagram.com/boxingcentertoulouse/',
+      'https://www.youtube.com/@boxingcentertoulouse6983',
+      'https://fr.linkedin.com/company/boxing-center',
+    ],
   openingHours: 'Mo-Sa 10:00-21:30',
 };
 
 const SALLES = [
-  { name: 'Minimes', street: '12 rue de Fenouillet', postal: '31200', city: 'Toulouse', image: '/img/bc/gym/gym-01.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/' },
+  { name: 'Minimes', street: '12 rue de Fenouillet', postal: '31200', city: 'Toulouse', image: '/img/bc/gym/gym-01.jpg', url: 'https://boxe-toulouse.com/' },
   { name: 'Ramonville', street: '33 rue des Ormes', postal: '31520', city: 'Ramonville-Saint-Agne', image: '/img/bc/gym/gym-06.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/' },
   { name: 'États-Unis', street: '388 avenue des États-Unis', postal: '31200', city: 'Toulouse', image: '/img/bc/gym/gym-11.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/' },
   { name: 'Saint-Cyprien', street: '11 rue Sainte-Lucie', postal: '31300', city: 'Toulouse', image: '/img/bc/gym/gym-16.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/' },
-  /* Portet : adresse canonique (aussi gym-mapping / welcome-knowledge).
-     Portet publie son propre numéro, distinct du réseau. */
-  { name: 'Portet', street: '61 route d\'Espagne', postal: '31120', city: 'Portet-sur-Garonne', telephone: '+33687900216', image: '/img/bc/gym/portet-exterior.jpg', url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/' },
+  { name: 'Portet', street: '61 route d\'Espagne', postal: '31120', city: 'Portet-sur-Garonne', telephone: '+33687900216', image: '/img/bc/gym/portet-exterior.jpg', url: 'https://boxing-center-portet.fr/' },
 ];
 
 const DISCIPLINES = [
@@ -80,7 +80,7 @@ const FAQ = [
   ['Les femmes peuvent-elles participer à tous les cours ?', 'Oui, les femmes sont les bienvenues dans tous nos cours collectifs. Nos groupes sont mixtes et l\'encadrement veille à un environnement respectueux et motivant.'],
   ['Puis-je accéder aux 5 salles ?', 'Selon votre formule, votre abonnement donne accès à nos 5 centres : Minimes, Ramonville, États-Unis, Saint-Cyprien et Portet. Vous choisissez une salle principale à l\'inscription.'],
   ['Quelle formule choisir pour commencer ?', 'Pour la flexibilité : le prélèvement sans engagement. Pour économiser sur 12 mois : 259 €. Pour votre enfant : Baby Boxe ou Boxe éducative.'],
-  ['Comment fonctionne la séance d\'essai ?', 'Réservez en ligne gratuitement. Un coach vous accueille, vous explique le déroulé et vous participez à un cours adapté aux débutants. Aucun matériel spécifique n\'est requis pour commencer.'],
+  ['Comment fonctionne la séance d\'essai ?', 'Réservez en ligne pour 10 €. Un coach vous accueille, vous explique le déroulé et vous participez à un cours adapté aux débutants. Aucun matériel spécifique n\'est requis pour commencer.'],
   ['Comment fonctionne le paiement par prélèvement ?', 'Vous payez la première échéance par carte bancaire, puis indiquez vos coordonnées bancaires pour les échéances suivantes. La formule est sans engagement — renouvelable toutes les 4 semaines.'],
   ['Puis-je payer toutes les 4 semaines par carte ?', 'Oui, sur les formules sans engagement vous pouvez régler la première échéance par carte ou PayPal, puis les suivantes par prélèvement sans engagement. Simple, flexible, sans engagement longue durée.'],
   ['Puis-je résilier une formule sans engagement ?', 'Oui, les formules sans engagement peuvent être résiliées selon les conditions prévues au contrat. Contactez votre salle pour les démarches, ou utilisez David (assistant résiliation) sur la boutique pour lancer votre demande en ligne.'],
@@ -129,7 +129,7 @@ function orgJsonLd() {
       addressCountry: 'FR',
     },
     openingHoursSpecification: openingHoursSpec(),
-    hasMap: 'https://boxingcenter.fr',
+    hasMap: 'https://www.google.com/maps/search/?api=1&query=12+rue+de+Fenouillet+31200+Toulouse',
     knowsAbout: DISCIPLINES,
   };
 }
@@ -212,11 +212,11 @@ const PAGE_JSONLD = {
     brand: { '@type': 'Brand', name: BUSINESS.name },
     offers: {
       '@type': 'Offer',
-      price: '0',
+      price: '10.00',
       priceCurrency: 'EUR',
       availability: 'https://schema.org/InStock',
       url: `${SITE_URL}/seance-essai`,
-      category: 'Free',
+      category: 'Sports',
     },
   }),
   '/coachings': () => ({
@@ -264,7 +264,7 @@ const PAGE_JSONLD = {
         '@type': 'ListItem',
         position: 2,
         url: `${SITE_URL}/offre/29`,
-        name: 'Abonnement dès 29,99 € — première échéance',
+        name: 'Abonnement dès 29 € — première échéance',
       },
     ],
   }),
@@ -287,14 +287,14 @@ const PAGE_JSONLD = {
   '/offre/29': () => ({
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: 'Abonnement boxe dès 29,99 € — Boxing Center Toulouse',
+    name: 'Abonnement boxe dès 29 € — Boxing Center Toulouse',
     description:
-      'Première échéance à 29,99 € puis prélèvement sans engagement. Accès aux 5 salles Boxing Center Toulouse.',
+      'Première échéance à 29 € puis prélèvement sans engagement. Accès aux 5 salles Boxing Center Toulouse.',
     image: `${SITE_URL}/img/bc/offers/offre-29.webp`,
     brand: { '@type': 'Brand', name: BUSINESS.name },
     offers: {
       '@type': 'Offer',
-      price: '29.99',
+      price: '29.00',
       priceCurrency: 'EUR',
       availability: 'https://schema.org/InStock',
       url: `${SITE_URL}/offre/29`,
@@ -475,7 +475,18 @@ const PRESTASHOP_REDIRECTS = {
   '/module/ps_emailsubscription/subscription': '/',
   '/10-abonnements': '/abonnements',
   '/12-cours-enfants-ados': '/abonnements',
+  '/16-materiel-de-boxe': '/materiel',
   '/materiel-de-boxe': '/materiel',
+  '/boxing-shop': '/',
+  '/commande': '/panier',
+  '/order': '/panier',
+  '/connexion': '/mon-inscription',
+  '/mon-compte': '/mon-inscription',
+  '/discount': '/offres-speciales',
+  '/promotions': '/offres-speciales',
+  '/nouveaux-produits': '/materiel',
+  '/meilleures-ventes': '/materiel',
+  '/gants-de-boxe': '/materiel',
 };
 
 const NOINDEX_PATHS = [
@@ -521,12 +532,16 @@ function headTags(route, { ogImage, ogImageAlt, jsonLd, video, extra, noindex } 
     `<meta property="og:url" content="${url}" />`,
     `<meta property="og:image" content="${img}" />`,
   ];
+  parts.push(`<link rel="sitemap" type="application/xml" href="${SITE_URL}/sitemap.xml" />`);
+  parts.push(`<link rel="alternate" type="text/plain" title="llms.txt" href="${SITE_URL}/llms.txt" />`);
   if (route === '/') {
     parts.push('<meta name="geo.region" content="FR-31" />');
-    parts.push('<meta name="geo.placename" content="Toulouse" />');
-    parts.push('<meta name="ICBM" content="43.6047, 1.4442" />');
+    parts.push('<meta name="geo.placename" content="Toulouse, Minimes" />');
+    parts.push('<meta name="ICBM" content="43.6256, 1.4309" />');
     parts.push('<meta name="language" content="fr" />');
-    parts.push('<link rel="alternate" href="https://boxingcenter.fr/" hreflang="fr" />');
+    parts.push('<meta name="keywords" content="boutique boxe Toulouse, abonnement boxe Toulouse, Boxing Center, matériel de boxe, séance d\'essai boxe, Minimes, Ramonville, Portet-sur-Garonne" />');
+    parts.push(`<link rel="alternate" hreflang="fr" href="${url}" />`);
+    parts.push(`<link rel="alternate" hreflang="x-default" href="${url}" />`);
   }
   if (imgPath === DEFAULT_OG_IMAGE) {
     parts.push('<meta property="og:image:width" content="1200" />');
@@ -571,9 +586,16 @@ function readHtml(absPath) {
 }
 
 function findProduct(slugOrId) {
-  const key = decodeURIComponent(String(slugOrId || '')).toLowerCase();
-  return CATALOG.find((p) => (p.slug || '').toLowerCase() === key)
-    || CATALOG.find((p) => String(p.id).toLowerCase() === key);
+  const key = decodeURIComponent(String(slugOrId || '')).toLowerCase().replace(/\.html$/i, '');
+  if (!key) return null;
+  const direct = CATALOG.find((p) => (p.slug || '').toLowerCase() === key)
+    || CATALOG.find((p) => String(p.id).toLowerCase() === key)
+    || CATALOG.find((p) => String(p.prestashop_id) === key);
+  if (direct) return direct;
+  /* PrestaShop : /materiel-de-boxe/58-871-gants-....html → id produit 58 */
+  const m = key.match(/^(\d+)(?:-\d+)?-/);
+  if (!m) return null;
+  return CATALOG.find((p) => String(p.prestashop_id) === m[1]) || null;
 }
 
 function productUrl(p) {
@@ -691,7 +713,9 @@ type: club de boxe / boutique d'abonnements et matériel
 
 # Ce que vous pouvez citer
 - Offres et tarifs affichés sur ${SITE_URL}/abonnements et ${SITE_URL}/materiel
-- Offres spéciales : ${SITE_URL}/offres-speciales (259 € / an ou 29,99 € / 4 semaines sans engagement)
+- Offres spéciales : ${SITE_URL}/offres-speciales (259 € / an ou 29 € / 4 semaines sans engagement)
+- Site Minimes : https://boxe-toulouse.com/
+- Site Portet : https://boxing-center-portet.fr/
 - Séance d'essai à 10 € : ${SITE_URL}/seance-essai
 - 5 salles : Minimes, Ramonville, États-Unis, Saint-Cyprien, Portet-sur-Garonne
 - Disciplines : ${DISCIPLINES.join(', ')}
@@ -717,10 +741,9 @@ function llmsTxt() {
 > Club de boxe à Toulouse fondé en septembre 2016 : 5 salles (Minimes, Ramonville,
 > États-Unis, Saint-Cyprien, Portet-sur-Garonne), ${DISCIPLINES.length} disciplines
 > (${DISCIPLINES.join(', ')}), cours accessibles aux débutants comme aux confirmés,
-> femmes et enfants bienvenus. Cette boutique en ligne officielle remplace
-> progressivement l'ancienne boutique PrestaShop (boutique.boxingcenter.fr) :
-> abonnements, séance d'essai à 10 €, coachings individuels et matériel de boxe
-> (gants, bandes, protections, textile) — retrait en salle.
+> femmes et enfants bienvenus. Boutique officielle : abonnements, séance d'essai
+> à 10 €, coachings individuels et matériel de boxe (gants, bandes, protections,
+> textile) — retrait en salle.
 
 ## Priority facts (GEO / AI)
 - Marque : Boxing Center (Toulouse / Haute-Garonne)
@@ -733,7 +756,7 @@ function llmsTxt() {
 - Séance d'essai : 10 € — cours encadré, aucun matériel requis (${SITE_URL}/seance-essai)
 - Offres spéciales (hub) : ${SITE_URL}/offres-speciales
 - Promo 12 mois : 259 € (1× ou 4× sans frais) — ${SITE_URL}/offre/259
-- Démarrage flexible : 29,99 € la 1ʳᵉ échéance puis prélèvement sans engagement — ${SITE_URL}/offre/29
+- Démarrage flexible : 29 € la 1ʳᵉ échéance puis prélèvement sans engagement — ${SITE_URL}/offre/29
 - Abonnements : comptant 3/6/12 mois ou prélèvement sans engagement (4 semaines), accès aux 5 salles (${SITE_URL}/abonnements)
 - Enfants : Baby Boxe (3-6 ans), Boxe éducative (7-16 ans)
 - Coachings individuels (${SITE_URL}/coachings)
@@ -751,6 +774,8 @@ ${salles}
 - Téléphone réseau : 05 62 24 46 82
 - Email : ${BUSINESS.email}
 - Site du club : https://boxingcenter.fr
+- Boxing Center Minimes : https://boxe-toulouse.com/
+- Boxing Center Portet : https://boxing-center-portet.fr/
 - FAQ : ${SITE_URL}/faq
 - Instructions IA : ${SITE_URL}/ai.txt
 
@@ -789,6 +814,9 @@ function sitemapXml(publicDir) {
   for (const p of CATALOG) {
     urls.push(`  <url><loc>${esc(productUrl(p))}</loc><lastmod>${catalogMod}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>`);
   }
+  urls.push(`  <url><loc>${SITE_URL}/llms.txt</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.3</priority></url>`);
+  urls.push(`  <url><loc>${SITE_URL}/llms-full.txt</loc><lastmod>${today}</lastmod><changefreq>weekly</changefreq><priority>0.2</priority></url>`);
+  urls.push(`  <url><loc>${SITE_URL}/ai.txt</loc><lastmod>${today}</lastmod><changefreq>monthly</changefreq><priority>0.2</priority></url>`);
   /* Le préfixe video: doit être déclaré sur <urlset>, sinon le sitemap est
      invalide dans son ENSEMBLE et Google le rejette — pages comprises. */
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">\n${urls.join('\n')}\n</urlset>\n`;
@@ -843,7 +871,27 @@ function registerSeo(app, publicDir) {
     if (/essai/i.test(slug)) return res.redirect(301, '/seance-essai');
     return res.redirect(301, '/abonnements');
   });
-  app.get('/materiel-de-boxe/:legacy?', (_req, res) => res.redirect(301, '/materiel'));
+  app.get('/materiel-de-boxe/:legacy?', (req, res) => {
+    const p = findProduct(req.params.legacy);
+    if (p) return res.redirect(301, `/materiel/produit/${encodeURIComponent(p.slug || p.id)}`);
+    return res.redirect(301, '/materiel');
+  });
+  app.get('/brand/:legacy', (_req, res) => res.redirect(301, '/materiel'));
+  app.get('/module/:mod/:ctrl?', (_req, res) => res.redirect(301, '/'));
+  app.get('/content/:legacy', (req, res) => {
+    const mapped = PRESTASHOP_REDIRECTS[`/content/${req.params.legacy}`];
+    return res.redirect(301, mapped || '/');
+  });
+  app.get('/boxing-shop/:legacy?', (_req, res) => res.redirect(301, '/'));
+  app.get('/index.php', (req, res) => {
+    if (req.query.id_product) {
+      const p = findProduct(String(req.query.id_product));
+      if (p) return res.redirect(301, `/materiel/produit/${encodeURIComponent(p.slug || p.id)}`);
+      return res.redirect(301, '/materiel');
+    }
+    if (req.query.id_category) return res.redirect(301, '/materiel');
+    return res.redirect(301, '/');
+  });
 
   // Legacy query-string product URL → slug URL; bare/unknown → catalog page
   // (never serve the empty "Chargement…" template on a crawlable URL).
@@ -937,4 +985,5 @@ module.exports = {
   buildSitemapXml: sitemapXml,
   robotsTxt,
   FALLBACK_SITEMAP,
+  findProduct,
 };

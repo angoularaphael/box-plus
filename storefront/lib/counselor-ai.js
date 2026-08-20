@@ -41,7 +41,7 @@ CONNAISSANCES CLUB
 - Résiliation et changement d’abonnement : la vérification Deciplus se fait sur ces 5 salles uniquement. JAMAIS sur Balma (ancienne salle, autre opérateur).
 - Managers (EXACT) : Minimes = Medhi, Ramonville = Pascal, St-Cyprien = Daddy, Portet = Valentin, États-Unis = Sébastien. Ne jamais inventer un autre prénom.
 - Accès multi-salles selon formule ; pages salles : lundi au samedi, 10h00–21h30. Ne jamais inventer d’horaire du dimanche.
-- Séance d’essai et offres (29,99 € / 259 €) via la boutique.
+- Séance d’essai et offres (29 € / 259 €) via la boutique.
 - Résiliation web : uniquement les formules par prélèvement (pas les comptants / forfaits).
 - Changement d’abonnement (prélèvement → comptant) via « Gérer mon abo ».
 - Badge / accès en panne → manager de salle.
@@ -59,7 +59,7 @@ ALTERNATIVES RÉSILATION (à adapter, sans promettre d’action)
 - Manque de temps → autres créneaux / salles / accès libre.
 - Déménagement → salle plus proche.
 - Blessure → d’abord demander s’ils souhaitent suspendre ; si oui → manager ; si non → rester / résilier.
-- Financier → exceptionnellement offre à 29,99 € via le manager. Dire exactement « 29,99 € », jamais « environ ».
+- Financier → exceptionnellement offre à 29 € via le manager. Dire exactement « 29 € », jamais « environ ».
 
 RÈGLES DE CONVERSATION
 - Français, naturel, chaleureux. Max ~90 mots. Pas de markdown.
@@ -67,7 +67,7 @@ RÈGLES DE CONVERSATION
 - INTERDIT de renvoyer quasiment le même message que ta réponse précédente.
 - Si non / pas maintenant : invite clairement à cliquer sur « Je reste — merci pour les infos » (bouton en bas), ou manager / résiliation. Ne repose pas la même question.
 - Une seule idée principale. Une question max.
-- Ne jamais inventer un tarif. Seul tarif promo autorisé ici : exactement « 29,99 € ».
+- Ne jamais inventer un tarif. Seul tarif promo autorisé ici : exactement « 29 € ».
 - Ne mentionne pas Deciplus, bots, IA, systèmes internes.
 `.trim();
 
@@ -78,7 +78,7 @@ const FALLBACKS = {
     'Désolé pour votre blessure. Souhaitez-vous suspendre votre abonnement le temps de votre rétablissement ?',
   club: 'Avant de couper, on peut vérifier une autre salle, un autre créneau ou une formule plus légère. Qu’est-ce qui vous fait pencher pour un autre club ?',
   money:
-    'Si le budget pèse, une offre à 29,99 € peut exceptionnellement être étudiée avec votre manager, ou une formule plus légère. Qu’est-ce qui est le plus difficile aujourd’hui : le montant ou la fréquence ?',
+    'Si le budget pèse, une offre à 29 € peut exceptionnellement être étudiée avec votre manager, ou une formule plus légère. Qu’est-ce qui est le plus difficile aujourd’hui : le montant ou la fréquence ?',
   other:
     'Je peux vous guider (salles, formules, horaires) ou vous accompagner vers une résiliation. Pour une suspension ou un cas particulier, il faudra votre manager de salle. Que voulez-vous faire ?',
 };
@@ -127,8 +127,7 @@ function cleanReply(content, fallback) {
   let reply = String(content || '')
     .replace(/^```[\w]*\n?|```$/g, '')
     .replace(/^(bonjour|bonsoir|salut)[\s,!.:;-]*/i, '')
-    .replace(/\benviron\s+29(?:,99)?\s*€/gi, '29,99 €')
-    .replace(/\b29\s*€/gi, '29,99 €')
+    .replace(/\benviron\s+29(?:,99)?\s*€/gi, '29 €')
     .replace(/je (peux|vais|lance|lance\s+la)\s+suspend/gi, 'votre manager peut suspend')
     .replace(/on (peut|va)\s+suspend/gi, 'votre manager peut suspend')
     .trim();
@@ -318,7 +317,7 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
 }
 
 const WELCOME_FALLBACKS = [
-  'Je peux t’aider sur les offres **29,99 €** / **259 €**, les 5 salles, l’essai, les CGV ou le règlement — dis-moi juste ce que tu cherches.',
+  'Je peux t’aider sur les offres **29 €** / **259 €**, les 5 salles, l’essai, les CGV ou le règlement — dis-moi juste ce que tu cherches.',
   'Offres, salles, essai ou docs légaux : je te guide. Tu veux partir sur quoi en premier ?',
   'Dis-moi ce qui t’intéresse — formule, salle, séance d’essai ou formalités — et je te réponds direct.',
 ];
@@ -341,9 +340,9 @@ const REDIRECT_DAVID_VOUS = [
 
 const FAQ_VARIANTS = {
   offer29: [
-    'L’offre à **29,99 €** / 4 semaines : 1ʳᵉ échéance CB ou PayPal, puis prélèvement, **sans engagement** ni préavis. Accès aux **5 salles** et toutes les disciplines.',
-    '**29,99 €** toutes les 4 semaines, sans engagement : tu paies la 1ʳᵉ fois (CB/PayPal), puis prélèvement. Multi-salles + toutes disciplines.',
-    'Formule flexible : **29,99 €** / 4 sem., résiliable sans préavis. Accès libre aux 5 clubs Boxing Center.',
+    'L’offre à **29 €** / 4 semaines : 1ʳᵉ échéance CB ou PayPal, puis prélèvement, **sans engagement** ni préavis. Accès aux **5 salles** et toutes les disciplines.',
+    '**29 €** toutes les 4 semaines, sans engagement : tu paies la 1ʳᵉ fois (CB/PayPal), puis prélèvement. Multi-salles + toutes disciplines.',
+    'Formule flexible : **29 €** / 4 sem., résiliable sans préavis. Accès libre aux 5 clubs Boxing Center.',
   ],
   offer259: [
     'L’offre à **259 €** / 12 mois : **1×** par carte ou PayPal, ou **4× via PayPal**. Le 4× carte (PayPlug) pose problème pour l’instant. Accès illimité aux 5 salles, pas de prélèvement mensuel.',
@@ -371,9 +370,9 @@ const FAQ_VARIANTS = {
     'Pas de remboursement badge à la résiliation : tu conserves le badge, le prélèvement badge correspond à la fourniture/activation.',
   ],
   longTerm: [
-    'Sur **12 mois**, le plus économique reste **259 €** (1× ou 4× sans frais) — bien moins cher que 29,99 € / 4 sem. sur la durée. Je te conseille cette formule si tu es sûr(e) de t’entraîner.',
-    'Pour le **long terme**, prends **259 € / 12 mois** : meilleur prix annuel. Le **29,99 € / 4 sem.** convient si tu veux rester **sans engagement**.',
-    'Mon conseil économique : **259 €** pour l’année. Le 29,99 € / 4 sem., c’est la flexibilité — plus coûteux sur 12 mois.',
+    'Sur **12 mois**, le plus économique reste **259 €** (1× ou 4× sans frais) — bien moins cher que 29 € / 4 sem. sur la durée. Je te conseille cette formule si tu es sûr(e) de t’entraîner.',
+    'Pour le **long terme**, prends **259 € / 12 mois** : meilleur prix annuel. Le **29 € / 4 sem.** convient si tu veux rester **sans engagement**.',
+    'Mon conseil économique : **259 €** pour l’année. Le 29 € / 4 sem., c’est la flexibilité — plus coûteux sur 12 mois.',
   ],
 };
 
@@ -485,7 +484,7 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
       ],
       { maxTokens: 320, temperature: 0.75 }
     );
-    let reply = cleanWelcomeReply(content, fallback).replace(/29 €/g, '29,99 €');
+    let reply = cleanWelcomeReply(content, fallback);
 
     if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
       const alt = welcomeFallbackReply(lastUser, lastBot, persona);

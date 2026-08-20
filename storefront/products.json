@@ -2,11 +2,11 @@
   {
     "id": "offre-duo",
     "category": "Abonnements",
-    "name": "OFFRE A 29,99€",
-    "tagline": "Sans engagement — 29,99 € / 4 sem.",
-    "description": "29,99 € toutes les 4 semaines, sans engagement et sans préavis en cas de résiliation. Accès aux 5 salles et à toutes les disciplines.",
-    "price_cents": 2999,
-    "price_label": "29,99 €",
+    "name": "OFFRE A 29€",
+    "tagline": "Sans engagement — 29 € / 4 sem.",
+    "description": "29 € toutes les 4 semaines, sans engagement et sans préavis en cas de résiliation. Accès aux 5 salles et à toutes les disciplines.",
+    "price_cents": 2900,
+    "price_label": "29 €",
     "price_was_cents": 4499,
     "price_was_label": "44,99 €",
     "deciplus_total_note": "Total contrat Deciplus : 419,86 € (échéances)",
@@ -14,7 +14,7 @@
     "requires_iban": true,
     "requires_payment": true,
     "duration_label": "Sans engagement",
-    "installments_note": "29,99 € / 4 semaines — 1ʳᵉ échéance CB puis prélèvement"
+    "installments_note": "29 € / 4 semaines — 1ʳᵉ échéance CB puis prélèvement"
   },
   {
     "id": "offre-promo-9",

@@ -1,5 +1,5 @@
 /**
- * Entrée boutique — cadeau qui s'ouvre sur les offres promo (29,99 € ou 259 €).
+ * Entrée boutique — cadeau qui s'ouvre sur les offres promo (29 € ou 259 €).
  * Une fois par session navigateur.
  */
 (function () {
@@ -11,9 +11,9 @@
   const OFFERS = [
     {
       id: 'offre-duo',
-      price: '29,99',
+      price: '29',
       priceWas: '44,99',
-      title: '29,99 € / 4 semaines',
+      title: '29 € / 4 semaines',
       lead: '1ʳᵉ échéance CB · sans engagement · 5 salles',
       href: '/offre/29',
       track: 'gift_promo_cta_29',

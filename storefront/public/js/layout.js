@@ -165,7 +165,7 @@
           <div class="footer-links">
             <h4>Boutique</h4>
             <a href="${L('/abonnements')}">Abonnements</a>
-            <a href="${L('/offres-speciales')}">Offres 29,99 € / 259 €</a>
+            <a href="${L('/offres-speciales')}">Offres 29 € / 259 €</a>
             <a href="${L('/seance-essai')}">Séance d'essai</a>
             <a href="${L('/coachings')}">Coachings</a>
             <a href="${L('/materiel')}">Matériel</a>

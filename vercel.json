@@ -16,6 +16,16 @@
       "source": "/aventure.html",
       "destination": "https://aventure.boxingcenter.fr/",
       "permanent": true
+    },
+    {
+      "source": "/boxing-shop",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/16-materiel-de-boxe",
+      "destination": "/materiel",
+      "permanent": true
     }
   ],
   "rewrites": [

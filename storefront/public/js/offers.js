@@ -37,13 +37,13 @@
       return 'Paiement unique — pas de prélèvement';
     }
     if (product.supports_billing_choice) {
-      return '29,99 € toutes les 4 semaines — 1ʳᵉ échéance par CB puis prélèvements';
+      return '29 € toutes les 4 semaines — 1ʳᵉ échéance par CB puis prélèvements';
     }
     if (/4\s*[x×]\s*sans\s*frais/i.test(product.badge || '') || /sans\s*frais/i.test(product.badge || '')) {
       return 'Paiement en 4× sans frais';
     }
     if (product.id === 'offre-duo' || /offre\s*a\s*29/i.test(product.name || '')) {
-      return '29,99 € toutes les 4 semaines — 1ʳᵉ échéance par CB puis prélèvements';
+      return '29 € toutes les 4 semaines — 1ʳᵉ échéance par CB puis prélèvements';
     }
     if (product.requires_iban) return '1ʳᵉ échéance par carte · prélèvement sans engagement';
     return 'Carte bancaire ou PayPal';
@@ -69,7 +69,7 @@
   function offerDescription(product) {
     const n = String(product.name || '');
     if (product.id === 'offre-duo' || /offre\s*a\s*29/i.test(n)) {
-      return 'Paiement CB à la première échéance, puis 29,99 € toutes les 4 semaines.';
+      return 'Paiement CB à la première échéance, puis 29 € toutes les 4 semaines.';
     }
     if (product.description) return product.description;
     if (/baby\s*boxe/i.test(n)) {
@@ -147,9 +147,9 @@
     const reveal = opts.animate ? ' data-reveal' : '';
     const isDuo = product.id === 'offre-duo' || /offre\s*a\s*29/i.test(product.name || '');
     const retainNote = isDuo
-      ? '29,99 € toutes les 4 semaines, sans engagement et sans préavis en cas de résiliation, accès aux 5 salles et à toutes les disciplines'
+      ? '29 € toutes les 4 semaines, sans engagement et sans préavis en cas de résiliation, accès aux 5 salles et à toutes les disciplines'
       : '';
-    const priceSubtitle = isDuo ? '29,99 € — première échéance' : product.price_subtitle;
+    const priceSubtitle = isDuo ? '29 € — première échéance' : product.price_subtitle;
 
     return `
       <article class="offer-card ${featured ? 'featured' : ''}" data-id="${esc(product.id)}"${reveal}>

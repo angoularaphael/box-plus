@@ -23,7 +23,7 @@ const {
 const { resolvePaymentDisplay, isPortetGym } = require('./payment-display');
 
 const OFFER_LABELS = {
-  '29': '29,99 €',
+  '29': '29 €',
   '36': '36,99 €',
   '44': '44,99 €',
 };
