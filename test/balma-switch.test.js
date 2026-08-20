@@ -279,14 +279,70 @@ test('Aventure — doublon Minimes, jamais migrer ni résilier', () => {
   const src = fs.readFileSync(path.join(__dirname, '..', 'bot', 'aventure-clone.js'), 'utf8');
   assert.doesNotMatch(src, /cancelSale\s*\(/);
   assert.doesNotMatch(src, /migrateMemberToGym\s*\(/);
-  assert.match(src, /allowDuplicate/);
+  assert.doesNotMatch(src, /allowDuplicate/);
+  assert.doesNotMatch(src, /clickCreerQuandMeme/);
   assert.match(src, /applyMinimesDuplicateIdentity/);
+  assert.match(src, /sans mail ni téléphone/);
+  assert.match(src, /resolveCreatedMemberId\(page, patched/);
   assert.match(src, /skipIdentityPrefill:\s*true/);
+  assert.match(src, /downloadMemberPhoto/);
+  assert.match(src, /setMemberIban/);
   const memberSrc = fs.readFileSync(path.join(__dirname, '..', 'bot', 'member.js'), 'utf8');
-  assert.match(memberSrc, /Créer quand même/);
-  assert.match(memberSrc, /detectHardDuplicatePage/);
-  assert.doesNotMatch(memberSrc, /Doublon accepté — second Valider/);
-  assert.match(src, /createMinimesDuplicate/);
+  assert.match(memberSrc, /prenom"]:not\(#i_prenom\)/);
+  assert.match(src, /createMinimesMember/);
+});
+
+test('Aventure — vente 29 et 259 après création Minimes, pas si unpaid / none', () => {
+  const { shouldCreateChosenOfferSale } = require('../bot/aventure-clone');
+  assert.equal(
+    shouldCreateChosenOfferSale({
+      payment: { status: 'paid' },
+      product_id: 'offre-duo',
+      offer: '29',
+    }),
+    true
+  );
+  assert.equal(
+    shouldCreateChosenOfferSale({
+      payment: { status: 'paid' },
+      product_id: 'offre-saison',
+      offer: '259',
+    }),
+    true
+  );
+  assert.equal(
+    shouldCreateChosenOfferSale({
+      payment: { status: 'unpaid' },
+      product_id: 'offre-duo',
+      offer: '29',
+    }),
+    false
+  );
+  assert.equal(
+    shouldCreateChosenOfferSale({
+      payment: { status: 'paid' },
+      product_id: 'none',
+      offer: 'none',
+    }),
+    false
+  );
+  const src = fs.readFileSync(path.join(__dirname, '..', 'bot', 'aventure-clone.js'), 'utf8');
+  assert.match(src, /shouldGiftBadgeComptant/);
+  assert.match(src, /paiement_comptant = true/);
+  assert.match(src, /auto_badge = false/);
+});
+
+test('badge Aventure immédiat — CB, pas d’échec Clôturer obligatoire', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'bot', 'sale.js'), 'utf8');
+  assert.match(src, /async function finalizeImmediateBadgeCheckout/);
+  assert.match(src, /finalizeBadgePayment\(page, productConfig, gymConfig\)/);
+  const start = src.indexOf('async function finalizeImmediateBadgeCheckout');
+  const end = src.indexOf('async function finalizeBadgePayment');
+  const immediate = src.slice(start, end);
+  assert.match(immediate, /Carte Bancaire/);
+  assert.doesNotMatch(immediate, /throw new Error\('Badge — « Clôturer la note » introuvable'\)/);
+  const gate = src.slice(end, end + 900);
+  assert.match(gate, /finalizeImmediateBadgeCheckout/);
 });
 
 test('Aventure — prénom + Balma sur le doublon Minimes', () => {
@@ -311,10 +367,11 @@ test('Aventure — prénom + Balma sur le doublon Minimes', () => {
   assert.equal(minimes.last_name, balma.last_name);
   assert.equal(minimes.first_name, 'Aventure Balma');
   assert.equal(minimes.birthdate, balma.birthdate);
-  assert.equal(minimes.email, balma.email);
-  assert.equal(minimes.phone, balma.phone);
+  assert.equal(minimes.email, '');
+  assert.equal(minimes.phone, '');
   assert.equal(minimes.address, balma.address);
   assert.equal(balma.first_name, 'Aventure');
+  assert.equal(balma.email, 'aventure.dup56075@boxplus-test.local');
 });
 
 test('salles Boxing Center — Balma exclue de la vérif résil / changement', () => {

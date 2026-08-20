@@ -1,9 +1,8 @@
 /**
  * Aventure Balma : chercher la fiche sur Balma, recopier les infos,
- * créer un doublon Minimes (sans migrer ni résilier).
+ * créer une fiche Minimes en création normale (prénom + Balma, sans mail/tel).
  */
 const { logInfo, logWarn } = require('../lib/logger');
-const { randomDelay } = require('../lib/utils');
 const { getGymConfig } = require('../lib/normalize');
 const { STATUS } = require('../lib/queue');
 const { aventureBotPolicy } = require('../lib/aventure-policy');
@@ -17,11 +16,11 @@ const {
   openNewMemberForm,
   fillMemberForm,
   submitMemberForm,
-  extractMemberId,
   resolveCreatedMemberId,
   resetMemberSearchContext,
   getMemberFormContext,
-  clickCreerQuandMeme,
+  uploadMemberPhoto,
+  downloadMemberPhoto,
 } = require('./member');
 
 function getScopes(page) {
@@ -81,6 +80,7 @@ async function readMemberProfile(page) {
   if (!phone) phone = await readInput(scope, 'input[name="tel"]:not(#i_tel), input[name="telephone"]');
   const email = await readInput(scope, 'input[name="email"]:not(#i_email)');
   const address = await readInput(scope, 'input[name="adr1"]');
+  const address2 = await readInput(scope, 'input[name="adr2"]');
   const postal_code = await readInput(scope, 'input[name="codepostal"]');
   const city = await readInput(scope, 'input[name="ville"]');
   const gender = await readInput(scope, 'select[name="sexe"]');
@@ -93,6 +93,7 @@ async function readMemberProfile(page) {
     phone,
     email,
     address,
+    address2,
     postal_code,
     city,
     gender,
@@ -101,36 +102,40 @@ async function readMemberProfile(page) {
   };
 }
 
-async function acceptDuplicateCreation(page) {
-  return clickCreerQuandMeme(page, { timeoutMs: 12000 });
+async function readMemberIban(page, memberId) {
+  const { openRibForm, closeGreyboxIfOpen } = require('./wallet');
+  const { normalizeIban, isValidFrenchIban } = require('../lib/iban');
+  try {
+    const ctx = await openRibForm(page, memberId, { forceFresh: true });
+    const raw = await ctx.locator('input[name="iban"]').first().inputValue().catch(() => '');
+    await closeGreyboxIfOpen(page);
+    const iban = normalizeIban(raw);
+    return isValidFrenchIban(iban) ? iban : '';
+  } catch (err) {
+    await closeGreyboxIfOpen(page).catch(() => {});
+    logWarn('IBAN Balma illisible', { member_id: memberId, error: err.message });
+    return '';
+  }
 }
 
-async function createMinimesDuplicate(page, customer, gymConfig, order, { excludeMemberId } = {}) {
+async function createMinimesMember(page, customer, gymConfig, order, { excludeMemberId } = {}) {
   const excludeIds = [excludeMemberId].filter(Boolean);
   const patched = applyMinimesDuplicateIdentity(customer);
-  logInfo('Doublon Minimes — prénom + Balma (filtre doublon Deciplus)', {
+  logInfo('Création Minimes — prénom + Balma, sans mail ni téléphone', {
     from: customer.first_name,
     to: patched.first_name,
+    has_address: Boolean(patched.address),
   });
   await resetMemberSearchContext(page);
   await openNewMemberForm(page, patched, { skipIdentityPrefill: true });
   await fillMemberForm(page, patched, gymConfig, order);
-  const onDialog = async (dialog) => {
-    await dialog.accept().catch(() => {});
-  };
-  page.on('dialog', onDialog);
-  try {
-    await submitMemberForm(page, { allowDuplicate: true, excludeIds });
-    await acceptDuplicateCreation(page);
-    const memberId = await resolveCreatedMemberId(page, patched, { excludeIds });
-    if (memberId && String(memberId) === String(excludeMemberId || '')) {
-      return { member_id: null, action: 'created_duplicate', reused_source_id: true };
-    }
-    if (memberId) return { member_id: memberId, action: 'created_duplicate' };
-    return { member_id: null, action: 'created_duplicate' };
-  } finally {
-    page.off('dialog', onDialog);
+  await submitMemberForm(page);
+  const memberId = await resolveCreatedMemberId(page, patched, { excludeIds });
+  if (memberId && String(memberId) === String(excludeMemberId || '')) {
+    return { member_id: null, action: 'created', reused_source_id: true };
   }
+  if (memberId) return { member_id: memberId, action: 'created' };
+  return { member_id: null, action: 'created' };
 }
 
 function mergeCustomer(identity, profile, order) {
@@ -142,6 +147,7 @@ function mergeCustomer(identity, profile, order) {
     phone: paid.phone || profile.phone || identity.phone,
     email: paid.email || profile.email || identity.email,
     address: paid.address || profile.address,
+    address2: paid.address2 || profile.address2,
     postal_code: paid.postal_code || profile.postal_code,
     city: paid.city || profile.city,
     gender: paid.gender || profile.gender,
@@ -168,14 +174,19 @@ function shouldCreateChosenOfferSale(order = {}) {
 
 async function createChosenOfferSale(page, memberId, gymConfig, order) {
   const { recordSale } = require('./sale');
-  const { fetchDeciplusCatalog, resolveProductConfig } = require('./catalog');
+  const { fetchDeciplusCatalog, resolveProductConfig, resolveBadgeProductConfig } = require('./catalog');
+  const { applyBillingPlanToProductConfig } = require('../lib/billing-plan');
+  const { shouldGiftBadgeComptant } = require('../lib/balma');
   let catalog = [];
   try {
     catalog = await fetchDeciplusCatalog(page);
   } catch (err) {
     logWarn('Catalogue Deciplus indisponible pour vente Aventure', { error: err.message });
   }
-  const productConfig = resolveProductConfig(order, catalog || []);
+  const productConfig = applyBillingPlanToProductConfig(
+    resolveProductConfig(order, catalog || []),
+    order
+  );
   const is259 = /saison|259|offre-saison|dp-100/i.test(
     `${order.product_id || ''} ${order.offer || ''} ${order.product_name || ''}`
   );
@@ -185,13 +196,73 @@ async function createChosenOfferSale(page, memberId, gymConfig, order) {
     productConfig.auto_badge = false;
   }
   productConfig.skip_rib_prompt = true;
+
+  let badgeProductConfig = null;
+  if (!is259 && productConfig.auto_badge) {
+    try {
+      const giftBadge = shouldGiftBadgeComptant(order, {
+        id: order.product_id,
+        name: order.product_name,
+      });
+      badgeProductConfig = resolveBadgeProductConfig(
+        catalog || [],
+        giftBadge
+          ? {
+              badge_timing: 'immediate',
+              badge_method: 'comptant',
+              paiement_comptant: true,
+              prelevement_delay_days: 0,
+            }
+          : {
+              badge_timing: order.badge_timing || order.payment?.badge_timing || 'deferred',
+              badge_method: order.badge_method || order.payment?.badge_method || 'iban',
+            }
+      );
+    } catch (err) {
+      logWarn('Badge Aventure non ajouté', { error: err.message });
+    }
+  }
+
   logInfo('Vente Aventure sur fiche Minimes', {
     member_id: memberId,
     product: order.product_id || order.offer,
+    badge: Boolean(badgeProductConfig),
   });
   return recordSale(page, order, productConfig, memberId, gymConfig, {
-    badgeProductConfig: null,
+    badgeProductConfig,
   });
+}
+
+async function copyBalmaExtrasToMinimes(page, minimesId, extras, customer, gymConfig) {
+  const out = { photo: null, iban: null };
+  if (extras.photoPath) {
+    try {
+      out.photo = await uploadMemberPhoto(page, extras.photoPath, extras.photoBase64 || null, minimesId);
+      logInfo('Photo Balma recopiée sur Minimes', { member_id: minimesId, ok: Boolean(out.photo?.ok) });
+    } catch (err) {
+      logWarn('Photo Balma non recopiée', { error: err.message });
+      out.photo = { ok: false, error: err.message };
+    }
+  }
+  if (extras.iban) {
+    try {
+      const { setMemberIban } = require('./wallet');
+      await setMemberIban(page, minimesId, extras.iban, customer, gymConfig);
+      out.iban = { ok: true };
+      logInfo('RIB Balma recopié sur Minimes', { member_id: minimesId });
+    } catch (err) {
+      logWarn('RIB Balma non recopié', { error: err.message });
+      out.iban = { ok: false, error: err.message };
+    }
+  }
+  if (extras.photoCleanup && extras.photoPath) {
+    try {
+      require('fs').unlinkSync(extras.photoPath);
+    } catch {
+      /* ignore */
+    }
+  }
+  return out;
 }
 
 async function runBalmaSwitch(page, order) {
@@ -231,16 +302,32 @@ async function runBalmaSwitch(page, order) {
   await openMemberEditForm(page, match.member_id).catch(() => {});
   const profile = await readMemberProfile(page);
   const customer = mergeCustomer(identity, profile, order);
-  logInfo('Infos Balma lues pour doublon Minimes', {
+  const extras = {
+    iban: await readMemberIban(page, match.member_id),
+    photoPath: null,
+    photoBase64: null,
+    photoCleanup: false,
+  };
+  const photo = await downloadMemberPhoto(page, match.member_id).catch((err) => {
+    logWarn('Photo Balma illisible', { error: err.message });
+    return null;
+  });
+  if (photo?.path) {
+    extras.photoPath = photo.path;
+    extras.photoBase64 = photo.dataUrl || null;
+    extras.photoCleanup = Boolean(photo.cleanup);
+  }
+  logInfo('Infos Balma lues pour création Minimes', {
     balma_member_id: match.member_id,
-    has_email: Boolean(customer.email),
-    has_phone: Boolean(customer.phone),
+    has_address: Boolean(customer.address),
+    has_iban: Boolean(extras.iban),
+    has_photo: Boolean(extras.photoPath),
   });
 
   await switchDeciplusSite(page, minimesConfig.deciplus_label || 'Minimes');
   let created;
   try {
-    created = await createMinimesDuplicate(
+    created = await createMinimesMember(
       page,
       customer,
       minimesConfig,
@@ -252,7 +339,7 @@ async function runBalmaSwitch(page, order) {
       { excludeMemberId: match.member_id }
     );
   } catch (err) {
-    logWarn('Création doublon Minimes échouée', { error: err.message });
+    logWarn('Création Minimes échouée', { error: err.message });
     return {
       status: STATUS.MANUAL_REVIEW,
       action: 'balma_switch',
@@ -266,12 +353,20 @@ async function runBalmaSwitch(page, order) {
     return {
       status: STATUS.MANUAL_REVIEW,
       action: 'balma_switch',
-      error: 'Doublon Minimes créé mais ID introuvable',
+      error: 'Fiche Minimes créée mais ID introuvable',
       balma_member_id: match.member_id,
       cancelled: false,
       migrated: false,
     };
   }
+
+  const extrasResult = await copyBalmaExtrasToMinimes(
+    page,
+    created.member_id,
+    extras,
+    applyMinimesDuplicateIdentity(customer),
+    minimesConfig
+  );
 
   let sale = null;
   if (shouldCreateChosenOfferSale(order)) {
@@ -280,7 +375,7 @@ async function runBalmaSwitch(page, order) {
       gym: policy.create_gym,
       customer,
     }).catch((err) => {
-      logWarn('Vente Aventure sur doublon Minimes échouée', { error: err.message });
+      logWarn('Vente Aventure sur fiche Minimes échouée', { error: err.message });
       return { error: err.message };
     });
   }
@@ -293,6 +388,7 @@ async function runBalmaSwitch(page, order) {
     cancelled: false,
     migrated: false,
     duplicate: true,
+    extras: extrasResult,
     sale,
   };
 }
@@ -300,8 +396,8 @@ async function runBalmaSwitch(page, order) {
 module.exports = {
   findBalmaMember,
   readMemberProfile,
-  acceptDuplicateCreation,
-  createMinimesDuplicate,
+  createMinimesMember,
+  createMinimesDuplicate: createMinimesMember,
   runBalmaSwitch,
   shouldCreateChosenOfferSale,
 };
