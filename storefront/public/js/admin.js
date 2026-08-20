@@ -1689,7 +1689,7 @@
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ method: 'qr' }),
+        body: JSON.stringify({ method: 'qr', forceQr: true }),
       });
       if (waTimer) clearInterval(waTimer);
       waTimer = setInterval(() => loadWhatsApp(true), 4000);
@@ -1711,9 +1711,11 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Code impossible');
-      if (hint) hint.textContent = data.pairingCode
-        ? `Saisis ${data.pairingCode} dans WhatsApp → Lier avec un numéro.`
-        : 'Code demandé — actualise si rien ne s’affiche.';
+      if (hint) {
+        hint.textContent = data.pairingCode
+          ? `Saisis ${data.pairingCode} tout de suite dans WhatsApp → Appareils connectés → Lier avec un numéro.`
+          : (data.error || data.qrError || 'Code demandé — actualise si rien ne s’affiche.');
+      }
       if (waTimer) clearInterval(waTimer);
       waTimer = setInterval(() => loadWhatsApp(true), 4000);
       await loadWhatsApp(true);

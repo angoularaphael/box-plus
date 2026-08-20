@@ -84,6 +84,7 @@ async function getWhatsAppStatus({ includeQr = false } = {}) {
       qr: data.qr || null,
       pairingCode: data.pairingCode || null,
       qrError: data.qrError || null,
+      build: data.build || null,
     };
   } catch (err) {
     return {
@@ -103,10 +104,11 @@ async function getWhatsAppStatus({ includeQr = false } = {}) {
 }
 
 async function startWhatsAppBot(body = {}) {
+  const pairing = String(body?.method || '').toLowerCase() === 'pair';
   return botFetch('/api/start', {
     method: 'POST',
     body: { method: 'qr', ...body },
-    timeoutMs: 16000,
+    timeoutMs: pairing ? 25000 : 18000,
   });
 }
 
