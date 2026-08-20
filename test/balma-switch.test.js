@@ -177,9 +177,9 @@ test('formulaire aventure — email optionnel, requis seulement s’il y a plusi
   assert.doesNotMatch(insc, /pay_email[\s\S]{0,80}required/);
   const preview = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'views', 'aventure.html'), 'utf8');
   assert.match(preview, /name="email"/);
-  assert.match(preview, /Email de ta fiche Balma/);
+  assert.match(preview, /<label for="email">Email<\/label>/);
   assert.doesNotMatch(preview, /exactement/);
-  assert.doesNotMatch(preview, /Email de ta fiche Balma \*/);
+  assert.doesNotMatch(preview, /de ta fiche Balma/);
 });
 
 test('Aventure — email PSP synthétique, jamais sur la fiche', () => {
