@@ -2759,9 +2759,12 @@ function createApp() {
       const payEmail = String(req.body.email || req.body.customer_short?.email || '').trim();
       const payPhone = String(req.body.phone || req.body.customer_short?.phone || '').trim();
       if (aventureOrder) {
+        if (!payEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payEmail)) {
+          return res.status(400).json({ ok: false, error: 'Email requis', code: 'email_required' });
+        }
         order.customer_short = {
           ...(order.customer_short || {}),
-          ...(payEmail ? { email: payEmail } : {}),
+          email: payEmail,
           phone: '',
         };
         await saveOrderAsync(order);

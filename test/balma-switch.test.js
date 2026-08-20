@@ -143,7 +143,7 @@ test('formulaire aventure — date de naissance requise', () => {
   assert.ok(missing.errors.some((e) => /naissance/i.test(e)));
 });
 
-test('formulaire aventure — email requis pour la confirmation', () => {
+test('formulaire aventure — email à l’étape paiement, pas au départ', () => {
   const missing = validateBalmaSwitchPayload({
     first_name: 'Lea',
     last_name: 'Martin',
@@ -151,7 +151,12 @@ test('formulaire aventure — email requis pour la confirmation', () => {
     offer: '29',
     prelevement: true,
   });
-  assert.ok(missing.errors.some((e) => /email/i.test(e)));
+  assert.deepEqual(missing.errors, []);
+  assert.equal(missing.email, '');
+  const insc = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'public', 'js', 'inscription.js'), 'utf8');
+  assert.match(insc, /id="pay_email"/);
+  assert.match(insc, /label for="pay_email">Email \*/);
+  assert.doesNotMatch(insc, /needAventureEmail/);
 });
 
 test('Aventure — email PSP synthétique, jamais sur la fiche', () => {
@@ -288,7 +293,7 @@ test('preview Aventure en local ou studio, pas en prod anonyme', () => {
   assert.equal(fs.existsSync(preview), true);
   assert.match(studio, /\/dev\/aventure/);
   const aventureHtml = fs.readFileSync(preview, 'utf8');
-  assert.match(aventureHtml, /name="email"/);
+  assert.doesNotMatch(aventureHtml, /name="email"/);
   assert.doesNotMatch(aventureHtml, /name="phone"/);
 });
 
@@ -439,7 +444,7 @@ test('David, backoffice et tunnel Aventure — hors Balma / pas de retour', () =
   assert.match(ai, /JAMAIS sur Balma/);
   assert.match(insc, /lockAventureBackNav/);
   assert.match(insc, /if \(isBalmaRetour\(\)\) return ''/);
-  assert.match(insc, /needAventureEmail/);
+  assert.match(insc, /id="pay_email"/);
   assert.doesNotMatch(insc, /pay_phone/);
   assert.doesNotMatch(insc, /needAventureContact/);
 });

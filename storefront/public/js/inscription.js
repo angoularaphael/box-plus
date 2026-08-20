@@ -1005,7 +1005,7 @@
         : '';
     const previewNotice = payFlags.preview
       ? isBalmaRetour()
-        ? '<p class="portet-pay-notice">Studio : paiement sandbox. L’email sert à la confirmation ; téléphone et email ne sont pas recopiés sur la fiche Minimes.</p>'
+        ? '<p class="portet-pay-notice">Studio : paiement sandbox. Email obligatoire ici pour la confirmation — pas recopié sur la fiche Minimes.</p>'
         : '<p class="portet-pay-notice">Studio : tous les moyens branchés s’affichent. Les visiteurs verront les cases enregistrées après déconnexion.</p>'
       : '';
 
@@ -1136,8 +1136,7 @@
     }
 
     const shortPay = state.order?.customer_short || state.shortDraft || {};
-    const needAventureEmail = isBalmaRetour() && !String(shortPay.email || '').trim();
-    const aventureEmailHtml = needAventureEmail
+    const aventureEmailHtml = isBalmaRetour()
       ? `<div class="form-grid" style="margin-bottom:16px">
           <div class="full"><label for="pay_email">Email *</label>
             <input id="pay_email" name="email" type="email" required value="${esc(shortPay.email || '')}" autocomplete="email" /></div>

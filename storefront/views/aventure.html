@@ -116,7 +116,7 @@
     </div>
     <p class="dev-banner">
       Preview du parcours Aventure. Le formulaire crée un brouillon boutique, puis ouvre le <strong>paiement sandbox</strong>.
-      L’email sert à la confirmation ; il n’est pas copié sur la fiche Minimes. 29 € → IBAN + signature, 259 € → signature.
+      L’email est demandé à l’étape paiement (confirmation uniquement, pas sur la fiche Minimes). 29 € → IBAN + signature, 259 € → signature.
     </p>
     <div class="dev-card">
       <p class="lead">
@@ -137,10 +137,6 @@
           <div class="aventure-field" style="grid-column: 1 / -1">
             <label for="birthdate">Date de naissance *</label>
             <input id="birthdate" name="birthdate" type="date" required min="1900-01-01" autocomplete="bday" />
-          </div>
-          <div class="aventure-field" style="grid-column: 1 / -1">
-            <label for="email">Email *</label>
-            <input id="email" name="email" type="email" required autocomplete="email" />
           </div>
         </div>
         <p class="offers-legend">Choisis ton offre *</p>
@@ -193,7 +189,6 @@
               first_name: data.first_name,
               last_name: data.last_name,
               birthdate: data.birthdate,
-              email: data.email,
               offer: data.offer,
               prelevement: data.prelevement === '1',
             }),
