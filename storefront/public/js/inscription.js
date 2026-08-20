@@ -1138,8 +1138,10 @@
     const shortPay = state.order?.customer_short || state.shortDraft || {};
     const aventureEmailHtml = isBalmaRetour()
       ? `<div class="form-grid" style="margin-bottom:16px">
-          <div class="full"><label for="pay_email">Email de ta fiche Balma *</label>
-            <input id="pay_email" name="email" type="email" required value="${esc(shortPay.email || '')}" autocomplete="email" /></div>
+          <div class="full"><label for="pay_email">Email de ta fiche Balma</label>
+            <input id="pay_email" name="email" type="email" value="${esc(shortPay.email || '')}" autocomplete="email" />
+            <p class="sub" style="margin:6px 0 0">À remplir seulement s’il y a plusieurs fiches au même nom.</p>
+          </div>
         </div>`
       : '';
     stepContent.innerHTML = `

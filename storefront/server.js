@@ -2759,15 +2759,17 @@ function createApp() {
       const payEmail = String(req.body.email || req.body.customer_short?.email || '').trim();
       const payPhone = String(req.body.phone || req.body.customer_short?.phone || '').trim();
       if (aventureOrder) {
-        if (!payEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payEmail)) {
-          return res.status(400).json({ ok: false, error: 'Email requis', code: 'email_required' });
+        if (payEmail) {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payEmail)) {
+            return res.status(400).json({ ok: false, error: 'Email invalide', code: 'email_invalid' });
+          }
+          order.customer_short = {
+            ...(order.customer_short || {}),
+            email: payEmail,
+            phone: '',
+          };
+          await saveOrderAsync(order);
         }
-        order.customer_short = {
-          ...(order.customer_short || {}),
-          email: payEmail,
-          phone: '',
-        };
-        await saveOrderAsync(order);
       } else if (payEmail || payPhone) {
         order.customer_short = {
           ...(order.customer_short || {}),
