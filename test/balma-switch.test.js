@@ -136,6 +136,12 @@ test('formulaire aventure — date de naissance requise', () => {
   assert.ok(missing.errors.some((e) => /naissance/i.test(e)));
 });
 
+test('Aventure — email PSP synthétique, jamais sur la fiche', () => {
+  const { aventurePspEmail } = require('../lib/balma');
+  assert.equal(aventurePspEmail({ order_id: 'BC-99' }), 'aventure.bc-99@boxplus-test.local');
+  assert.match(aventurePspEmail({}), /@boxplus-test\.local$/);
+});
+
 test('redirect inscription 29/259 avec source, aventure et préfill', () => {
   const url = inscriptionUrl({
     productId: 'offre-duo',
@@ -410,6 +416,8 @@ test('David, backoffice et tunnel Aventure — hors Balma / pas de retour', () =
   assert.match(ai, /JAMAIS sur Balma/);
   assert.match(insc, /lockAventureBackNav/);
   assert.match(insc, /if \(isBalmaRetour\(\)\) return ''/);
+  assert.doesNotMatch(insc, /pay_email/);
+  assert.doesNotMatch(insc, /needAventureContact/);
 });
 
 test('toAdminSummary — flag Aventure', () => {

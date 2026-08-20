@@ -18,6 +18,8 @@ const {
   listBalmaPrelevementOffers,
   isBalmaRetourSource,
   isBalmaRetourOrder,
+  isLocalStorefrontHost,
+  aventurePspEmail,
   balmaBadgePaymentFields,
   shouldServeAventurePreview,
 } = require('../lib/balma');
@@ -922,8 +924,12 @@ function createApp() {
     })
   );
 
+  function wantTestPayments(req) {
+    return Boolean(getDevSession(req)) || isLocalStorefrontHost(req);
+  }
+
   app.use((req, _res, next) => {
-    runPaymentContext({ test: Boolean(getDevSession(req)) }, () => next());
+    runPaymentContext({ test: wantTestPayments(req) }, () => next());
   });
 
   app.use(async (req, res, next) => {
@@ -2749,13 +2755,22 @@ function createApp() {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
 
+      const aventureOrder = isBalmaRetourOrder(order) || order.aventure;
       const payEmail = String(req.body.email || req.body.customer_short?.email || '').trim();
       const payPhone = String(req.body.phone || req.body.customer_short?.phone || '').trim();
-      if (payEmail || payPhone) {
+      if (!aventureOrder && (payEmail || payPhone)) {
         order.customer_short = {
           ...(order.customer_short || {}),
           ...(payEmail ? { email: payEmail } : {}),
           ...(payPhone ? { phone: payPhone } : {}),
+        };
+        await saveOrderAsync(order);
+      }
+      if (aventureOrder) {
+        order.customer_short = {
+          ...(order.customer_short || {}),
+          email: '',
+          phone: '',
         };
         await saveOrderAsync(order);
       }
@@ -2809,6 +2824,19 @@ function createApp() {
         payplugReady: isPayplugEnabled(),
         paypalReady: isPaypalEnabled(gymNorm),
       });
+      if (aventureOrder && wantTestPayments(req) && !display.show_payplug && !display.show_paypal) {
+        order = await markPaymentPaid(order.order_id, {
+          method: 'demo',
+          status: 'paid',
+          billing_plan: billingPlan || null,
+          payment_plan: paymentPlan || 'once',
+        });
+        return res.json({
+          ok: true,
+          mode: 'demo',
+          redirect: inscriptionRedirect(order, STEPS.SIGNATURE),
+        });
+      }
       let preferredCheckout =
         payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
           ? 'paypal'
@@ -2906,7 +2934,9 @@ function createApp() {
           paymentPlan: planLabel === '4x' ? '4x' : 'once',
           gym,
           guestCard,
-          payerEmail: order.customer_short?.email || order.customer_full?.email,
+          payerEmail: aventureOrder
+            ? aventurePspEmail(order)
+            : order.customer_short?.email || order.customer_full?.email,
         });
         if (!ppOrder.approve_url) {
           return res.status(502).json({ ok: false, error: 'paypal_url_missing' });
@@ -2943,7 +2973,8 @@ function createApp() {
         postal_code: req.body.postal_code || order.customer_full?.postal_code,
         city: req.body.city || order.customer_full?.city,
         gender: req.body.gender || order.customer_full?.gender,
-        phone: req.body.phone || short?.phone,
+        phone: aventureOrder ? '' : req.body.phone || short?.phone,
+        ...(aventureOrder ? { email: aventurePspEmail(order) } : {}),
       };
 
       try {

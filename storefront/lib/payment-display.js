@@ -149,11 +149,18 @@ function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady }) {
   };
 }
 
+function isLocalPreviewHost(req) {
+  const host = String(req?.headers?.host || req?.get?.('host') || '')
+    .split(':')[0]
+    .toLowerCase();
+  return host === 'localhost' || host === '127.0.0.1';
+}
+
 async function resolvePaymentDisplay(req, gym, { payplugReady, paypalReady }) {
   const stored = await getPaymentDisplay();
   return resolveDisplay({
     stored,
-    preview: Boolean(getDevSession(req)),
+    preview: Boolean(getDevSession(req)) || isLocalPreviewHost(req),
     gym,
     payplugReady,
     paypalReady,

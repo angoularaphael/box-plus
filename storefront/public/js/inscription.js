@@ -850,12 +850,12 @@
 
   function payRequestBody(extra = {}) {
     const short = state.order?.customer_short || state.shortDraft;
-    const email = document.getElementById('pay_email')?.value?.trim() || short?.email;
-    const phone = document.getElementById('pay_phone')?.value?.trim() || short?.phone;
+    const email = isBalmaRetour() ? '' : short?.email;
+    const phone = isBalmaRetour() ? '' : short?.phone;
     return {
       token: state.token,
       product_id: state.productId,
-      gym: state.order?.customer_full?.gym || state.gymDraft || undefined,
+      gym: state.order?.customer_full?.gym || state.gymDraft || 'minimes',
       email,
       phone,
       customer_short: short
@@ -1002,7 +1002,9 @@
         ? `<p class="portet-pay-notice">Badge d’accès : ton ancien badge est réactivé. Il n’est <strong>pas prélevé</strong> (offert, déjà réglé).</p>`
         : '';
     const previewNotice = payFlags.preview
-      ? '<p class="portet-pay-notice">Studio : tous les moyens branchés s’affichent. Les visiteurs verront les cases enregistrées après déconnexion.</p>'
+      ? isBalmaRetour()
+        ? '<p class="portet-pay-notice">Studio : paiement sandbox. Pas d’email ni de téléphone — on les reprend sur ta fiche Balma.</p>'
+        : '<p class="portet-pay-notice">Studio : tous les moyens branchés s’affichent. Les visiteurs verront les cases enregistrées après déconnexion.</p>'
       : '';
 
     let billingHtml = '';
@@ -1131,22 +1133,11 @@
         </div>`;
     }
 
-    const shortPay = state.order?.customer_short || state.shortDraft || {};
-    const needAventureContact = isBalmaRetour() && (!shortPay.email || !shortPay.phone);
-    const aventureContactHtml = needAventureContact
-      ? `<div class="form-grid" style="margin-bottom:16px">
-          <div class="full"><label for="pay_email">Email *</label>
-            <input id="pay_email" name="email" type="email" required value="${esc(shortPay.email || '')}" autocomplete="email" /></div>
-          <div class="full"><label for="pay_phone">Téléphone mobile *</label>
-            <input id="pay_phone" name="phone" type="tel" required value="${esc(shortPay.phone || '')}" autocomplete="tel" /></div>
-        </div>`
-      : '';
     stepContent.innerHTML = `
       <h1>Paiement</h1>
       <p class="sub">${firstPaymentCaption(p)}</p>
       ${balmaBadgeNotice}
       <form id="payForm">
-        ${aventureContactHtml}
         ${billingHtml}
         <button type="submit" class="btn stripe block" id="payBtn">${
           p?.requires_payment === false ? 'Continuer' : 'Payer'
