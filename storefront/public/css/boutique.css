@@ -124,9 +124,10 @@ main { flex: 1; }
 .resume-bar .btn:hover { background: var(--bc-red-hover); }
 
 .topbar-inner {
+  width: 100%;
   max-width: var(--max);
   margin: 0 auto;
-  padding: 10px 20px;
+  padding: 10px 12px 10px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -155,6 +156,8 @@ main { flex: 1; }
   border: none;
   cursor: pointer;
   padding: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .nav-toggle span {
