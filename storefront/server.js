@@ -113,6 +113,8 @@ const {
   payplugMatches,
   rememberPreviousPayplugId,
   payplugIdCandidates,
+  rememberPreviousPaypalId,
+  paypalIdCandidates,
   paypalMatches,
   verifyPayplugSignature,
 } = require('./lib/payment-bind');
@@ -908,7 +910,12 @@ function createApp() {
     express.json({
       limit: '2mb',
       verify: (req, _res, buf) => {
-        if (req.originalUrl === '/api/webhooks/payplug' || req.path === '/api/webhooks/payplug') {
+        if (
+          req.originalUrl === '/api/webhooks/payplug' ||
+          req.path === '/api/webhooks/payplug' ||
+          req.originalUrl === '/api/webhooks/paypal' ||
+          req.path === '/api/webhooks/paypal'
+        ) {
           req.rawBody = buf;
         }
       },
@@ -2901,14 +2908,18 @@ function createApp() {
         if (!ppOrder.approve_url) {
           return res.status(502).json({ ok: false, error: 'paypal_url_missing' });
         }
+        const prevPaypalIds = rememberPreviousPaypalId(order.payment, ppOrder.id);
         order.payment = {
           ...order.payment,
           method: 'paypal',
           preferred_checkout: 'paypal',
           payment_plan: planLabel === '4x' ? '4x' : 'once',
+          paypal_order_ids: prevPaypalIds,
           paypal_order_id: ppOrder.id,
           paypal_account: ppOrder.paypal_account || paypalAccountForGym(gym),
           status: 'pending',
+          error: null,
+          failure: null,
         };
         await saveOrderAsync(order);
         return res.json({
@@ -3952,6 +3963,58 @@ function createApp() {
     return paid;
   }
 
+  async function markPaypalOrderPaid(order, paypalOrderId) {
+    const hist = rememberPreviousPaypalId(order.payment, paypalOrderId);
+    return markPaymentPaid(order.order_id, {
+      method: 'paypal',
+      payment_plan: order.payment?.payment_plan || 'once',
+      billing_plan: order.payment?.billing_plan || 'paypal',
+      paypal_order_ids: hist,
+      paypal_order_id: paypalOrderId,
+      paypal_account: order.payment?.paypal_account || paypalAccountForGym(order.customer_full?.gym),
+      status: 'paid',
+      error: null,
+      failure: null,
+    });
+  }
+
+  async function confirmPaypalCaptureForOrder(order, paypalOrderId) {
+    if (order.payment?.status === 'paid') {
+      return { ok: true, already_paid: true, order };
+    }
+    const paypalOpts = {
+      gym: order.customer_full?.gym,
+      account: order.payment?.paypal_account,
+    };
+    const candidates = paypalIdCandidates(order, paypalOrderId);
+    let lastErr = null;
+    for (const id of candidates) {
+      try {
+        let captured = await retrievePaypalOrder(id, paypalOpts);
+        if (!isPaypalOrderPaid(captured)) {
+          captured = await capturePaypalOrder(id, paypalOpts);
+        }
+        if (!isPaypalOrderPaid(captured)) continue;
+        const bound = paypalMatches({
+          captured,
+          orderId: order.order_id,
+          expectedCents: expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot),
+          storedPaypalId: order.payment?.paypal_order_id,
+        });
+        if (!bound.ok) {
+          lastErr = bound.error;
+          continue;
+        }
+        const paid = await markPaypalOrderPaid(order, captured.id || id);
+        logInfo('PayPal confirmé', { order_id: order.order_id, paypal_order_id: captured.id || id });
+        return { ok: true, paid: true, order: paid };
+      } catch (err) {
+        lastErr = err.message;
+      }
+    }
+    return { ok: false, error: lastErr || 'payment_not_completed' };
+  }
+
   function inscriptionEmail(order) {
     return String(
       order?.customer_short?.email || order?.customer_full?.email || order?.customer?.email || ''
@@ -4183,6 +4246,50 @@ function createApp() {
       preview: display.preview,
       sandbox: Boolean(display.preview),
     });
+  });
+
+  app.post('/api/webhooks/paypal', async (req, res) => {
+    try {
+      const event = req.body || {};
+      const resource = event.resource || {};
+      const paypalOrderId = sanitizePaymentId(
+        resource.supplementary_data?.related_ids?.order_id ||
+          resource.id ||
+          event.resource?.id
+      );
+      const customId = String(
+        resource.custom_id ||
+          resource.purchase_units?.[0]?.custom_id ||
+          resource.invoice_id ||
+          ''
+      ).trim();
+      const orderId = customId.startsWith('BC-') ? customId : '';
+      if (!paypalOrderId && !orderId) {
+        return res.json({ ok: true, ignored: true });
+      }
+      let order = orderId ? await loadOrderAsync(orderId) : null;
+      if (!order && paypalOrderId) {
+        const all = await listAllOrdersAsync();
+        order = all.find((o) => paypalIdCandidates(o).includes(paypalOrderId)) || null;
+      }
+      if (!order) {
+        return res.json({ ok: true, ignored: true, reason: 'order_not_found' });
+      }
+      if (!isPaypalEnabled(order.payment?.paypal_account || order.customer_full?.gym)) {
+        return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
+      }
+      const confirmed = await confirmPaypalCaptureForOrder(order, paypalOrderId);
+      logInfo('Webhook PayPal', {
+        event: event.event_type,
+        order_id: order.order_id,
+        paid: Boolean(confirmed.paid || confirmed.already_paid),
+        error: confirmed.error || null,
+      });
+      return res.json({ ok: true, order_id: order.order_id, ...confirmed, order: undefined });
+    } catch (err) {
+      logError('Webhook PayPal', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
   });
 
   app.post('/api/webhooks/payplug', async (req, res) => {
@@ -4418,43 +4525,23 @@ function createApp() {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
       }
       const id = sanitizePaymentId(paypalOrderId || order.payment?.paypal_order_id);
-      if (!id) return res.status(400).json({ ok: false, error: 'paypal_order_id manquant' });
-
-      const paypalOpts = {
-        gym: order.customer_full?.gym,
-        account: order.payment?.paypal_account,
-      };
-      let captured = await retrievePaypalOrder(id, paypalOpts);
-      if (!isPaypalOrderPaid(captured)) {
-        captured = await capturePaypalOrder(id, paypalOpts);
-      }
-      if (!isPaypalOrderPaid(captured)) {
-        return res.status(402).json({
-          ok: false,
-          error: 'payment_not_completed',
-          message: 'Paiement PayPal non confirmé',
+      const confirmed = await confirmPaypalCaptureForOrder(order, id);
+      if (confirmed.already_paid || confirmed.paid) {
+        const paidOrder = confirmed.order || order;
+        return res.json({
+          ok: true,
+          paid: Boolean(confirmed.paid),
+          already_paid: Boolean(confirmed.already_paid),
+          redirect: inscriptionRedirect(paidOrder),
         });
       }
-      const bound = paypalMatches({
-        captured,
-        orderId: order.order_id,
-        expectedCents: expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot),
-        storedPaypalId: order.payment?.paypal_order_id,
-      });
-      if (!bound.ok) {
-        return res.status(409).json({ ok: false, error: bound.error });
+      if (confirmed.error === 'payment_mismatch' || confirmed.error === 'amount_mismatch') {
+        return res.status(409).json({ ok: false, error: confirmed.error });
       }
-      order = await markPaymentPaid(order.order_id, {
-        method: 'paypal',
-        payment_plan: order.payment?.payment_plan || 'once',
-        billing_plan: order.payment?.billing_plan || 'paypal',
-        paypal_order_id: id,
-        status: 'paid',
-      });
-      return res.json({
-        ok: true,
-        paid: true,
-        redirect: inscriptionRedirect(order),
+      return res.status(402).json({
+        ok: false,
+        error: 'payment_not_completed',
+        message: 'Paiement PayPal non confirmé',
       });
     } catch (err) {
       logError('Erreur confirm PayPal', { error: err.message });

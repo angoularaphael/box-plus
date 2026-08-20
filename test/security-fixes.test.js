@@ -201,6 +201,23 @@ test('PayPal refuse un custom_id / montant différent', () => {
     storedPaypalId: 'PP-OK',
   });
   assert.equal(storedWins.ok, true);
+
+  const reboundAfterFailedCard = paypalMatches({
+    captured: {
+      id: 'PP-NEW',
+      purchase_units: [
+        {
+          custom_id: 'BC-EXPENSIVE',
+          amount: { value: '259.00' },
+          payments: { captures: [{ amount: { value: '259.00' }, status: 'COMPLETED' }] },
+        },
+      ],
+    },
+    orderId: 'BC-EXPENSIVE',
+    expectedCents: 25900,
+    storedPaypalId: 'PP-OLD',
+  });
+  assert.equal(reboundAfterFailedCard.ok, true);
 });
 
 test('4× accepte le montant plein ou le quart', () => {

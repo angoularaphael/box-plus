@@ -299,6 +299,15 @@ function isPaypalOrderPaid(capturedOrOrder) {
   return false;
 }
 
+async function searchPaypalTransactions({ startDate, endDate, account = 'minimes', page = 1 } = {}) {
+  const start = encodeURIComponent(startDate);
+  const end = encodeURIComponent(endDate);
+  return paypalRequest(
+    `/v1/reporting/transactions?start_date=${start}&end_date=${end}&fields=all&page_size=100&page=${page}`,
+    { method: 'GET', account }
+  );
+}
+
 module.exports = {
   isPaypalEnabled,
   paypalMode,
@@ -310,6 +319,7 @@ module.exports = {
   createPaypalOrder,
   capturePaypalOrder,
   retrievePaypalOrder,
+  searchPaypalTransactions,
   isPaypalOrderPaid,
   formatPaypalError,
   looksLikePaypalClientId,

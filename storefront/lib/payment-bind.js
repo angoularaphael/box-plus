@@ -69,6 +69,31 @@ function payplugIdCandidates(order) {
   return ids;
 }
 
+function rememberPreviousPaypalId(paymentState, newId) {
+  const prev = String(paymentState?.paypal_order_id || '').trim();
+  const next = String(newId || '').trim();
+  const hist = Array.isArray(paymentState?.paypal_order_ids)
+    ? paymentState.paypal_order_ids.map((id) => String(id || '').trim()).filter(Boolean)
+    : [];
+  if (prev && next && prev !== next && !hist.includes(prev)) hist.push(prev);
+  return hist.slice(-8);
+}
+
+function paypalIdCandidates(order, extraId) {
+  const ids = [];
+  const seen = new Set();
+  const add = (id) => {
+    const s = String(id || '').trim();
+    if (!s || seen.has(s)) return;
+    seen.add(s);
+    ids.push(s);
+  };
+  add(extraId);
+  add(order?.payment?.paypal_order_id);
+  for (const id of order?.payment?.paypal_order_ids || []) add(id);
+  return ids;
+}
+
 function paypalCustomId(captured) {
   const unit = (captured?.purchase_units || [])[0] || {};
   return String(unit.custom_id || unit.reference_id || '').trim();
@@ -92,9 +117,8 @@ function paypalMatches({ captured, orderId, expectedCents, storedPaypalId }) {
   const idMatch = Boolean(stored) && stored === String(captured.id);
   const customMatch = Boolean(wanted) && Boolean(customId) && customId === wanted;
 
-  if (stored && !idMatch) {
-    return { ok: false, error: 'payment_mismatch' };
-  }
+  // Nouveau checkout PayPal après un refus carte : l’id stocké est l’ancien,
+  // le custom_id (order_id boutique) fait foi — comme PayPlug pay_A vs pay_B.
   if (!idMatch && !customMatch) {
     return { ok: false, error: 'payment_mismatch' };
   }
@@ -138,6 +162,8 @@ module.exports = {
   payplugMatches,
   rememberPreviousPayplugId,
   payplugIdCandidates,
+  rememberPreviousPaypalId,
+  paypalIdCandidates,
   paypalMatches,
   paypalCustomId,
   paypalPaidCents,
