@@ -51,13 +51,14 @@ async function dismissJqueryUiOverlay(page) {
  * Modales Vue nextgen (modal-mask / blocText) qui bloquent le clic sur .ari-select.
  */
 async function dismissDeciplusModals(page) {
+  if (/choose-zone/i.test(page.url() || '')) return false;
+
   const mask = page.locator('.modal-mask').first();
   if ((await mask.count()) === 0 || !(await mask.isVisible().catch(() => false))) {
     return false;
   }
 
-  // L’écran « Choisissez un site » est lui-même une .modal-mask : ne pas la fermer
-  // (sinon on vend sur « Tous les sites » et la prestation n’apparaît pas sur la fiche).
+  // L’écran « Choisissez un site » est lui-même une .modal-mask : ne pas la fermer.
   const zonePicker = page.locator('text=/Choisissez un site/i').first();
   if ((await zonePicker.count()) > 0 && (await zonePicker.isVisible().catch(() => false))) {
     return false;
