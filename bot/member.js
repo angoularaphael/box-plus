@@ -7,7 +7,14 @@ const {
   expandDeciplusUrl,
   extractMemberIdFromUrl,
   isNewMemberUrl,
+  nameForDeciplusSearch,
+  namesMatch,
 } = require('../lib/deciplus-member-format');
+
+const SCOPED_RESULT_LINKS =
+  'table a[href*="idj="], table a[href*="idj%3D"], ' +
+  '#liste a[href*="idj="], .liste a[href*="idj="], ' +
+  'tr a[href*="joueurs.php"], tr a[href*="check.php"]';
 
 function navTimeout() {
   return Number(process.env.DECIPLUS_NAV_TIMEOUT || 90000);
@@ -306,28 +313,43 @@ async function pageShowsNoMemberResults(page) {
   return false;
 }
 
-async function readSearchHit(page) {
-  // « aucun résultat » prime sur les vieux liens idj encore présents dans l’UI
-  if (await pageShowsNoMemberResults(page)) {
-    return { found: false, empty: true };
+async function countScopedResultLinks(page) {
+  const contexts = [page, ...page.frames().filter((f) => f !== page.mainFrame())];
+  let n = 0;
+  for (const ctx of contexts) {
+    n += await ctx.locator(SCOPED_RESULT_LINKS).count().catch(() => 0);
   }
+  return n;
+}
+
+async function readSearchHit(page) {
   const fromUrl = await extractMemberIdFromAnyContext(page);
-  if (fromUrl) {
+  const urlHay = expandDeciplusUrl(page.url());
+  const onFiche = Boolean(fromUrl) && /joueurs\.php|check\.php/i.test(urlHay);
+  if (onFiche) {
     logInfo('Membre Deciplus trouvé', { member_id: fromUrl });
     return { found: true, member_id: fromUrl };
   }
+  // Liens du tableau d’abord : un vieux « aucun résultat » (recherche email/tél)
+  // ne doit pas masquer un hit nom/prénom.
   const fromLink = await clickFirstMemberResult(page);
   if (fromLink) {
     logInfo('Membre Deciplus trouvé (liste)', { member_id: fromLink });
     return { found: true, member_id: fromLink };
   }
+  if ((await countScopedResultLinks(page)) === 0 && (await pageShowsNoMemberResults(page))) {
+    return { found: false, empty: true };
+  }
   return { found: false };
 }
 
-/** Vérifie que la fiche ouverte correspond bien à l’email / téléphone demandés. */
+/** Vérifie que la fiche ouverte correspond (email, tél, ou nom si la fiche n’a ni l’un ni l’autre). */
 async function searchHitMatchesCustomer(page, customer = {}) {
   const form = await readMemberIdentityFields(page).catch(() => null);
   if (!form?.fromMemberForm) return false;
+  const nameOk =
+    (!customer.last_name || !form.lastName || namesMatch(form.lastName, customer.last_name)) &&
+    (!customer.first_name || !form.firstName || namesMatch(form.firstName, customer.first_name));
   const wantEmail = String(customer.email || '')
     .trim()
     .toLowerCase();
@@ -335,14 +357,20 @@ async function searchHitMatchesCustomer(page, customer = {}) {
     .trim()
     .toLowerCase();
   if (wantEmail && formEmail) {
-    return wantEmail === formEmail;
+    return wantEmail === formEmail && nameOk;
   }
   const wantPhone = phoneForDeciplus(customer.phone);
   const formPhone = phoneForDeciplus(form.phone);
   if (wantPhone && formPhone) {
-    return wantPhone === formPhone;
+    return wantPhone === formPhone && nameOk;
   }
-  // Pas assez d’infos pour confirmer — refuse le faux positif
+  // Fiche sans email / SMS (ex. TEST TEST Balma) : nom + prénom suffisent
+  if (nameOk && (form.lastName || form.firstName) && (customer.last_name || customer.first_name)) {
+    if (customer.birthdate && form.birth) {
+      return normalizeBirthCompare(form.birth) === normalizeBirthCompare(birthdateToDeciplus(customer.birthdate));
+    }
+    return true;
+  }
   return false;
 }
 
@@ -374,31 +402,30 @@ async function searchMember(page, query) {
   return hit;
 }
 
-async function searchMemberByName(page, lastName, firstName) {
-  if (!lastName && !firstName) return { found: false };
-  logInfo('Recherche membre Deciplus', { via: 'name', last_name: lastName || null });
-
+async function runNameSearch(page, lastName, firstName) {
   const sel = getSelectors();
   await navigateToMembers(page);
   await clearMemberSearchFields(page);
   const ctx = await getMemberSearchContext(page);
-
   if (lastName) await fillFirst(ctx, sel.quick_search_selectors?.nom || '#i_nom', lastName);
   if (firstName) await fillFirst(ctx, sel.quick_search_selectors?.prenom || '#i_prenom', firstName);
-
   await submitMemberSearch(page);
-
-  const hit = await readSearchHit(page);
-  if (!hit.found) logInfo('Membre Deciplus introuvable', { via: 'name', url: page.url() });
-  return hit;
+  return readSearchHit(page);
 }
 
-function normalizePerson(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
+async function searchMemberByName(page, lastName, firstName) {
+  const last = nameForDeciplusSearch(lastName);
+  const first = nameForDeciplusSearch(firstName);
+  if (!last && !first) return { found: false };
+  logInfo('Recherche membre Deciplus', { via: 'name', last_name: last, first_name: first || null });
+
+  let hit = await runNameSearch(page, last, first);
+  if (!hit.found && last && first) {
+    logInfo('Recherche membre Deciplus', { via: 'name_last_only', last_name: last });
+    hit = await runNameSearch(page, last, '');
+  }
+  if (!hit.found) logInfo('Membre Deciplus introuvable', { via: 'name', url: page.url(), last_name: last });
+  return hit;
 }
 
 function birthdateToDeciplus(value) {
@@ -517,16 +544,19 @@ function computeIdentityMismatches(form, identity = {}, { fields = DEFAULT_MATCH
   const formBirth = String(form.birth || '').trim();
   // Ne pas marquer nom/prénom en erreur si la fiche n’a pas pu les lire
   const lastNameOk =
-    !formLast || normalizePerson(formLast) === normalizePerson(identity.last_name);
+    !formLast || namesMatch(formLast, identity.last_name);
   const firstNameOk =
-    !formFirst || normalizePerson(formFirst) === normalizePerson(identity.first_name);
+    !formFirst || namesMatch(formFirst, identity.first_name);
   const birthOk =
     !expectedBirth ||
     !formBirth ||
     normalizeBirthCompare(formBirth) === normalizeBirthCompare(expectedBirth);
-  const phoneOk = form.phone
-    ? phonesMatch(form.phone, identity.phone)
-    : Boolean(form.foundViaPhone);
+  // Tél. uniquement si les deux côtés en ont un — fiche Balma souvent sans SMS
+  const phoneOk =
+    !form.phone ||
+    !identity.phone ||
+    phonesMatch(form.phone, identity.phone) ||
+    Boolean(form.foundViaPhone);
 
   // Champs en erreur = ceux qui ne matchent PAS (ne jamais inverser)
   const mismatchFields = [];
@@ -640,10 +670,7 @@ async function extractMemberIdFromForm(page) {
 async function clickFirstMemberResult(page) {
   const contexts = [page, ...page.frames().filter((f) => f !== page.mainFrame())];
   // Uniquement dans les zones résultats (évite les liens idj du menu / historique)
-  const scoped =
-    'table a[href*="idj="], table a[href*="idj%3D"], ' +
-    '#liste a[href*="idj="], .liste a[href*="idj="], ' +
-    'tr a[href*="joueurs.php"], tr a[href*="check.php"]';
+  const scoped = SCOPED_RESULT_LINKS;
 
   for (const ctx of contexts) {
     let links;
@@ -770,8 +797,8 @@ async function openNewMemberFormViaSelect(page, customer, { skipIdentityPrefill 
   // select.php est dans iframe nextgen (_vue_iframe) — #buttonNew n’est PAS sur page
   const searchCtx = await getMemberSearchContext(page, { waitMs: 12000 });
   if (!skipIdentityPrefill) {
-    await fillFirst(searchCtx, sel.quick_search_selectors?.nom || '#i_nom', customer.last_name);
-    await fillFirst(searchCtx, sel.quick_search_selectors?.prenom || '#i_prenom', customer.first_name);
+    await fillFirst(searchCtx, sel.quick_search_selectors?.nom || '#i_nom', nameForDeciplusSearch(customer.last_name));
+    await fillFirst(searchCtx, sel.quick_search_selectors?.prenom || '#i_prenom', nameForDeciplusSearch(customer.first_name));
     if (customer.email) {
       await fillFirst(searchCtx, sel.quick_search_selectors?.email || '#i_email', customer.email);
     }
@@ -827,8 +854,8 @@ async function openNewMemberFormViaUrl(page, customer, { skipIdentityPrefill = f
     returntoselect: '',
   });
   if (!skipIdentityPrefill) {
-    params.set('jnom', customer.last_name || '');
-    params.set('jprenom', customer.first_name || '');
+    params.set('jnom', nameForDeciplusSearch(customer.last_name));
+    params.set('jprenom', nameForDeciplusSearch(customer.first_name));
     if (customer.email) params.set('jemail', customer.email);
   }
   const qs = params.toString();
@@ -915,8 +942,8 @@ async function fillMemberForm(page, customer, gymConfig, order) {
   const sel = getSelectors().member_form_selectors || {};
   const ctx = await getMemberFormContext(page);
   const phone = phoneForDeciplus(customer.phone);
-  const lastName = customer.last_name || customer.first_name || 'CLIENT';
-  const firstName = customer.first_name || customer.last_name || 'WEB';
+  const lastName = nameForDeciplusSearch(customer.last_name || customer.first_name || 'CLIENT');
+  const firstName = nameForDeciplusSearch(customer.first_name || customer.last_name || 'WEB');
 
   logInfo('Remplissage fiche membre Deciplus', {
     last_name: lastName,
@@ -1438,6 +1465,12 @@ async function findOrCreateMember(page, order, gymConfig) {
     if (accepted) return accepted;
   }
 
+  if (customer.last_name || customer.first_name) {
+    const byName = await searchMemberByName(page, customer.last_name, customer.first_name);
+    const accepted = await acceptHit(byName, 'found_name');
+    if (accepted) return accepted;
+  }
+
   await openNewMemberForm(page, customer);
   await fillMemberForm(page, customer, gymConfig, order);
   await submitMemberForm(page);
@@ -1451,6 +1484,13 @@ async function findOrCreateMember(page, order, gymConfig) {
     }
     if (customer.phone) {
       const accepted = await acceptHit(await searchMember(page, customer.phone), 'found_after_duplicate');
+      if (accepted) return accepted;
+    }
+    if (customer.last_name || customer.first_name) {
+      const accepted = await acceptHit(
+        await searchMemberByName(page, customer.last_name, customer.first_name),
+        'found_after_duplicate'
+      );
       if (accepted) return accepted;
     }
     return { duplicate: true, message: duplicateMsg };

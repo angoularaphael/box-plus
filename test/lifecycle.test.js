@@ -46,6 +46,9 @@ describe('lifecycle tunnel', () => {
     });
     orderId = order.order_id;
     assert.equal(order.step, 4); // PAYMENT
+    assert.ok(order.funnel?.step_entered_at, 'horloge étape posée à la création');
+    assert.equal(String(order.funnel.tracked_step), '4');
+    const enteredPayment = order.funnel.step_entered_at;
     assert.equal(toAdminSummary(order).can_resume, true);
     assert.equal(toAdminSummary(order).can_pay, true);
 
@@ -56,6 +59,9 @@ describe('lifecycle tunnel', () => {
     const paid = loadOrder(orderId);
     assert.equal(paid.payment.status, 'paid');
     assert.equal(paid.step, 6); // DOSSIER (pas d'IBAN pour séance essai)
+    assert.equal(String(paid.funnel.tracked_step), '6');
+    assert.ok(paid.funnel.step_entered_at);
+    assert.notEqual(paid.funnel.step_entered_at, enteredPayment, 'changement d’étape = nouveau chrono relance');
     assert.equal(toAdminSummary(paid).can_pay, false);
 
     await updateFullProfile(orderId, {

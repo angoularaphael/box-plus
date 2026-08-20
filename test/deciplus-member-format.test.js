@@ -7,6 +7,8 @@ const {
   expandDeciplusUrl,
   extractMemberIdFromUrl,
   isNewMemberUrl,
+  nameForDeciplusSearch,
+  namesMatch,
 } = require('../lib/deciplus-member-format');
 
 describe('phoneForDeciplus', () => {
@@ -62,5 +64,18 @@ describe('extractMemberIdFromUrl / legacy nextgen', () => {
       'https://boxingcenter.deciplus.pro/nextgen/legacy?path=%2Fjoueurs.php%3Fidj%3Dnew'
     );
     assert.match(expanded, /idj=new/);
+  });
+});
+
+describe('recherche nom Deciplus (casse)', () => {
+  it('passe Test/test en TEST pour la saisie Deciplus', () => {
+    assert.equal(nameForDeciplusSearch('Test'), 'TEST');
+    assert.equal(nameForDeciplusSearch('  test  '), 'TEST');
+  });
+
+  it('compare sans tenir compte de la casse ni des accents', () => {
+    assert.equal(namesMatch('TEST', 'Test'), true);
+    assert.equal(namesMatch('François', 'FRANCOIS'), true);
+    assert.equal(namesMatch('TEST', 'TSET'), false);
   });
 });
