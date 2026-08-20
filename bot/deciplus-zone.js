@@ -41,6 +41,11 @@ async function selectSiteInPicker(page, siteLabel) {
   const pattern = new RegExp(escapeRegExp(label), 'i');
   logInfo('Sélection site Deciplus', { site: label });
 
+  if (/acces_interdit/i.test(page.url())) {
+    logWarn('Picker site sur page interdite', { site: label, url: page.url() });
+    return false;
+  }
+
   const onZonePicker = await isChooseZoneScreen(page);
   if (!onZonePicker) {
     await dismissDeciplusModals(page).catch(() => {});
@@ -255,19 +260,41 @@ async function switchDeciplusSite(page, siteLabel) {
   const label = String(siteLabel || '').trim();
   if (!label) return false;
   const base = process.env.DECIPLUS_URL || 'https://boxingcenter.deciplus.pro/';
-  await page
-    .goto(new URL('nextgen/choose-zone?nextUrl=/home&forced=true', base).href, {
-      waitUntil: 'domcontentloaded',
-      timeout: Number(process.env.DECIPLUS_NAV_TIMEOUT || 60000),
-    })
-    .catch(() => {});
-  await randomDelay(400, 800);
+  const origin = new URL(base).origin;
+  const timeout = Number(process.env.DECIPLUS_NAV_TIMEOUT || 60000);
+  const entries = [
+    'nextgen/home',
+    'nextgen/',
+    'nextgen/choose-zone',
+    'nextgen/choose-zone?nextUrl=/home',
+  ];
+  let opened = false;
+  for (const rel of entries) {
+    await page
+      .goto(`${origin}/${rel}`, { waitUntil: 'domcontentloaded', timeout })
+      .catch(() => {});
+    await randomDelay(400, 800);
+    if (/acces_interdit/i.test(page.url())) {
+      logWarn('Entrée zone Deciplus interdite — autre URL', { site: label, tried: rel, url: page.url() });
+      continue;
+    }
+    opened = true;
+    break;
+  }
+  if (!opened) {
+    logWarn('Changement de site Deciplus impossible', { site: label, url: page.url() });
+    return false;
+  }
   const selected = await selectSiteInPicker(page, label);
   if (!selected) {
     logWarn('Changement de site Deciplus impossible', { site: label, url: page.url() });
     return false;
   }
   await clickSellOnSite(page).catch(() => {});
+  if (/acces_interdit/i.test(page.url())) {
+    logWarn('Site Deciplus interdit après sélection', { site: label, url: page.url() });
+    return false;
+  }
   logInfo('Site Deciplus actif', { site: label });
   return true;
 }

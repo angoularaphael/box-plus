@@ -2102,8 +2102,8 @@ function createApp() {
           first_name: parsed.first_name,
           last_name: parsed.last_name,
           birthdate: parsed.birthdate,
-          email: String(req.body.email || '').trim() || '',
-          phone: String(req.body.phone || '').trim() || '',
+          email: parsed.email || '',
+          phone: '',
         },
         gym: 'minimes',
         source: 'balma_retour',
@@ -2758,19 +2758,18 @@ function createApp() {
       const aventureOrder = isBalmaRetourOrder(order) || order.aventure;
       const payEmail = String(req.body.email || req.body.customer_short?.email || '').trim();
       const payPhone = String(req.body.phone || req.body.customer_short?.phone || '').trim();
-      if (!aventureOrder && (payEmail || payPhone)) {
+      if (aventureOrder) {
+        order.customer_short = {
+          ...(order.customer_short || {}),
+          ...(payEmail ? { email: payEmail } : {}),
+          phone: '',
+        };
+        await saveOrderAsync(order);
+      } else if (payEmail || payPhone) {
         order.customer_short = {
           ...(order.customer_short || {}),
           ...(payEmail ? { email: payEmail } : {}),
           ...(payPhone ? { phone: payPhone } : {}),
-        };
-        await saveOrderAsync(order);
-      }
-      if (aventureOrder) {
-        order.customer_short = {
-          ...(order.customer_short || {}),
-          email: '',
-          phone: '',
         };
         await saveOrderAsync(order);
       }
@@ -2935,7 +2934,7 @@ function createApp() {
           gym,
           guestCard,
           payerEmail: aventureOrder
-            ? aventurePspEmail(order)
+            ? order.customer_short?.email || aventurePspEmail(order)
             : order.customer_short?.email || order.customer_full?.email,
         });
         if (!ppOrder.approve_url) {
@@ -2974,7 +2973,9 @@ function createApp() {
         city: req.body.city || order.customer_full?.city,
         gender: req.body.gender || order.customer_full?.gender,
         phone: aventureOrder ? '' : req.body.phone || short?.phone,
-        ...(aventureOrder ? { email: aventurePspEmail(order) } : {}),
+        ...(aventureOrder
+          ? { email: order.customer_short?.email || aventurePspEmail(order) }
+          : {}),
       };
 
       try {

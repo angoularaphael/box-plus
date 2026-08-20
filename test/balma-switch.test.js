@@ -62,6 +62,7 @@ test('formulaire aventure — refuse comptant', () => {
   const bad = validateBalmaSwitchPayload({
     first_name: 'Lea',
     last_name: 'Martin',
+    email: 'lea@test.local',
     birthdate: '1991-08-10',
     offer: '29',
     prelevement: false,
@@ -72,6 +73,7 @@ test('formulaire aventure — refuse comptant', () => {
   const ok = validateBalmaSwitchPayload({
     prenom: 'Lea',
     nom: 'Martin',
+    email: 'lea@test.local',
     birthdate: '1991-08-10',
     offer: 'offre-duo',
     prelevement: true,
@@ -79,10 +81,12 @@ test('formulaire aventure — refuse comptant', () => {
   assert.deepEqual(ok.errors, []);
   assert.equal(ok.offer, 'offre-duo');
   assert.equal(ok.birthdate, '1991-08-10');
+  assert.equal(ok.email, 'lea@test.local');
 
   const saison = validateBalmaSwitchPayload({
     first_name: 'Lea',
     last_name: 'Martin',
+    email: 'lea@test.local',
     birthdate: '1991-08-10',
     offer: '259',
     prelevement: true,
@@ -95,6 +99,7 @@ test('formulaire aventure — sans offre active → skip restore', () => {
   const none = validateBalmaSwitchPayload({
     first_name: 'Lea',
     last_name: 'Martin',
+    email: 'lea@test.local',
     birthdate: '1991-08-10',
     offer: 'none',
     prelevement: true,
@@ -106,6 +111,7 @@ test('formulaire aventure — sans offre active → skip restore', () => {
   const empty = validateBalmaSwitchPayload({
     first_name: 'Lea',
     last_name: 'Martin',
+    email: 'lea@test.local',
     birthdate: '1991-08-10',
     prelevement: true,
   });
@@ -130,10 +136,22 @@ test('formulaire aventure — date de naissance requise', () => {
   const missing = validateBalmaSwitchPayload({
     first_name: 'Lea',
     last_name: 'Martin',
+    email: 'lea@test.local',
     offer: '29',
     prelevement: true,
   });
   assert.ok(missing.errors.some((e) => /naissance/i.test(e)));
+});
+
+test('formulaire aventure — email requis pour la confirmation', () => {
+  const missing = validateBalmaSwitchPayload({
+    first_name: 'Lea',
+    last_name: 'Martin',
+    birthdate: '1991-08-10',
+    offer: '29',
+    prelevement: true,
+  });
+  assert.ok(missing.errors.some((e) => /email/i.test(e)));
 });
 
 test('Aventure — email PSP synthétique, jamais sur la fiche', () => {
@@ -269,6 +287,9 @@ test('preview Aventure en local ou studio, pas en prod anonyme', () => {
   const studio = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'views', 'dev.html'), 'utf8');
   assert.equal(fs.existsSync(preview), true);
   assert.match(studio, /\/dev\/aventure/);
+  const aventureHtml = fs.readFileSync(preview, 'utf8');
+  assert.match(aventureHtml, /name="email"/);
+  assert.doesNotMatch(aventureHtml, /name="phone"/);
 });
 
 test('Aventure — doublon Minimes, jamais migrer ni résilier', () => {
@@ -296,6 +317,8 @@ test('Aventure — doublon Minimes, jamais migrer ni résilier', () => {
   const memberSrc = fs.readFileSync(path.join(__dirname, '..', 'bot', 'member.js'), 'utf8');
   assert.match(memberSrc, /prenom"]:not\(#i_prenom\)/);
   assert.match(src, /createMinimesMember/);
+  assert.match(src, /Impossible d’ouvrir la salle Balma/);
+  assert.match(src, /Impossible d’ouvrir la salle Minimes/);
 });
 
 test('Aventure — vente 29 et 259 après création Minimes, pas si unpaid / none', () => {
@@ -416,7 +439,8 @@ test('David, backoffice et tunnel Aventure — hors Balma / pas de retour', () =
   assert.match(ai, /JAMAIS sur Balma/);
   assert.match(insc, /lockAventureBackNav/);
   assert.match(insc, /if \(isBalmaRetour\(\)\) return ''/);
-  assert.doesNotMatch(insc, /pay_email/);
+  assert.match(insc, /needAventureEmail/);
+  assert.doesNotMatch(insc, /pay_phone/);
   assert.doesNotMatch(insc, /needAventureContact/);
 });
 

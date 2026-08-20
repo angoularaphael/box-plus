@@ -278,7 +278,9 @@ async function runBalmaSwitch(page, order) {
   minimesConfig.key = policy.create_gym;
   const balmaConfig = getGymConfig(policy.search_gym) || getGymConfig('balma');
 
-  await switchDeciplusSite(page, balmaConfig.deciplus_label || 'Balma');
+  await switchDeciplusSite(page, balmaConfig.deciplus_label || 'Balma').then((ok) => {
+    if (!ok) throw new Error('Impossible d’ouvrir la salle Balma sur Deciplus');
+  });
 
   const knownId = String(order.deciplus_member_id || order.customer?.deciplus_member_id || '').trim();
   const match = knownId
@@ -324,7 +326,9 @@ async function runBalmaSwitch(page, order) {
     has_photo: Boolean(extras.photoPath),
   });
 
-  await switchDeciplusSite(page, minimesConfig.deciplus_label || 'Minimes');
+  await switchDeciplusSite(page, minimesConfig.deciplus_label || 'Minimes').then((ok) => {
+    if (!ok) throw new Error('Impossible d’ouvrir la salle Minimes sur Deciplus');
+  });
   let created;
   try {
     created = await createMinimesMember(

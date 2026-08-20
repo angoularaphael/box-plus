@@ -850,7 +850,9 @@
 
   function payRequestBody(extra = {}) {
     const short = state.order?.customer_short || state.shortDraft;
-    const email = isBalmaRetour() ? '' : short?.email;
+    const email = isBalmaRetour()
+      ? document.getElementById('pay_email')?.value?.trim() || short?.email || ''
+      : short?.email;
     const phone = isBalmaRetour() ? '' : short?.phone;
     return {
       token: state.token,
@@ -1003,7 +1005,7 @@
         : '';
     const previewNotice = payFlags.preview
       ? isBalmaRetour()
-        ? '<p class="portet-pay-notice">Studio : paiement sandbox. Pas d’email ni de téléphone — on les reprend sur ta fiche Balma.</p>'
+        ? '<p class="portet-pay-notice">Studio : paiement sandbox. L’email sert à la confirmation ; téléphone et email ne sont pas recopiés sur la fiche Minimes.</p>'
         : '<p class="portet-pay-notice">Studio : tous les moyens branchés s’affichent. Les visiteurs verront les cases enregistrées après déconnexion.</p>'
       : '';
 
@@ -1133,11 +1135,20 @@
         </div>`;
     }
 
+    const shortPay = state.order?.customer_short || state.shortDraft || {};
+    const needAventureEmail = isBalmaRetour() && !String(shortPay.email || '').trim();
+    const aventureEmailHtml = needAventureEmail
+      ? `<div class="form-grid" style="margin-bottom:16px">
+          <div class="full"><label for="pay_email">Email *</label>
+            <input id="pay_email" name="email" type="email" required value="${esc(shortPay.email || '')}" autocomplete="email" /></div>
+        </div>`
+      : '';
     stepContent.innerHTML = `
       <h1>Paiement</h1>
       <p class="sub">${firstPaymentCaption(p)}</p>
       ${balmaBadgeNotice}
       <form id="payForm">
+        ${aventureEmailHtml}
         ${billingHtml}
         <button type="submit" class="btn stripe block" id="payBtn">${
           p?.requires_payment === false ? 'Continuer' : 'Payer'
