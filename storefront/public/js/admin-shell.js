@@ -269,7 +269,10 @@
     const recentes = inscriptions.filter((o) => new Date(o.created_at).getTime() >= semaine).length;
     const coachSemaine = coachings.filter((o) => new Date(o.created_at).getTime() >= semaine).length;
 
-    peindreKpis(aFaire.length, impayes.length, recentes, places);
+    const aventure = inscriptions.filter((o) => o.aventure || o.source === "balma_retour");
+    const aventureSemaine = aventure.filter((o) => new Date(o.created_at).getTime() >= semaine).length;
+
+    peindreKpis(aFaire.length, impayes.length, recentes, places, aventure.length, aventureSemaine);
     peindreAFaire(zoneA, aFaire);
     peindreDernieres(zoneD, inscriptions);
     peindreCoachingsRecents(coachings);
@@ -300,11 +303,11 @@
     });
   }
 
-  function peindreKpis(nAFaire, nImpayes, nSemaine, places) {
+  function peindreKpis(nAFaire, nImpayes, nSemaine, places, nAventure, nAventureSemaine) {
     const box = $("#panKpis");
     if (!box) return;
-    const tuile = (l, v, s, cls, sec) =>
-      `<${sec ? "button type=\"button\"" : "div"} class="pan-kpi${cls ? " " + cls : ""}"${sec ? ` data-va="${sec}"` : ""}>
+    const tuile = (l, v, s, cls, sec, extra = "") =>
+      `<${sec ? "button type=\"button\"" : "div"} class="pan-kpi${cls ? " " + cls : ""}"${sec ? ` data-va="${sec}"` : ""}${extra}>
          <span class="pan-kpi__l">${esc(l)}</span>
          <span class="pan-kpi__v">${esc(v)}</span>
          <span class="pan-kpi__s">${esc(s)}</span>
@@ -313,6 +316,14 @@
       tuile("À traiter", nAFaire, nAFaire ? "Dossiers qui attendent une décision" : "Rien ne traîne. Bonne journée.", nAFaire ? "pan-kpi--alerte" : "pan-kpi--ok", "inscriptions") +
       tuile("Paiements en échec", nImpayes, nImpayes ? "À relancer avant que l’accès saute" : "Tout est encaissé", nImpayes ? "pan-kpi--alerte" : "pan-kpi--ok", "inscriptions") +
       tuile("Cette semaine", nSemaine, "Dossiers ouverts sur sept jours", "", "ventes") +
+      tuile(
+        "Aventure Balma",
+        nAventure || 0,
+        nAventureSemaine ? `${nAventureSemaine} cette semaine` : "Retours Balma → 5 salles",
+        "",
+        "inscriptions",
+        ' data-filtre="aventure"'
+      ) +
       tuilePlaces(places);
     function tuilePlaces(p) {
       /* Trois etats, et surtout PAS deux. Un compteur jamais regle
@@ -330,7 +341,16 @@
         p.affiche <= 5 ? "Bientôt complet — pensez à réajuster" : "Ce que les sites affichent",
         p.affiche <= 5 ? "pan-kpi--alerte" : "", "reglages");
     }
-    $$("button.pan-kpi", box).forEach((b) => (b.onclick = () => aller(b.dataset.va)));
+    $$("button.pan-kpi", box).forEach((b) => (b.onclick = () => {
+      if (b.dataset.filtre === "aventure") {
+        const sel = $("#ordersFilter");
+        if (sel) {
+          sel.value = "aventure";
+          sel.dispatchEvent(new Event("change"));
+        }
+      }
+      aller(b.dataset.va);
+    }));
   }
 
   function peindreAFaire(zone, liste) {
@@ -350,7 +370,7 @@
             ? `<span class="pan-tag pan-tag--ko">Accès bloqué</span>`
             : `<span class="pan-tag pan-tag--att">Signé, à transmettre</span>`;
         return `<tr>
-          <td data-l="Adhérent"><strong>${esc(o.name)}</strong><br><span style="color:var(--pan-mute);font-size:12px">${esc(o.email)}</span></td>
+          <td data-l="Adhérent"><strong>${esc(o.name)}</strong>${o.aventure || o.source === "balma_retour" ? ' <span class="pan-tag pan-tag--aventure">Aventure Balma</span>' : ""}<br><span style="color:var(--pan-mute);font-size:12px">${esc(o.email)}</span></td>
           <td data-l="Offre">${esc(o.product)}</td>
           <td data-l="Salle">${esc(o.gym_label || o.gym || "—")}</td>
           <td data-l="Motif">${motif}</td>
@@ -378,7 +398,7 @@
     zone.innerHTML = `<div class="pan-tablewrap"><table class="pan-table pan-table--cartes">
       <thead><tr><th>Adhérent</th><th>Offre</th><th>Salle</th><th>Étape</th><th>Paiement</th><th>Ouvert le</th><th></th></tr></thead>
       <tbody>${tri.map((o) => `<tr>
-        <td data-l="Adhérent"><strong>${esc(o.name)}</strong></td>
+        <td data-l="Adhérent"><strong>${esc(o.name)}</strong>${o.aventure || o.source === "balma_retour" ? ' <span class="pan-tag pan-tag--aventure">Aventure Balma</span>' : ""}</td>
         <td data-l="Offre">${esc(o.product)}</td>
         <td data-l="Salle">${esc(o.gym_label || o.gym || "—")}</td>
         <td data-l="Étape"><span class="pan-tag pan-tag--neutre">${esc(o.step_label || LIB_ETAPE[o.step] || o.step)}</span></td>

@@ -488,6 +488,22 @@ test('David, backoffice et tunnel Aventure — hors Balma / pas de retour', () =
   );
   assert.match(david, /pas Balma/);
   assert.match(adminHtml, /Aventure Balma/);
+  assert.match(adminHtml, />Origine</);
+  const adminJs = fs.readFileSync(
+    path.join(__dirname, '..', 'storefront', 'public', 'js', 'admin.js'),
+    'utf8'
+  );
+  assert.match(adminJs, /badge aventure/);
+  const shell = fs.readFileSync(
+    path.join(__dirname, '..', 'storefront', 'public', 'js', 'admin-shell.js'),
+    'utf8'
+  );
+  assert.match(shell, /pan-tag--aventure/);
+  const mailer = fs.readFileSync(
+    path.join(__dirname, '..', 'storefront', 'lib', 'mailer.js'),
+    'utf8'
+  );
+  assert.match(mailer, /Confirmation Aventure Boxing Center/);
   assert.match(ai, /JAMAIS sur Balma/);
   assert.match(insc, /lockAventureBackNav/);
   assert.match(insc, /if \(isBalmaRetour\(\)\) return ''/);
@@ -507,4 +523,5 @@ test('toAdminSummary — flag Aventure', () => {
   });
   assert.equal(s.aventure, true);
   assert.equal(s.source, 'balma_retour');
+  assert.equal(s.origine, 'Aventure Balma');
 });

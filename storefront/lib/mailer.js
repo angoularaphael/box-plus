@@ -13,12 +13,42 @@ function buildConfirmationHtml(order, attachmentNames = []) {
   const short = order.customer_short || {};
   const product = order.product_snapshot || {};
   const gym = order.customer_full?.gym || '—';
+  const aventure =
+    order.aventure ||
+    order.skip_dossier ||
+    String(order.source || '').toLowerCase() === 'balma_retour';
   const pjList =
     attachmentNames.length > 0
       ? `<p style="font-size:13px;color:#334155"><strong>Pièce jointe :</strong> ${attachmentNames
           .map((n) => escapeHtml(n))
           .join(', ')}</p>`
       : '';
+  if (aventure) {
+    return `<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Confirmation Aventure Boxing Center</title></head>
+<body style="font-family:Arial,sans-serif;color:#1A1A2E;max-width:600px;margin:0 auto;padding:24px">
+  <p style="display:inline-block;background:#20254B;color:#fff;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 10px;border-radius:999px;margin:0 0 16px">Aventure Balma</p>
+  <h1 style="color:#0B1F3A">On continue l’aventure ensemble</h1>
+  <p>Bonjour ${escapeHtml(short.first_name || '')},</p>
+  <p>Votre passage vers les <strong>5 salles Boxing Center</strong> (Minimes, États-Unis, Saint-Cyprien, Ramonville et Portet) est confirmé.</p>
+  <table style="width:100%;border-collapse:collapse;margin:20px 0">
+    <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Offre</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(product.display_name || product.name || 'Fiche Boxing Center')}</td></tr>
+    <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Référence</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(order.order_id || '')}</td></tr>
+    <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Salle principale</strong></td><td style="padding:8px;border-bottom:1px solid #eee">Minimes</td></tr>
+  </table>
+  <p>Votre fiche Boxing Center est créée à Minimes (prénom + Balma). L’email sert à cette confirmation — il n’est pas recopié sur la fiche.</p>
+  <p><strong>Pour bien démarrer :</strong></p>
+  <ul>
+    <li>Présentez-vous 15 minutes avant votre premier cours</li>
+    <li>Munissez-vous d'une tenue de sport et d'une bouteille d'eau</li>
+    <li>Votre abonnement donne accès à nos 5 salles</li>
+  </ul>
+  ${pjList}
+  <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="${SITE_URL}" style="color:#2EC4C6">${SITE_URL.replace('https://', '')}</a></p>
+</body>
+</html>`;
+  }
   return `<!DOCTYPE html>
 <html lang="fr">
 <head><meta charset="UTF-8"><title>Confirmation Boxing Center</title></head>
@@ -141,6 +171,21 @@ function portetDossierCc(order) {
   return [cc];
 }
 
+function isAventureMail(order = {}) {
+  return Boolean(
+    order.aventure ||
+      order.skip_dossier ||
+      String(order.source || '').toLowerCase() === 'balma_retour'
+  );
+}
+
+function aventureMailSubject(order = {}) {
+  const id = order.order_id || '';
+  return isAventureMail(order)
+    ? `Confirmation Aventure Boxing Center — ${id}`
+    : `Confirmation inscription Boxing Center — ${id}`;
+}
+
 async function sendConfirmationEmail(order, attachments = []) {
   const to = order.customer_short?.email;
   if (!to) {
@@ -166,7 +211,7 @@ async function sendConfirmationEmail(order, attachments = []) {
   try {
     const result = await sendEmailViaBrevo({
       to,
-      subject: `Confirmation inscription Boxing Center — ${order.order_id}`,
+      subject: aventureMailSubject(order),
       html,
       replyTo: defaultReplyTo(),
       attachments: mailAttachments,
@@ -407,6 +452,9 @@ async function sendNewMemberAdminEmail() {
 
 module.exports = {
   sendConfirmationEmail,
+  buildConfirmationHtml,
+  isAventureMail,
+  aventureMailSubject,
   sendMaterielConfirmationEmail,
   sendGdprEraseRequest,
   sendTestEmail,

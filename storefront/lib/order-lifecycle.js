@@ -490,7 +490,15 @@ function toAdminSummary(order) {
     dispatched: Boolean(order.dispatched_at),
     email_sent: Boolean(order.email_sent_at),
     source: order.source || order.utm?.source || null,
-    aventure: Boolean(order.aventure || order.source === 'balma_retour'),
+    aventure: Boolean(
+      order.aventure || order.skip_dossier || String(order.source || '').toLowerCase() === 'balma_retour'
+    ),
+    origine:
+      order.aventure ||
+      order.skip_dossier ||
+      String(order.source || '').toLowerCase() === 'balma_retour'
+        ? 'Aventure Balma'
+        : 'Boutique',
     created_at: order.created_at,
     updated_at: order.updated_at,
     can_resume:

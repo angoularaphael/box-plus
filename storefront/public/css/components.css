@@ -1237,6 +1237,13 @@
   color: #dc2626;
 }
 
+.badge.aventure {
+  background: #20254b;
+  color: #fff;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .admin-layout {
   max-width: 1100px;
   margin: 0 auto;

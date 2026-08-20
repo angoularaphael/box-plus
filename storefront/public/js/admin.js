@@ -631,7 +631,7 @@
 
     if (!list.length) {
       tbody.innerHTML =
-        '<tr><td colspan="12" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription trouvée</td></tr>';
+        '<tr><td colspan="13" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription trouvée</td></tr>';
       return;
     }
 
@@ -642,13 +642,14 @@
         <td><input type="checkbox" class="order-pick" data-id="${escapeHtml(o.order_id)}" ${canDiffuseOrder(o) ? '' : 'disabled'} /></td>
         <td><code style="font-size:11px">${escapeHtml(o.order_id)}</code></td>
         <td>${escapeHtml(o.name)}</td>
+        <td>${
+          o.aventure || o.source === 'balma_retour' || o.origine === 'Aventure Balma'
+            ? '<span class="badge aventure" title="Parcours Aventure Balma — 5 salles Boxing Center">Aventure Balma</span>'
+            : '<span class="badge pending">Boutique</span>'
+        }</td>
         <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>
         <td>${escapeHtml(o.product)}</td>
-        <td>${
-          o.aventure || o.source === 'balma_retour'
-            ? `${escapeHtml(o.gym_label || gymLabel(o.gym))} <span class="badge">Aventure</span>`
-            : escapeHtml(o.gym_label || gymLabel(o.gym))
-        }</td>
+        <td>${escapeHtml(o.gym_label || gymLabel(o.gym))}</td>
         <td>${escapeHtml(o.step_label || STEP_LABELS[o.step] || o.step)}</td>
         <td>${paymentBadge(o)}</td>
         <td>${o.signed ? `✓ ${formatDate(o.signed_at)}` : '—'}</td>
