@@ -1663,12 +1663,15 @@
         if (data.connected) {
           wrap.innerHTML = '<p class="admin-section-desc">C’est bon. Les messages d’offre partent depuis ce WhatsApp.</p>';
           if (waTimer) { clearInterval(waTimer); waTimer = null; }
+        } else if (data.pairingCode) {
+          wrap.innerHTML = `<p class="admin-section-desc">Code à saisir dans WhatsApp</p><p style="font-size:28px;letter-spacing:.18em;font-weight:800;margin:8px 0">${escapeHtml(data.pairingCode)}</p>`;
+          if (!waTimer) waTimer = setInterval(() => loadWhatsApp(true), 4000);
         } else if (data.qr) {
           wrap.innerHTML = `<img alt="QR WhatsApp" src="${data.qr}" style="width:min(280px,100%);border-radius:12px;background:#fff;padding:8px" />`;
           if (!waTimer) waTimer = setInterval(() => loadWhatsApp(true), 4000);
         } else {
           const why = data.qrError || data.error || '';
-          wrap.innerHTML = `<p class="admin-section-desc">${why ? escapeHtml(why) : 'Clique « Afficher le QR », puis scanne avec WhatsApp → Appareils connectés.'}</p>`;
+          wrap.innerHTML = `<p class="admin-section-desc">${why ? escapeHtml(why) : 'Clique « Afficher le QR », puis scanne tout de suite (le code expire).'}</p>`;
         }
       }
     } catch {
@@ -1686,7 +1689,7 @@
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ method: 'qr', forceQr: true }),
+        body: JSON.stringify({ method: 'qr' }),
       });
       if (waTimer) clearInterval(waTimer);
       waTimer = setInterval(() => loadWhatsApp(true), 4000);
@@ -1694,6 +1697,28 @@
     } catch {
       const wrap = document.getElementById('waQrWrap');
       if (wrap) wrap.innerHTML = '<p class="admin-section-desc">Impossible d’afficher le QR. Réessaie dans un instant.</p>';
+    }
+  });
+  document.getElementById('waPairBtn')?.addEventListener('click', async () => {
+    const phone = document.getElementById('waPhone')?.value || '';
+    const hint = document.getElementById('waPairHint');
+    try {
+      const res = await fetch('/api/admin/whatsapp?action=start', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method: 'pair', phone }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Code impossible');
+      if (hint) hint.textContent = data.pairingCode
+        ? `Saisis ${data.pairingCode} dans WhatsApp → Lier avec un numéro.`
+        : 'Code demandé — actualise si rien ne s’affiche.';
+      if (waTimer) clearInterval(waTimer);
+      waTimer = setInterval(() => loadWhatsApp(true), 4000);
+      await loadWhatsApp(true);
+    } catch (err) {
+      if (hint) hint.textContent = err.message || 'Impossible d’obtenir un code.';
     }
   });
   document.getElementById('waLogoutBtn')?.addEventListener('click', async () => {

@@ -18,7 +18,7 @@ const {
   default: makeWASocket,
   useMultiFileAuthState,
   DisconnectReason,
-  fetchLatestBaileysVersion,
+  Browsers,
 } = require('@whiskeysockets/baileys');
 
 require('dotenv').config({ path: path.join(__dirname, '.env') });
@@ -39,9 +39,30 @@ let sock = null;
 let isConnected = false;
 let isLinking = false;
 let currentQrBase64 = null;
+let pairingCode = null;
 let qrError = null;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function waBrowser() {
+  try {
+    return Browsers.ubuntu('Chrome');
+  } catch {
+    return ['Ubuntu', 'Chrome', '22.04.4'];
+  }
+}
+
+function formatPairingCode(code) {
+  const raw = String(code || '')
+    .replace(/[^A-Za-z0-9]/g, '')
+    .toUpperCase();
+  if (raw.length === 8) return `${raw.slice(0, 4)}-${raw.slice(4)}`;
+  return raw.replace(/(.{4})/g, '$1 ').trim();
+}
 
 function normalizePhone(input) {
   let d = String(input || '')
@@ -141,24 +162,18 @@ async function connectToWhatsApp({ force = false, clearAuth = false } = {}) {
   if (clearAuth) {
     clearAuthSession();
     currentQrBase64 = null;
+    pairingCode = null;
   }
   if (!fs.existsSync(AUTH_DIR)) fs.mkdirSync(AUTH_DIR, { recursive: true });
 
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-  let version = [2, 3000, 1015901307];
-  try {
-    version = (await fetchLatestBaileysVersion()).version;
-  } catch {
-    console.warn('[boutique-bot] version WA par défaut');
-  }
 
   sock = makeWASocket({
-    version,
     auth: state,
     logger: pino({ level: 'silent' }),
     printQRInTerminal: false,
-    browser: ['Boxplus Boutique', 'Chrome', '120.0.0.0'],
-    qrTimeout: 60000,
+    browser: waBrowser(),
+    qrTimeout: 120000,
     connectTimeoutMs: 60000,
     markOnlineOnConnect: false,
     syncFullHistory: false,
@@ -182,6 +197,7 @@ async function connectToWhatsApp({ force = false, clearAuth = false } = {}) {
       isConnected = true;
       isLinking = false;
       currentQrBase64 = null;
+      pairingCode = null;
       qrError = null;
       reconnectAttempts = 0;
       cancelReconnect();
@@ -189,23 +205,46 @@ async function connectToWhatsApp({ force = false, clearAuth = false } = {}) {
     }
     if (connection === 'close') {
       isConnected = false;
-      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const statusCode = Number(lastDisconnect?.error?.output?.statusCode);
       const loggedOut = statusCode === DisconnectReason.loggedOut;
-      await destroySocket();
+      const restartRequired =
+        statusCode === DisconnectReason.restartRequired || statusCode === 515;
+      console.warn('[boutique-bot] close', statusCode || lastDisconnect?.error?.message || '');
+      const old = sock;
+      sock = null;
+      try {
+        old?.ev.removeAllListeners();
+      } catch {
+        /* ignore */
+      }
       if (loggedOut) {
         isLinking = false;
         currentQrBase64 = null;
+        pairingCode = null;
         reconnectAttempts = 0;
         clearAuthSession();
+        try {
+          await old?.end(undefined);
+        } catch {
+          /* ignore */
+        }
+        qrError = 'Session WhatsApp expirée. Clique Afficher le QR.';
         return;
+      }
+      if (!restartRequired) {
+        try {
+          await old?.end(undefined);
+        } catch {
+          /* ignore */
+        }
       }
       if (isQrExpiredError(lastDisconnect?.error)) {
         currentQrBase64 = null;
-        scheduleReconnect(2500, { clearAuth: true });
+        pairingCode = null;
+        scheduleReconnect(2000, { clearAuth: true });
         return;
       }
-      const delay = statusCode === DisconnectReason.restartRequired ? 1500 : 5000;
-      scheduleReconnect(delay, { clearAuth: false });
+      scheduleReconnect(restartRequired ? 400 : 4000, { clearAuth: false });
     }
   });
 }
@@ -223,29 +262,81 @@ app.get('/api/status', (req, res) => {
     connecting: isLinking && !isConnected,
     hasQr: Boolean(currentQrBase64),
     qr: includeQr || !isConnected ? currentQrBase64 : null,
+    pairingCode,
     qrError,
   });
 });
 
 app.post('/api/start', async (req, res) => {
-  if (isConnected) return res.json({ ok: true, success: true, message: 'Already connected', connected: true });
+  if (isConnected) {
+    return res.json({ ok: true, success: true, message: 'Already connected', connected: true });
+  }
+  const method = String(req.body?.method || 'qr').toLowerCase();
+  const forceQr = req.body?.forceQr === true;
+  const phone = normalizePhone(req.body?.phone);
+
+  if (!forceQr && method !== 'pair' && isLinking && (currentQrBase64 || pairingCode)) {
+    return res.json({
+      ok: true,
+      success: true,
+      message: 'QR ready',
+      connected: false,
+      connecting: true,
+      hasQr: Boolean(currentQrBase64),
+      qr: currentQrBase64,
+      pairingCode,
+      qrError,
+    });
+  }
+
   reconnectAttempts = 0;
   qrError = null;
-  currentQrBase64 = null;
-  const wantsQr = req.body?.forceQr === true || String(req.body?.method || '').toLowerCase() === 'qr';
-  const clearAuth = wantsQr || !hasRegisteredSession();
+  const clearAuth = forceQr || method === 'pair' || !hasRegisteredSession();
   await connectToWhatsApp({ force: true, clearAuth });
-  const deadline = Date.now() + 7000;
+
+  if (method === 'pair') {
+    if (!phone || phone.length < 10) {
+      return res.status(400).json({ ok: false, error: 'Numéro WhatsApp requis (06…)' });
+    }
+    if (!sock?.requestPairingCode) {
+      return res.status(500).json({
+        ok: false,
+        error: 'Code d’association indisponible. Redémarre le bot boutique.',
+      });
+    }
+    try {
+      await sleep(400);
+      const raw = await sock.requestPairingCode(phone);
+      pairingCode = formatPairingCode(raw);
+      currentQrBase64 = null;
+      console.log('[boutique-bot] code d’association', pairingCode);
+    } catch (err) {
+      qrError = err.message;
+      return res.status(500).json({ ok: false, error: err.message });
+    }
+    return res.json({
+      ok: true,
+      success: true,
+      message: 'Pairing code ready',
+      connecting: true,
+      pairingCode,
+      qrError,
+    });
+  }
+
+  const deadline = Date.now() + 8000;
   while (Date.now() < deadline && !isConnected && !currentQrBase64 && !qrError) {
-    await new Promise((r) => setTimeout(r, 200));
+    await sleep(200);
   }
   res.json({
     ok: true,
     success: true,
     message: currentQrBase64 ? 'QR ready' : isConnected ? 'Already connected' : 'Connection started',
     connected: isConnected,
+    connecting: isLinking && !isConnected,
     hasQr: Boolean(currentQrBase64),
     qr: currentQrBase64,
+    pairingCode,
     qrError,
   });
 });
@@ -256,6 +347,7 @@ app.post('/api/stop', async (_req, res) => {
   await destroySocket();
   isConnected = false;
   currentQrBase64 = null;
+  pairingCode = null;
   res.json({ ok: true, success: true, message: 'Stopped' });
 });
 
@@ -272,6 +364,7 @@ app.post('/api/logout', async (_req, res) => {
   await destroySocket();
   isConnected = false;
   currentQrBase64 = null;
+  pairingCode = null;
   clearAuthSession();
   res.json({ ok: true, success: true, message: 'Logged out' });
 });

@@ -381,7 +381,7 @@
           <div class="admin-section-head">
             <div>
               <h2 class="admin-section-title">WhatsApp — Offre Duo 29 €</h2>
-              <p class="admin-section-desc">Scanne le QR avec ton téléphone. Les messages d’offre à l’ami partiront de ce WhatsApp.</p>
+              <p class="admin-section-desc">WhatsApp → Paramètres → Appareils connectés → Lier un appareil. Un seul clic, puis scanne tout de suite. Si « Impossible de connecter l’appareil », utilise le code ci-dessous.</p>
             </div>
             <span class="admin-section-badge" id="waBadge">—</span>
           </div>
@@ -393,6 +393,14 @@
               <button type="button" class="btn sm" id="waStartBtn">Afficher le QR</button>
               <button type="button" class="btn sm secondary" id="waRefreshBtn">Actualiser</button>
               <button type="button" class="btn sm secondary" id="waLogoutBtn">Déconnecter</button>
+            </div>
+            <div class="wa-pair__code">
+              <label for="waPhone">Ou lier avec un code (numéro du téléphone WhatsApp)</label>
+              <div class="api-row" style="display:flex;gap:8px;margin-top:8px">
+                <input id="waPhone" type="tel" inputmode="tel" placeholder="06 12 34 56 78" style="flex:1;min-width:0;padding:10px 12px" />
+                <button type="button" class="btn sm" id="waPairBtn">Code d’association</button>
+              </div>
+              <p class="admin-section-desc" id="waPairHint" style="margin-top:8px">Sur le téléphone : Appareils connectés → Lier avec un numéro de téléphone.</p>
             </div>
           </div>
         </div>

@@ -1198,6 +1198,9 @@ function createApp() {
       }
       return res.status(400).json({ ok: false, error: 'action inconnue' });
     } catch (err) {
+      if (action === 'start' && String(req.body?.method || '').toLowerCase() === 'pair') {
+        return res.status(502).json({ ok: false, error: err.message });
+      }
       if (action === 'start' || action === 'stop') {
         return res.json({ ok: true, action, pending: true, message: err.message });
       }
