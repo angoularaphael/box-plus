@@ -143,7 +143,7 @@ test('formulaire aventure — date de naissance requise', () => {
   assert.ok(missing.errors.some((e) => /naissance/i.test(e)));
 });
 
-test('formulaire aventure — email à l’étape paiement, pas au départ', () => {
+test('formulaire aventure — email requis, identique à la fiche Balma', () => {
   const missing = validateBalmaSwitchPayload({
     first_name: 'Lea',
     last_name: 'Martin',
@@ -151,12 +151,22 @@ test('formulaire aventure — email à l’étape paiement, pas au départ', () 
     offer: '29',
     prelevement: true,
   });
-  assert.deepEqual(missing.errors, []);
-  assert.equal(missing.email, '');
+  assert.ok(missing.errors.some((e) => /email/i.test(e)));
+  const ok = validateBalmaSwitchPayload({
+    first_name: 'Lea',
+    last_name: 'Martin',
+    birthdate: '1991-08-10',
+    email: 'lea@test.local',
+    offer: '29',
+    prelevement: true,
+  });
+  assert.deepEqual(ok.errors, []);
+  assert.equal(ok.email, 'lea@test.local');
   const insc = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'public', 'js', 'inscription.js'), 'utf8');
   assert.match(insc, /id="pay_email"/);
-  assert.match(insc, /label for="pay_email">Email \*/);
-  assert.doesNotMatch(insc, /needAventureEmail/);
+  const preview = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'views', 'aventure.html'), 'utf8');
+  assert.match(preview, /name="email"/);
+  assert.match(preview, /Email de ta fiche Balma/);
 });
 
 test('Aventure — email PSP synthétique, jamais sur la fiche', () => {
@@ -293,7 +303,7 @@ test('preview Aventure en local ou studio, pas en prod anonyme', () => {
   assert.equal(fs.existsSync(preview), true);
   assert.match(studio, /\/dev\/aventure/);
   const aventureHtml = fs.readFileSync(preview, 'utf8');
-  assert.doesNotMatch(aventureHtml, /name="email"/);
+  assert.match(aventureHtml, /name="email"/);
   assert.doesNotMatch(aventureHtml, /name="phone"/);
 });
 
@@ -316,7 +326,8 @@ test('Aventure — doublon Minimes, jamais migrer ni résilier', () => {
   assert.match(src, /applyMinimesDuplicateIdentity/);
   assert.match(src, /sans mail ni téléphone/);
   assert.match(src, /resolveCreatedMemberId\(page, patched/);
-  assert.match(src, /skipIdentityPrefill:\s*true/);
+  assert.match(src, /AVENTURE_MATCH_FIELDS/);
+  assert.match(src, /clearMinimesContactFields/);
   assert.match(src, /downloadMemberPhoto/);
   assert.match(src, /setMemberIban/);
   const memberSrc = fs.readFileSync(path.join(__dirname, '..', 'bot', 'member.js'), 'utf8');
@@ -377,6 +388,42 @@ test('badge Aventure immédiat — CB, pas d’échec Clôturer obligatoire', ()
   assert.doesNotMatch(immediate, /throw new Error\('Badge — « Clôturer la note » introuvable'\)/);
   const gate = src.slice(end, end + 900);
   assert.match(gate, /finalizeImmediateBadgeCheckout/);
+});
+
+test('Aventure — mismatch email si la fiche ne correspond pas', () => {
+  const { computeIdentityMismatches, AVENTURE_MATCH_FIELDS } = require('../bot/member');
+  const mismatch = computeIdentityMismatches(
+    {
+      lastName: 'MARTIN',
+      firstName: 'LEA',
+      birth: '10/08/1991',
+      email: 'lea@balma.test',
+    },
+    {
+      last_name: 'Martin',
+      first_name: 'Lea',
+      birthdate: '1991-08-10',
+      email: 'autre@balma.test',
+    },
+    { fields: AVENTURE_MATCH_FIELDS }
+  );
+  assert.deepEqual(mismatch.mismatchFields, ['email']);
+  const ok = computeIdentityMismatches(
+    {
+      lastName: 'MARTIN',
+      firstName: 'LEA',
+      birth: '10/08/1991',
+      email: 'Lea@Balma.test',
+    },
+    {
+      last_name: 'Martin',
+      first_name: 'Lea',
+      birthdate: '1991-08-10',
+      email: 'lea@balma.test',
+    },
+    { fields: AVENTURE_MATCH_FIELDS }
+  );
+  assert.deepEqual(ok.mismatchFields, []);
 });
 
 test('Aventure — prénom + Balma sur le doublon Minimes', () => {

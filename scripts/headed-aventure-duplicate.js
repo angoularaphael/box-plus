@@ -21,8 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
 const { login, STORAGE_FILE } = require('../bot/auth');
-const { findOrCreateMember } = require('../bot/member');
-const { openMemberCheck } = require('../bot/wallet');
+const { findOrCreateMember, openMemberEditForm } = require('../bot/member');
 const { runBalmaSwitch, readMemberProfile } = require('../bot/aventure-clone');
 const { appendBalmaToFirstName } = require('../lib/aventure-duplicate-address');
 const { normalizeOrder, validateOrder, getGymConfig } = require('../lib/normalize');
@@ -36,7 +35,7 @@ function customer(stamp) {
   return {
     first_name: 'Aventure',
     last_name: `Dup${tail}`,
-    email: `aventure.dup${tail}@boxplus-test.local`,
+    email: `dup${tail}.balma@boxingcenter-test.fr`,
     phone: `06${String(stamp).slice(-8).padStart(8, '0')}`,
     birthdate: '1992-03-15',
     gender: 'M',
@@ -159,7 +158,7 @@ async function main() {
   recap.steps.push('switch');
 
   if (minimesId) {
-    await openMemberCheck(page, minimesId, getGymConfig('minimes')).catch(() => {});
+    await openMemberEditForm(page, minimesId).catch(() => {});
     recap.minimes_profile = await readMemberProfile(page).catch((err) => ({ error: err.message }));
   }
 

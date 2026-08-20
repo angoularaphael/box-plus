@@ -9,6 +9,8 @@ const {
   isNewMemberUrl,
   nameForDeciplusSearch,
   namesMatch,
+  emailsMatch,
+  isSearchableMemberEmail,
 } = require('../lib/deciplus-member-format');
 
 const SCOPED_RESULT_LINKS =
@@ -501,7 +503,12 @@ async function readMemberIdentityFields(page) {
         .inputValue()
         .catch(() => '');
     }
-    last = { lastName, firstName, birth, phone, fromMemberForm: true };
+    const email = await scope
+      .locator('input[name="email"]:not(#i_email)')
+      .first()
+      .inputValue()
+      .catch(() => '');
+    last = { lastName, firstName, birth, phone, email, fromMemberForm: true };
     if (String(lastName || firstName).trim()) break;
     await page.waitForTimeout(180);
   }
@@ -511,6 +518,8 @@ async function readMemberIdentityFields(page) {
 const DEFAULT_MATCH_FIELDS = ['last_name', 'first_name', 'birthdate', 'phone'];
 /** Changement d’abo : nom + prénom + date de naissance uniquement. */
 const CHANGE_MATCH_FIELDS = ['last_name', 'first_name', 'birthdate'];
+/** Aventure Balma : nom + prénom + naissance + email de la fiche. */
+const AVENTURE_MATCH_FIELDS = ['last_name', 'first_name', 'birthdate', 'email'];
 
 /** Normalise une date Deciplus / ISO vers JJ/MM/AAAA comparable. */
 function normalizeBirthCompare(value) {
@@ -566,9 +575,12 @@ function computeIdentityMismatches(form, identity = {}, { fields = DEFAULT_MATCH
     mismatchFields.push('birthdate');
   }
   if (check('phone') && !phoneOk) mismatchFields.push('phone');
+  const formEmail = String(form.email || '').trim();
+  const emailOk = emailsMatch(formEmail, identity.email);
+  if (check('email') && !emailOk) mismatchFields.push('email');
   return {
     mismatchFields,
-    checks: { lastNameOk, firstNameOk, birthOk, phoneOk },
+    checks: { lastNameOk, firstNameOk, birthOk, phoneOk, emailOk },
   };
 }
 
@@ -594,14 +606,18 @@ async function findMemberByIdentity(page, identity = {}, options = {}) {
   if (matchFields.includes('birthdate') && !identity.birthdate) {
     return { found: false, reason: 'missing_identity', mismatch_fields: ['birthdate'] };
   }
+  const searchableEmail = isSearchableMemberEmail(identity.email);
+  if (matchFields.includes('email') && !searchableEmail) {
+    return { found: false, reason: 'missing_identity', mismatch_fields: ['email'] };
+  }
 
-  // Email d’abord (plus unique) — stop dès le 1er hit (pas de recherches inutiles)
+  // Email d’abord (plus unique) — jamais le mail PSP Aventure
   let foundViaPhone = false;
   let hit = { found: false };
-  if (identity.email) {
-    hit = await searchMember(page, identity.email);
+  if (searchableEmail) {
+    hit = await searchMember(page, searchableEmail);
   }
-  if (!hit.found && phone) {
+  if (!hit.found && phone && matchFields.includes('phone')) {
     hit = await searchMember(page, phone);
     if (hit.found) foundViaPhone = true;
   }
@@ -1973,6 +1989,7 @@ module.exports = {
   computeIdentityMismatches,
   DEFAULT_MATCH_FIELDS,
   CHANGE_MATCH_FIELDS,
+  AVENTURE_MATCH_FIELDS,
   getMemberFormContext,
   setMemberGymZone,
   openMemberEditForm,

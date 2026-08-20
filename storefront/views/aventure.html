@@ -116,13 +116,15 @@
     </div>
     <p class="dev-banner">
       Preview du parcours Aventure. Le formulaire crée un brouillon boutique, puis ouvre le <strong>paiement sandbox</strong>.
-      L’email est demandé à l’étape paiement (confirmation uniquement, pas sur la fiche Minimes). 29 € → IBAN + signature, 259 € → signature.
+      L’email, le nom, le prénom et la date de naissance doivent être <strong>exactement ceux de ta fiche Balma</strong>.
+      L’email sert à la vérif et à la confirmation — pas recopié sur la fiche Minimes. 29 € → IBAN + signature, 259 € → signature.
     </p>
     <div class="dev-card">
       <p class="lead">
         Ta salle Balma a changé de propriétaire. Pour rejoindre nos 5 salles Boxing Center
         (Minimes, États-Unis, Saint-Cyprien, Ramonville et Portet),
-        remplis les infos suivantes et choisis ta nouvelle formule.
+        saisis <strong>exactement</strong> le nom, le prénom, la date de naissance et l’email
+        de ta fiche Balma, puis choisis ta nouvelle formule.
       </p>
       <form id="aventureForm">
         <div class="form-grid">
@@ -137,6 +139,10 @@
           <div class="aventure-field" style="grid-column: 1 / -1">
             <label for="birthdate">Date de naissance *</label>
             <input id="birthdate" name="birthdate" type="date" required min="1900-01-01" autocomplete="bday" />
+          </div>
+          <div class="aventure-field" style="grid-column: 1 / -1">
+            <label for="email">Email de ta fiche Balma *</label>
+            <input id="email" name="email" type="email" required autocomplete="email" />
           </div>
         </div>
         <p class="offers-legend">Choisis ton offre *</p>
@@ -189,6 +195,7 @@
               first_name: data.first_name,
               last_name: data.last_name,
               birthdate: data.birthdate,
+              email: data.email,
               offer: data.offer,
               prelevement: data.prelevement === '1',
             }),

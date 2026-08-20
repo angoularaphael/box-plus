@@ -597,7 +597,7 @@ async function performLogin(page, options = {}) {
   const hasStoredSession = fs.existsSync(STORAGE_FILE);
 
   if (!force && hasStoredSession && !envToken) {
-    await gotoDeciplus(page, 'nextgen/home');
+    await gotoDeciplus(page, 'nextgen/choose-zone?nextUrl=/home');
     // Parfois Deciplus renvoie directement sur choose-zone
     if (/choose-zone/i.test(page.url()) || (await isChooseZoneScreen(page))) {
       logInfo('Session persistée — écran choix de salle');
@@ -623,7 +623,7 @@ async function performLogin(page, options = {}) {
 
   if (!force && envToken) {
     await injectAuthToken(page, envToken);
-    await gotoDeciplus(page, 'nextgen/home');
+    await gotoDeciplus(page, 'nextgen/choose-zone?nextUrl=/home');
     const t = await getAccessToken(page);
     if (t && (await isAccessTokenValid(page, t)) && (await isLegacySessionAlive(page))) {
       logInfo('Connecté via DECIPLUS_AUTH_TOKEN');

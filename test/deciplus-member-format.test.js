@@ -78,4 +78,13 @@ describe('recherche nom Deciplus (casse)', () => {
     assert.equal(namesMatch('François', 'FRANCOIS'), true);
     assert.equal(namesMatch('TEST', 'TSET'), false);
   });
+
+  it('compare les emails sans casse et ignore le mail PSP Aventure', () => {
+    const { emailsMatch, isSearchableMemberEmail } = require('../lib/deciplus-member-format');
+    assert.equal(emailsMatch('Lea@Test.local', 'lea@test.local'), true);
+    assert.equal(emailsMatch('lea@test.local', 'autre@test.local'), false);
+    assert.equal(isSearchableMemberEmail('lea@test.local'), 'lea@test.local');
+    assert.equal(isSearchableMemberEmail('aventure.bc-99@boxplus-test.local'), '');
+    assert.equal(isSearchableMemberEmail('dup48668.balma@boxingcenter-test.fr'), 'dup48668.balma@boxingcenter-test.fr');
+  });
 });
