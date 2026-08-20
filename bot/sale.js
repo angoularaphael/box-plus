@@ -1903,9 +1903,75 @@ async function dismissPostApplyDialogs(page, { allowRib = false } = {}) {
   await randomDelay(400, 700);
 }
 
-async function finalizeBadgePayment(page) {
+async function finalizeImmediateBadgeCheckout(page, gymConfig = {}) {
+  await fillNf525InvoiceAddressIfNeeded(page, gymConfig).catch((err) => {
+    logWarn('Adresse NF525 ignorée avant CB badge', { error: err.message });
+  });
+
+  const work = await resolveDeciplusWorkPage(page);
+  let cardRecorded = await clickFirst(work, sel('payment_finalize.carte_bancaire'), {
+    force: true,
+  }).catch(() => false);
+  if (!cardRecorded) {
+    cardRecorded = await clickVenteFooterAction(page, /Carte Bancaire/i, { exact: true });
+  }
+  if (cardRecorded) {
+    logInfo('Badge — règlement CB enregistré');
+    await randomDelay(800, 1200);
+  }
+
+  await fillNf525InvoiceAddressIfNeeded(page, gymConfig).catch((err) => {
+    logWarn('Adresse NF525 ignorée après CB badge', { error: err.message });
+  });
+
+  let clotured = await clickVenteFooterAction(page, /Cl[ôo]turer(\s+la\s+note)?/i);
+  if (!clotured) {
+    clotured = await clickFirst(work, sel('payment_finalize.cloturer'), { force: true }).catch(
+      () => false
+    );
+  }
+  if (!clotured) {
+    clotured = await clickFirst(
+      page,
+      'button:has-text("Clôturer"), button:has-text("Cloturer"), input[value*="Clôturer"], input[value*="Cloturer"]',
+      { force: true }
+    );
+  }
+
+  let done = false;
+  if (clotured) {
+    logInfo('Badge — note clôturée');
+    await randomDelay(500, 800);
+  }
+  done = await clickTerminerVente(page);
+  if (!done) {
+    done = await clickVenteFooterAction(page, /\bTerminer\b/i, { preferClass: 'verticalDocumentBar' });
+  }
+  if (!done) {
+    done = await clickFirst(page, sel('payment_finalize.terminer')).catch(() => false);
+  }
+
+  if (!done) {
+    logWarn('Badge immédiat — footer Clôturer/Terminer absent, vérification contrat', {
+      ui: await venteUiSnapshot(page).catch(() => []),
+      screenshot: await captureSaleDebugScreenshot(page, 'badge-immediate-finalize-missing'),
+    });
+  }
+  logInfo('Paiement finalisé Deciplus', { mode: 'comptant', badge_differe: false });
+}
+
+async function finalizeBadgePayment(page, productConfig = {}, gymConfig = {}) {
   await dismissPostApplyDialogs(page, { allowRib: false });
   await randomDelay(250, 450);
+
+  const immediate =
+    productConfig.paiement_comptant === true ||
+    String(productConfig.badge_timing || '').toLowerCase() === 'immediate';
+
+  if (immediate) {
+    await finalizeImmediateBadgeCheckout(page, gymConfig);
+    return;
+  }
 
   // Après Appliquer différé, Deciplus peut exiger un mode de paiement avant Clôturer
   await clickFirst(page, sel('payment_finalize.virement')).catch(() => {});
@@ -1916,7 +1982,6 @@ async function finalizeBadgePayment(page) {
     clotured = await clickFirst(page, sel('payment_finalize.cloturer'));
   }
   if (!clotured) {
-    // Repli : bouton visible dans footer / barre
     clotured = await clickFirst(
       page,
       'button:has-text("Clôturer"), button:has-text("Cloturer"), input[value*="Clôturer"], input[value*="Cloturer"]',
@@ -2402,7 +2467,7 @@ async function finalizePayment(page, productConfig, gymConfig = {}) {
   const badge = isBadgeSale(productConfig);
 
   if (badge) {
-    await finalizeBadgePayment(page);
+    await finalizeBadgePayment(page, productConfig, gymConfig);
     return;
   }
 

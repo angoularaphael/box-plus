@@ -133,13 +133,18 @@ async function findActiveContracts(page, options = {}) {
         const idc = (idAttr.match(/prestation_(\d+)/i) || [])[1];
         if (!idc || seen.has(idc)) continue;
 
-        const label = (
+        const itemLabel = (
           (await item.innerText().catch(() => '')) ||
           (await item.evaluate((el) => (el.textContent || '').replace(/\s+/g, ' ').trim()).catch(() => '')) ||
           ''
         )
           .replace(/\s+/g, ' ')
           .trim();
+        const wrapper = item.locator('xpath=ancestor::div[contains(@class,"og-product-wrapper")][1]');
+        const wrapperLabel = ((await wrapper.innerText().catch(() => '')) || '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const label = wrapperLabel.length > itemLabel.length ? wrapperLabel : itemLabel;
         if (!label) continue;
         // Déjà résiliés / terminés : pas d’action « Résilier » → évite action_panel_missing.
         // Exception : séance d’essai / coaching « Expiré » le jour même (1 crédit) — c’est la vente.
@@ -175,7 +180,11 @@ async function findActiveContracts(page, options = {}) {
           consulter: (await consulter.count()) > 0 ? consulter : null,
           idc,
           label: label.slice(0, 160) || `prestation_${idc}`,
-          isBadge: /\bbadge\b/i.test(label) && !/essai|coaching/i.test(label),
+          isBadge:
+            (/\bbadge\b/i.test(label) && !/essai|coaching/i.test(label)) ||
+            (/pr[ée]-?d[ée]compt/i.test(label) &&
+              /0 cr[ée]dit restant/i.test(label) &&
+              !/essai|coaching|offre duo|abonnement|12\s*mois|259/i.test(label)),
         });
       }
     } catch {
