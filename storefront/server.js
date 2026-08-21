@@ -112,12 +112,14 @@ const {
 const {
   expectedChargeCents,
   paidMatchesExpected,
+  amountsMatch,
   payplugMatches,
   rememberPreviousPayplugId,
   payplugIdCandidates,
   rememberPreviousPaypalId,
   paypalIdCandidates,
   paypalMatches,
+  paypalPaidCents,
   verifyPayplugSignature,
 } = require('./lib/payment-bind');
 const {
@@ -2800,6 +2802,27 @@ function createApp() {
         });
       }
 
+      // PayPal déjà capturé (4× 64,75 € ou 259 €) alors que le site a affiché un échec carte.
+      if (
+        paypalIdCandidates(order).length &&
+        isPaypalEnabled(order.payment?.paypal_account || order.customer_full?.gym || req.body.gym)
+      ) {
+        const recovered = await confirmPaypalCaptureForOrder(order, order.payment?.paypal_order_id);
+        if (recovered.paid || recovered.already_paid) {
+          const paidOrder = recovered.order || order;
+          logInfo('PayPal déjà encaissé — pas de 2e checkout', {
+            order_id: order.order_id,
+            paypal_order_id: paidOrder.payment?.paypal_order_id,
+          });
+          return res.json({
+            ok: true,
+            mode: 'already_paid',
+            recovered: true,
+            redirect: inscriptionRedirect(paidOrder),
+          });
+        }
+      }
+
       const paymentErrors = validatePaymentForm(req.body, product);
       if (paymentErrors.length) return res.status(400).json({ ok: false, errors: paymentErrors });
 
@@ -4035,17 +4058,29 @@ function createApp() {
           captured = await capturePaypalOrder(id, paypalOpts);
         }
         if (!isPaypalOrderPaid(captured)) continue;
+        const expected = expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot);
         const bound = paypalMatches({
           captured,
           orderId: order.order_id,
-          expectedCents: expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot),
+          expectedCents: expected,
           storedPaypalId: order.payment?.paypal_order_id,
         });
         if (!bound.ok) {
           lastErr = bound.error;
           continue;
         }
+        const paidCents = paypalPaidCents(captured);
+        const quarter = Array.isArray(expected) ? expected[1] : null;
+        const full = Array.isArray(expected) ? expected[0] : expected;
+        const asFourX =
+          quarter != null &&
+          amountsMatch(paidCents, quarter) &&
+          !amountsMatch(paidCents, full);
         const paid = await markPaypalOrderPaid(order, captured.id || id);
+        if (asFourX && paid?.payment) {
+          paid.payment.payment_plan = '4x';
+          await saveOrderAsync(paid);
+        }
         logInfo('PayPal confirmé', { order_id: order.order_id, paypal_order_id: captured.id || id });
         return { ok: true, paid: true, order: paid };
       } catch (err) {

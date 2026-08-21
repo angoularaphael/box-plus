@@ -12,7 +12,9 @@ function expectedChargeCents(order, product) {
   const plan = String(order?.payment?.payment_plan || 'once').toLowerCase();
   const price = Number(product?.price_cents || order?.product_snapshot?.price_cents || 0);
   if (!price) return null;
-  if (plan === '4x') return [price, Math.round(price / 4)];
+  const quarter = Math.round(price / 4);
+  // Pay Later 4× peut encaisser le quart (64,75 €) même si la commande boutique est restée en « once ».
+  if (plan === '4x' || price >= 20000) return [price, quarter];
   return price;
 }
 

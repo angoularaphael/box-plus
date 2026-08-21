@@ -229,6 +229,30 @@ test('4× accepte le montant plein ou le quart', () => {
   assert.equal(amountsMatch(25900, 25900), true);
 });
 
+test('259 € once accepte aussi 64,75 € (Pay Later déjà capturé)', () => {
+  const expected = expectedChargeCents(
+    { payment: { payment_plan: 'once' } },
+    { price_cents: 25900 }
+  );
+  assert.deepEqual(expected, [25900, 6475]);
+  const reboundQuarter = paypalMatches({
+    captured: {
+      id: 'PP-4X',
+      purchase_units: [
+        {
+          custom_id: 'BC-FERIDE',
+          amount: { value: '64.75' },
+          payments: { captures: [{ amount: { value: '64.75' }, status: 'COMPLETED' }] },
+        },
+      ],
+    },
+    orderId: 'BC-FERIDE',
+    expectedCents: expected,
+    storedPaypalId: 'PP-OLD',
+  });
+  assert.equal(reboundQuarter.ok, true);
+});
+
 test('signature PayPlug JWT HS256', () => {
   const secret = 'sk_test_abc';
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
