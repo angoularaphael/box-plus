@@ -1,0 +1,4 @@
+# Un crochet git est un script shell : en CRLF il ne s'execute ni sous
+# Linux ni sur un Mac ("bad interpreter"). On force le LF, quel que soit
+# le poste qui clone.
+.githooks/** text eol=lf
