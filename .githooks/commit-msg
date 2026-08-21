@@ -1,0 +1,31 @@
+#!/bin/sh
+# =====================================================================
+# Aucune signature d'outil dans l'historique de ce depot.
+#
+# POURQUOI. Ce sont les depots d'Eddy, livres a un client et partages
+# entre plusieurs developpeurs. La paternite du travail lui appartient.
+# Une signature d'assistant dans l'historique d'un projet client est une
+# intrusion — et au 21/08/2026 elle etait deja sur 103 commits, ajoutee
+# par plusieurs postes de travail sans que personne le decide.
+#
+# CE QUE FAIT CE CROCHET. Il retire silencieusement les lignes de
+# signature du message avant l'enregistrement du commit. Il ne refuse
+# rien, il ne fait perdre aucun travail : il nettoie et laisse passer.
+#
+# POUR L'ACTIVER (une fois par clone) :  npm install
+# ou, sans passer par npm :               git config core.hooksPath .githooks
+# =====================================================================
+f="$1"
+[ -f "$f" ] || exit 0
+
+# 1. les lignes de signature, quelle que soit leur forme
+sed -i \
+  -e '/^[[:space:]]*Co-[Aa]uthored-[Bb]y:.*[Cc]laude/d' \
+  -e '/^[[:space:]]*Co-[Aa]uthored-[Bb]y:.*anthropic/Id' \
+  -e '/[Gg]enerated with \[\?Claude/d' \
+  -e '/^[[:space:]]*🤖/d' \
+  "$f"
+
+# 2. les lignes vides que le nettoyage laisse a la fin
+printf '%s\n' "$(sed -e :a -e '/^\n*$/{$d;N;};/\n$/ba' "$f")" > "$f"
+exit 0

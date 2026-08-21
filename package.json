@@ -4,6 +4,8 @@
   "private": true,
   "description": "Analyse et automatisation Deciplus pour Boxing Center (PrestaShop → Deciplus)",
   "scripts": {
+    "_note_prepare": "npm install branche le crochet qui retire les signatures d'outil des messages de commit (voir .githooks/commit-msg)",
+    "prepare": "git config core.hooksPath .githooks",
     "dev": "node storefront/server.js",
     "analyze:record": "node analyzer/record-session.js",
     "analyze:scenario": "node analyzer/run-scenario.js",
