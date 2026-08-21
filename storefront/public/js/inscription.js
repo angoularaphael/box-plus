@@ -121,7 +121,11 @@
   }
 
   function aventureAfterPayStep() {
-    return productRequiresIban(state.order || { product_snapshot: state.product }) ? 5 : 7;
+    return productRequiresIban(state.order || { product_snapshot: state.product }) &&
+      state.order?.payment?.status === 'paid' &&
+      !state.order?.payment?.iban
+      ? 5
+      : 6;
   }
 
   const stepContent = document.getElementById('stepContent');
@@ -583,8 +587,9 @@
 
     if (order.signature?.signed_at || order.step >= 8) return needsPay && !paid ? 4 : 8;
     if (isBalmaRetour()) {
-      if (order.step >= 7) return needsPay && !paid ? 4 : 7;
-      if (paid || !needsPay) return missingIban ? 5 : 7;
+      if (order.step >= 7 && (paid || !needsPay)) return 7;
+      if (order.step >= 6) return 6;
+      if (paid || !needsPay) return aventureAfterPayStep();
       if (order.customer_short) return 4;
       return 4;
     }
@@ -618,9 +623,7 @@
 
   function goToStep(step) {
     if (isBalmaRetour()) {
-      const paid = ['paid', 'free'].includes(String(state.order?.payment?.status || ''));
-      const min = paid ? aventureAfterPayStep() : 4;
-      if (Number(step) < min) step = min;
+      if (Number(step) < 4) step = 4;
     }
     setMsg('');
     state.step = step;
@@ -674,7 +677,7 @@
     const hideGym = isBalmaRetour();
     const hideOffer = isBalmaRetour();
     const hideIdentity = isBalmaRetour();
-    const hideDossier = isBalmaRetour();
+    const hideDossier = false;
     const visible = [];
     document.querySelectorAll('.stepper-step').forEach((el) => {
       const s = Number(el.dataset.step);
@@ -1146,6 +1149,11 @@
       : '';
     stepContent.innerHTML = `
       <h1>Paiement</h1>
+      ${
+        isBalmaRetour() && (state.aventureDossierSaved || state.order?.customer_full?.address)
+          ? `<div class="notice-important" style="margin:0 0 16px"><strong>Dossier enregistré</strong><p>Pas de téléphone ni d’e-mail sur la fiche Minimes — on ajoute « Balma » à ton prénom. Le club te recontacte. Tu peux aussi payer maintenant.</p></div>`
+          : ''
+      }
       <p class="sub">${firstPaymentCaption(p)}</p>
       ${balmaBadgeNotice}
       <form id="payForm">
@@ -1154,6 +1162,11 @@
         <button type="submit" class="btn stripe block" id="payBtn">${
           p?.requires_payment === false ? 'Continuer' : 'Payer'
         }</button>
+        ${
+          isBalmaRetour()
+            ? `<button type="button" class="btn secondary block" id="aventureDossierBtn" style="margin-top:12px">Continuer le dossier sans payer maintenant</button>`
+            : ''
+        }
         ${backButton('← Retour', 3)}
       </form>`;
     bindBillingPlanForm();
@@ -1282,9 +1295,17 @@
       if (data.url) window.location.href = data.url;
     };
     bindBackButtons();
+    const skipPayBtn = document.getElementById('aventureDossierBtn');
+    if (skipPayBtn) {
+      skipPayBtn.onclick = () => {
+        setMsg('');
+        goToStep(6);
+      };
+    }
   }
 
   function guardPaidStep() {
+    if (isBalmaRetour() && (state.step === 5 || state.step === 6)) return false;
     if (!orderRequiresPayment(state.order) || state.order?.payment?.status === 'paid') return false;
     state.step = 4;
     setMsg(paymentFailureMessage(), 'err');
@@ -1634,7 +1655,7 @@
     if (guardPaidStep()) return;
     // Offre sans IBAN → passer. Sinon toujours afficher (même si déjà saisi) pour pouvoir modifier.
     if (!productRequiresIban(state.order)) {
-      goToStep(isBalmaRetour() ? 7 : 6);
+      goToStep(6);
       return;
     }
     const existingIban = state.order?.payment?.iban || '';
@@ -1692,18 +1713,14 @@
       if (!state.order?.payment?.iban) {
         state.order.payment = { ...(state.order.payment || {}), iban: String(iban || '').replace(/\s+/g, '').toUpperCase() };
       }
-      goToStep(isBalmaRetour() ? 7 : 6);
+      goToStep(6);
     };
     bindRoundClock();
   }
 
   function renderStep6() {
     if (guardPaidStep()) return;
-    if (isBalmaRetour()) {
-      goToStep(7);
-      return;
-    }
-    if (orderNeedsIban(state.order)) {
+    if (!isBalmaRetour() && orderNeedsIban(state.order)) {
       goToStep(5);
       return;
     }
@@ -1714,10 +1731,17 @@
     stepContent.innerHTML = `
       ${roundClockHtml()}
       <h1>Votre dossier</h1>
-      <div class="notice-important" style="margin:0 0 20px">
+      ${
+        isBalmaRetour()
+          ? `<div class="notice-important" style="margin:0 0 20px">
+        <strong>Fiche Boxing Center Minimes</strong>
+        <p>Pas de téléphone ni d’e-mail sur cette fiche : on recopie tes infos Balma et on ajoute « Balma » à ton prénom. Même si le paiement n’est pas passé, complète ce dossier pour que le club puisse te recontacter.</p>
+      </div>`
+          : `<div class="notice-important" style="margin:0 0 20px">
         <strong>Anciens et nouveaux adhérents</strong>
         <p>Allez jusqu’au bout des étapes : ce dossier, puis la signature. Tant que ce n’est pas terminé, votre abonnement ne prend pas effet — que vous soyez déjà membre ou que vous rejoigniez Boxing Center.</p>
-      </div>
+      </div>`
+      }
       <form id="fullForm" class="form-grid">
         <input type="hidden" name="token" value="${state.token}" />
         ${state.sessionId ? `<input type="hidden" name="session_id" value="${state.sessionId}" />` : ''}
@@ -1735,8 +1759,12 @@
         <div><label for="postal_code">Code postal *</label><input id="postal_code" name="postal_code" required value="${full.postal_code || ''}" /></div>
         <div><label for="city">Ville *</label><input id="city" name="city" required value="${full.city || ''}" /></div>
         <div class="full photo-capture-block">
-          <label>Photo *</label>
-          <p class="field-hint">Importez une photo depuis votre téléphone ou votre ordinateur, ou prenez-en une avec la caméra. Elle sera collée à votre dossier adhérent (badge / fiche club).</p>
+          <label>Photo${isBalmaRetour() ? '' : ' *'}</label>
+          <p class="field-hint">${
+            isBalmaRetour()
+              ? 'Optionnel : la photo de ta fiche Balma sera recopiée si tu n’en envoies pas.'
+              : 'Importez une photo depuis votre téléphone ou votre ordinateur, ou prenez-en une avec la caméra. Elle sera collée à votre dossier adhérent (badge / fiche club).'
+          }</p>
           ${photoOk ? '<p class="photo-already-ok">Photo déjà enregistrée — vous pouvez en choisir une autre ci-dessous.</p>' : ''}
           <div class="photo-capture-actions">
             <label class="btn secondary photo-file-label" for="photoFile">Importer une photo</label>
@@ -1863,7 +1891,7 @@
           return;
         }
         state.photoUploaded = true;
-      } else if (!photoOk) {
+      } else if (!photoOk && !isBalmaRetour()) {
         setMsg('Importez une photo ou prenez-en une avec la caméra avant de continuer.', 'err');
         return;
       }
@@ -1904,6 +1932,14 @@
       }
       setMsg('');
       await loadOrder();
+      if (
+        isBalmaRetour() &&
+        !['paid', 'free'].includes(String(state.order?.payment?.status || ''))
+      ) {
+        state.aventureDossierSaved = true;
+        goToStep(4);
+        return;
+      }
       goToStep(7);
     };
     bindBackButtons();
@@ -2007,7 +2043,7 @@
       </div>
       <button type="button" class="btn block" id="signBtn">Valider</button>
       <button type="button" class="btn secondary block" id="previewContractBtn" style="margin-top:12px">Prévisualiser la facture</button>
-      ${backButton('← Retour', isBalmaRetour() ? (productRequiresIban(state.order) ? 5 : 4) : 6)}`;
+      ${backButton('← Retour', 6)}`;
 
     const pad = initSignaturePad(document.getElementById('sigPad'));
     document.getElementById('clearSig').onclick = () => pad.clear();
@@ -2247,7 +2283,7 @@
       return true;
     }
 
-    state.step = 4;
+    state.step = isBalmaRetour() ? 6 : 4;
     state.sessionId = null;
     setMsg(paymentFailureMessage(), 'err');
     syncUrl();
@@ -2283,7 +2319,7 @@
     }
 
     if (params.get('cancelled')) {
-      state.step = 4;
+      state.step = isBalmaRetour() ? 6 : 4;
       state.sessionId = null;
       setMsg(paymentFailureMessage('cancelled'), 'err');
       params.delete('cancelled');
@@ -2297,7 +2333,7 @@
       const loaded = await loadOrder();
       if (state.order?.payment?.status === 'paid') {
         state.step = Math.max(state.step, stepFromOrder(state.order));
-      } else if (loaded && orderRequiresPayment(state.order) && state.step > 4) {
+      } else if (loaded && orderRequiresPayment(state.order) && state.step > 4 && !isBalmaRetour()) {
         state.step = 4;
       } else if (!loaded && state.step >= 4 && !isPspReturn(params)) {
         setMsg(

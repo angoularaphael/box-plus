@@ -1996,7 +1996,8 @@ function createApp() {
     try {
       let order = await loadOrderAsync(req.params.id);
       if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
-      if (!order.signature?.signed_at) {
+      const aventure = isBalmaRetourOrder(order) || order.aventure;
+      if (!aventure && !order.signature?.signed_at) {
         return res.status(400).json({ ok: false, error: 'not_signed' });
       }
 
@@ -2111,7 +2112,7 @@ function createApp() {
         source: 'balma_retour',
       });
       draft.aventure = true;
-      draft.skip_dossier = true;
+      draft.skip_dossier = false;
       draft.step = STEPS.PAYMENT;
       await saveOrderAsync(draft);
       const redirect = inscriptionUrl({
@@ -2478,28 +2479,31 @@ function createApp() {
       const existingIban = order.payment?.iban || order.customer_full?.iban || null;
       if (!String(full.iban || '').trim()) full.iban = existingIban || undefined;
       if (!full.gym) full.gym = order.customer_full?.gym;
+      const aventureOrder = isBalmaRetourOrder(order) || order.aventure;
 
       if (product?.requires_payment !== false && order.payment?.status !== 'paid') {
-        const refreshed = await refreshPaymentFromStripe(order, req.body.session_id || req.query.session_id);
-        if (refreshed?.payment?.status === 'paid') {
-          // Ne pas perdre l'IBAN lors d'une revérif Stripe
-          order.payment = {
-            ...refreshed.payment,
-            iban: refreshed.payment?.iban || full.iban || existingIban || null,
-          };
-        } else {
-          return res.status(402).json({
-            ok: false,
-            error: 'payment_required',
-            message:
-              'Le paiement n\'a pas été confirmé — vous n\'avez pas été débité. Revenez à l\'étape paiement.',
-          });
+        if (!aventureOrder) {
+          const refreshed = await refreshPaymentFromStripe(order, req.body.session_id || req.query.session_id);
+          if (refreshed?.payment?.status === 'paid') {
+            // Ne pas perdre l'IBAN lors d'une revérif Stripe
+            order.payment = {
+              ...refreshed.payment,
+              iban: refreshed.payment?.iban || full.iban || existingIban || null,
+            };
+          } else {
+            return res.status(402).json({
+              ok: false,
+              error: 'payment_required',
+              message:
+                'Le paiement n\'a pas été confirmé — vous n\'avez pas été débité. Revenez à l\'étape paiement.',
+            });
+          }
         }
       }
 
       const plan = full.billing_plan || order.payment?.billing_plan;
       const ibanReady = Boolean(String(full.iban || '').trim() || order.payment?.iban);
-      if (requiresIbanForPlan(product, plan) && !ibanReady) {
+      if (!aventureOrder && requiresIbanForPlan(product, plan) && !ibanReady) {
         return res.status(400).json({
           ok: false,
           error: 'iban_required',
@@ -2509,10 +2513,20 @@ function createApp() {
 
       // Date de naissance saisie au dossier → customer_short
       if (!full.birthdate) full.birthdate = order.customer_short?.birthdate || null;
+      if (aventureOrder) {
+        full.email = '';
+        full.phone = '';
+        full.gym = full.gym || 'minimes';
+      }
       const errors = validateFullForm(full, product);
       if (errors.length) return res.status(400).json({ ok: false, errors });
 
-      if (!order.documents?.photo && !order.documents?.photo_base64 && !order.documents?.photo_url) {
+      if (
+        !aventureOrder &&
+        !order.documents?.photo &&
+        !order.documents?.photo_base64 &&
+        !order.documents?.photo_url
+      ) {
         return res.status(400).json({
           ok: false,
           error: 'photo_required',
@@ -2531,6 +2545,15 @@ function createApp() {
         });
       }
       await updateFullProfile(order.order_id, full);
+      if (aventureOrder) {
+        try {
+          const { notifyAventureDispatch } = require('./lib/aventure-dispatch');
+          const latest = (await loadOrderAsync(order.order_id)) || order;
+          await notifyAventureDispatch(latest);
+        } catch (err) {
+          logWarn('Dispatch Aventure après dossier', { order_id: order.order_id, error: err.message });
+        }
+      }
       res.json({ ok: true, step: STEPS.SIGNATURE });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
@@ -2861,7 +2884,7 @@ function createApp() {
         return res.json({
           ok: true,
           mode: 'demo',
-          redirect: inscriptionRedirect(order, STEPS.SIGNATURE),
+          redirect: inscriptionRedirect(order, STEPS.DOSSIER),
         });
       }
       let preferredCheckout =
@@ -2911,10 +2934,7 @@ function createApp() {
         return res.json({
           ok: true,
           mode: 'free',
-          redirect: inscriptionRedirect(
-            order,
-            isBalmaRetourOrder(order) || order.aventure ? STEPS.SIGNATURE : STEPS.DOSSIER
-          ),
+          redirect: inscriptionRedirect(order, STEPS.DOSSIER),
         });
       }
 

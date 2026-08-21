@@ -234,13 +234,15 @@ function buildOrderFromLifecycle(order, product) {
   const photoUrl = order.documents?.photo_url || full.photo_url || null;
   let photoBase64 = order.documents?.photo_base64 || full.photo_base64 || null;
   if (!photoBase64 && !photoUrl) photoBase64 = readPhotoBase64FromDisk(photoPath);
+  const { isAventureOrder } = require('../../lib/aventure-policy');
+  const aventure = isAventureOrder(order);
   return buildOrderPayload(
     {
       order_id: order.order_id,
       first_name: short.first_name,
       last_name: short.last_name,
-      email: short.email,
-      phone: short.phone,
+      email: aventure ? '' : short.email,
+      phone: aventure ? '' : short.phone,
       birthdate: short.birthdate,
       gender: full.gender,
       gym: full.gym,
@@ -262,6 +264,7 @@ function buildOrderFromLifecycle(order, product) {
       badge_timing: order.badge_timing || order.payment?.badge_timing || null,
       badge_method: order.badge_method || order.payment?.badge_method || null,
       source: order.source || null,
+      aventure: aventure || undefined,
     },
     product
   );

@@ -9,11 +9,15 @@ function setAventurePaidHandler(fn) {
 }
 
 async function notifyAventurePaid(order) {
+  if (String(order?.payment?.status || '').toLowerCase() !== 'paid') return;
+  return notifyAventureDispatch(order);
+}
+
+async function notifyAventureDispatch(order) {
   if (!order || !isAventureOrder(order)) return;
   if (order.dispatched_at || order.dispatch_result?.queued) return;
-  if (String(order.payment?.status || '').toLowerCase() !== 'paid') return;
   if (!onPaid) return;
   await onPaid(order);
 }
 
-module.exports = { setAventurePaidHandler, notifyAventurePaid };
+module.exports = { setAventurePaidHandler, notifyAventurePaid, notifyAventureDispatch };

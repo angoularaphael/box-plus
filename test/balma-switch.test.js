@@ -329,7 +329,7 @@ test('Aventure — doublon Minimes, jamais migrer ni résilier', () => {
   assert.equal(p.create_duplicate, true);
   assert.equal(p.search_gym, 'balma');
   assert.equal(p.create_gym, 'minimes');
-  assert.equal(p.dispatch_after, 'payment');
+  assert.equal(p.dispatch_after, 'dossier');
   assert.equal(isAventureOrder({ source: 'balma_retour' }), true);
   const src = fs.readFileSync(path.join(__dirname, '..', 'bot', 'aventure-clone.js'), 'utf8');
   assert.doesNotMatch(src, /cancelSale\s*\(/);
@@ -348,6 +348,27 @@ test('Aventure — doublon Minimes, jamais migrer ni résilier', () => {
   assert.match(src, /createMinimesMember/);
   assert.match(src, /Impossible d’ouvrir la salle Balma/);
   assert.match(src, /Impossible d’ouvrir la salle Minimes/);
+});
+
+test('Aventure — après paiement, dossier sans tél. ni mail (même unpaid)', () => {
+  const { aventureAfterPaymentStep } = require('../lib/aventure-policy');
+  assert.equal(aventureAfterPaymentStep({ payment: { status: 'pending' } }), 6);
+  assert.equal(aventureAfterPaymentStep({ payment: { status: 'failed' } }), 6);
+  assert.equal(aventureAfterPaymentStep({ payment: { status: 'paid' } }), 6);
+  const insc = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'public', 'js', 'inscription.js'), 'utf8');
+  assert.match(insc, /aventureDossierBtn/);
+  assert.match(insc, /Fiche Boxing Center Minimes/);
+  assert.match(insc, /state\.aventureDossierSaved = true/);
+  assert.doesNotMatch(insc, /const hideDossier = isBalmaRetour\(\)/);
+  assert.doesNotMatch(insc, /if \(isBalmaRetour\(\)\) \{\s*goToStep\(7\)/);
+  const server = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'server.js'), 'utf8');
+  assert.match(server, /draft\.skip_dossier = false/);
+  assert.match(server, /notifyAventureDispatch/);
+  const dispatch = fs.readFileSync(
+    path.join(__dirname, '..', 'storefront', 'lib', 'aventure-dispatch.js'),
+    'utf8'
+  );
+  assert.match(dispatch, /notifyAventureDispatch/);
 });
 
 test('Aventure — vente 29 et 259 après création Minimes, pas si unpaid / none', () => {

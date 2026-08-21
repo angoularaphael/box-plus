@@ -219,10 +219,8 @@ async function markPaymentPaidAsync(orderId, paymentData) {
   const plan = order.payment?.billing_plan;
   const snap = order.product_snapshot || {};
   const { requiresIbanForPlan } = require('../../lib/billing-plan');
-  const { isBalmaRetourOrder } = require('../../lib/balma');
   const needsIban = !order.payment?.iban && requiresIbanForPlan(snap, plan);
-  const aventure = isBalmaRetourOrder(order) || order.aventure || order.skip_dossier;
-  order.step = needsIban ? STEPS.IBAN : aventure ? STEPS.SIGNATURE : STEPS.DOSSIER;
+  order.step = needsIban ? STEPS.IBAN : STEPS.DOSSIER;
   const saved = await saveOrderAsync(order);
   try {
     const { collapseUnpaidDraftsForEmail } = require('./order-prune');
@@ -253,7 +251,9 @@ async function markPaymentFailedAsync(orderId, paymentData = {}) {
     status: 'failed',
     failed_at: new Date().toISOString(),
   };
-  order.step = Math.min(order.step || STEPS.PAYMENT, STEPS.PAYMENT);
+  const { isBalmaRetourOrder } = require('../../lib/balma');
+  const aventure = isBalmaRetourOrder(order) || order.aventure;
+  order.step = aventure ? STEPS.DOSSIER : Math.min(order.step || STEPS.PAYMENT, STEPS.PAYMENT);
   return saveOrderAsync(order);
 }
 
@@ -266,7 +266,7 @@ async function updateIbanAsync(orderId, iban) {
   order.customer_full = { ...(order.customer_full || {}), iban: clean };
   const { isBalmaRetourOrder } = require('../../lib/balma');
   const aventure = isBalmaRetourOrder(order) || order.aventure || order.skip_dossier;
-  order.step = aventure ? STEPS.SIGNATURE : Math.max(order.step || 1, STEPS.DOSSIER);
+  order.step = aventure ? STEPS.DOSSIER : Math.max(order.step || 1, STEPS.DOSSIER);
   return saveOrderAsync(order);
 }
 
