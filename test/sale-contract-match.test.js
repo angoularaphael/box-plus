@@ -39,3 +39,29 @@ test('44,99 match le contrat mensuel, pas le 12 mois', () => {
     false
   );
 });
+
+test('OFFRE A 29€ matche OFFRE DUO 29€, pas un 44,99 résilié', () => {
+  const offre29 = {
+    id: 'dp-104',
+    name: 'OFFRE A 29€',
+    deciplus_product_search: 'OFFRE A 29',
+  };
+  assert.equal(
+    saleContractMatches('OFFRE DUO 29€ CONTRAT N°C2026-050001 vendu le 22/08/2026', offre29),
+    true
+  );
+  assert.equal(
+    saleContractMatches(
+      '44,99€/4 SEMAINES SANS ENGAGEMENT CONTRAT N°C2024-027841 Résilié depuis le 01/12/2024',
+      offre29
+    ),
+    false
+  );
+  assert.equal(
+    saleContractMatches(
+      '44,99€/4 SEMAINES SANS ENGAGEMENT CONTRAT N°C2026-040925 132 jours restants',
+      offre29
+    ),
+    false
+  );
+});

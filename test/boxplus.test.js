@@ -84,6 +84,51 @@ test('enqueue respecte idempotence', () => {
   assert.equal(isProcessed('PS-IDEM-1'), true);
 });
 
+test('force_requeue reprend un échec sans vente, pas un succès', () => {
+  const failed = normalizeOrder({
+    order_id: 'PS-IDEM-REQUEUE-FAIL',
+    product_name: 'OFFRE A 29€',
+    gym: 'minimes',
+    customer: { first_name: 'A', last_name: 'B', email: 'a@b.fr', phone: '0600000000' },
+    payment: { amount: 29, status: 'paid', iban: 'FR7630001007941234567890185' },
+  });
+  markProcessed('PS-IDEM-REQUEUE-FAIL', {
+    status: STATUS.MANUAL_REVIEW,
+    error: 'RIB Deciplus: échec enregistrement IBAN sur le mandat',
+    deciplus_member_id: '13990',
+    deciplus_sale_id: null,
+  });
+  const replay = enqueue({ ...failed, force_requeue: true });
+  assert.equal(replay.queued, true);
+  assert.equal(isProcessed('PS-IDEM-REQUEUE-FAIL'), false);
+
+  const ok = normalizeOrder({
+    order_id: 'PS-IDEM-REQUEUE-OK',
+    product_name: 'OFFRE A 29€',
+    gym: 'minimes',
+    customer: { first_name: 'A', last_name: 'B', email: 'a@b.fr', phone: '0600000000' },
+    payment: { amount: 29, status: 'paid', iban: 'FR7630001007941234567890185' },
+  });
+  markProcessed('PS-IDEM-REQUEUE-OK', {
+    status: STATUS.MANUAL_REVIEW,
+    deciplus_member_id: '13990',
+    deciplus_sale_id: '42422',
+  });
+  const blocked = enqueue({ ...ok, force_requeue: true });
+  assert.equal(blocked.queued, false);
+  assert.equal(blocked.reason, 'already_processed');
+});
+
+test('vente payée n’est pas bloquée par un échec RIB', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'bot', 'index.js'), 'utf8');
+  assert.match(src, /vente quand même \(1er mois déjà payé\)/);
+  assert.match(src, /\/api\/internal\/sale-status/);
+  const wallet = fs.readFileSync(path.join(ROOT, 'bot', 'wallet.js'), 'utf8');
+  assert.match(wallet, /clickReplaceMandate/);
+  const server = fs.readFileSync(path.join(ROOT, 'storefront', 'server.js'), 'utf8');
+  assert.match(server, /force_requeue: true/);
+});
+
 test('résolution automatique produit Deciplus', () => {
   const order = normalizeOrder({
     order_id: 'PS-200',

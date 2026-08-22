@@ -515,7 +515,25 @@ function toAdminSummary(order) {
       !['paid', 'free', 'past_due'].includes(String(payRaw || 'pending')) &&
       order.product_snapshot?.requires_payment !== false &&
       Number(order.product_snapshot?.price_cents || 0) > 0,
+    deciplus_member_id: order.deciplus_member_id || null,
+    deciplus_sale_id: order.deciplus_sale_id || null,
+    bot_status: order.bot_status || null,
+    bot_error: order.bot_error || null,
   };
+}
+
+async function applyBotSaleStatus(orderId, patch = {}) {
+  const order = await loadOrderAsync(orderId);
+  if (!order) return null;
+  const memberId = String(patch.deciplus_member_id || '').trim();
+  const saleId = String(patch.deciplus_sale_id || '').trim();
+  if (memberId) order.deciplus_member_id = memberId;
+  if (saleId) order.deciplus_sale_id = saleId;
+  if (patch.status) order.bot_status = String(patch.status);
+  order.bot_error = patch.error ? String(patch.error).slice(0, 500) : null;
+  order.bot_processed_at = new Date().toISOString();
+  await saveOrderAsync(order);
+  return order;
 }
 
 module.exports = {
@@ -552,4 +570,5 @@ module.exports = {
   gymLabel,
   GYM_LABELS,
   productSnapshot,
+  applyBotSaleStatus,
 };

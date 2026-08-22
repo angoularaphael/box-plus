@@ -453,12 +453,13 @@ async function maybeNotifyOffre29Friend(order, friendInput) {
   }
 }
 
-async function dispatchLifecycleOrder(order) {
+async function dispatchLifecycleOrder(order, { force_requeue = false } = {}) {
   const { hydrateOrderMedia, applyDeciplusPhoto } = require('./lib/cloudinary');
   const { isBalmaRetourOrder } = require('../lib/balma');
   const hydrated = await hydrateOrderMedia(order);
   const product = findProduct(order.product_id) || order.product_snapshot;
   const payload = applyDeciplusPhoto(buildOrderFromLifecycle(hydrated, product), hydrated);
+  if (force_requeue) payload.force_requeue = true;
   if (payload.photo_path && /(?:^|[\\/])tmp[\\/]/i.test(String(payload.photo_path))) {
     payload.photo_path = null;
   }
@@ -2004,7 +2005,7 @@ function createApp() {
       let dispatch = null;
       let dispatchError = null;
       try {
-        dispatch = await dispatchLifecycleOrder(order);
+        dispatch = await dispatchLifecycleOrder(order, { force_requeue: true });
         order = (await loadOrderAsync(order.order_id)) || order;
       } catch (err) {
         dispatchError = err.message;
@@ -3841,6 +3842,35 @@ function createApp() {
       }
       res.json({ ok: true, mail });
     } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Statut vente poussé par le bot (fiche / contrat / erreur IBAN)
+  app.post('/api/internal/sale-status', async (req, res) => {
+    if (!isAuthorizedSync(req)) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    try {
+      const body = req.body || {};
+      if (!body.order_id) return res.status(400).json({ ok: false, error: 'order_id requis' });
+      const { applyBotSaleStatus } = require('./lib/order-lifecycle');
+      const order = await applyBotSaleStatus(body.order_id, {
+        status: body.status || null,
+        error: body.error || null,
+        deciplus_member_id: body.deciplus_member_id || null,
+        deciplus_sale_id: body.deciplus_sale_id || null,
+      });
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      res.json({
+        ok: true,
+        order_id: order.order_id,
+        deciplus_member_id: order.deciplus_member_id || null,
+        deciplus_sale_id: order.deciplus_sale_id || null,
+        bot_status: order.bot_status || null,
+      });
+    } catch (err) {
+      logError('Erreur sale-status interne', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });
