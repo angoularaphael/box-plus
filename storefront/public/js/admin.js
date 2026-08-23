@@ -1533,8 +1533,6 @@
         document.getElementById('kpiInscOrders').textContent = data.totals.inscription_orders;
         const todayEl = document.getElementById('kpiTodaySales');
         if (todayEl) todayEl.textContent = String(data.today?.count ?? 0);
-        const avEl = document.getElementById('kpiAventurePaid');
-        if (avEl) avEl.textContent = String(data.aventure?.paid ?? 0);
         const kpiVisits = document.getElementById('kpiVisits');
         if (kpiVisits) kpiVisits.textContent = data.visits?.total ?? '—';
         const kpiConv = document.getElementById('kpiFunnelConv');
@@ -1647,17 +1645,6 @@
               .join('')
           : '<tr><td colspan="4" style="text-align:center;color:var(--bc-muted)">Aucune vente sur cette période</td></tr>';
         if (topWrap) topWrap.hidden = false;
-      }
-
-      const avWrap = document.getElementById('aventureStatsWrap');
-      const avSum = document.getElementById('aventureStatsSummary');
-      if (avWrap && avSum && data.aventure) {
-        const a = data.aventure;
-        avSum.textContent =
-          `${a.paid} payée(s) · ${a.signed} signée(s) · ${a.dispatched} transmise(s) au bot` +
-          (a.missing_sale ? ` · ${a.missing_sale} payée(s) sans vente Deciplus` : '') +
-          ` · ${a.total} dossier(s) au total`;
-        avWrap.hidden = false;
       }
 
       // Table

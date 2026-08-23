@@ -50,9 +50,58 @@ function membershipRevenueCents(order = {}) {
   return Number(order.product_snapshot?.price_cents || order.payment?.amount_cents || 0) || 0;
 }
 
+function foldProductText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/€/g, 'e')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+const PRODUCT_GROUP_BY_ID = {
+  'offre-duo': 'offre-29',
+  offre_29: 'offre-29',
+  'dp-104': 'offre-29',
+  'offre-saison': 'offre-12mois',
+  offre_259: 'offre-12mois',
+  'dp-100': 'offre-12mois',
+  'seance-essai': 'seance-essai',
+  seance_essai: 'seance-essai',
+};
+
+function canonicalProductKey({ id, name } = {}) {
+  const rawId = String(id || '')
+    .toLowerCase()
+    .trim();
+  if (PRODUCT_GROUP_BY_ID[rawId]) return PRODUCT_GROUP_BY_ID[rawId];
+  const folded = foldProductText(name);
+  if (/offre\s*(a|duo)?\s*29/.test(folded) || folded === '29') return 'offre-29';
+  if (/offre promo 12 mois|offre 259|12 mois/.test(folded) && /259|promo 12|saison/.test(folded)) {
+    return 'offre-12mois';
+  }
+  if (/seance d essai|seance essai/.test(folded)) return 'seance-essai';
+  return folded || rawId || 'autre';
+}
+
+function nicerProductName(next, current) {
+  const a = String(next || '').trim();
+  const b = String(current || '').trim();
+  if (!a) return b;
+  if (!b) return a;
+  if (/^(dp-|offre[_-]|seance[_-])/i.test(b) && !/^(dp-|offre[_-]|seance[_-])/i.test(a)) return a;
+  if (a.length > b.length) return a;
+  return b;
+}
+
 function bumpProduct(map, { id, name, kind, qty = 1, revenue = 0 }) {
-  const key = String(id || name);
-  if (!map[key]) map[key] = { id: key, name, kind, qty: 0, revenue: 0 };
+  const key = canonicalProductKey({ id, name });
+  if (!map[key]) {
+    map[key] = { id: key, name: String(name || id || 'Produit').trim(), kind, qty: 0, revenue: 0 };
+  } else {
+    map[key].name = nicerProductName(name, map[key].name);
+  }
   map[key].qty += qty;
   map[key].revenue += revenue;
 }

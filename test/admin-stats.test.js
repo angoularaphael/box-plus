@@ -66,6 +66,40 @@ test('ventes du jour + plus vendu + aventure sans vente Deciplus', () => {
   assert.equal(todayBar.materiel, 1);
 });
 
+test('plus vendu fusionne la même offre sous des ids différents', () => {
+  const extras = buildAdminSalesExtras({
+    inscriptionOrders: [
+      {
+        payment: { status: 'paid', paid_at: '2026-08-01T10:00:00.000Z' },
+        product_id: 'offre-duo',
+        product_snapshot: { display_name: 'OFFRE A 29€', price_cents: 2900 },
+      },
+      {
+        payment: { status: 'paid', paid_at: '2026-08-01T11:00:00.000Z' },
+        product_id: 'dp-104',
+        product_snapshot: { name: 'OFFRE A 29€', price_cents: 2999 },
+      },
+      {
+        payment: { status: 'paid', paid_at: '2026-08-01T12:00:00.000Z' },
+        product_id: 'offre-saison',
+        product_snapshot: { display_name: 'OFFRE PROMO 12 MOIS', price_cents: 25900 },
+      },
+      {
+        payment: { status: 'paid', paid_at: '2026-08-01T13:00:00.000Z' },
+        product_id: 'dp-100',
+        product_snapshot: { name: 'OFFRE PROMO 12 MOIS', price_cents: 25900 },
+      },
+    ],
+    fromMonth: '2026-08',
+    toMonth: '2026-08',
+  });
+  const byName = Object.fromEntries(extras.top_products.map((p) => [p.name, p]));
+  assert.equal(byName['OFFRE A 29€'].qty, 2);
+  assert.equal(byName['OFFRE PROMO 12 MOIS'].qty, 2);
+  assert.equal(extras.top_products.filter((p) => /OFFRE A 29/.test(p.name)).length, 1);
+  assert.equal(extras.top_products.filter((p) => /OFFRE PROMO 12/.test(p.name)).length, 1);
+});
+
 test('stats admin — plus vendu à la place de Stripe, ventes du jour', () => {
   const html = fs.readFileSync(
     path.join(__dirname, '..', 'storefront', 'public', 'admin', 'index.html'),
@@ -76,6 +110,8 @@ test('stats admin — plus vendu à la place de Stripe, ventes du jour', () => {
   assert.match(html, /Plus vendu/);
   assert.match(html, /Ventes par jour/);
   assert.match(html, /Ventes aujourd’hui/);
+  assert.doesNotMatch(html, /Aventure Balma \(payées\)/);
+  assert.doesNotMatch(html, /id="aventureStatsWrap"/);
   assert.match(js, /daily_sales/);
   assert.match(js, /top_products/);
   assert.match(js, /kpiTodaySales/);
