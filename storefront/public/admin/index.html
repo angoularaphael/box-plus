@@ -232,6 +232,8 @@
             <div class="stats-kpi"><span class="stats-kpi-label">Commandes matériel</span><span class="stats-kpi-value" id="kpiMaterielOrders">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">CA Abonnements</span><span class="stats-kpi-value" id="kpiInscRev">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">Inscriptions</span><span class="stats-kpi-value" id="kpiInscOrders">—</span></div>
+            <div class="stats-kpi"><span class="stats-kpi-label">Ventes aujourd’hui</span><span class="stats-kpi-value" id="kpiTodaySales">—</span></div>
+            <div class="stats-kpi"><span class="stats-kpi-label">Aventure Balma (payées)</span><span class="stats-kpi-value" id="kpiAventurePaid">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">Visites (30 j)</span><span class="stats-kpi-value" id="kpiVisits">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">Conversion tunnel</span><span class="stats-kpi-value" id="kpiFunnelConv">—</span></div>
           </div>
@@ -271,23 +273,33 @@
             <div class="flux-chart" id="fluxChart" aria-label="Visites quotidiennes séance offerte"></div>
           </div>
 
-          <div id="unpaidWrap" hidden style="margin-top:24px">
-            <h3 class="admin-catalog-block-title">Impayés abonnements CB (Stripe)</h3>
+          <div id="dailySalesWrap" hidden style="margin-top:24px">
+            <h3 class="admin-catalog-block-title">Ventes par jour</h3>
+            <p class="admin-section-desc" id="dailySalesSummary">Inscriptions et commandes matériel payées (14 derniers jours, heure de Paris).</p>
+            <div class="flux-chart" id="dailySalesChart" aria-label="Nombre de ventes par jour"></div>
+          </div>
+
+          <div id="topSoldWrap" hidden style="margin-top:24px">
+            <h3 class="admin-catalog-block-title">Plus vendu</h3>
+            <p class="admin-section-desc">Offres et matériel les plus vendus sur la période choisie.</p>
             <div style="overflow-x:auto;margin-top:12px">
               <table class="admin-table">
                 <thead>
                   <tr>
-                    <th>Référence</th>
-                    <th>Adhérent</th>
-                    <th>Email</th>
-                    <th>Offre</th>
-                    <th>Statut</th>
-                    <th>Bloqué</th>
+                    <th>Produit</th>
+                    <th>Type</th>
+                    <th style="text-align:right">Ventes</th>
+                    <th style="text-align:right">CA</th>
                   </tr>
                 </thead>
-                <tbody id="unpaidBody"></tbody>
+                <tbody id="topSoldBody"></tbody>
               </table>
             </div>
+          </div>
+
+          <div id="aventureStatsWrap" hidden style="margin-top:24px">
+            <h3 class="admin-catalog-block-title">Aventure Balma</h3>
+            <p class="admin-section-desc" id="aventureStatsSummary"></p>
           </div>
 
           <!-- Table par mois -->

@@ -1531,6 +1531,10 @@
         document.getElementById('kpiMaterielOrders').textContent = data.totals.materiel_orders;
         document.getElementById('kpiInscRev').textContent = fmtEur(data.totals.inscription_revenue);
         document.getElementById('kpiInscOrders').textContent = data.totals.inscription_orders;
+        const todayEl = document.getElementById('kpiTodaySales');
+        if (todayEl) todayEl.textContent = String(data.today?.count ?? 0);
+        const avEl = document.getElementById('kpiAventurePaid');
+        if (avEl) avEl.textContent = String(data.aventure?.paid ?? 0);
         const kpiVisits = document.getElementById('kpiVisits');
         if (kpiVisits) kpiVisits.textContent = data.visits?.total ?? '—';
         const kpiConv = document.getElementById('kpiFunnelConv');
@@ -1596,26 +1600,64 @@
         fluxWrap.hidden = false;
       }
 
-      const unpaidWrap = document.getElementById('unpaidWrap');
-      const unpaidBody = document.getElementById('unpaidBody');
-      if (unpaidBody) {
-        const unpaid = data.unpaid || [];
-        unpaidBody.innerHTML = unpaid.length
-          ? unpaid
+      const dailyWrap = document.getElementById('dailySalesWrap');
+      const dailyChart = document.getElementById('dailySalesChart');
+      const dailySummary = document.getElementById('dailySalesSummary');
+      if (dailyWrap && dailyChart) {
+        const daily = data.daily_sales || [];
+        const max = Math.max(1, ...daily.map((d) => d.total || 0));
+        dailyChart.innerHTML = daily.length
+          ? daily
+              .map((d) => {
+                const h = Math.max(d.total ? 8 : 4, Math.round(((d.total || 0) / max) * 120));
+                const label = String(d.day || '').slice(5);
+                return `<div class="flux-col" title="${escapeHtml(d.day)} : ${d.total} vente(s) (${d.inscriptions} abo, ${d.materiel} matériel)">
+                  <div class="flux-stack">
+                    <div class="flux-bar flux-bar--all" style="height:${h}px"></div>
+                  </div>
+                  <span class="flux-n">${d.total}</span>
+                  <small>${escapeHtml(label)}</small>
+                </div>`;
+              })
+              .join('')
+          : '<p class="admin-section-desc">Pas encore de ventes quotidiennes.</p>';
+        if (dailySummary) {
+          const sum = daily.reduce((n, d) => n + (d.total || 0), 0);
+          dailySummary.textContent = `${sum} vente(s) sur 14 jours · aujourd’hui ${data.today?.count || 0} (${fmtEur(data.today?.revenue || 0)})`;
+        }
+        dailyWrap.hidden = false;
+      }
+
+      const topWrap = document.getElementById('topSoldWrap');
+      const topBody = document.getElementById('topSoldBody');
+      if (topBody) {
+        const kindLabel = { abonnement: 'Abonnement', aventure: 'Aventure Balma', materiel: 'Matériel' };
+        const top = data.top_products || [];
+        topBody.innerHTML = top.length
+          ? top
               .map(
-                (o) => `
+                (p) => `
             <tr>
-              <td><code style="font-size:11px">${escapeHtml(o.order_id)}</code></td>
-              <td>${escapeHtml(o.name)}</td>
-              <td>${escapeHtml(o.email)}</td>
-              <td>${escapeHtml(o.product)}</td>
-              <td>${escapeHtml(o.payment_status)}</td>
-              <td>${o.access_blocked ? 'Oui' : 'Non'}</td>
+              <td>${escapeHtml(p.name)}</td>
+              <td>${escapeHtml(kindLabel[p.kind] || p.kind)}</td>
+              <td style="text-align:right;font-weight:600">${p.qty}</td>
+              <td style="text-align:right">${fmtEur(p.revenue)}</td>
             </tr>`
               )
               .join('')
-          : '<tr><td colspan="6" style="text-align:center;color:var(--bc-muted)">Aucun impayé CB</td></tr>';
-        if (unpaidWrap) unpaidWrap.hidden = false;
+          : '<tr><td colspan="4" style="text-align:center;color:var(--bc-muted)">Aucune vente sur cette période</td></tr>';
+        if (topWrap) topWrap.hidden = false;
+      }
+
+      const avWrap = document.getElementById('aventureStatsWrap');
+      const avSum = document.getElementById('aventureStatsSummary');
+      if (avWrap && avSum && data.aventure) {
+        const a = data.aventure;
+        avSum.textContent =
+          `${a.paid} payée(s) · ${a.signed} signée(s) · ${a.dispatched} transmise(s) au bot` +
+          (a.missing_sale ? ` · ${a.missing_sale} payée(s) sans vente Deciplus` : '') +
+          ` · ${a.total} dossier(s) au total`;
+        avWrap.hidden = false;
       }
 
       // Table

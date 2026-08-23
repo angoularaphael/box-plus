@@ -1477,6 +1477,14 @@ function createApp() {
         .filter((o) => o.payment?.status === 'past_due' || o.access_blocked)
         .map(toAdminSummary);
 
+      const { buildAdminSalesExtras } = require('./lib/admin-stats');
+      const extras = buildAdminSalesExtras({
+        inscriptionOrders: allOrders,
+        materielOrders,
+        fromMonth: from || '',
+        toMonth: to || '',
+      });
+
       res.json({
         ok: true,
         rows,
@@ -1486,6 +1494,10 @@ function createApp() {
         funnel: summarizeFunnelFromOrders(allOrders),
         funnel_events: summarizeFunnelEvents(30),
         unpaid,
+        today: extras.today,
+        top_products: extras.top_products,
+        daily_sales: extras.daily_sales,
+        aventure: extras.aventure,
       });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
