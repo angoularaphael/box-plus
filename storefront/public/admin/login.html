@@ -31,9 +31,13 @@
   </div>
   <script>
     (async function () {
+      function safeNext() {
+        const n = new URLSearchParams(location.search).get('next') || '/admin';
+        return n.startsWith('/admin') ? n : '/admin';
+      }
       const me = await fetch('/api/auth/me', { credentials: 'include' });
       if (me.ok) {
-        location.replace('/admin');
+        location.replace(safeNext());
         return;
       }
 
@@ -58,7 +62,7 @@
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Identifiants incorrects');
-          location.replace('/admin');
+          location.replace(safeNext());
         } catch (err) {
           msg.hidden = false;
           msg.textContent = err.message;

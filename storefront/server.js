@@ -1134,6 +1134,12 @@ function createApp() {
   });
 
   /** Le réglage, réservé au patron : il voit le compte exact et le pose. */
+  app.get('/api/admin/concours-url', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const url = String(process.env.CONCOURS_ADMIN_URL || 'https://concours.boxingcenter.fr/admin').trim();
+    res.json({ ok: true, url });
+  });
+
   app.get('/api/admin/offre-rentree', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
@@ -4737,6 +4743,7 @@ function createApp() {
     '/admin': 'admin/index.html',
     '/admin/': 'admin/index.html',
     '/admin/login': 'admin/login.html',
+    '/admin/concours': 'admin/concours.html',
     '/admin/contrats': 'admin/index.html',
     '/contrat': 'contrat.html',
   };

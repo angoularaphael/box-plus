@@ -506,8 +506,37 @@ setTimeout(() => {
   }
 }, 1500);
 
+function startConcoursWaRetry() {
+  const url = String(process.env.CONCOURS_CRON_URL || '').trim();
+  const secret = String(process.env.CONCOURS_CRON_SECRET || '').trim();
+  if (!url) return;
+  const interval = Math.max(30000, parseInt(process.env.CONCOURS_CRON_MS || '60000', 10) || 60000);
+  const tick = async () => {
+    try {
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: secret ? { Authorization: `Bearer ${secret}` } : {},
+      });
+      if (!res.ok) {
+        console.warn('[boutique-bot] concours retry HTTP', res.status);
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data.processed || data.sent || data.errors) {
+        console.log('[boutique-bot] concours WA retry', data);
+      }
+    } catch (err) {
+      console.warn('[boutique-bot] concours retry:', err.message);
+    }
+  };
+  setTimeout(tick, 12000);
+  setInterval(tick, interval);
+  console.log('[boutique-bot] concours WA retry →', url, 'every', interval, 'ms');
+}
+
 app.listen(PORT, HOST, () => {
   console.log(`[boutique-bot] http://${HOST}:${PORT} build=${BUILD}`);
   console.log('[boutique-bot] QR : backoffice boutique → WhatsApp');
   if (!SITE_API_SECRET) console.warn('[boutique-bot] SITE_API_SECRET manquant');
+  startConcoursWaRetry();
 });
