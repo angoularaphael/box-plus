@@ -552,6 +552,8 @@ test('David, backoffice et tunnel Aventure — hors Balma / pas de retour', () =
     'utf8'
   );
   assert.match(shell, /pan-tag--aventure/);
+  assert.match(shell, /target="_blank"/);
+  assert.match(shell, /\/admin\/concours/);
   const mailer = fs.readFileSync(
     path.join(__dirname, '..', 'storefront', 'lib', 'mailer.js'),
     'utf8'

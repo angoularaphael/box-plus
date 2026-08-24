@@ -126,6 +126,8 @@ body.pan {
   color: var(--pan-ink);
   font: 600 13.5px/1 var(--font-body, Montserrat, sans-serif);
   text-align: left;
+  text-decoration: none;
+  box-sizing: border-box;
   cursor: pointer;
   transition: background .18s, color .18s;
 }

@@ -100,7 +100,12 @@
          <span class="pan-rail__name">Boutique<small>${esc(utilisateur || "Administration")}</small></span>
        </div>` +
       SECTIONS.map((s) =>
-        `<button type="button" class="pan-nav${s.id === courante ? " is-on" : ""}" data-sec="${s.id}" aria-current="${s.id === courante}">
+        s.href
+          ? `<a class="pan-nav" data-sec="${s.id}" href="${esc(s.href)}" target="_blank" rel="noopener noreferrer">
+           <svg class="pan-nav__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${s.ico}"/></svg>
+           <span>${esc(s.label)}</span>
+         </a>`
+          : `<button type="button" class="pan-nav${s.id === courante ? " is-on" : ""}" data-sec="${s.id}" aria-current="${s.id === courante}">
            <svg class="pan-nav__ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${s.ico}"/></svg>
            <span>${esc(s.label)}</span>
            <span class="pan-nav__n" data-n="${s.id}" hidden>0</span>
@@ -121,7 +126,10 @@
     if (couche) couche.style.display = "contents";
 
     $("#panLogout").onclick = () => $("#logoutBtn")?.click();
-    $$(".pan-nav", rail).forEach((b) => (b.onclick = () => aller(b.dataset.sec)));
+    $$(".pan-nav", rail).forEach((b) => {
+      if (b instanceof HTMLAnchorElement) return;
+      b.onclick = () => aller(b.dataset.sec);
+    });
   }
 
   /** Va à une section. Les anciens onglets font le chargement des données. */
@@ -129,7 +137,7 @@
     const sec = SECTIONS.find((s) => s.id === id);
     if (!sec) return;
     if (sec.href) {
-      location.assign(sec.href);
+      window.open(sec.href, "_blank", "noopener,noreferrer");
       return;
     }
     courante = id;
