@@ -287,7 +287,11 @@ async function syncMaterielClient(order) {
   return result;
 }
 
-const { rebuildLifecycleOrderFromSession, loadOrderOrRecover } = require('./lib/order-recovery');
+const {
+  rebuildLifecycleOrderFromSession,
+  loadOrderOrRecover,
+  checkoutRehydrateBody,
+} = require('./lib/order-recovery');
 const { verifyAdminLogin } = require('./lib/admin-auth');
 const {
   getAdminSession,
@@ -2218,20 +2222,47 @@ function createApp() {
   app.patch('/api/orders/:id/gym', async (req, res) => {
     try {
       const token = req.body.token || req.query.token;
-      const order = await loadOrderOrRecover(req.params.id, {
+      let order = await loadOrderOrRecover(req.params.id, {
         token,
         sessionId: req.body.session_id || req.query.session_id,
         stripe: stripeForGym(req.body.gym),
         findProduct,
       });
-      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      const gym = String(req.body.gym || '').trim();
+      if (!gym) return res.status(400).json({ ok: false, errors: ['Salle principale requise'] });
+      if (!order) {
+        const productId = req.body.product_id;
+        const product = findProduct(productId);
+        if (!product || !token) {
+          return res.status(404).json({ ok: false, error: 'not_found' });
+        }
+        order = await createDraftAsync({
+          product_id: productId,
+          product,
+          gym,
+          source: req.body.source || undefined,
+        });
+        logInfo('Dossier inscription recréé (salle)', { order_id: order.order_id, lost: req.params.id });
+        return res.json({
+          ok: true,
+          step: order.step,
+          gym,
+          order_id: order.order_id,
+          access_token: order.access_token,
+          recreated: true,
+        });
+      }
       if (!verifyAccess(order, token)) {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
-      const gym = String(req.body.gym || '').trim();
-      if (!gym) return res.status(400).json({ ok: false, errors: ['Salle principale requise'] });
       const updated = await updateGymAsync(order.order_id, gym);
-      res.json({ ok: true, step: updated.step, gym });
+      res.json({
+        ok: true,
+        step: updated.step,
+        gym,
+        order_id: updated.order_id,
+        access_token: updated.access_token,
+      });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
@@ -2240,14 +2271,36 @@ function createApp() {
   app.patch('/api/orders/:id/identity', async (req, res) => {
     try {
       const token = req.body.token || req.query.token;
-      const order = await loadOrderOrRecover(req.params.id, {
+      let order = await loadOrderOrRecover(req.params.id, {
         token,
         sessionId: req.body.session_id || req.query.session_id,
         stripe,
         findProduct,
+        rehydrateBody: checkoutRehydrateBody(req.body),
       });
-      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
-      if (!verifyAccess(order, token)) {
+      if (!order) {
+        const productId = req.body.product_id || req.body.product_snapshot?.id;
+        const product = findProduct(productId);
+        const gym = String(req.body.gym || '').trim();
+        if (!product || !token || !gym) {
+          return res.status(404).json({
+            ok: false,
+            error: 'not_found',
+            message:
+              'Dossier introuvable. Revenez à l\'étape identité et recommencez, ou contactez le club si le problème persiste.',
+          });
+        }
+        order = await createDraftAsync({
+          product_id: productId,
+          product,
+          gym,
+          source: req.body.source || undefined,
+        });
+        logInfo('Dossier inscription recréé (identité)', {
+          order_id: order.order_id,
+          lost: req.params.id,
+        });
+      } else if (!verifyAccess(order, token)) {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
       const product = findProduct(order.product_id) || order.product_snapshot;
@@ -2273,7 +2326,12 @@ function createApp() {
       await maybeNotifyOffre29Friend(updated, friend).catch((err) =>
         logWarn('Notif ami offre 29 (identity)', { order_id: order.order_id, error: err.message })
       );
-      res.json({ ok: true, step: updated.step });
+      res.json({
+        ok: true,
+        step: updated.step,
+        order_id: updated.order_id,
+        access_token: updated.access_token,
+      });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }
@@ -2785,7 +2843,7 @@ function createApp() {
         sessionId: req.body.session_id,
         stripe,
         findProduct,
-        rehydrateBody: req.body,
+        rehydrateBody: checkoutRehydrateBody(req.body),
       });
       if (!order) {
         return res.status(404).json({

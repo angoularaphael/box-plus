@@ -3,6 +3,11 @@
 const { STEPS, memberDisplayName, deleteOrderAsync } = require('./order-lifecycle');
 const { logInfo, logWarn } = require('../../lib/logger');
 
+/** Brouillon salle/identité encore ouvert sur le téléphone — ne pas toucher. */
+const EMPTY_IDENTITY_GRACE_MS = 6 * 60 * 60 * 1000;
+/** Doublon d’onglet juste après un paiement — pas un réabonnement ancien. */
+const RECENT_PAID_DUPLICATE_MS = 48 * 60 * 60 * 1000;
+
 function isInscriptionTunnel(order) {
   if (!order || order.action) return false;
   const id = String(order.order_id || '');
@@ -29,26 +34,66 @@ function isPaidOrSigned(order) {
   return st === 'paid' || st === 'free' || Boolean(order?.signature?.signed_at);
 }
 
-/** Arrêt salle/identité : aucune identité, pas payé. */
-function isEmptyIdentityAbandon(order) {
+function parseOrderTime(value) {
+  const ms = Date.parse(String(value || ''));
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function orderTouchedAt(order) {
+  return (
+    parseOrderTime(order?.updated_at) ||
+    parseOrderTime(order?.funnel?.step_entered_at) ||
+    parseOrderTime(order?.created_at)
+  );
+}
+
+function paidAtMs(order) {
+  return (
+    parseOrderTime(order?.payment?.paid_at) ||
+    parseOrderTime(order?.signature?.signed_at) ||
+    parseOrderTime(order?.updated_at) ||
+    parseOrderTime(order?.created_at)
+  );
+}
+
+function isOlderThan(order, maxAgeMs, now = Date.now()) {
+  const ts = orderTouchedAt(order);
+  if (!ts) return true;
+  return now - ts >= maxAgeMs;
+}
+
+/** Arrêt salle/identité : aucune identité, pas payé, abandonné depuis des heures. */
+function isEmptyIdentityAbandon(order, now = Date.now()) {
   if (!isInscriptionTunnel(order)) return false;
   if (isPaidOrSigned(order)) return false;
   if (realEmail(order) || hasName(order)) return false;
   const step = Number(order.step || 0);
-  return step > 0 && step <= STEPS.IDENTITY;
+  if (!(step > 0 && step <= STEPS.IDENTITY)) return false;
+  return isOlderThan(order, EMPTY_IDENTITY_GRACE_MS, now);
 }
 
 function paidEmailsFrom(orders) {
+  return recentPaidEmailsFrom(orders, Number.POSITIVE_INFINITY);
+}
+
+function recentPaidEmailsFrom(orders, maxAgeMs = RECENT_PAID_DUPLICATE_MS, now = Date.now()) {
   const set = new Set();
   for (const order of orders || []) {
     if (!isInscriptionTunnel(order) || !isPaidOrSigned(order)) continue;
+    const paidAt = paidAtMs(order);
+    if (paidAt && now - paidAt > maxAgeMs) continue;
+    if (!paidAt && Number.isFinite(maxAgeMs)) continue;
     const email = realEmail(order);
     if (email) set.add(email);
   }
   return set;
 }
 
-/** Autre session impayée alors qu’un dossier payé existe déjà pour le même e-mail. */
+/**
+ * Autre session impayée alors qu’un paiement récent existe déjà pour le même e-mail.
+ * Un abo suspendu / résilié (ancien dossier payé) n’est PAS un doublon : la personne
+ * a le droit de racheter.
+ */
 function isUnpaidDuplicateOfPaid(order, paidEmails) {
   if (!isInscriptionTunnel(order)) return false;
   if (isPaidOrSigned(order)) return false;
@@ -57,10 +102,11 @@ function isUnpaidDuplicateOfPaid(order, paidEmails) {
   return paidEmails.has(email);
 }
 
-function ordersToPrune(all = []) {
-  const paidEmails = paidEmailsFrom(all);
+function ordersToPrune(all = [], now = Date.now()) {
+  const paidEmails = recentPaidEmailsFrom(all, RECENT_PAID_DUPLICATE_MS, now);
   return all.filter(
-    (order) => isEmptyIdentityAbandon(order) || isUnpaidDuplicateOfPaid(order, paidEmails)
+    (order) =>
+      isEmptyIdentityAbandon(order, now) || isUnpaidDuplicateOfPaid(order, paidEmails)
   );
 }
 
@@ -112,11 +158,14 @@ async function collapseUnpaidDraftsForEmail(email, keepOrderId) {
 }
 
 module.exports = {
+  EMPTY_IDENTITY_GRACE_MS,
+  RECENT_PAID_DUPLICATE_MS,
   isInscriptionTunnel,
   realEmail,
   isEmptyIdentityAbandon,
   isUnpaidDuplicateOfPaid,
   paidEmailsFrom,
+  recentPaidEmailsFrom,
   ordersToPrune,
   pruneAbandonedInscriptions,
   collapseUnpaidDraftsForEmail,

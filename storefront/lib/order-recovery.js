@@ -4,22 +4,47 @@
 const { loadOrderAsync, saveOrderAsync, productSnapshot } = require('./order-lifecycle');
 const { unpackOrderMetadata } = require('./orders');
 
+/** Normalise le body identité / paiement pour recréer un dossier perdu. */
+function checkoutRehydrateBody(body) {
+  if (!body || typeof body !== 'object') return body;
+  const nested = body.customer_short || {};
+  const email = String(nested.email || body.email || '').trim();
+  const customer_short = email
+    ? {
+        first_name: nested.first_name || body.first_name,
+        last_name: nested.last_name || body.last_name,
+        email,
+        phone: nested.phone || body.phone || '',
+        birthdate: nested.birthdate || body.birthdate || null,
+      }
+    : nested.email || nested.first_name
+      ? nested
+      : undefined;
+  return {
+    ...body,
+    product_id: body.product_id || body.product_snapshot?.id,
+    customer_short,
+  };
+}
+
 function rehydrateOrderFromClient(orderId, body, findProduct) {
   const { sanitizeOrderId } = require('./security');
   const safeId = sanitizeOrderId(orderId);
-  const { token, product_id, customer_short, product_snapshot } = body || {};
+  const normalized = checkoutRehydrateBody(body) || {};
+  const { token, product_id, customer_short, product_snapshot } = normalized;
   if (!safeId || !token || !product_id || !customer_short?.email) return null;
 
   const product = findProduct ? findProduct(product_id) : null;
+  const gym = String(normalized.gym || '').trim();
   return {
     order_id: safeId,
     access_token: token,
-    step: 3,
+    step: 4,
     product_id,
     product_snapshot: product ? productSnapshot(product) : product_snapshot || { id: product_id },
     customer_short,
-    customer_full: null,
-    payment: { status: 'pending', iban: body.iban || undefined },
+    customer_full: gym ? { gym } : null,
+    payment: { status: 'pending', iban: normalized.iban || undefined },
     signature: null,
     documents: {},
     created_at: new Date().toISOString(),
@@ -87,8 +112,9 @@ async function loadOrderOrRecover(orderId, { token, sessionId, stripe, findProdu
   const existing = await loadOrderAsync(orderId);
   if (existing) return existing;
 
-  if (rehydrateBody?.token && token && rehydrateBody.token === token) {
-    const rebuilt = rehydrateOrderFromClient(orderId, rehydrateBody, findProduct);
+  const body = checkoutRehydrateBody(rehydrateBody);
+  if (body?.token && token && body.token === token) {
+    const rebuilt = rehydrateOrderFromClient(orderId, body, findProduct);
     if (rebuilt) {
       await saveOrderAsync(rebuilt);
       return rebuilt;
@@ -112,5 +138,6 @@ module.exports = {
   rebuildLifecycleOrderFromSession,
   rebuildLifecycleOrderFromSessionAsync,
   rehydrateOrderFromClient,
+  checkoutRehydrateBody,
   loadOrderOrRecover,
 };

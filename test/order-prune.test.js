@@ -9,6 +9,10 @@ const {
   ordersToPrune,
 } = require('../storefront/lib/order-prune');
 
+function hoursAgo(hours) {
+  return new Date(Date.now() - hours * 3600 * 1000).toISOString();
+}
+
 function ghost(id, extra = {}) {
   return {
     order_id: id,
@@ -22,8 +26,18 @@ function ghost(id, extra = {}) {
 }
 
 describe('order-prune', () => {
-  it('supprime les arrêts identité sans nom ni email', () => {
-    assert.equal(isEmptyIdentityAbandon(ghost('BC-1')), true);
+  it('ne touche pas un brouillon identité encore en cours de saisie', () => {
+    assert.equal(
+      isEmptyIdentityAbandon(
+        ghost('BC-LIVE', { created_at: hoursAgo(0.5), updated_at: hoursAgo(0.5) })
+      ),
+      false
+    );
+  });
+
+  it('supprime les arrêts identité sans nom ni email après plusieurs heures', () => {
+    const old = ghost('BC-1', { created_at: hoursAgo(7), updated_at: hoursAgo(7) });
+    assert.equal(isEmptyIdentityAbandon(old), true);
     assert.equal(
       isEmptyIdentityAbandon(
         ghost('BC-2', { customer_short: { first_name: 'Léa', email: 'lea@test.local' }, step: 3 })
@@ -37,27 +51,45 @@ describe('order-prune', () => {
     assert.equal(isEmptyIdentityAbandon(ghost('BC-4', { step: 6 })), false);
   });
 
-  it('supprime les sessions impayées d’un email déjà payé', () => {
-    const paid = ghost('BC-PAY', {
+  it('ne traite pas un ancien abo (suspendu / résilié) comme un doublon à supprimer', () => {
+    const paidLongAgo = ghost('BC-PAY', {
       step: 8,
-      payment: { status: 'paid' },
+      payment: { status: 'paid', paid_at: hoursAgo(24 * 10) },
       customer_short: { first_name: 'Diego', email: 'd@test.local' },
-      signature: { signed_at: '2026-08-16T10:00:00.000Z' },
+      signature: { signed_at: hoursAgo(24 * 10) },
     });
-    const dupe = ghost('BC-DUP', {
+    const returning = ghost('BC-NEW', {
       step: 4,
+      created_at: hoursAgo(0.1),
+      updated_at: hoursAgo(0.1),
       customer_short: { first_name: 'Diego', email: 'd@test.local' },
     });
     const other = ghost('BC-OTH', {
       step: 4,
       customer_short: { first_name: 'Léa', email: 'lea@test.local' },
     });
-    const paidEmails = paidEmailsFrom([paid, dupe, other]);
+    const paidEmails = paidEmailsFrom([paidLongAgo, returning, other]);
     assert.equal(paidEmails.has('d@test.local'), true);
-    assert.equal(isUnpaidDuplicateOfPaid(dupe, paidEmails), true);
-    assert.equal(isUnpaidDuplicateOfPaid(paid, paidEmails), false);
-    assert.equal(isUnpaidDuplicateOfPaid(other, paidEmails), false);
-    const doomed = ordersToPrune([paid, dupe, other, ghost('BC-EMPTY')]);
+    assert.equal(isUnpaidDuplicateOfPaid(returning, paidEmails), true);
+    const doomed = ordersToPrune([paidLongAgo, returning, other]);
+    assert.deepEqual(
+      doomed.map((o) => o.order_id),
+      []
+    );
+  });
+
+  it('supprime seulement un vrai doublon d’onglet juste après un paiement', () => {
+    const justPaid = ghost('BC-PAY', {
+      step: 8,
+      payment: { status: 'paid', paid_at: hoursAgo(1) },
+      customer_short: { first_name: 'Diego', email: 'd@test.local' },
+      signature: { signed_at: hoursAgo(1) },
+    });
+    const otherTab = ghost('BC-DUP', {
+      step: 4,
+      customer_short: { first_name: 'Diego', email: 'd@test.local' },
+    });
+    const doomed = ordersToPrune([justPaid, otherTab, ghost('BC-EMPTY', { created_at: hoursAgo(8), updated_at: hoursAgo(8) })]);
     assert.deepEqual(
       doomed.map((o) => o.order_id).sort(),
       ['BC-DUP', 'BC-EMPTY']

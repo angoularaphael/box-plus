@@ -192,6 +192,14 @@
     });
   }
 
+  function adoptCheckoutIds(data) {
+    if (!data) return;
+    if (data.order_id) state.orderId = data.order_id;
+    if (data.access_token) state.token = data.access_token;
+    saveProgress();
+    syncUrl();
+  }
+
   function restoreProgress() {
     try {
       const saved = readStoredProgress() || readResumeCookie();
@@ -1495,12 +1503,35 @@
         const res = await fetch(`/api/orders/${state.orderId}/gym`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: state.token, gym }),
+          body: JSON.stringify({
+            token: state.token,
+            gym,
+            product_id: state.productId,
+            source: params.get('source') || undefined,
+          }),
         });
         const data = await res.json();
-        if (!data.ok) {
+        if (!data.ok && (data.error === 'not_found' || res.status === 404)) {
+          const retry = await fetch('/api/orders/draft', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              product_id: state.productId,
+              gym,
+              source: params.get('source') || undefined,
+            }),
+          });
+          const created = await retry.json();
+          if (!created.ok) {
+            setMsg(orderErrorMessage(created), 'err');
+            return;
+          }
+          adoptCheckoutIds(created);
+        } else if (!data.ok) {
           setMsg(orderErrorMessage(data), 'err');
           return;
+        } else {
+          adoptCheckoutIds(data);
         }
         state.order = state.order || {};
         state.order.customer_full = { ...(state.order.customer_full || {}), gym };
@@ -1594,18 +1625,41 @@
         setMsg((data.errors || [data.error]).join(', '), 'err');
         return;
       }
-      state.orderId = data.order_id;
-      state.token = data.access_token;
+      adoptCheckoutIds(data);
       } else {
         const res = await fetch(`/api/orders/${state.orderId}/identity`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...body, ...referralFriendPayload() }),
+          body: JSON.stringify({
+            ...body,
+            product_id: state.productId,
+            product_snapshot: state.product || state.order?.product_snapshot,
+            ...referralFriendPayload(),
+          }),
         });
         const data = await res.json();
-        if (!data.ok) {
+        if (!data.ok && (data.error === 'not_found' || res.status === 404)) {
+          const retry = await fetch('/api/orders/draft', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...body,
+              product_id: state.productId,
+              source: params.get('source') || undefined,
+              ...referralFriendPayload(),
+            }),
+          });
+          const created = await retry.json();
+          if (!created.ok) {
+            setMsg((created.errors || [created.error]).join(', '), 'err');
+            return;
+          }
+          adoptCheckoutIds(created);
+        } else if (!data.ok) {
           setMsg(orderErrorMessage(data), 'err');
           return;
+        } else {
+          adoptCheckoutIds(data);
         }
       }
 

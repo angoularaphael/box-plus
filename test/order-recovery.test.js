@@ -95,3 +95,30 @@ describe('order recovery from Stripe', () => {
     assert.equal(order, null);
   });
 });
+
+const { rehydrateOrderFromClient } = require('../storefront/lib/order-recovery');
+
+describe('rehydrate from identity body', () => {
+  it('recreates a payment-step order from flat identity fields', () => {
+    const order = rehydrateOrderFromClient(
+      'BC-REHYDRATE-ID',
+      {
+        token: 'tok-identity',
+        product_id: 'offre-duo',
+        gym: 'minimes',
+        first_name: 'Sam',
+        last_name: 'Martin',
+        email: 'sam@test.local',
+        phone: '0611111111',
+        birthdate: '1992-03-04',
+      },
+      () => null
+    );
+    assert.ok(order);
+    assert.equal(order.order_id, 'BC-REHYDRATE-ID');
+    assert.equal(order.step, 4);
+    assert.equal(order.customer_short.email, 'sam@test.local');
+    assert.equal(order.customer_full.gym, 'minimes');
+    assert.equal(order.rehydrated_from_client, true);
+  });
+});
