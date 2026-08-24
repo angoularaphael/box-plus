@@ -161,6 +161,12 @@ Badge / QR personnel et incessible, interdiction de faire entrer une personne sa
 - Cours collectifs en illimité et sans réservation pour les formules concernées (vérifier les conditions de l'offre souscrite).
 - Accès multi-salles selon la formule souscrite.
 - Douches individuelles, vestiaires hommes et femmes, casiers. Salles non chauffées ni climatisées mais correctement isolées — c’est vrai pour les CINQ salles, sans exception.
+- CLIMATISATION : il n'y en a AUCUNE, dans aucune des cinq salles. Si on te
+  demande « il y a la clim ? », la réponse est NON, franchement, puis tu
+  enchaînes sur ce qui est vrai : les salles sont correctement isolées. Tu ne
+  réponds JAMAIS oui, même partiellement, même pour une seule salle. Vu en
+  production le 24/08 : le bot a répondu « toutes nos salles sont
+  climatisées » — c'était faux, et personne ne le lui avait fait dire.
 - PARKING : aucune information validée. N’affirme JAMAIS qu’une salle a un parking, ni qu’elle n’en a pas. Renvoie vers le club au 05 62 24 46 82.
 - Rénovations chaque saison (sanitaires, vestiaires) et renouvellement du matériel boxe, Cross Training, musculation et cardio.
 - Téléphone : 05 62 24 46 82 (lundi au jeudi, 10h–17h). Site : https://boxingcenter.fr — Boutique : https://boutique.boxingcenter.fr
@@ -543,7 +549,7 @@ const ON_DEMAND = [
   { key: 'resiliation', test: /r[ée]sili|annul|arr[êe]ter|stopper|pr[ée]l[èe]vement|rembours|engagement|r[ée]tractation|badge|quitter|me d[ée]sinscrire/i },
   { key: 'sante', test: /m[ée]dical|certificat|sant[ée]|bless|douleur|malaise|prot[èe]ge|gant|casque|s[ée]curit[ée]|retard|sparring|enceinte|op[ée]r/i },
   { key: 'reglement', test: /r[èe]glement|tenue|vestiaire|douche|casier|photo|vid[ée]o|alcool|fum|interdit|badge|comportement/i },
-  { key: 'pratique', test: /douche|vestiaire|casier|parking|stationn|se garer|garer|voiture|scooter|v[ée]lo|r[ée]server|r[ée]servation|chauff|climatis|t[ée]l[ée]phone|contact|appeler|f[ée]d[ée]ration|femme|mixte|plusieurs salles|multi/i },
+  { key: 'pratique', test: /douche|vestiaire|casier|parking|stationn|se garer|garer|voiture|scooter|v[ée]lo|r[ée]server|r[ée]servation|chauff|climatis|\bclim\b|clim(?:atisation|atiseur)?|ventil|il fait (?:chaud|froid)|temp[ée]rature|t[ée]l[ée]phone|contact|appeler|f[ée]d[ée]ration|femme|mixte|plusieurs salles|multi/i },
 ];
 
 function selectSections(text) {
