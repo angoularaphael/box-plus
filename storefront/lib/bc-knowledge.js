@@ -167,7 +167,7 @@ Badge / QR personnel et incessible, interdiction de faire entrer une personne sa
 # POINTS DE VIGILANCE
 - Le planning de Portet est PROVISOIRE : si on demande si les horaires sont définitifs, le dire.
 - Les pages salles indiquent « lundi au samedi 10h00–21h30 » alors que certaines offres parlent d'accès « 7j/7 » : ne jamais inventer d'horaire du dimanche. Sur une question précise concernant le dimanche, renvoyer vers l'information d'accès la plus récente de la salle ou du contrat souscrit.
-- Balma est parfois citée sur d'anciennes pages : elle ne fait pas partie des 5 salles du parcours d'inscription actuel.
+- BALMA GRAMONT a été CÉDÉE et ne fait plus partie du réseau Boxing Center. Elle est exploitée de façon indépendante par GOTA – La Cour des Miracles. Un abonnement par prélèvement rattaché à Balma a été transféré à GOTA : il donne accès à Balma, PLUS aux 5 clubs Boxing Center. Qui veut retrouver les 5 clubs souscrit un nouvel abonnement Boxing Center (29 € / 4 semaines ou 259 € / saison) ; les deux peuvent coexister. Ne jamais vérifier ni traiter une résiliation Deciplus sur Balma. Elle reste citée sur d'anciennes pages : ce n'est plus une salle du parcours d'inscription.
 `.trim();
 
 /* ------------------------------------------------------------------ *
