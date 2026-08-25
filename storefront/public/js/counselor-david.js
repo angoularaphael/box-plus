@@ -14,7 +14,7 @@ window.BCCounselor = (function () {
   const GYM_PAGES = {
     minimes: {
       label: 'Minimes',
-      manager: 'Medhi',
+      manager: 'Mehdi',
       url: 'https://boxe-toulouse.com/',
     },
     ramonville: {
@@ -34,7 +34,7 @@ window.BCCounselor = (function () {
     },
     'st-cyprien': {
       label: 'St-Cyprien',
-      manager: 'Daddy',
+      manager: 'Dadi',
       url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/',
     },
   };

@@ -92,9 +92,9 @@ function matchManagerFromText(text) {
     }
     if (parleDeManager || /managers/i.test(t)) {
       return pickVariant([
-        'Les managers : **Medhi** (Minimes), **Pascal** (Ramonville), **Daddy** (St-Cyprien), **Valentin** (Portet), **Sébastien** (États-Unis). Quelle salle ?',
-        'Selon la salle : **Medhi** Minimes, **Pascal** Ramonville, **Daddy** St-Cyprien, **Valentin** Portet, **Sébastien** États-Unis. Tu vises laquelle ?',
-        'Cinq managers en présentiel — **Medhi**, **Pascal**, **Daddy**, **Valentin**, **Sébastien**. Dis-moi ta salle, je te donne le bon prénom.',
+        'Les managers : **Mehdi** (Minimes), **Pascal** (Ramonville), **Dadi** (St-Cyprien), **Valentin** (Portet), **Sébastien** (États-Unis). Quelle salle ?',
+        'Selon la salle : **Mehdi** Minimes, **Pascal** Ramonville, **Dadi** St-Cyprien, **Valentin** Portet, **Sébastien** États-Unis. Tu vises laquelle ?',
+        'Cinq managers en présentiel — **Mehdi**, **Pascal**, **Dadi**, **Valentin**, **Sébastien**. Dis-moi ta salle, je te donne le bon prénom.',
       ]);
     }
   }

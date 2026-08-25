@@ -39,11 +39,11 @@ const MANAGER_LABELS = {
 };
 
 const MANAGER_NAMES = {
-  minimes: 'Medhi',
+  minimes: 'Mehdi',
   ramonville: 'Pascal',
   portet: 'Valentin',
   'etats-unis': 'Sébastien',
-  'st-cyprien': 'Daddy',
+  'st-cyprien': 'Dadi',
 };
 
 function getManagerContact(gym) {

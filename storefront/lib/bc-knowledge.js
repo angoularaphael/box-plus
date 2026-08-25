@@ -23,7 +23,7 @@ const GYMS = {
     label: 'Minimes',
     fullLabel: 'Toulouse Minimes / Barrière de Paris',
     address: '12 rue de Fenouillet, 31200 Toulouse',
-    manager: 'Medhi',
+    manager: 'Mehdi',
     url: 'https://boxe-toulouse.com/',
     match: /minimes|barri[eè]re\s*de\s*paris|fenouillet/i,
   },
@@ -39,7 +39,7 @@ const GYMS = {
     label: 'St-Cyprien',
     fullLabel: 'Toulouse Saint-Cyprien',
     address: '11 rue Sainte-Lucie, 31300 Toulouse',
-    manager: 'Daddy',
+    manager: 'Dadi',
     url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/',
     match: /st[-\s]?cyprien|saint[-\s]?cyprien|sainte[-\s]?lucie|fer\s+[àa]\s+cheval/i,
   },
@@ -101,7 +101,7 @@ const CORE = `
 5. États-Unis — 388 avenue des États-Unis, 31200 Toulouse, près de la sortie de périphérique 33b « Lalande ». Salle XXL ~1 200 m² en 3 zones d'environ 400 m² : striking + sol/grappling avec cage et tatamis ; boxe avec rings de compétition ; prépa physique musculation, cardio, Cross Training, sacs. Boxe Anglaise, Pieds-Poings, MMA, Grappling, JJB, Cross Training, HYROX, Boxing Fitness.
 
 # MANAGERS DE SALLE (présentiel — ne jamais inventer d'autre prénom)
-Minimes = Medhi · Ramonville = Pascal · St-Cyprien = Daddy · Portet = Valentin · États-Unis = Sébastien.
+Minimes = Mehdi · Ramonville = Pascal · St-Cyprien = Dadi · Portet = Valentin · États-Unis = Sébastien.
 ATTENTION : un manager n'est PAS un coach. Si on te demande QUI ENCADRE une
 discipline, ou QUI EST LE COACH de quelque chose, tu réponds depuis la section
 COACHS ci-dessous — jamais depuis cette ligne-ci. Vu le 24/08 : à « qui est le
