@@ -484,7 +484,7 @@
           ${methods('change_pay_method_once', 'payplug', 'paypal', 'Carte bancaire', cardSmall, cardLogoKind, 'Paiement sécurisé')}
         </div>
         <div id="changeFourMethods" class="billing-choice-row" style="display:none">
-          ${methods('change_pay_method_4x', 'payplug', 'paypal', '4× sans frais', portetViaCawl ? 'Carte CAWL / Oney' : 'Carte PayPlug / Oney', 'payplug', 'Pay Later si éligible — sinon montant total', { showCard: showCard && oney4x, preferPaypal: !portetViaCawl })}
+          ${methods('change_pay_method_4x', portetViaCawl ? 'cawl' : 'payplug', 'paypal', '4× sans frais', portetViaCawl ? 'Carte CAWL / Oney' : 'Carte PayPlug / Oney', portetViaCawl ? 'card' : 'payplug', 'Pay Later si éligible — sinon montant total', { showCard: showCard && oney4x, preferPaypal: !portetViaCawl })}
         </div>
         ${
           showCard && oney4x
@@ -544,7 +544,10 @@
         }
         const fourMethod =
           document.querySelector('input[name="change_pay_method_4x"]:checked')?.value || 'paypal';
-        if (addr) addr.style.display = plan === '4x' && fourMethod === 'payplug' && oney4x ? '' : 'none';
+        if (addr) {
+          addr.style.display =
+            plan === '4x' && (fourMethod === 'payplug' || fourMethod === 'cawl') && oney4x ? '' : 'none';
+        }
       };
       changePayChoices
         .querySelectorAll('input[name="change_payment_plan"], input[name="change_pay_method_4x"]')
@@ -626,7 +629,7 @@
       if (paymentPlan === '4x') {
         paymentMethod =
           document.querySelector('input[name="change_pay_method_4x"]:checked')?.value || 'paypal';
-        if (paymentMethod === 'payplug' && oney4x) {
+        if (paymentMethod === 'cawl' || (paymentMethod === 'payplug' && oney4x)) {
           extra.address = document.getElementById('chg_address')?.value?.trim() || '';
           extra.postal_code = document.getElementById('chg_postal')?.value?.trim() || '';
           extra.city = document.getElementById('chg_city')?.value?.trim() || '';

@@ -465,7 +465,7 @@
           <li><strong>${dates[2]}</strong> — 3ᵉ échéance ${quartLabel}&nbsp;€</li>
           <li><strong>${dates[3]}</strong> — 4ᵉ échéance ${quartLabel}&nbsp;€</li>
         </ul>
-        <p class="fourx-schedule__note">Dates estimées à partir d’aujourd’hui (± selon Oney / PayPlug).</p>
+        <p class="fourx-schedule__note">Dates estimées à partir d’aujourd’hui (± selon Oney / CAWL).</p>
       </div>`;
   }
 
@@ -1095,7 +1095,7 @@
       const fourMethods =
         payMethodsHtml({
           name: 'pay_method_4x',
-          cardValue: 'payplug',
+          cardValue: portetViaCawl ? 'cawl' : 'payplug',
           paypalValue: 'paypal',
           showCard: showCard && oney4x,
           showPaypal,
@@ -1104,7 +1104,7 @@
           cardSmall: portetViaCawl ? 'Carte CAWL / Oney' : 'Carte PayPlug / Oney',
           paypalTitle: 'PayPal 4×',
           paypalSmall: '4× Pay Later si éligible — sinon paiement du montant total',
-          cardLogo: 'payplug',
+          cardLogo: portetViaCawl ? 'card' : 'payplug',
         }) + paypalMsgHtml;
       billingHtml = `
         <div class="full billing-plan-block">
@@ -1256,14 +1256,15 @@
         const payBtn = document.getElementById('payBtn');
         const fourMethod =
           document.querySelector('input[name="pay_method_4x"]:checked')?.value ||
-          (oney4x && showCard && !showPaypal ? 'payplug' : 'paypal');
+          (oney4x && showCard && !showPaypal ? (portetViaCawl ? 'cawl' : 'payplug') : 'paypal');
         if (onceBox) onceBox.style.display = plan === 'once' ? '' : 'none';
         if (fourBox) fourBox.style.display = plan === '4x' ? '' : 'none';
         if (schedule) {
           schedule.style.display = plan === '4x' ? '' : 'none';
           if (plan === '4x') schedule.innerHTML = buildFourXScheduleHtml(quart, fourMethod === 'paypal');
         }
-        const needAddress = plan === '4x' && fourMethod === 'payplug' && oney4x;
+        const needAddress =
+          plan === '4x' && (fourMethod === 'payplug' || fourMethod === 'cawl') && oney4x;
         if (addrBox) {
           addrBox.style.display = needAddress ? '' : 'none';
           addrBox.querySelectorAll('input').forEach((input) => {
@@ -1313,10 +1314,12 @@
         body.payment_plan = installmentInput?.value || 'once';
         if (body.payment_plan === '4x') {
           const fourMethod =
-            document.querySelector('input[name="pay_method_4x"]:checked')?.value || 'paypal';
-          body.pay_method = fourMethod === 'payplug' && oney4x ? 'payplug' : 'paypal';
+            document.querySelector('input[name="pay_method_4x"]:checked')?.value ||
+            (portetViaCawl ? 'cawl' : 'paypal');
+          const card4x = fourMethod === 'cawl' || fourMethod === 'payplug';
+          body.pay_method = portetViaCawl && card4x ? 'cawl' : card4x && oney4x ? 'payplug' : 'paypal';
           body.billing_plan = body.pay_method === 'paypal' ? 'paypal' : null;
-          if (body.pay_method === 'payplug') {
+          if (card4x && (portetViaCawl || oney4x)) {
             body.address = document.querySelector('#fourXAddress input[name="address"]')?.value?.trim();
             body.postal_code = document
               .querySelector('#fourXAddress input[name="postal_code"]')

@@ -14,6 +14,8 @@ const {
   cawlMerchantReference,
   cawlPaymentId,
   isCawlEnabled,
+  cawlMode,
+  formatCawlError,
 } = require('../storefront/lib/cawl');
 const { resolveDisplay } = require('../storefront/lib/payment-display');
 const { cawlMatches, rememberPreviousCawlId, cawlIdCandidates } = require('../storefront/lib/payment-bind');
@@ -199,4 +201,76 @@ test('sans clés, CAWL est off', () => {
     if (prev.secret == null) delete process.env.CAWL_API_SECRET;
     else process.env.CAWL_API_SECRET = prev.secret;
   }
+});
+
+test('formatCawlError explique le 1008 sans jargon HTTP', () => {
+  const err = new Error('CAWL HTTP 400');
+  err.status = 400;
+  err.body = {
+    errors: [{ code: '1008', id: 'INVALID_VALUE', propertyName: 'order.amountOfMoney' }],
+  };
+  assert.match(formatCawlError(err), /order\.amountOfMoney|clés TEST|1008/i);
+  assert.doesNotMatch(formatCawlError(err), /^CAWL HTTP 400 — 1008$/);
+});
+
+test('studio sans CAWL_TEST_* ne mélange pas le PSPID live avec preprod', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const { runPaymentContext, paymentVar, resetTestFileCache } = require('../storefront/lib/test-env');
+  const empty = path.join(os.tmpdir(), `cawl-empty-${Date.now()}.env`);
+  fs.writeFileSync(empty, '');
+  const prev = {
+    file: process.env.BOXPLUS_TEST_ENV_FILE,
+    id: process.env.CAWL_MERCHANT_ID,
+    key: process.env.CAWL_API_KEY_ID,
+    secret: process.env.CAWL_API_SECRET,
+    tid: process.env.CAWL_TEST_MERCHANT_ID,
+    tkey: process.env.CAWL_TEST_API_KEY_ID,
+    tsec: process.env.CAWL_TEST_API_SECRET,
+  };
+  process.env.BOXPLUS_TEST_ENV_FILE = empty;
+  process.env.CAWL_MERCHANT_ID = 'CA131066056934';
+  process.env.CAWL_API_KEY_ID = 'LIVEKEY';
+  process.env.CAWL_API_SECRET = 'LIVESECRET';
+  process.env.CAWL_TEST_MERCHANT_ID = '';
+  process.env.CAWL_TEST_API_KEY_ID = '';
+  process.env.CAWL_TEST_API_SECRET = '';
+  resetTestFileCache();
+  try {
+    runPaymentContext({ test: true }, () => {
+      assert.equal(paymentVar('CAWL_MERCHANT_ID'), '');
+      assert.equal(isCawlEnabled(), false);
+      assert.equal(cawlMode(), 'live');
+    });
+  } finally {
+    if (prev.file == null) delete process.env.BOXPLUS_TEST_ENV_FILE;
+    else process.env.BOXPLUS_TEST_ENV_FILE = prev.file;
+    if (prev.id == null) delete process.env.CAWL_MERCHANT_ID;
+    else process.env.CAWL_MERCHANT_ID = prev.id;
+    if (prev.key == null) delete process.env.CAWL_API_KEY_ID;
+    else process.env.CAWL_API_KEY_ID = prev.key;
+    if (prev.secret == null) delete process.env.CAWL_API_SECRET;
+    else process.env.CAWL_API_SECRET = prev.secret;
+    if (prev.tid == null) delete process.env.CAWL_TEST_MERCHANT_ID;
+    else process.env.CAWL_TEST_MERCHANT_ID = prev.tid;
+    if (prev.tkey == null) delete process.env.CAWL_TEST_API_KEY_ID;
+    else process.env.CAWL_TEST_API_KEY_ID = prev.tkey;
+    if (prev.tsec == null) delete process.env.CAWL_TEST_API_SECRET;
+    else process.env.CAWL_TEST_API_SECRET = prev.tsec;
+    resetTestFileCache();
+    try {
+      fs.unlinkSync(empty);
+    } catch {
+      /* ignore */
+    }
+  }
+});
+
+test('inscription 4× Portet envoie CAWL, pas PayPlug', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const js = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'public', 'js', 'inscription.js'), 'utf8');
+  assert.match(js, /cardValue: portetViaCawl \? 'cawl' : 'payplug'/);
+  assert.match(js, /portetViaCawl && card4x \? 'cawl'/);
 });

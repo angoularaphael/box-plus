@@ -15,9 +15,9 @@ const { paymentVar, useTestPayments } = require('./test-env');
 const ONEY_4X_PRODUCT_ID = 5112;
 
 function cawlMode() {
-  if (useTestPayments()) return 'test';
-  const mode = String(paymentVar('CAWL_MODE') || process.env.CAWL_MODE || 'live').toLowerCase();
+  const mode = String(paymentVar('CAWL_MODE') || (!useTestPayments() && process.env.CAWL_MODE) || 'live').toLowerCase();
   if (mode === 'test' || mode === 'preprod' || mode === 'sandbox') return 'test';
+  if (useTestPayments() && paymentVar('CAWL_MERCHANT_ID')) return 'test';
   return 'live';
 }
 
@@ -159,20 +159,33 @@ function validateOneyCustomer(customer) {
 
 function formatCawlError(err) {
   const body = err?.body || {};
-  const parts = Array.isArray(body.errors)
-    ? body.errors.map((e) => e.message || e.code).filter(Boolean)
-    : [];
-  const raw = String(err?.message || parts[0] || body.message || '');
+  const errors = Array.isArray(body.errors) ? body.errors : [];
+  const first = errors[0] || {};
+  const parts = errors.map((e) => e.message || e.code).filter(Boolean);
+  const raw = String(err?.message || first.message || parts[0] || body.message || '');
+  const code = String(first.code || first.id || '');
+  const property = String(first.propertyName || '');
   if (/ONEY|5112|5110|payment product/i.test(raw) || parts.some((p) => /oney|5112/i.test(p))) {
     return (
       'Le 4× sans frais (Oney) n’est pas encore actif sur le compte CAWL Portet. ' +
-      'Dans le portail CAWL, activez Oney 4×, ou payez en une fois par carte.'
+      'Dans le portail test (preprod), Affaires → Méthodes de paiement → activez Oney 4×, ou payez en une fois par carte.'
     );
   }
   if (/AUTHORIZATION|HMAC|NOT_AUTHORIZED|401/i.test(raw)) {
     return 'CAWL Portet est mal configuré (clé API). Vérifiez PSPID, API Key ID et secret.';
   }
-  return [raw || null, parts.filter((p) => p !== raw).join(' ; ')].filter(Boolean).join(' — ') || 'Erreur CAWL';
+  if (code === '1008' || /INVALID_VALUE/i.test(String(first.id || ''))) {
+    if (/merchantId|merchant/i.test(property) || /BoxingCenterTEST|CA131066056934/i.test(raw)) {
+      return 'CAWL test : le PSPID ne correspond pas à l’environnement preprod. Utilisez le compte test, pas le PSPID live.';
+    }
+    return property
+      ? `CAWL a refusé le champ « ${property} ». En studio, les clés TEST (preprod) sont obligatoires.`
+      : 'CAWL a refusé la demande (code 1008). En studio, il faut le PSPID test preprod, pas le compte live.';
+  }
+  const httpBit = err?.status ? `CAWL HTTP ${err.status}` : null;
+  return [raw && !/^CAWL HTTP /i.test(raw) ? raw : httpBit, parts.filter((p) => p !== raw).join(' ; ')]
+    .filter(Boolean)
+    .join(' — ') || 'Erreur CAWL';
 }
 
 async function cawlRequest(method, resourcePath, body = null) {
@@ -307,7 +320,7 @@ function buildHostedCheckoutPayload({
               productPrice: amount,
               quantity: 1,
               lineAmountTotal: amount,
-              productType: 'Service',
+              productType: 'service',
             },
           },
         ],

@@ -104,6 +104,8 @@ function paymentVar(key) {
   if (useTestPayments()) {
     const { overlay } = getOverlay();
     if (overlay[key]) return overlay[key];
+    // Ne jamais envoyer le PSPID / les clés LIVE vers payment.preprod (HTTP 400 / 1008).
+    if (String(key).startsWith('CAWL_')) return '';
   }
   return process.env[key] || '';
 }
