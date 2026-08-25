@@ -3016,11 +3016,14 @@ function createApp() {
           : payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
             ? 'paypal'
             : 'card';
+      const portetFourXPaypal =
+        gymNorm === 'portet' && paymentPlan === '4x' && display.portetPaypal4x === true;
+      if (portetFourXPaypal) preferredCheckout = 'paypal';
       if (display.portetViaPaypal && !display.portetViaCawl) preferredCheckout = 'paypal';
       if (preferredCheckout === 'cawl' && !display.show_cawl) {
         return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
       }
-      if (preferredCheckout === 'paypal' && !display.show_paypal) {
+      if (preferredCheckout === 'paypal' && !display.show_paypal && !display.portetPaypal4x) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
       }
       if (preferredCheckout === 'card' && !display.show_payplug) {
@@ -3618,9 +3621,6 @@ function createApp() {
           message: display.portetPausedMessage || PORTET_PAUSED_MESSAGE,
         });
       }
-      let preferCawl = method === 'cawl' || display.portetViaCawl === true;
-      let preferPaypal =
-        !preferCawl && (method === 'paypal' || display.portetViaPaypal === true);
       const {
         productSupportsInstallmentChoice,
         normalizePaymentPlan,
@@ -3628,6 +3628,13 @@ function createApp() {
       const paymentPlan =
         normalizePaymentPlan(body.payment_plan, product) ||
         (productSupportsInstallmentChoice(product) ? 'once' : 'once');
+      let preferCawl = method === 'cawl' || display.portetViaCawl === true;
+      let preferPaypal =
+        !preferCawl && (method === 'paypal' || display.portetViaPaypal === true);
+      if (paymentPlan === '4x' && display.portetPaypal4x === true) {
+        preferCawl = false;
+        preferPaypal = true;
+      }
       if (paymentPlan === '4x' && !preferPaypal && !preferCawl && !isOney4xEnabled()) {
         return res.status(503).json({
           ok: false,
@@ -3638,7 +3645,7 @@ function createApp() {
       if (preferCawl && !display.show_cawl) {
         return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
       }
-      if (preferPaypal && !display.show_paypal) {
+      if (preferPaypal && !display.show_paypal && !display.portetPaypal4x) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
       }
       if (!preferPaypal && !preferCawl && !display.show_payplug) {
@@ -4775,7 +4782,9 @@ function createApp() {
       cawl: isCawlEnabled() && display.portetViaCawl === true,
       cawl_mode: isCawlEnabled() ? cawlMode() : null,
       paypal_client_id:
-        display.show_paypal && isPaypalEnabled(gym) ? paypalPublicClientId(gym) : null,
+        (display.show_paypal || display.portetPaypal4x) && isPaypalEnabled(gym)
+          ? paypalPublicClientId(gym)
+          : null,
       paypal_mode: paypalMode(),
       paypal_account: paypalAccountForGym(gym),
       show_payplug: display.show_payplug,
@@ -4783,11 +4792,14 @@ function createApp() {
       show_cawl: display.show_cawl === true,
       portet_via_paypal: display.portetViaPaypal === true,
       portet_via_cawl: display.portetViaCawl === true,
+      portet_paypal_4x: display.portetPaypal4x === true,
       portet_paused: display.portetPaused === true,
       portet_paused_message: display.portetPaused ? display.portetPausedMessage || PORTET_PAUSED_MESSAGE : null,
-      oney_4x: display.portetViaCawl === true ? true : isOney4xEnabled(),
+      oney_4x: display.portetViaCawl === true ? false : isOney4xEnabled(),
       oney_4x_message:
-        display.portetViaCawl === true || isOney4xEnabled() ? null : ONEY_4X_UNAVAILABLE_MESSAGE,
+        display.portetViaCawl === true || isOney4xEnabled()
+          ? null
+          : ONEY_4X_UNAVAILABLE_MESSAGE,
       preview: display.preview,
       sandbox: Boolean(display.preview),
     });

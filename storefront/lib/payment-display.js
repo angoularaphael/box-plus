@@ -136,7 +136,8 @@ function isPortetPaymentsPaused() {
  * Ce que CE visiteur doit voir.
  * Session studio : tout ce qui est branché, même si décoché en prod.
  * Visiteur : cases cochées.
- * Portet + CAWL : CAWL remplace PayPal (et PayPlug) pour toutes les ventes.
+ * Portet + CAWL : CAWL pour la carte (1× / 1ʳᵉ échéance). Le 4× sans frais
+ * reste sur PayPal Portet (Pay Later) — Oney CAWL n’est pas activé.
  * Portet sans CAWL : repli PayPal (CB via PayPal).
  * Portet en pause : aucun moyen affiché (sauf studio).
  */
@@ -153,12 +154,14 @@ function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady, cawlR
       portetPaypalOnly: false,
       portetViaPaypal: false,
       portetViaCawl: false,
+      portetPaypal4x: false,
       portetPaused: true,
       portetPausedMessage: PORTET_PAUSED_MESSAGE,
     };
   }
   const cawlConfigured = portet && Boolean(cawlReady);
   const cawlOn = cawlConfigured && (preview || flags.cawl);
+  const portetPaypal4x = portet && Boolean(paypalReady) && (preview || flags.paypal);
   if (preview) {
     const show_paypal = Boolean(paypalReady) && !cawlOn;
     return {
@@ -169,6 +172,7 @@ function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady, cawlR
       portetPaypalOnly: false,
       portetViaPaypal: portet && show_paypal && !cawlOn,
       portetViaCawl: cawlOn,
+      portetPaypal4x,
       portetPaused: false,
       portetPausedMessage: null,
     };
@@ -184,6 +188,7 @@ function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady, cawlR
     portetPaypalOnly: false,
     portetViaPaypal: portet && show_paypal && !cawlOn,
     portetViaCawl: cawlOn,
+    portetPaypal4x,
     portetPaused: false,
     portetPausedMessage: null,
   };

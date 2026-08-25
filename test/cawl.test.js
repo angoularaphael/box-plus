@@ -111,7 +111,7 @@ test('historique hostedCheckoutId CAWL', () => {
   assert.deepEqual(ids, ['extra', 'new', 'old']);
 });
 
-test('Portet + CAWL masque PayPal / PayPlug', () => {
+test('Portet + CAWL masque PayPal / PayPlug (1×), garde PayPal pour le 4×', () => {
   const vis = resolveDisplay({
     stored: { payplug: true, paypal: true },
     preview: false,
@@ -125,6 +125,7 @@ test('Portet + CAWL masque PayPal / PayPlug', () => {
   assert.equal(vis.show_cawl, true);
   assert.equal(vis.show_paypal, false);
   assert.equal(vis.show_payplug, false);
+  assert.equal(vis.portetPaypal4x, true);
 });
 
 test('Portet sans CAWL reste sur PayPal', () => {
@@ -350,12 +351,13 @@ test('studio sans CAWL_TEST_* ne mélange pas le PSPID live avec preprod', () =>
   }
 });
 
-test('inscription 4× Portet envoie CAWL, pas PayPlug', () => {
+test('inscription 4× Portet envoie PayPal, pas CAWL Oney', () => {
   const fs = require('fs');
   const path = require('path');
   const js = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'public', 'js', 'inscription.js'), 'utf8');
-  assert.match(js, /cardValue: portetViaCawl \? 'cawl' : 'payplug'/);
-  assert.match(js, /portetViaCawl && card4x \? 'cawl'/);
+  assert.match(js, /portetPaypal4x/);
+  assert.match(js, /portetViaCawl && body\.payment_plan === '4x' && portetPaypal4x/);
+  assert.match(js, /body\.pay_method = 'paypal'/);
 });
 
 test('payload 4× CAWL force Oney 5112, pas la page carte', () => {
