@@ -13,10 +13,19 @@ function isReasoningModel(model = MODEL) {
 }
 
 function getApiKeys() {
+  /* On BALAIE l'environnement au lieu de lister les noms un par un. La liste
+     en dur s'arretait a GROQ_API_KEY_2 : la cle _3, ajoutee le 25/08 et
+     vivante, n'etait jamais essayee. Chaque cle nouvelle demandait une ligne
+     de code — ce qui garantit qu'un jour on en ajoute une et qu'elle dort.
+     Les noms explicites restent en tete pour garder l'ordre d'essai voulu. */
+  const balayees = Object.keys(process.env)
+    .filter((k) => /^GROQ_API_KEY(_\w+)?$/.test(k))
+    .sort()
+    .map((k) => process.env[k]);
   const keys = [
     process.env.GROQ_API_KEY,
     process.env.GROQ_API_KEY_FALLBACK,
-    process.env.GROQ_API_KEY_2,
+    ...balayees,
     ...(process.env.GROQ_API_KEYS || '').split(','),
   ]
     .map((k) => (k || '').trim())
