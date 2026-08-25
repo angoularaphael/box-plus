@@ -1549,9 +1549,7 @@ async function detectDuplicateError(page) {
   return null;
 }
 
-async function findOrCreateMember(page, order, gymConfig) {
-  const { customer } = order;
-
+async function findExistingMemberOnCurrentSite(page, customer) {
   await resetMemberSearchContext(page);
 
   async function acceptHit(hit, action) {
@@ -1571,22 +1569,74 @@ async function findOrCreateMember(page, order, gymConfig) {
   }
 
   if (customer.email) {
-    const byEmail = await searchMember(page, customer.email);
-    const accepted = await acceptHit(byEmail, 'found_email');
+    const accepted = await acceptHit(await searchMember(page, customer.email), 'found_email');
     if (accepted) return accepted;
   }
-
   if (customer.phone) {
-    const byPhone = await searchMember(page, customer.phone);
-    const accepted = await acceptHit(byPhone, 'found_phone');
+    const accepted = await acceptHit(await searchMember(page, customer.phone), 'found_phone');
     if (accepted) return accepted;
+  }
+  if (customer.last_name || customer.first_name) {
+    const accepted = await acceptHit(
+      await searchMemberByName(page, customer.last_name, customer.first_name),
+      'found_name'
+    );
+    if (accepted) return accepted;
+  }
+  return null;
+}
+
+async function detectMemberGymConfig(page, fallback) {
+  const { gymConfigFromZoneId } = require('../lib/deciplus-sites');
+  const scopes = [page, ...(page.frames?.() || [])];
+  for (const ctx of scopes) {
+    const val = await ctx
+      .locator('form[name="db1_form"] select[name="idz"], select[name="idz"]')
+      .first()
+      .inputValue()
+      .catch(() => '');
+    const cfg = gymConfigFromZoneId(val);
+    if (cfg) return cfg;
+  }
+  return fallback;
+}
+
+async function findOrCreateMember(page, order, gymConfig) {
+  const { customer } = order;
+  const { uniqueDeciplusSearchConfigs } = require('../lib/deciplus-sites');
+  const { switchDeciplusSite } = require('./deciplus-zone');
+
+  const sites = uniqueDeciplusSearchConfigs(order.gym || gymConfig.key);
+  for (const site of sites) {
+    const label = site.deciplus_label || site.label;
+    const switched = await switchDeciplusSite(page, label).catch((err) => {
+      logWarn('Site Deciplus non ouvert pour recherche membre', {
+        site: label,
+        error: err.message,
+      });
+      return false;
+    });
+    if (!switched) continue;
+    const found = await findExistingMemberOnCurrentSite(page, customer);
+    if (found) {
+      logInfo('Fiche Deciplus existante réutilisée', {
+        order_id: order.order_id,
+        member_id: found.member_id,
+        site: label,
+        action: found.action,
+      });
+      return { ...found, gymConfig: site };
+    }
   }
 
-  if (customer.last_name || customer.first_name) {
-    const byName = await searchMemberByName(page, customer.last_name, customer.first_name);
-    const accepted = await acceptHit(byName, 'found_name');
-    if (accepted) return accepted;
-  }
+  const createLabel = gymConfig.deciplus_label || gymConfig.label;
+  await switchDeciplusSite(page, createLabel).catch((err) => {
+    logWarn('Retour site création Deciplus impossible', {
+      site: createLabel,
+      error: err.message,
+    });
+  });
+  await resetMemberSearchContext(page);
 
   await openNewMemberForm(page, customer);
   await fillMemberForm(page, customer, gymConfig, order);
@@ -1595,21 +1645,8 @@ async function findOrCreateMember(page, order, gymConfig) {
   const duplicateMsg = await detectDuplicateError(page);
   if (duplicateMsg) {
     logWarn('Doublon à la création — recherche membre existant', { order_id: order.order_id });
-    if (customer.email) {
-      const accepted = await acceptHit(await searchMember(page, customer.email), 'found_after_duplicate');
-      if (accepted) return accepted;
-    }
-    if (customer.phone) {
-      const accepted = await acceptHit(await searchMember(page, customer.phone), 'found_after_duplicate');
-      if (accepted) return accepted;
-    }
-    if (customer.last_name || customer.first_name) {
-      const accepted = await acceptHit(
-        await searchMemberByName(page, customer.last_name, customer.first_name),
-        'found_after_duplicate'
-      );
-      if (accepted) return accepted;
-    }
+    const accepted = await findExistingMemberOnCurrentSite(page, customer);
+    if (accepted) return { ...accepted, gymConfig };
     return { duplicate: true, message: duplicateMsg };
   }
 
@@ -1634,7 +1671,7 @@ async function findOrCreateMember(page, order, gymConfig) {
   }
 
   logInfo('Membre Deciplus créé', { member_id: memberId, order_id: order.order_id });
-  return { member_id: memberId, action: 'created' };
+  return { member_id: memberId, action: 'created', gymConfig };
 }
 
 function sniffImageExt(buf) {
@@ -2103,6 +2140,8 @@ module.exports = {
   clickCreerQuandMeme,
   detectHardDuplicatePage,
   findOrCreateMember,
+  findExistingMemberOnCurrentSite,
+  detectMemberGymConfig,
   extractMemberId,
   resolveCreatedMemberId,
   extractMemberIdFromUrl,

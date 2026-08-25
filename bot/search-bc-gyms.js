@@ -1,7 +1,7 @@
 'use strict';
 
 const { logInfo, logWarn } = require('../lib/logger');
-const { boxingCenterGymsExceptBalma } = require('../lib/gym-slugs');
+const { uniqueDeciplusSearchConfigs } = require('../lib/deciplus-sites');
 const { getGymConfig } = require('../lib/normalize');
 const { switchDeciplusSite } = require('./deciplus-zone');
 const { findMemberByIdentity } = require('./member');
@@ -21,20 +21,23 @@ async function memberZoneLooksBalma(page) {
 }
 
 /**
- * Identité résil / changement d’abo : 5 salles Boxing Center.
- * Balma seulement si includeBalma (fiche vraiment sur Balma).
+ * Identité résil / changement d’abo : clubs Deciplus Boxing Center.
+ * Club États-Unis inclus même si les inscriptions neuves se créent à Minimes.
+ * Balma seulement si includeBalma.
  */
 async function findMemberOnBoxingCenterGyms(page, identity, options = {}) {
-  const slugs = boxingCenterGymsExceptBalma(options.preferredGym);
-  if (options.includeBalma && !slugs.includes('balma')) {
-    slugs.unshift('balma');
+  const sites = uniqueDeciplusSearchConfigs(options.preferredGym);
+  if (options.includeBalma) {
+    const balma = getGymConfig('balma');
+    if (!sites.some((s) => String(s.deciplus_zone_id) === String(balma.deciplus_zone_id))) {
+      sites.unshift(balma);
+    }
   }
   let last = { found: false, reason: 'not_found', mismatch_fields: [] };
-  for (const slug of slugs) {
-    const gym = getGymConfig(slug);
+  for (const gym of sites) {
     const label = gym?.deciplus_label || gym?.label;
     const switched = await switchDeciplusSite(page, label).catch((err) => {
-      logWarn('Site BC non ouvert pour vérif', { gym: slug, error: err.message });
+      logWarn('Site BC non ouvert pour vérif', { gym: gym.key, error: err.message });
       return false;
     });
     if (!switched) continue;
@@ -44,12 +47,12 @@ async function findMemberOnBoxingCenterGyms(page, identity, options = {}) {
       continue;
     }
     if (!options.includeBalma && (await memberZoneLooksBalma(page))) {
-      logInfo('Fiche Balma ignorée (résil / changement)', { member_id: match.member_id, gym: slug });
+      logInfo('Fiche Balma ignorée (résil / changement)', { member_id: match.member_id, gym: gym.key });
       last = { found: false, reason: 'balma_skipped', member_id: match.member_id };
       continue;
     }
-    logInfo('Fiche trouvée hors Balma', { member_id: match.member_id, gym: slug });
-    return { ...match, gym: slug };
+    logInfo('Fiche trouvée hors Balma', { member_id: match.member_id, gym: gym.key, site: label });
+    return { ...match, gym: gym.key, gymConfig: gym };
   }
   return last;
 }

@@ -236,7 +236,7 @@ function buildOrderFromLifecycle(order, product) {
   if (!photoBase64 && !photoUrl) photoBase64 = readPhotoBase64FromDisk(photoPath);
   const { isAventureOrder } = require('../../lib/aventure-policy');
   const aventure = isAventureOrder(order);
-  return buildOrderPayload(
+  const payload = buildOrderPayload(
     {
       order_id: order.order_id,
       first_name: short.first_name,
@@ -268,6 +268,8 @@ function buildOrderFromLifecycle(order, product) {
     },
     product
   );
+  if (order.deciplus_member_id) payload.deciplus_member_id = String(order.deciplus_member_id);
+  return payload;
 }
 
 function packOrderMetadata(payload) {

@@ -77,6 +77,31 @@ test('prestashop-map — commande API → payload BOXPLUS', () => {
   assert.equal(getGymConfig(order.gym).deciplus_label, 'Ramonville');
 });
 
+test('etats-unis — fiche neuve à Minimes, existante cherchée sur États-Unis', () => {
+  const { uniqueDeciplusSearchConfigs, createGymConfig } = require('../lib/deciplus-sites');
+  const gym = createGymConfig('etats-unis');
+  assert.equal(gym.deciplus_label, 'Minimes');
+  assert.equal(gym.deciplus_zone_id, '2');
+  assert.equal(gym.deciplus_existing_label, 'Etats-Unis');
+  assert.equal(gym.deciplus_existing_zone_id, '7');
+  const sites = uniqueDeciplusSearchConfigs('etats-unis').map((s) => s.deciplus_label);
+  assert.equal(sites[0], 'Etats-Unis');
+  assert.ok(sites.includes('Minimes'));
+  assert.equal(sites.filter((s) => s === 'Minimes').length, 1);
+
+  const { gymConfigFromZoneId, isEtatsUnisDeciplusSite } = require('../lib/deciplus-sites');
+  assert.equal(gymConfigFromZoneId('7').deciplus_label, 'Etats-Unis');
+  assert.equal(gymConfigFromZoneId('2').deciplus_label, 'Minimes');
+  assert.equal(isEtatsUnisDeciplusSite({ deciplus_zone_id: '7' }), true);
+  assert.equal(isEtatsUnisDeciplusSite({ deciplus_label: 'Minimes', deciplus_zone_id: '2' }), false);
+  const minimesSearch = uniqueDeciplusSearchConfigs('minimes').map((s) => s.deciplus_label);
+  assert.ok(minimesSearch.includes('Etats-Unis'));
+  const indexSrc = fs.readFileSync(path.join(__dirname, '..', 'bot', 'index.js'), 'utf8');
+  assert.match(indexSrc, /Migration États-Unis → Minimes avant vente/);
+  const memberSrc = fs.readFileSync(path.join(__dirname, '..', 'bot', 'member.js'), 'utf8');
+  assert.match(memberSrc, /uniqueDeciplusSearchConfigs/);
+});
+
 test('prestashop-checkout-store — enregistre salle par panier', () => {
   const storePath = require('../lib/prestashop-checkout-store').STORE_FILE;
   const dir = path.dirname(storePath);

@@ -479,6 +479,7 @@ async function dispatchLifecycleOrder(order, { force_requeue = false } = {}) {
   const product = findProduct(order.product_id) || order.product_snapshot;
   const payload = applyDeciplusPhoto(buildOrderFromLifecycle(hydrated, product), hydrated);
   if (force_requeue) payload.force_requeue = true;
+  if (order.deciplus_member_id) payload.deciplus_member_id = String(order.deciplus_member_id);
   if (payload.photo_path && /(?:^|[\\/])tmp[\\/]/i.test(String(payload.photo_path))) {
     payload.photo_path = null;
   }

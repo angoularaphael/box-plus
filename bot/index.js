@@ -26,7 +26,8 @@ const {
   syncLoadedStorageMtime,
   hasActiveBrowser,
 } = require('./browser-pool');
-const { findOrCreateMember, resetMemberSearchContext, uploadMemberPhoto, findMemberByIdentity, defaultSeancePhotoPath } = require('./member');
+const { findOrCreateMember, detectMemberGymConfig, resetMemberSearchContext, uploadMemberPhoto, findMemberByIdentity, defaultSeancePhotoPath } = require('./member');
+const { createGymConfig, isEtatsUnisDeciplusSite } = require('../lib/deciplus-sites');
 const { recordSale } = require('./sale');
 const { setMemberIban, openMemberCheck } = require('./wallet');
 const { isValidFrenchIban } = require('../lib/iban');
@@ -380,6 +381,7 @@ async function processSaleJob(page, order, jobMeta = {}) {
     }
 
     memberId = memberResult.member_id;
+    if (memberResult.gymConfig) gymConfig = memberResult.gymConfig;
     if (!memberId) {
       return {
         status: STATUS.MANUAL_REVIEW,
@@ -397,6 +399,35 @@ async function processSaleJob(page, order, jobMeta = {}) {
   } else {
     logInfo('Reprise job — membre déjà créé', { order_id: order.order_id, member_id: memberId });
     mark('member_resume');
+  }
+
+  await openMemberCheck(page, memberId, gymConfig).catch(() => {});
+  const memberSite = await detectMemberGymConfig(page, gymConfig);
+
+  if (String(order.gym || '').toLowerCase() === 'etats-unis') {
+    const saleGym = createGymConfig('etats-unis');
+    if (memberSite && isEtatsUnisDeciplusSite(memberSite)) {
+      const { migrateMemberToGym } = require('./migrate-gym');
+      await migrateMemberToGym(page, memberId, saleGym);
+      logInfo('Migration États-Unis → Minimes avant vente', {
+        order_id: order.order_id,
+        member_id: memberId,
+        from_zone: memberSite.deciplus_zone_id || null,
+      });
+    }
+    gymConfig = saleGym;
+  } else if (
+    memberSite?.deciplus_label &&
+    memberSite.deciplus_label !== gymConfig.deciplus_label
+  ) {
+    logInfo('Vente alignée sur le club Deciplus de la fiche', {
+      order_id: order.order_id,
+      member_id: memberId,
+      from: gymConfig.deciplus_label,
+      to: memberSite.deciplus_label,
+      zone: memberSite.deciplus_zone_id || null,
+    });
+    gymConfig = memberSite;
   }
 
   let photoResult = null;
