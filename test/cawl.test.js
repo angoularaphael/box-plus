@@ -220,6 +220,17 @@ test('sans clés, CAWL est off', () => {
   }
 });
 
+test('formatCawlError explique ACCESS_TO_MERCHANT_NOT_ALLOWED', () => {
+  const err = new Error('ACCESS_TO_MERCHANT_NOT_ALLOWED');
+  err.status = 403;
+  err.body = {
+    errors: [{ code: '9007', id: 'ACCESS_TO_MERCHANT_NOT_ALLOWED', httpStatusCode: 403 }],
+  };
+  const msg = formatCawlError(err);
+  assert.match(msg, /CAWL live refuse|portail CAWL/i);
+  assert.doesNotMatch(msg, /^ACCESS_TO_MERCHANT_NOT_ALLOWED$/);
+});
+
 test('formatCawlError explique le 1008 sans jargon HTTP', () => {
   const err = new Error('CAWL HTTP 400');
   err.status = 400;

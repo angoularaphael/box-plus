@@ -217,6 +217,24 @@ function formatCawlError(err) {
       'Dans le portail test (preprod), Affaires → Méthodes de paiement → activez Oney 4×, ou payez en une fois par carte.'
     );
   }
+  if (
+    code === '9007' ||
+    /ACCESS_TO_MERCHANT_NOT_ALLOWED/i.test(raw) ||
+    /ACCESS_TO_MERCHANT_NOT_ALLOWED/i.test(String(first.id || ''))
+  ) {
+    if (cawlMode() === 'test') {
+      return (
+        'CAWL test refuse ces clés (PSPID preprod). Dans le portail CAWL en mode Test : ' +
+        'Développeur → API de paiement, recopiez PSPID + Key ID + secret dans CAWL_TEST_* . ' +
+        'Les clés LIVE ne marchent pas sur preprod.'
+      );
+    }
+    return (
+      'CAWL live refuse ces clés API. Ouvrez le portail CAWL en mode LIVE (pas Test) → ' +
+      'Développeur → API de paiement, recréez la clé, puis mettez à jour CAWL_API_KEY_ID et ' +
+      'CAWL_API_SECRET sur Vercel. Pour tester le 4× sans toucher au live : /dev (studio).'
+    );
+  }
   if (/AUTHORIZATION|HMAC|NOT_AUTHORIZED|401/i.test(raw)) {
     return 'CAWL Portet est mal configuré (clé API). Vérifiez PSPID, API Key ID et secret.';
   }
