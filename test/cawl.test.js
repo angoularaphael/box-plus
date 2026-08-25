@@ -184,6 +184,21 @@ test('Minimes ignore CAWL même si clés présentes', () => {
   assert.equal(vis.show_paypal, true);
 });
 
+test('Portet + CAWL décoché repasse PayPal / PayPlug', () => {
+  const vis = resolveDisplay({
+    stored: { payplug: true, paypal: true, cawl: false },
+    preview: false,
+    gym: 'portet',
+    payplugReady: true,
+    paypalReady: true,
+    cawlReady: true,
+  });
+  assert.equal(vis.portetViaCawl, false);
+  assert.equal(vis.show_cawl, false);
+  assert.equal(vis.show_paypal, true);
+  assert.equal(vis.show_payplug, true);
+});
+
 test('sans clés, CAWL est off', () => {
   const prev = {
     id: process.env.CAWL_MERCHANT_ID,

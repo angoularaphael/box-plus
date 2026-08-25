@@ -1043,7 +1043,7 @@ function createApp() {
     if (!getDevSession(req)) return res.status(404).json({ ok: false, error: 'not_found' });
     try {
       const prod = await getPaymentDisplay();
-      res.json({ ok: true, prod, sandbox: testPaymentsInfo() });
+      res.json({ ok: true, prod, cawl_ready: isCawlEnabled(), sandbox: testPaymentsInfo() });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
     }

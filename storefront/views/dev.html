@@ -116,6 +116,13 @@
           <small>Compte PayPal / Pay Later</small>
         </span>
       </label>
+      <label class="dev-row" id="optCawlRow">
+        <input type="checkbox" id="optCawl" />
+        <span>
+          <strong>CAWL — Portet</strong>
+          <small>Carte bancaire + 4× sans frais (remplace PayPal / PayPlug à Portet)</small>
+        </span>
+      </label>
       <div class="dev-actions">
         <button type="button" class="btn" id="saveBtn">Enregistrer</button>
         <a class="btn secondary" href="/inscription">Tester l’inscription</a>
@@ -128,6 +135,8 @@
     (function () {
       const payplug = document.getElementById('optPayplug');
       const paypal = document.getElementById('optPaypal');
+      const cawl = document.getElementById('optCawl');
+      const cawlRow = document.getElementById('optCawlRow');
       const msg = document.getElementById('msg');
       const saveBtn = document.getElementById('saveBtn');
 
@@ -149,6 +158,13 @@
         }
         payplug.checked = data.prod.payplug !== false;
         paypal.checked = data.prod.paypal !== false;
+        cawl.checked = data.prod.cawl !== false;
+        const cawlReady = data.cawl_ready === true;
+        cawl.disabled = !cawlReady;
+        if (cawlRow) {
+          cawlRow.style.opacity = cawlReady ? '' : '0.55';
+          if (!cawlReady) cawl.checked = false;
+        }
         const banner = document.getElementById('payBanner');
         const sb = data.sandbox || {};
         if (banner && sb.configured === false) {
@@ -168,7 +184,11 @@
           method: 'PUT',
           credentials: 'same-origin',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payplug: payplug.checked, paypal: paypal.checked }),
+          body: JSON.stringify({
+            payplug: payplug.checked,
+            paypal: paypal.checked,
+            cawl: cawl.checked,
+          }),
         });
         const data = await res.json().catch(() => ({}));
         if (!data.ok) {
@@ -177,6 +197,7 @@
         }
         payplug.checked = data.prod.payplug !== false;
         paypal.checked = data.prod.paypal !== false;
+        cawl.checked = data.prod.cawl !== false;
         setMsg('Enregistré — les visiteurs verront ça dès ta déconnexion.', 'ok');
       };
 

@@ -8,7 +8,7 @@ const { getSupabase } = require('./supabase');
 const { getDevSession } = require('./dev-session');
 
 const CONFIG_KEY = 'payment_display';
-const DEFAULTS = { payplug: true, paypal: true };
+const DEFAULTS = { payplug: true, paypal: true, cawl: true };
 const FILE =
   process.env.BOXPLUS_PAYMENT_DISPLAY_FILE ||
   (process.env.VERCEL
@@ -30,8 +30,9 @@ function normalize(raw) {
   const src = raw && typeof raw === 'object' ? raw : {};
   const payplug = src.payplug !== false;
   const paypal = src.paypal !== false;
-  if (!payplug && !paypal) return { ...DEFAULTS };
-  return { payplug, paypal };
+  const cawl = src.cawl !== false;
+  if (!payplug && !paypal && !cawl) return { ...DEFAULTS };
+  return { payplug, paypal, cawl };
 }
 
 function readFile() {
@@ -99,7 +100,7 @@ async function getPaymentDisplay() {
 
 async function setPaymentDisplay(input) {
   const next = normalize(input);
-  if (!next.payplug && !next.paypal) {
+  if (!next.payplug && !next.paypal && !next.cawl) {
     const err = new Error('Au moins un moyen de paiement doit rester affiché.');
     err.code = 'need_one';
     throw err;
@@ -156,7 +157,8 @@ function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady, cawlR
       portetPausedMessage: PORTET_PAUSED_MESSAGE,
     };
   }
-  const cawlOn = portet && Boolean(cawlReady);
+  const cawlConfigured = portet && Boolean(cawlReady);
+  const cawlOn = cawlConfigured && (preview || flags.cawl);
   if (preview) {
     const show_paypal = Boolean(paypalReady) && !cawlOn;
     return {

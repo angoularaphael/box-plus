@@ -59,9 +59,25 @@ test('prod : PayPal décoché masque PayPal ailleurs', () => {
   assert.equal(vis.portetViaPaypal, false);
 });
 
-test('defaults : les deux moyens visibles', () => {
+test('Portet + CAWL décoché repasse PayPal / PayPlug', () => {
+  const vis = resolveDisplay({
+    stored: { payplug: true, paypal: true, cawl: false },
+    preview: false,
+    gym: 'portet',
+    payplugReady: true,
+    paypalReady: true,
+    cawlReady: true,
+  });
+  assert.equal(vis.portetViaCawl, false);
+  assert.equal(vis.show_cawl, false);
+  assert.equal(vis.show_paypal, true);
+  assert.equal(vis.show_payplug, true);
+});
+
+test('defaults : les trois moyens visibles', () => {
   assert.equal(DEFAULTS.payplug, true);
   assert.equal(DEFAULTS.paypal, true);
+  assert.equal(DEFAULTS.cawl, true);
 });
 
 test('mode studio lit env.test (sandbox), pas les clés Live', () => {
