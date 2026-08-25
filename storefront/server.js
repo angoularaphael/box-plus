@@ -4837,6 +4837,16 @@ function createApp() {
     }
   });
 
+  app.get('/api/webhooks/cawl', (_req, res) => {
+    res.json({
+      ok: true,
+      endpoint: 'cawl',
+      method: 'POST',
+      configured: isCawlEnabled(),
+      message: 'Webhook actif — le portail CAWL envoie les notifications en POST (pas en ouvrant cette URL dans le navigateur).',
+    });
+  });
+
   app.post('/api/webhooks/cawl', async (req, res) => {
     try {
       if (!isCawlEnabled()) {
