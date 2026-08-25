@@ -13,5 +13,8 @@ test-results/
 storefront/public/media/_src/
 storefront/public/media/_backup_360p/
 storefront/public/media/_recompress_tmp/
+storefront/public/media/_reencode/
+storefront/public/media/_match/
+storefront/public/media/_probe/
 storefront/public/media/_encode.log
 storefront/public/media/boxing-center-trophy-toulouse.mp4

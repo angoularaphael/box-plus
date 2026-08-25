@@ -30,6 +30,7 @@
     "cleanup:test:execute": "node scripts/cleanup-test-subscriptions.js --execute",
     "import:materiel": "node scripts/import-prestashop-materiel.js",
     "sync:materiel": "node storefront/scripts/sync-prestashop-materiel.js",
+    "media:heroes": "node scripts/encode-hero-videos.mjs",
     "vercel-build": "echo Vercel build OK"
   },
   "dependencies": {
