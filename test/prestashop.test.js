@@ -98,6 +98,7 @@ test('etats-unis — fiche neuve à Minimes, existante cherchée sur États-Unis
   assert.ok(minimesSearch.includes('Etats-Unis'));
   const indexSrc = fs.readFileSync(path.join(__dirname, '..', 'bot', 'index.js'), 'utf8');
   assert.match(indexSrc, /Migration États-Unis → Minimes avant vente/);
+  assert.match(indexSrc, /let gymConfig = getGymConfig\(order\.gym\)/);
   const memberSrc = fs.readFileSync(path.join(__dirname, '..', 'bot', 'member.js'), 'utf8');
   assert.match(memberSrc, /uniqueDeciplusSearchConfigs/);
 });

@@ -316,7 +316,7 @@ async function processSaleJob(page, order, jobMeta = {}) {
       error: 'Salle (gym) manquante sur la commande',
     };
   }
-  const gymConfig = getGymConfig(order.gym);
+  let gymConfig = getGymConfig(order.gym);
   const { isBalmaSaleTarget, BALMA_SALE_ERROR } = require('../lib/gym-slugs');
   if (isBalmaSaleTarget(gymConfig, order)) {
     return {

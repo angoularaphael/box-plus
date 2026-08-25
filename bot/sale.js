@@ -2764,6 +2764,22 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
   } else if (productConfig.sale_type === 'abonnement') {
     const { findActiveContracts } = require('./cancel-sale');
     const before = await findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => []);
+    const existingMatch = before.find(
+      (c) => c && !c.isBadge && saleContractMatches(c.label, productConfig)
+    );
+    if (existingMatch) {
+      logInfo('Contrat déjà présent — pas de nouvelle vente', {
+        order_id: order.order_id,
+        member_id: memberId,
+        idc: existingMatch.idc,
+        contract: existingMatch.label,
+      });
+      return {
+        sale_id: existingMatch.idc,
+        action: 'already_on_file',
+        member_id: memberId,
+      };
+    }
     const existingIds = before.filter((c) => !c.isBadge).map((c) => c.idc);
     result = await buyAbonnement(page, productConfig, gymConfig);
     const subscriptionContract = await verifyCreatedContract(page, memberId, {
