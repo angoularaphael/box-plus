@@ -211,10 +211,17 @@ function formatCawlError(err) {
   const raw = String(err?.message || first.message || parts[0] || body.message || '');
   const code = String(first.code || first.id || '');
   const property = String(first.propertyName || '');
-  if (/ONEY|5112|5110|payment product/i.test(raw) || parts.some((p) => /oney|5112/i.test(p))) {
+  if (
+    /UNKNOWN_PRODUCT_ID/i.test(raw) ||
+    /UNKNOWN_PRODUCT_ID/i.test(String(first.id || '')) ||
+    /ONEY|5112|5110|payment product/i.test(raw) ||
+    /paymentProduct/i.test(property) ||
+    parts.some((p) => /oney|5112|UNKNOWN_PRODUCT_ID/i.test(p))
+  ) {
     return (
-      'Le 4× sans frais (Oney) n’est pas encore actif sur le compte CAWL Portet. ' +
-      'Dans le portail test (preprod), Affaires → Méthodes de paiement → activez Oney 4×, ou payez en une fois par carte.'
+      'Le 4× sans frais (Oney) n’est pas activé sur le compte CAWL live Portet. ' +
+      'Ouvre https://portail.cawl-solutions.fr/ (Production) → Affaires → Méthodes de paiement → active Oney 4x, puis réessaie. ' +
+      'En une fois par carte reste disponible.'
     );
   }
   if (
@@ -393,7 +400,6 @@ function buildHostedCheckoutPayload({
               productPrice: amount,
               quantity: 1,
               lineAmountTotal: amount,
-              productType: 'service',
             },
           },
         ],

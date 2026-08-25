@@ -222,6 +222,24 @@ test('sans clés, CAWL est off', () => {
   }
 });
 
+test('formatCawlError explique UNKNOWN_PRODUCT_ID (Oney 4×)', () => {
+  const err = new Error('UNKNOWN_PRODUCT_ID');
+  err.status = 400;
+  err.body = {
+    errors: [
+      {
+        code: '3000',
+        id: 'UNKNOWN_PRODUCT_ID',
+        propertyName: 'redirectPaymentMethodSpecificInput.paymentProductId',
+      },
+    ],
+  };
+  const msg = formatCawlError(err);
+  assert.match(msg, /Oney/i);
+  assert.match(msg, /portail\.cawl-solutions\.fr/i);
+  assert.doesNotMatch(msg, /^UNKNOWN_PRODUCT_ID$/);
+});
+
 test('formatCawlError explique ACCESS_TO_MERCHANT_NOT_ALLOWED', () => {
   const err = new Error('ACCESS_TO_MERCHANT_NOT_ALLOWED');
   err.status = 403;
