@@ -18,6 +18,8 @@ const {
   formatCawlError,
   buildCawlReturnUrl,
   CAWL_RETURN_URL_MAX_LEN,
+  buildHostedCheckoutPayload,
+  ONEY_4X_PRODUCT_ID,
 } = require('../storefront/lib/cawl');
 const { resolveDisplay } = require('../storefront/lib/payment-display');
 const { cawlMatches, rememberPreviousCawlId, cawlIdCandidates } = require('../storefront/lib/payment-bind');
@@ -336,4 +338,29 @@ test('inscription 4× Portet envoie CAWL, pas PayPlug', () => {
   const js = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'public', 'js', 'inscription.js'), 'utf8');
   assert.match(js, /cardValue: portetViaCawl \? 'cawl' : 'payplug'/);
   assert.match(js, /portetViaCawl && card4x \? 'cawl'/);
+});
+
+test('payload 4× CAWL force Oney 5112, pas la page carte', () => {
+  const four = buildHostedCheckoutPayload({
+    order: { order_id: 'BC-1', customer_short: { first_name: 'Jean', last_name: 'Dupont', email: 'a@b.fr', phone: '0612345678' } },
+    product: { id: 'comptant-12-mois', price_cents: 25900, display_name: 'OFFRE PROMO 12 MOIS' },
+    amountCents: 25900,
+    returnUrl: 'https://boutique.boxingcenter.fr/inscription?cawl_return=1',
+    paymentPlan: '4x',
+  });
+  assert.equal(four.redirectPaymentMethodSpecificInput.paymentProductId, ONEY_4X_PRODUCT_ID);
+  assert.equal(four.redirectPaymentMethodSpecificInput.requiresApproval, false);
+  assert.deepEqual(four.hostedCheckoutSpecificInput.paymentProductFilters.restrictTo.products, [ONEY_4X_PRODUCT_ID]);
+  assert.equal(four.hostedCheckoutSpecificInput.cardPaymentMethodSpecificInput, undefined);
+  assert.equal(four.order.amountOfMoney.amount, 25900);
+
+  const once = buildHostedCheckoutPayload({
+    order: { order_id: 'BC-2' },
+    product: { price_cents: 25900 },
+    amountCents: 25900,
+    returnUrl: 'https://boutique.boxingcenter.fr/inscription?cawl_return=1',
+    paymentPlan: 'once',
+  });
+  assert.equal(once.redirectPaymentMethodSpecificInput, undefined);
+  assert.equal(once.hostedCheckoutSpecificInput.cardPaymentMethodSpecificInput.groupCards, true);
 });

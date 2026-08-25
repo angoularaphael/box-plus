@@ -366,6 +366,12 @@ function buildHostedCheckoutPayload({
   customer.billingAddress = withHouseNumber(customer.billingAddress);
   customer.shippingAddress = withHouseNumber(customer.shippingAddress || customer.billingAddress);
 
+  const hostedCheckoutSpecificInput = {
+    returnUrl,
+    locale: 'fr_FR',
+    showResultPage: false,
+  };
+
   const payload = {
     order: {
       amountOfMoney: {
@@ -393,21 +399,24 @@ function buildHostedCheckoutPayload({
         ],
       },
     },
-    hostedCheckoutSpecificInput: {
-      returnUrl,
-      locale: 'fr_FR',
-      showResultPage: false,
-      cardPaymentMethodSpecificInput: {
-        groupCards: true,
-        authorizationMode: 'SALE',
-      },
-    },
+    hostedCheckoutSpecificInput,
   };
 
   if (paymentPlan === '4x') {
+    // Forcer Oney 4× (5112). Sans ça, CAWL ouvre la page carte 1× du montant total.
+    hostedCheckoutSpecificInput.paymentProductFilters = {
+      restrictTo: { products: [ONEY_4X_PRODUCT_ID] },
+    };
     payload.redirectPaymentMethodSpecificInput = {
       requiresApproval: false,
       paymentProductId: ONEY_4X_PRODUCT_ID,
+    };
+    const option = String(paymentVar('CAWL_ONEY_4X_PAYMENT_OPTION') || '').trim();
+    if (option) payload.redirectPaymentMethodSpecificInput.paymentOption = option;
+  } else {
+    hostedCheckoutSpecificInput.cardPaymentMethodSpecificInput = {
+      groupCards: true,
+      authorizationMode: 'SALE',
     };
   }
 
@@ -459,17 +468,8 @@ async function createHostedCheckout({
     metadata,
   });
 
-  let created;
-  try {
-    created = await cawlRequest('POST', `/v2/${merchantId}/hostedcheckouts`, payload);
-  } catch (err) {
-    if (paymentPlan === '4x' && payload.redirectPaymentMethodSpecificInput) {
-      delete payload.redirectPaymentMethodSpecificInput;
-      created = await cawlRequest('POST', `/v2/${merchantId}/hostedcheckouts`, payload);
-    } else {
-      throw err;
-    }
-  }
+  // Ne jamais retomber sur la page carte 1× si le client a choisi 4×.
+  const created = await cawlRequest('POST', `/v2/${merchantId}/hostedcheckouts`, payload);
 
   const redirectUrl = created.redirectUrl
     ? created.redirectUrl
@@ -521,6 +521,7 @@ module.exports = {
   normalizeCawlReturnBase,
   CAWL_RETURN_URL_MAX_LEN,
   createHostedCheckout,
+  buildHostedCheckoutPayload,
   getHostedCheckout,
   getPayment,
   isCawlPaid,
