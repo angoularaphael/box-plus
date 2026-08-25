@@ -214,6 +214,7 @@ const {
   listAllOrdersAsync,
   deleteOrderAsync,
   toAdminSummary,
+  sortAdminOrders,
 } = require('./lib/order-lifecycle');
 const {
   generateInscriptionInvoicePdf,
@@ -1744,7 +1745,7 @@ function createApp() {
         await syncInscriptionClient(order);
       }
     }
-    const orders = kept.map(toAdminSummary);
+    const orders = sortAdminOrders(kept.map(toAdminSummary));
     res.json({ ok: true, orders, count: orders.length });
   });
 

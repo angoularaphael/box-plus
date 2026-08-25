@@ -26,6 +26,25 @@
     balma: 'Balma',
   };
 
+  const ADMIN_GYM_ORDER = ['etats-unis', 'minimes', 'ramonville', 'portet', 'st-cyprien', 'balma'];
+
+  function adminGymSortRank(gym) {
+    const key = String(gym || '').trim().toLowerCase();
+    const idx = ADMIN_GYM_ORDER.indexOf(key);
+    return idx >= 0 ? idx : ADMIN_GYM_ORDER.length;
+  }
+
+  function sortOrdersForDisplay(list) {
+    return [...list].sort((a, b) => {
+      const gymDiff = adminGymSortRank(a.gym) - adminGymSortRank(b.gym);
+      if (gymDiff !== 0) return gymDiff;
+      const ta = orderDateMs(a);
+      const tb = orderDateMs(b);
+      if (tb !== ta) return tb - ta;
+      return String(b.order_id || '').localeCompare(String(a.order_id || ''), 'fr');
+    });
+  }
+
   function gymLabel(gym) {
     const key = String(gym || '').trim();
     if (!key) return '—';
@@ -419,7 +438,11 @@
     orders.forEach((o) => {
       if (o.gym && !seen.has(o.gym)) seen.set(o.gym, o.gym_label || gymLabel(o.gym));
     });
-    const opts = [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1], 'fr'));
+    const opts = [...seen.entries()].sort((a, b) => {
+      const gymDiff = adminGymSortRank(a[0]) - adminGymSortRank(b[0]);
+      if (gymDiff !== 0) return gymDiff;
+      return a[1].localeCompare(b[1], 'fr');
+    });
     sel.innerHTML =
       '<option value="all">Toutes les salles</option>' +
       opts.map(([id, label]) => `<option value="${escapeHtml(id)}">${escapeHtml(label)}</option>`).join('');
@@ -621,7 +644,7 @@
 
   function renderOrders() {
     const tbody = document.getElementById('ordersBody');
-    const list = filteredOrders();
+    const list = sortOrdersForDisplay(filteredOrders());
     const selectAll = document.getElementById('ordersSelectAll');
     if (selectAll) selectAll.checked = false;
     document.getElementById('ordersCount').textContent =
