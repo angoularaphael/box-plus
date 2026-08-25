@@ -653,7 +653,7 @@
         <td>${escapeHtml(o.step_label || STEP_LABELS[o.step] || o.step)}</td>
         <td>${paymentBadge(o)}</td>
         <td>${o.signed ? `✓ ${formatDate(o.signed_at)}` : '—'}</td>
-        <td style="font-size:12px">${formatDate(o.updated_at || o.created_at)}</td>
+        <td style="font-size:12px">${formatDate(o.created_at)}</td>
         <td>
           ${
             o.action
