@@ -24,16 +24,33 @@
       setStatus(data.error || 'Paiement indisponible pour le moment.', true);
       return;
     }
+    if (data.hosted_checkout_id) {
+      sessionStorage.setItem('bc_ech_cawl_id', data.hosted_checkout_id);
+    }
     location.href = data.url;
   }
 
   async function confirmReturn() {
     const paypalOrderId = params.get('paypal_order_id') || (params.get('paypal_return') === '1' ? params.get('token') : '') || '';
     const paymentId = params.get('payment_id') || '';
-    if (params.get('paypal_return') !== '1' && params.get('payplug_return') !== '1') return false;
+    const hostedCheckoutId =
+      params.get('hostedCheckoutId') ||
+      params.get('hosted_checkout_id') ||
+      sessionStorage.getItem('bc_ech_cawl_id') ||
+      '';
+    if (
+      params.get('paypal_return') !== '1' &&
+      params.get('payplug_return') !== '1' &&
+      params.get('cawl_return') !== '1'
+    ) {
+      return false;
+    }
 
     setStatus('Vérification du paiement…');
     const body = { token };
+    if (params.get('cawl_return') === '1') {
+      body.hosted_checkout_id = hostedCheckoutId;
+    }
     if (params.get('paypal_return') === '1') {
       body.paypal_order_id = paypalOrderId;
     }
@@ -93,7 +110,9 @@
     }
     if (!choices) return;
     choices.innerHTML = '';
-    if (data.portet || data.portet_via_paypal) {
+    if (data.portet_via_cawl || (data.portet && data.show_cawl)) {
+      choices.appendChild(button('Régler par carte bancaire', 'cawl'));
+    } else if (data.portet || data.portet_via_paypal) {
       if (data.show_paypal) {
         choices.appendChild(button('Régler avec PayPal (ou carte via PayPal)', 'paypal'));
       }

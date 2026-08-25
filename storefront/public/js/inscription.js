@@ -26,7 +26,11 @@
   }
 
   function isPspReturn(searchParams) {
-    return searchParams.get('payplug_return') === '1' || searchParams.get('paypal_return') === '1';
+    return (
+      searchParams.get('payplug_return') === '1' ||
+      searchParams.get('paypal_return') === '1' ||
+      searchParams.get('cawl_return') === '1'
+    );
   }
 
   function readStoredProgress() {
@@ -509,14 +513,24 @@
       const cfg = await res.json().catch(() => ({}));
       return {
         preview: Boolean(cfg.preview),
-        showCard: cfg.show_payplug !== false,
+        showCard: cfg.show_cawl === true || cfg.show_payplug !== false,
         showPaypal: cfg.show_paypal !== false,
+        showCawl: cfg.show_cawl === true,
         oney4x: cfg.oney_4x === true,
         oney4xMessage: cfg.oney_4x_message || '',
         portetViaPaypal: cfg.portet_via_paypal === true,
+        portetViaCawl: cfg.portet_via_cawl === true,
       };
     } catch {
-      return { preview: false, showCard: true, showPaypal: true, oney4x: false, portetViaPaypal: false };
+      return {
+        preview: false,
+        showCard: true,
+        showPaypal: true,
+        showCawl: false,
+        oney4x: false,
+        portetViaPaypal: false,
+        portetViaCawl: false,
+      };
     }
   }
 
@@ -821,6 +835,15 @@
     if (data.error === 'payplug_url_missing') {
       return 'Impossible d\'ouvrir le paiement PayPlug. Réessayez ou choisissez PayPal.';
     }
+    if (data.error === 'cawl_not_configured') {
+      return 'Paiement CAWL temporairement indisponible. Contactez le club.';
+    }
+    if (data.error === 'cawl_url_missing') {
+      return 'Impossible d\'ouvrir le paiement CAWL. Réessayez, ou contactez le club.';
+    }
+    if (/CAWL Portet est mal configuré/i.test(String(data.error || ''))) {
+      return data.error;
+    }
     if (data.error === 'paypal_not_configured') {
       return 'PayPal temporairement indisponible. Choisissez la carte, ou contactez le club.';
     }
@@ -959,6 +982,13 @@
         return;
       }
     }
+    if (params.get('cawl_return') === '1') {
+      await confirmCawlReturn();
+      if (state.order?.payment?.status === 'paid') {
+        persistAndRender();
+        return;
+      }
+    }
     if (params.get('paypal_return') === '1') {
       await confirmPaypalReturn();
       if (state.order?.payment?.status === 'paid') {
@@ -989,7 +1019,8 @@
     const savedPlan = state.order?.payment?.billing_plan === 'paypal' ? 'paypal' : 'rib';
     const full = state.order?.customer_full || {};
     const payFlags = await loadPayFlags(full.gym);
-    const oney4x = payFlags.oney4x === true;
+    const portetViaCawl = payFlags.portetViaCawl === true;
+    const oney4x = portetViaCawl ? true : payFlags.oney4x === true;
     const savedInstallment = state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
     const oneyNotice =
       installmentChoice && !oney4x
@@ -998,11 +1029,15 @@
               'Le 4× sans frais par carte (PayPlug) est momentanément indisponible. Le 4× est disponible via PayPal, dans toutes les salles.'
           )}</p>`
         : '';
-    const showCard = payFlags.showCard;
-    const showPaypal = payFlags.showPaypal;
-    const portetViaPaypal = payFlags.portetViaPaypal === true && showPaypal;
+    const showCard = portetViaCawl || payFlags.showCard;
+    const showPaypal = portetViaCawl ? false : payFlags.showPaypal;
+    const portetViaPaypal = !portetViaCawl && payFlags.portetViaPaypal === true && showPaypal;
     const cardLogoKind = portetViaPaypal ? 'card-paypal' : 'card';
-    const cardSmallOnce = portetViaPaypal ? 'Carte via PayPal' : 'Paiement sécurisé';
+    const cardSmallOnce = portetViaPaypal
+      ? 'Carte via PayPal'
+      : portetViaCawl
+        ? 'Paiement sécurisé CAWL'
+        : 'Paiement sécurisé';
     const paypalMsgHtml = showPaypal
       ? `<div class="full" style="margin-top:8px">
               <div data-pp-message data-pp-style-layout="text" data-pp-style-logo-type="inline" data-pp-amount="${(Number(p.price_cents || 0) / 100).toFixed(2)}"></div>
@@ -1044,9 +1079,9 @@
           paypalValue: 'paypal',
           showCard: showCard && oney4x,
           showPaypal,
-          preferPaypal: true,
+          preferPaypal: !portetViaCawl,
           cardTitle: '4× sans frais',
-          cardSmall: 'Carte PayPlug / Oney',
+          cardSmall: portetViaCawl ? 'Carte CAWL / Oney' : 'Carte PayPlug / Oney',
           paypalTitle: 'PayPal 4×',
           paypalSmall: '4× Pay Later si éligible — sinon paiement du montant total',
           cardLogo: 'payplug',
@@ -1070,7 +1105,9 @@
                 <strong>En 4× sans frais</strong>
                 <small>${
                   oney4x
-                    ? `Carte PayPlug/Oney : ${quart}&nbsp;€ tout de suite, puis 3 échéances. PayPal : 4× si éligible.`
+                    ? portetViaCawl
+                      ? `Carte : ${quart}&nbsp;€ tout de suite, puis 3 échéances.`
+                      : `Carte PayPlug/Oney : ${quart}&nbsp;€ tout de suite, puis 3 échéances. PayPal : 4× si éligible.`
                     : 'Pour le moment via PayPal uniquement (PayPlug 4× indisponible).'
                 }</small>
               </span>
@@ -1104,9 +1141,11 @@
         showPaypal,
         preferPaypal: savedPlan === 'paypal',
         cardTitle: 'Carte bancaire',
-        cardSmall: portetViaPaypal
-          ? '1ʳᵉ échéance via PayPal, puis prélèvement sans engagement'
-          : '1ʳᵉ échéance par carte, puis prélèvement sans engagement',
+        cardSmall: portetViaCawl
+          ? '1ʳᵉ échéance par carte, puis prélèvement sans engagement'
+          : portetViaPaypal
+            ? '1ʳᵉ échéance via PayPal, puis prélèvement sans engagement'
+            : '1ʳᵉ échéance par carte, puis prélèvement sans engagement',
         paypalTitle: 'PayPal',
         paypalSmall: '1ʳᵉ échéance PayPal, puis prélèvement sans engagement',
         cardLogo: cardLogoKind,
@@ -1132,7 +1171,11 @@
         showPaypal,
         preferPaypal: savedOneShot === 'paypal',
         cardTitle: 'Carte bancaire',
-        cardSmall: portetViaPaypal ? 'Carte via PayPal' : 'En une seule fois',
+        cardSmall: portetViaCawl
+          ? 'Paiement sécurisé CAWL'
+          : portetViaPaypal
+            ? 'Carte via PayPal'
+            : 'En une seule fois',
         paypalTitle: 'PayPal',
         paypalSmall: 'En une seule fois',
         cardLogo: cardLogoKind,
@@ -1272,7 +1315,12 @@
       } else if (isPrelevement) {
         body.billing_plan = 'rib';
       }
-      if (portetViaPaypal) {
+      if (portetViaCawl) {
+        body.pay_method = 'cawl';
+        if (body.billing_plan === 'paypal') {
+          body.billing_plan = isPrelevement ? 'rib' : null;
+        }
+      } else if (portetViaPaypal) {
         const wasPaypalTile = body.pay_method === 'paypal';
         body.pay_method = 'paypal';
         body.billing_plan = 'paypal';
@@ -2228,6 +2276,7 @@
   let stripeConfirmDone = false;
   let payplugConfirmDone = false;
   let paypalConfirmDone = false;
+  let cawlConfirmDone = false;
 
   async function confirmPayplugReturn() {
     if (params.get('payplug_return') !== '1' || payplugConfirmDone) return false;
@@ -2268,6 +2317,44 @@
           if (state.order?.payment?.status === 'paid') persistAndRender();
         }, 4000);
         return false;
+      }
+      setMsg(data.message || data.error || 'Paiement non confirmé', 'err');
+    } catch {
+      setMsg('Impossible de vérifier le paiement pour le moment.', 'err');
+    }
+    return false;
+  }
+
+  async function confirmCawlReturn() {
+    if (params.get('cawl_return') !== '1' || cawlConfirmDone) return false;
+    if (!state.orderId || !state.token) return false;
+    cawlConfirmDone = true;
+    setMsg('Vérification du paiement…');
+    try {
+      const hostedId =
+        String(params.get('hostedCheckoutId') || params.get('hosted_checkout_id') || '').trim() ||
+        state.order?.payment?.cawl_hosted_checkout_id ||
+        '';
+      const res = await fetch('/api/checkout/confirm-cawl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: state.orderId,
+          token: state.token,
+          bc_token: state.token,
+          hosted_checkout_id: hostedId,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.ok && (data.paid || data.already_paid)) {
+        await loadOrder();
+        if (data.redirect) {
+          window.location.href = data.redirect;
+          return true;
+        }
+        state.step = stepFromOrder(state.order);
+        setMsg('');
+        return true;
       }
       setMsg(data.message || data.error || 'Paiement non confirmé', 'err');
     } catch {
@@ -2382,6 +2469,7 @@
 
     if (state.orderId && state.token) {
       await confirmPayplugReturn();
+      await confirmCawlReturn();
       await confirmPaypalReturn();
       await confirmStripeReturn();
       const loaded = await loadOrder();

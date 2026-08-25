@@ -123,29 +123,37 @@ function isPortetGym(gym) {
 /**
  * Ce que CE visiteur doit voir.
  * Session studio : tout ce qui est branché, même si décoché en prod.
- * Visiteur : cases cochées. À Portet, la CB passe aussi par PayPal
- * (PayPal accepte la carte) : les deux tuiles restent visibles.
+ * Visiteur : cases cochées.
+ * Portet + CAWL : CAWL remplace PayPal (et PayPlug) pour toutes les ventes.
+ * Portet sans CAWL : repli PayPal (CB via PayPal).
  */
-function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady }) {
+function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady, cawlReady }) {
   const flags = normalize(stored);
+  const portet = isPortetGym(gym);
+  const cawlOn = portet && Boolean(cawlReady);
   if (preview) {
-    const show_paypal = Boolean(paypalReady);
+    const show_paypal = Boolean(paypalReady) && !cawlOn;
     return {
       preview: true,
-      show_payplug: Boolean(payplugReady),
+      show_payplug: cawlOn ? false : Boolean(payplugReady),
       show_paypal,
+      show_cawl: cawlOn,
       portetPaypalOnly: false,
-      portetViaPaypal: isPortetGym(gym) && show_paypal,
+      portetViaPaypal: portet && show_paypal && !cawlOn,
+      portetViaCawl: cawlOn,
     };
   }
-  const show_payplug = Boolean(payplugReady) && flags.payplug;
-  const show_paypal = Boolean(paypalReady) && flags.paypal;
+  const show_cawl = cawlOn;
+  const show_payplug = cawlOn ? false : Boolean(payplugReady) && flags.payplug;
+  const show_paypal = cawlOn ? false : Boolean(paypalReady) && flags.paypal;
   return {
     preview: false,
     show_payplug,
     show_paypal,
+    show_cawl,
     portetPaypalOnly: false,
-    portetViaPaypal: isPortetGym(gym) && show_paypal,
+    portetViaPaypal: portet && show_paypal && !cawlOn,
+    portetViaCawl: cawlOn,
   };
 }
 
@@ -156,7 +164,7 @@ function isLocalPreviewHost(req) {
   return host === 'localhost' || host === '127.0.0.1';
 }
 
-async function resolvePaymentDisplay(req, gym, { payplugReady, paypalReady }) {
+async function resolvePaymentDisplay(req, gym, { payplugReady, paypalReady, cawlReady }) {
   const stored = await getPaymentDisplay();
   return resolveDisplay({
     stored,
@@ -164,6 +172,7 @@ async function resolvePaymentDisplay(req, gym, { payplugReady, paypalReady }) {
     gym,
     payplugReady,
     paypalReady,
+    cawlReady,
   });
 }
 

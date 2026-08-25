@@ -14,6 +14,10 @@ const FILE_KEYS = [
   'PAYPAL_PORTET_CLIENT_ID',
   'PAYPAL_PORTET_CLIENT_SECRET',
   'PAYPLUG_SECRET_KEY',
+  'CAWL_MODE',
+  'CAWL_MERCHANT_ID',
+  'CAWL_API_KEY_ID',
+  'CAWL_API_SECRET',
 ];
 
 const ENV_ALIAS = {
@@ -23,6 +27,10 @@ const ENV_ALIAS = {
   PAYPAL_PORTET_CLIENT_ID: 'PAYPAL_TEST_PORTET_CLIENT_ID',
   PAYPAL_PORTET_CLIENT_SECRET: 'PAYPAL_TEST_PORTET_CLIENT_SECRET',
   PAYPLUG_SECRET_KEY: 'PAYPLUG_TEST_SECRET_KEY',
+  CAWL_MODE: 'CAWL_TEST_MODE',
+  CAWL_MERCHANT_ID: 'CAWL_TEST_MERCHANT_ID',
+  CAWL_API_KEY_ID: 'CAWL_TEST_API_KEY_ID',
+  CAWL_API_SECRET: 'CAWL_TEST_API_SECRET',
 };
 
 let fileCache = null;
@@ -111,6 +119,8 @@ function testPaymentsInfo() {
     has_paypal: Boolean(overlay.PAYPAL_CLIENT_ID && overlay.PAYPAL_CLIENT_SECRET),
     has_paypal_portet: Boolean(overlay.PAYPAL_PORTET_CLIENT_ID && overlay.PAYPAL_PORTET_CLIENT_SECRET),
     has_payplug: Boolean(overlay.PAYPLUG_SECRET_KEY),
+    has_cawl: Boolean(overlay.CAWL_MERCHANT_ID && overlay.CAWL_API_KEY_ID && overlay.CAWL_API_SECRET),
+    cawl_mode: overlay.CAWL_MODE || 'test',
   };
 }
 

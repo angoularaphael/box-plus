@@ -16,7 +16,7 @@ test('phrase interne : mode développement (accents / variantes)', () => {
   assert.equal(isInternalUnlockPhrase('bonjour'), false);
 });
 
-test('preview affiche carte + paypal même à Portet', () => {
+test('preview affiche carte + paypal même à Portet (sans CAWL)', () => {
   const vis = resolveDisplay({
     stored: { payplug: false, paypal: true },
     preview: true,
@@ -29,6 +29,7 @@ test('preview affiche carte + paypal même à Portet', () => {
   assert.equal(vis.show_paypal, true);
   assert.equal(vis.portetPaypalOnly, false);
   assert.equal(vis.portetViaPaypal, true);
+  assert.equal(vis.portetViaCawl, false);
 });
 
 test('prod : Portet voit carte + PayPal comme les autres salles', () => {

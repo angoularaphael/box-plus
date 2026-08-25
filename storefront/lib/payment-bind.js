@@ -111,6 +111,56 @@ function paypalPaidCents(captured) {
   return Math.round(n * 100);
 }
 
+function rememberPreviousCawlId(paymentState, newId) {
+  const prev = String(paymentState?.cawl_hosted_checkout_id || '').trim();
+  const next = String(newId || '').trim();
+  const hist = Array.isArray(paymentState?.cawl_hosted_checkout_ids)
+    ? paymentState.cawl_hosted_checkout_ids.map((id) => String(id || '').trim()).filter(Boolean)
+    : [];
+  if (prev && next && prev !== next && !hist.includes(prev)) hist.push(prev);
+  return hist.slice(-8);
+}
+
+function cawlIdCandidates(order, extraId) {
+  const ids = [];
+  const seen = new Set();
+  const add = (id) => {
+    const s = String(id || '').trim();
+    if (!s || seen.has(s)) return;
+    seen.add(s);
+    ids.push(s);
+  };
+  add(extraId);
+  add(order?.payment?.cawl_hosted_checkout_id);
+  for (const id of order?.payment?.cawl_hosted_checkout_ids || []) add(id);
+  add(order?.payment?.cawl_payment_id);
+  return ids;
+}
+
+function cawlMatches({ session, orderId, expectedCents, storedCheckoutId }) {
+  if (!session) return { ok: false, error: 'payment_mismatch' };
+  const {
+    cawlMerchantReference,
+    cawlPaidCents,
+    isCawlPaid,
+  } = require('./cawl');
+  const stored = String(storedCheckoutId || '').trim();
+  const ref = cawlMerchantReference(session);
+  const wanted = String(orderId || '').trim();
+  const refMatch = Boolean(wanted) && Boolean(ref) && ref === wanted;
+  const storedOk = Boolean(stored);
+  if (!storedOk && !refMatch) {
+    return { ok: false, error: 'payment_mismatch' };
+  }
+  if (expectedCents != null && isCawlPaid(session)) {
+    const paid = cawlPaidCents(session);
+    if (paid == null || !paidMatchesExpected(paid, expectedCents)) {
+      return { ok: false, error: 'amount_mismatch' };
+    }
+  }
+  return { ok: true };
+}
+
 function paypalMatches({ captured, orderId, expectedCents, storedPaypalId }) {
   if (!captured?.id) return { ok: false, error: 'payment_mismatch' };
   const stored = String(storedPaypalId || '').trim();
@@ -169,5 +219,8 @@ module.exports = {
   paypalMatches,
   paypalCustomId,
   paypalPaidCents,
+  rememberPreviousCawlId,
+  cawlIdCandidates,
+  cawlMatches,
   verifyPayplugSignature,
 };

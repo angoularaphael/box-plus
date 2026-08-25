@@ -28,9 +28,19 @@
   function cleanChangeReturnUrl() {
     try {
       const url = new URL(window.location.href);
-      ['change', 'paypal_return', 'payplug_return', 'payment_id', 'paypal_order_id', 'token', 'PayerID', 'session_id'].forEach(
-        (k) => url.searchParams.delete(k)
-      );
+      [
+        'change',
+        'paypal_return',
+        'payplug_return',
+        'cawl_return',
+        'payment_id',
+        'paypal_order_id',
+        'hosted_checkout_id',
+        'hostedCheckoutId',
+        'token',
+        'PayerID',
+        'session_id',
+      ].forEach((k) => url.searchParams.delete(k));
       if (url.hash === '#changer') url.hash = '';
       window.history.replaceState({}, '', url.pathname + url.search + url.hash);
     } catch {
@@ -360,25 +370,38 @@
       const cfg = await res.json().catch(() => ({}));
       return {
         preview: Boolean(cfg.preview),
-        showCard: cfg.show_payplug !== false,
+        showCard: cfg.show_cawl === true || cfg.show_payplug !== false,
         showPaypal: cfg.show_paypal !== false,
         oney4x: cfg.oney_4x === true,
         oney4xMessage: cfg.oney_4x_message || '',
         portetViaPaypal: cfg.portet_via_paypal === true,
+        portetViaCawl: cfg.portet_via_cawl === true,
       };
     } catch {
-      return { preview: false, showCard: true, showPaypal: true, oney4x: false, portetViaPaypal: false };
+      return {
+        preview: false,
+        showCard: true,
+        showPaypal: true,
+        oney4x: false,
+        portetViaPaypal: false,
+        portetViaCawl: false,
+      };
     }
   }
 
   async function renderChangePayChoices({ product, gym }) {
     changePayFlags = await loadPayFlags(gym);
-    const showCard = changePayFlags.showCard;
-    const showPaypal = changePayFlags.showPaypal;
-    const oney4x = changePayFlags.oney4x === true;
-    const portetViaPaypal = changePayFlags.portetViaPaypal === true && showPaypal;
+    const portetViaCawl = changePayFlags.portetViaCawl === true;
+    const showCard = portetViaCawl || changePayFlags.showCard;
+    const showPaypal = portetViaCawl ? false : changePayFlags.showPaypal;
+    const oney4x = portetViaCawl ? true : changePayFlags.oney4x === true;
+    const portetViaPaypal = !portetViaCawl && changePayFlags.portetViaPaypal === true && showPaypal;
     const cardLogoKind = portetViaPaypal ? 'card-paypal' : 'card';
-    const cardSmall = portetViaPaypal ? 'Carte via PayPal' : 'PayPlug';
+    const cardSmall = portetViaCawl
+      ? 'Paiement sécurisé CAWL'
+      : portetViaPaypal
+        ? 'Carte via PayPal'
+        : 'PayPlug';
     const cents = Number(product?.price_cents || 0);
     const quart = cents > 0 ? (cents / 400).toFixed(2).replace('.', ',') : '';
     const installment =
@@ -432,7 +455,9 @@
             'En 4× sans frais',
             oney4x
               ? quart
-                ? `Carte : ${quart} € tout de suite · PayPal : 4× si éligible`
+                ? portetViaCawl
+                  ? `Carte : ${quart} € tout de suite, puis 3 échéances`
+                  : `Carte : ${quart} € tout de suite · PayPal : 4× si éligible`
                 : '4 échéances'
               : 'Pour le moment via PayPal uniquement (PayPlug 4× indisponible).'
           )}
@@ -443,7 +468,7 @@
           ${methods('change_pay_method_once', 'payplug', 'paypal', 'Carte bancaire', cardSmall, cardLogoKind, 'Paiement sécurisé')}
         </div>
         <div id="changeFourMethods" class="billing-choice-row" style="display:none">
-          ${methods('change_pay_method_4x', 'payplug', 'paypal', '4× sans frais', 'Carte PayPlug / Oney', 'payplug', 'Pay Later si éligible — sinon montant total', { showCard: showCard && oney4x, preferPaypal: true })}
+          ${methods('change_pay_method_4x', 'payplug', 'paypal', '4× sans frais', portetViaCawl ? 'Carte CAWL / Oney' : 'Carte PayPlug / Oney', 'payplug', 'Pay Later si éligible — sinon montant total', { showCard: showCard && oney4x, preferPaypal: !portetViaCawl })}
         </div>
         ${
           showCard && oney4x
@@ -604,7 +629,9 @@
         (changePayFlags.showPaypal && !changePayFlags.showCard ? 'paypal' : 'payplug');
     }
 
-    if (changePayFlags.portetViaPaypal) {
+    if (changePayFlags.portetViaCawl) {
+      paymentMethod = 'cawl';
+    } else if (changePayFlags.portetViaPaypal) {
       extra.paypal_landing = paymentMethod === 'paypal' ? 'login' : 'billing';
       extra.paypal_guest_card = paymentMethod !== 'paypal';
       paymentMethod = 'paypal';
@@ -631,12 +658,19 @@
         changeMsg.textContent =
           data.error === 'paypal_not_configured'
             ? 'PayPal temporairement indisponible.'
+            : data.error === 'cawl_not_configured'
+              ? 'Paiement CAWL temporairement indisponible.'
             : data.error === 'payplug_not_configured'
               ? 'Paiement carte temporairement indisponible. Essayez PayPal.'
               : data.error || 'Erreur';
         changeMsg.className = 'form-msg err';
         changePayBtn.disabled = false;
         return;
+      }
+      if (data.hosted_checkout_id) {
+        sessionStorage.setItem('bc_change_cawl_id', data.hosted_checkout_id);
+        sessionStorage.removeItem('bc_change_paypal_id');
+        sessionStorage.removeItem('bc_change_payplug_id');
       }
       if (data.payment_id) {
         sessionStorage.setItem('bc_change_payplug_id', data.payment_id);
@@ -756,19 +790,33 @@
     if (params.get('change') !== '1') return;
     const fromPaypal = params.get('paypal_return') === '1';
     const fromPayplug = params.get('payplug_return') === '1';
+    const fromCawl = params.get('cawl_return') === '1';
+    const hostedCheckoutId = fromCawl
+      ? params.get('hostedCheckoutId') ||
+        params.get('hosted_checkout_id') ||
+        sessionStorage.getItem('bc_change_cawl_id') ||
+        ''
+      : params.get('hosted_checkout_id') || sessionStorage.getItem('bc_change_cawl_id') || '';
     const paypalOrderId = fromPaypal
       ? params.get('paypal_order_id') ||
         params.get('token') ||
         sessionStorage.getItem('bc_change_paypal_id') ||
         ''
       : params.get('paypal_order_id') || sessionStorage.getItem('bc_change_paypal_id') || '';
-    const paymentId = fromPaypal
+    const paymentId = fromPaypal || fromCawl
       ? ''
       : params.get('payment_id') || sessionStorage.getItem('bc_change_payplug_id') || '';
-    const sessionId = fromPaypal || fromPayplug ? '' : params.get('session_id') || '';
-    if (!paymentId && !sessionId && !paypalOrderId) {
+    const sessionId = fromPaypal || fromPayplug || fromCawl ? '' : params.get('session_id') || '';
+    if (!paymentId && !sessionId && !paypalOrderId && !hostedCheckoutId) {
       // Ancienne URL ?change=1 sans paiement → nettoyer sans popup
-      if (!fromPaypal && !fromPayplug) cleanChangeReturnUrl();
+      if (!fromPaypal && !fromPayplug && !fromCawl) cleanChangeReturnUrl();
+      return;
+    }
+    if (fromCawl && !hostedCheckoutId) {
+      changeMsg.hidden = false;
+      changeMsg.className = 'form-msg err';
+      changeMsg.textContent =
+        'Retour paiement incomplet (identifiant manquant). Réessayez le paiement par carte.';
       return;
     }
     if (fromPaypal && !paypalOrderId) {
@@ -779,7 +827,7 @@
       return;
     }
 
-    const confirmKey = `bc_change_done_${paymentId || paypalOrderId || sessionId}`;
+    const confirmKey = `bc_change_done_${paymentId || paypalOrderId || hostedCheckoutId || sessionId}`;
     if (sessionStorage.getItem(confirmKey) === '1') {
       // Déjà confirmé : pas de popup à chaque refresh
       cleanChangeReturnUrl();
@@ -795,11 +843,13 @@
     changeMsg.className = 'form-msg';
     try {
       const payload =
-        fromPaypal || (!paymentId && paypalOrderId)
-          ? { paypal_order_id: paypalOrderId }
-          : paymentId
-            ? { payment_id: paymentId }
-            : { session_id: sessionId };
+        fromCawl || hostedCheckoutId
+          ? { hosted_checkout_id: hostedCheckoutId }
+          : fromPaypal || (!paymentId && paypalOrderId)
+            ? { paypal_order_id: paypalOrderId }
+            : paymentId
+              ? { payment_id: paymentId }
+              : { session_id: sessionId };
       const res = await fetch('/api/membership/change/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -812,6 +862,7 @@
         : data.error || 'Confirmation impossible';
       sessionStorage.removeItem('bc_change_payplug_id');
       sessionStorage.removeItem('bc_change_paypal_id');
+      sessionStorage.removeItem('bc_change_cawl_id');
       document.getElementById('changer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       if (data.ok) {
         sessionStorage.setItem(confirmKey, '1');

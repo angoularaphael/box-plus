@@ -20,6 +20,14 @@ const {
   isPaypalOrderPaid,
   formatPaypalError,
 } = require('./paypal');
+const {
+  isCawlEnabled,
+  createHostedCheckout: createCawlHostedCheckout,
+  getHostedCheckout,
+  isCawlPaid,
+  formatCawlError,
+  cawlPaymentId,
+} = require('./cawl');
 const { resolvePaymentDisplay, isPortetGym } = require('./payment-display');
 
 const OFFER_LABELS = {
@@ -151,9 +159,11 @@ function registerEcheancierPayRoutes(app) {
     const display = await resolvePaymentDisplay(req, info.gym, {
       payplugReady: isPayplugEnabled(),
       paypalReady: isPaypalEnabled(info.gym),
+      cawlReady: isCawlEnabled(),
     });
-    const showPaypal = Boolean(display.show_paypal);
-    const showPayplug = info.portet ? false : Boolean(display.show_payplug);
+    const showCawl = Boolean(display.portetViaCawl);
+    const showPaypal = showCawl ? false : Boolean(display.show_paypal);
+    const showPayplug = info.portet || showCawl ? false : Boolean(display.show_payplug);
     res.json({
       ok: true,
       prenom: info.prenom,
@@ -163,7 +173,9 @@ function registerEcheancierPayRoutes(app) {
       portet: info.portet,
       show_payplug: showPayplug,
       show_paypal: showPaypal,
+      show_cawl: showCawl,
       portet_via_paypal: info.portet && showPaypal,
+      portet_via_cawl: showCawl,
     });
   });
 
@@ -183,6 +195,31 @@ function registerEcheancierPayRoutes(app) {
         customer_full: { gym: info.gym, email: info.email, first_name: info.prenom, last_name: info.nom },
       };
       const meta = metaFromInfo(info);
+
+      if (method === 'cawl' || (info.portet && isCawlEnabled() && method !== 'paypal' && method !== 'payplug')) {
+        if (!isCawlEnabled()) {
+          return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
+        }
+        const hosted = await createCawlHostedCheckout({
+          order: fakeOrder,
+          product: { name: `Échéance Boxing Center ${info.offer_label}` },
+          amountCents: info.amount_cents,
+          baseUrl,
+          paymentPlan: 'once',
+          metadata: { ...meta, order_id: fakeOrder.order_id },
+          returnUrl: `${returnUrl}&cawl_return=1`,
+          cancelUrl: `${returnUrl}&cancelled=1`,
+        });
+        if (!hosted.redirectUrl) {
+          return res.status(502).json({ ok: false, error: 'cawl_url_missing' });
+        }
+        return res.json({
+          ok: true,
+          mode: 'cawl',
+          url: hosted.redirectUrl,
+          hosted_checkout_id: hosted.hostedCheckoutId,
+        });
+      }
 
       if (method === 'paypal' || (info.portet && method !== 'payplug')) {
         if (!isPaypalEnabled(info.gym)) {
@@ -224,7 +261,7 @@ function registerEcheancierPayRoutes(app) {
       return res.json({ ok: true, mode: 'payplug', url, payment_id: payment.id });
     } catch (err) {
       logWarn('Échéancier checkout échoué', { error: err.message });
-      const msg = formatPayplugError(err) || formatPaypalError(err) || err.message;
+      const msg = formatCawlError(err) || formatPayplugError(err) || formatPaypalError(err) || err.message;
       return res.status(500).json({ ok: false, error: msg });
     }
   });
@@ -239,6 +276,23 @@ function registerEcheancierPayRoutes(app) {
       const meta = metaFromInfo(info);
       const paypalId = String(req.body?.paypal_order_id || req.query?.paypal_order_id || '').trim();
       const payplugId = String(req.body?.payment_id || req.query?.payment_id || '').trim();
+      const hostedCheckoutId = String(
+        req.body?.hosted_checkout_id || req.query?.hostedCheckoutId || req.query?.hosted_checkout_id || ''
+      ).trim();
+
+      if (hostedCheckoutId) {
+        const session = await getHostedCheckout(hostedCheckoutId);
+        if (!isCawlPaid(session)) {
+          return res.status(402).json({ ok: false, error: 'payment_pending' });
+        }
+        const out = await fulfillEcheancierPayment({
+          provider: 'cawl',
+          paymentId: cawlPaymentId(session) || hostedCheckoutId,
+          meta,
+          amountCents: info.amount_cents,
+        });
+        return res.json({ ok: out.ok, paid: true, ...out });
+      }
 
       if (paypalId) {
         const captured = await capturePaypalOrder(paypalId, { gym: info.gym }).catch(() => null);

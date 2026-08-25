@@ -79,6 +79,17 @@ const {
   formatPaypalError,
 } = require('./lib/paypal');
 const {
+  isCawlEnabled,
+  cawlMode,
+  createHostedCheckout: createCawlHostedCheckout,
+  getHostedCheckout,
+  isCawlPaid,
+  isCawlCancelled,
+  cawlPaidCents,
+  cawlPaymentId,
+  formatCawlError,
+} = require('./lib/cawl');
+const {
   getDevSession,
   setDevSessionCookie,
   clearDevSessionCookie,
@@ -120,6 +131,9 @@ const {
   paypalIdCandidates,
   paypalMatches,
   paypalPaidCents,
+  rememberPreviousCawlId,
+  cawlIdCandidates,
+  cawlMatches,
   verifyPayplugSignature,
 } = require('./lib/payment-bind');
 const {
@@ -923,7 +937,9 @@ function createApp() {
           req.originalUrl === '/api/webhooks/payplug' ||
           req.path === '/api/webhooks/payplug' ||
           req.originalUrl === '/api/webhooks/paypal' ||
-          req.path === '/api/webhooks/paypal'
+          req.path === '/api/webhooks/paypal' ||
+          req.originalUrl === '/api/webhooks/cawl' ||
+          req.path === '/api/webhooks/cawl'
         ) {
           req.rawBody = buf;
         }
@@ -2902,6 +2918,24 @@ function createApp() {
         });
       }
 
+      // CAWL déjà encaissé (retour navigateur manqué).
+      if (cawlIdCandidates(order).length && isCawlEnabled()) {
+        const recoveredCawl = await confirmCawlCheckoutForOrder(order, order.payment?.cawl_hosted_checkout_id);
+        if (recoveredCawl.paid || recoveredCawl.already_paid) {
+          const paidOrder = recoveredCawl.order || order;
+          logInfo('CAWL déjà encaissé — pas de 2e checkout', {
+            order_id: order.order_id,
+            cawl_hosted_checkout_id: paidOrder.payment?.cawl_hosted_checkout_id,
+          });
+          return res.json({
+            ok: true,
+            mode: 'already_paid',
+            recovered: true,
+            redirect: inscriptionRedirect(paidOrder),
+          });
+        }
+      }
+
       // PayPal déjà capturé (4× 64,75 € ou 259 €) alors que le site a affiché un échec carte.
       if (
         paypalIdCandidates(order).length &&
@@ -2950,8 +2984,9 @@ function createApp() {
       const display = await resolvePaymentDisplay(req, gymNorm, {
         payplugReady: isPayplugEnabled(),
         paypalReady: isPaypalEnabled(gymNorm),
+        cawlReady: isCawlEnabled(),
       });
-      if (aventureOrder && wantTestPayments(req) && !display.show_payplug && !display.show_paypal) {
+      if (aventureOrder && wantTestPayments(req) && !display.show_payplug && !display.show_paypal && !display.show_cawl) {
         order = await markPaymentPaid(order.order_id, {
           method: 'demo',
           status: 'paid',
@@ -2965,14 +3000,19 @@ function createApp() {
         });
       }
       let preferredCheckout =
-        payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
-          ? 'paypal'
-          : 'card';
-      if (display.portetViaPaypal) preferredCheckout = 'paypal';
+        payMethod === 'cawl' || display.portetViaCawl
+          ? 'cawl'
+          : payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
+            ? 'paypal'
+            : 'card';
+      if (display.portetViaPaypal && !display.portetViaCawl) preferredCheckout = 'paypal';
+      if (preferredCheckout === 'cawl' && !display.show_cawl) {
+        return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
+      }
       if (preferredCheckout === 'paypal' && !display.show_paypal) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
       }
-      if (preferredCheckout !== 'paypal' && !display.show_payplug) {
+      if (preferredCheckout === 'card' && !display.show_payplug) {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
       const badgeOn = productNeedsAutoBadge(product);
@@ -3017,7 +3057,7 @@ function createApp() {
 
       const baseUrl = getCheckoutBaseUrl(req);
       const planLabel = paymentPlan || (productSupportsInstallmentChoice(product) ? 'once' : 'once');
-      if (planLabel === '4x' && preferredCheckout !== 'paypal' && !isOney4xEnabled()) {
+      if (planLabel === '4x' && preferredCheckout !== 'paypal' && preferredCheckout !== 'cawl' && !isOney4xEnabled()) {
         return res.status(503).json({
           ok: false,
           error: ONEY_4X_UNAVAILABLE_MESSAGE,
@@ -3025,7 +3065,7 @@ function createApp() {
         });
       }
 
-      if (isDemoCheckoutAllowed() && !isPayplugEnabled() && !isPaypalEnabled(gym)) {
+      if (isDemoCheckoutAllowed() && !isPayplugEnabled() && !isPaypalEnabled(gym) && !isCawlEnabled()) {
         order = await markPaymentPaid(order.order_id, {
           method: 'demo',
           billing_plan: billingPlan,
@@ -3036,6 +3076,86 @@ function createApp() {
           mode: 'demo',
           redirect: inscriptionRedirect(order),
         });
+      }
+
+      // ——— CAWL Portet (carte + 4× Oney) ———
+      if (preferredCheckout === 'cawl') {
+        if (!isCawlEnabled()) {
+          return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
+        }
+        const customerOverrides = {
+          address: req.body.address || order.customer_full?.address,
+          postal_code: req.body.postal_code || order.customer_full?.postal_code,
+          city: req.body.city || order.customer_full?.city,
+          gender: req.body.gender || order.customer_full?.gender,
+          phone: aventureOrder ? '' : req.body.phone || short?.phone,
+          ...(aventureOrder
+            ? { email: order.customer_short?.email || aventurePspEmail(order) }
+            : {}),
+        };
+        try {
+          const hosted = await createCawlHostedCheckout({
+            order: {
+              ...order,
+              customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
+            },
+            product,
+            amountCents: product.price_cents,
+            baseUrl,
+            paymentPlan: planLabel === '4x' ? '4x' : 'once',
+            customerOverrides,
+            metadata: { order_id: order.order_id, gym, payment_plan: planLabel },
+          });
+          if (!hosted.redirectUrl) {
+            return res.status(502).json({ ok: false, error: 'cawl_url_missing' });
+          }
+          if (customerOverrides.address) {
+            order.customer_full = {
+              ...(order.customer_full || {}),
+              gym,
+              address: customerOverrides.address,
+              postal_code: customerOverrides.postal_code,
+              city: customerOverrides.city,
+              gender: customerOverrides.gender,
+            };
+          }
+          order.payment = {
+            ...order.payment,
+            method: 'cawl',
+            preferred_checkout: 'cawl',
+            payment_plan: planLabel === '4x' ? '4x' : 'once',
+            cawl_hosted_checkout_ids: rememberPreviousCawlId(order.payment, hosted.hostedCheckoutId),
+            cawl_hosted_checkout_id: hosted.hostedCheckoutId,
+            cawl_return_mac: hosted.returnMac || null,
+            status: 'pending',
+            error: null,
+            failure: null,
+          };
+          await saveOrderAsync(order);
+          return res.json({
+            ok: true,
+            mode: planLabel === '4x' ? 'cawl_4x' : 'cawl',
+            url: hosted.redirectUrl,
+            hosted_checkout_id: hosted.hostedCheckoutId,
+          });
+        } catch (err) {
+          if (err.code === 'cawl_customer_incomplete') {
+            return res.status(400).json({
+              ok: false,
+              error: err.message,
+              missing: err.missing || [],
+            });
+          }
+          logError('Erreur CAWL checkout', {
+            error: err.message,
+            body: err.body || null,
+            order_id: order.order_id,
+          });
+          return res.status(502).json({
+            ok: false,
+            error: formatCawlError(err) || err.message,
+          });
+        }
       }
 
       // ——— PayPal natif (1× ou tentative Pay Later si éligible côté PayPal) ———
@@ -3184,7 +3304,7 @@ function createApp() {
       logError('Erreur pay order', { error: err.message, gym: req.body?.gym });
       res.status(500).json({
         ok: false,
-        error: formatPaypalError(err, { gym: req.body?.gym || '' }) || err.message,
+        error: formatCawlError(err) || formatPaypalError(err, { gym: req.body?.gym || '' }) || err.message,
       });
     }
   });
@@ -3478,8 +3598,11 @@ function createApp() {
       const display = await resolvePaymentDisplay(req, gymNorm, {
         payplugReady: isPayplugEnabled(),
         paypalReady: isPaypalEnabled(gymNorm),
+        cawlReady: isCawlEnabled(),
       });
-      let preferPaypal = method === 'paypal' || display.portetViaPaypal === true;
+      let preferCawl = method === 'cawl' || display.portetViaCawl === true;
+      let preferPaypal =
+        !preferCawl && (method === 'paypal' || display.portetViaPaypal === true);
       const {
         productSupportsInstallmentChoice,
         normalizePaymentPlan,
@@ -3487,17 +3610,20 @@ function createApp() {
       const paymentPlan =
         normalizePaymentPlan(body.payment_plan, product) ||
         (productSupportsInstallmentChoice(product) ? 'once' : 'once');
-      if (paymentPlan === '4x' && !preferPaypal && !isOney4xEnabled()) {
+      if (paymentPlan === '4x' && !preferPaypal && !preferCawl && !isOney4xEnabled()) {
         return res.status(503).json({
           ok: false,
           error: ONEY_4X_UNAVAILABLE_MESSAGE,
           code: 'oney_4x_unavailable',
         });
       }
+      if (preferCawl && !display.show_cawl) {
+        return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
+      }
       if (preferPaypal && !display.show_paypal) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
       }
-      if (!preferPaypal && !display.show_payplug) {
+      if (!preferPaypal && !preferCawl && !display.show_payplug) {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
 
@@ -3535,6 +3661,79 @@ function createApp() {
       const {
         saveMembershipChangePending,
       } = require('./lib/membership');
+
+      if (preferCawl) {
+        if (!isCawlEnabled()) {
+          return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
+        }
+        const changeOrderId = body.verify_order_id || `chg-${Date.now()}`;
+        const syntheticOrder = {
+          order_id: changeOrderId,
+          customer_short: {
+            first_name: body.first_name,
+            last_name: body.last_name,
+            email: body.email,
+            phone: body.phone,
+            birthdate: body.birthdate,
+          },
+          customer_full: {
+            first_name: body.first_name,
+            last_name: body.last_name,
+            email: body.email,
+            phone: body.phone,
+            gym: body.gym || 'minimes',
+            address: body.address,
+            postal_code: body.postal_code,
+            city: body.city,
+            gender: body.gender,
+            birthdate: body.birthdate,
+          },
+        };
+        const hosted = await createCawlHostedCheckout({
+          order: syntheticOrder,
+          product,
+          amountCents: product.price_cents,
+          baseUrl,
+          paymentPlan: paymentPlan === '4x' ? '4x' : 'once',
+          description: product.display_name || product.name || 'Changement abo comptant',
+          customerOverrides: {
+            first_name: body.first_name,
+            last_name: body.last_name,
+            email: body.email,
+            phone: body.phone,
+            address: body.address,
+            postal_code: body.postal_code,
+            city: body.city,
+            gender: body.gender,
+            birthdate: body.birthdate,
+          },
+          metadata: { order_id: changeOrderId, order_type: 'membership_change' },
+          returnUrl: `${baseUrl}/gerer-abonnement?change=1&cawl_return=1`,
+          cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled`,
+        });
+        if (!hosted.redirectUrl) {
+          return res.status(502).json({ ok: false, error: 'cawl_url_missing' });
+        }
+        await saveMembershipChangePending(hosted.hostedCheckoutId, {
+          ...meta,
+          charge_cents: Number(product.price_cents || 0),
+          payment_method: 'cawl',
+          cawl_hosted_checkout_id: hosted.hostedCheckoutId,
+        });
+        return res.json({
+          ok: true,
+          mode: paymentPlan === '4x' ? 'cawl_4x' : 'cawl',
+          url: hosted.redirectUrl,
+          hosted_checkout_id: hosted.hostedCheckoutId,
+          product: {
+            id: product.id,
+            name: product.display_name || product.name,
+            price_label: product.price_label || product.marketing_price_label,
+            price_cents: product.price_cents,
+            supports_installment_choice: productSupportsInstallmentChoice(product),
+          },
+        });
+      }
 
       if (preferPaypal) {
         const landing = String(body.paypal_landing || '').toLowerCase();
@@ -3690,7 +3889,7 @@ function createApp() {
         },
       });
     } catch (err) {
-      if (err.code === 'payplug_customer_incomplete') {
+      if (err.code === 'payplug_customer_incomplete' || err.code === 'cawl_customer_incomplete') {
         return res.status(400).json({
           ok: false,
           error: err.message,
@@ -3698,7 +3897,10 @@ function createApp() {
         });
       }
       logError('Erreur change checkout', { error: err.message, body: err.body || null });
-      res.status(500).json({ ok: false, error: formatPayplugError(err) || err.message });
+      res.status(500).json({
+        ok: false,
+        error: formatCawlError(err) || formatPayplugError(err) || err.message,
+      });
     }
   });
 
@@ -3706,6 +3908,7 @@ function createApp() {
     try {
       const paymentId = req.body?.payment_id || req.body?.payplug_payment_id;
       const paypalOrderId = req.body?.paypal_order_id;
+      const hostedCheckoutId = req.body?.hosted_checkout_id || req.body?.cawl_hosted_checkout_id;
       const sessionId = req.body?.session_id;
       const {
         confirmMembershipChangeOnce,
@@ -3713,6 +3916,54 @@ function createApp() {
         getCancelStatus,
         loadMembershipChangePending,
       } = require('./lib/membership');
+
+      if (hostedCheckoutId) {
+        if (!isCawlEnabled()) {
+          return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
+        }
+        const pending = await loadMembershipChangePending(hostedCheckoutId);
+        const session = await getHostedCheckout(hostedCheckoutId);
+        if (!isCawlPaid(session)) {
+          return res.status(402).json({
+            ok: false,
+            error: isCawlCancelled(session) ? 'paiement annulé' : 'paiement non confirmé',
+            cawl_status: session?.status || null,
+          });
+        }
+        if (!pending?.target_product_id) {
+          return res.status(404).json({ ok: false, error: 'changement introuvable pour ce paiement' });
+        }
+        const changeBound = cawlMatches({
+          session,
+          orderId: pending.verify_order_id || pending.order_id,
+          expectedCents: pending.charge_cents || pending.amount_cents,
+          storedCheckoutId: hostedCheckoutId,
+        });
+        if (!changeBound.ok) {
+          return res.status(409).json({ ok: false, error: changeBound.error });
+        }
+        const deciplusMemberId = await resolveDeciplusMemberId(
+          {
+            deciplus_member_id: pending.deciplus_member_id,
+            verify_order_id: pending.verify_order_id,
+          },
+          getCancelStatus
+        );
+        const result = await confirmMembershipChangeOnce({
+          identity: {
+            first_name: pending.first_name,
+            last_name: pending.last_name,
+            birthdate: pending.birthdate,
+            email: pending.email,
+            phone: pending.phone,
+            gym: pending.gym || 'minimes',
+          },
+          targetProductId: pending.target_product_id,
+          stripeSessionId: `cawl_${hostedCheckoutId}`,
+          deciplusMemberId,
+        });
+        return res.json({ ok: true, ...result, mode: 'cawl' });
+      }
 
       if (paypalOrderId) {
         const pending = await loadMembershipChangePending(paypalOrderId);
@@ -3822,7 +4073,7 @@ function createApp() {
       if (!sessionId || !stripe) {
         return res.status(400).json({
           ok: false,
-          error: 'payment_id, paypal_order_id ou session_id requis',
+          error: 'payment_id, paypal_order_id, hosted_checkout_id ou session_id requis',
         });
       }
       const session = await stripe.checkout.sessions.retrieve(sessionId);
@@ -4152,6 +4403,73 @@ function createApp() {
     return paid;
   }
 
+  async function markCawlOrderPaid(order, hostedCheckoutId, session) {
+    const hist = rememberPreviousCawlId(order.payment, hostedCheckoutId);
+    const paidCents = cawlPaidCents(session);
+    const expected = expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot);
+    const quarter = Array.isArray(expected) ? expected[1] : null;
+    const full = Array.isArray(expected) ? expected[0] : expected;
+    const asFourX =
+      quarter != null &&
+      paidCents != null &&
+      amountsMatch(paidCents, quarter) &&
+      !amountsMatch(paidCents, full);
+    const paid = await markPaymentPaid(order.order_id, {
+      method: 'cawl',
+      payment_plan: asFourX ? '4x' : order.payment?.payment_plan || 'once',
+      billing_plan: order.payment?.billing_plan || null,
+      cawl_hosted_checkout_ids: hist,
+      cawl_hosted_checkout_id: hostedCheckoutId,
+      cawl_payment_id: cawlPaymentId(session) || order.payment?.cawl_payment_id || null,
+      status: 'paid',
+      error: null,
+      failure: null,
+    });
+    return paid;
+  }
+
+  async function confirmCawlCheckoutForOrder(order, hostedCheckoutId) {
+    if (order.payment?.status === 'paid') {
+      return { ok: true, already_paid: true, order };
+    }
+    if (!isCawlEnabled()) {
+      return { ok: false, error: 'cawl_not_configured' };
+    }
+    const candidates = cawlIdCandidates(order, hostedCheckoutId);
+    let lastErr = null;
+    for (const id of candidates) {
+      try {
+        const session = await getHostedCheckout(id);
+        if (!isCawlPaid(session)) {
+          if (isCawlCancelled(session)) lastErr = 'paiement annulé';
+          else lastErr = 'payment_not_completed';
+          continue;
+        }
+        const expected = expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot);
+        const bound = cawlMatches({
+          session,
+          orderId: order.order_id,
+          expectedCents: expected,
+          storedCheckoutId: order.payment?.cawl_hosted_checkout_id,
+        });
+        if (!bound.ok) {
+          lastErr = bound.error;
+          continue;
+        }
+        const paid = await markCawlOrderPaid(order, id, session);
+        logInfo('CAWL confirmé', {
+          order_id: order.order_id,
+          cawl_hosted_checkout_id: id,
+          cawl_payment_id: cawlPaymentId(session) || null,
+        });
+        return { ok: true, paid: true, order: paid };
+      } catch (err) {
+        lastErr = err.message;
+      }
+    }
+    return { ok: false, error: lastErr || 'payment_not_completed' };
+  }
+
   async function markPaypalOrderPaid(order, paypalOrderId) {
     const hist = rememberPreviousPaypalId(order.payment, paypalOrderId);
     return markPaymentPaid(order.order_id, {
@@ -4430,20 +4748,26 @@ function createApp() {
     const display = await resolvePaymentDisplay(req, gym, {
       payplugReady: isPayplugEnabled(),
       paypalReady: isPaypalEnabled(gym),
+      cawlReady: isCawlEnabled(),
     });
     res.json({
       ok: true,
       payplug: isPayplugEnabled(),
       paypal: isPaypalEnabled(gym),
+      cawl: isCawlEnabled() && display.portetViaCawl === true,
+      cawl_mode: isCawlEnabled() ? cawlMode() : null,
       paypal_client_id:
         display.show_paypal && isPaypalEnabled(gym) ? paypalPublicClientId(gym) : null,
       paypal_mode: paypalMode(),
       paypal_account: paypalAccountForGym(gym),
       show_payplug: display.show_payplug,
       show_paypal: display.show_paypal,
+      show_cawl: display.show_cawl === true,
       portet_via_paypal: display.portetViaPaypal === true,
-      oney_4x: isOney4xEnabled(),
-      oney_4x_message: isOney4xEnabled() ? null : ONEY_4X_UNAVAILABLE_MESSAGE,
+      portet_via_cawl: display.portetViaCawl === true,
+      oney_4x: display.portetViaCawl === true ? true : isOney4xEnabled(),
+      oney_4x_message:
+        display.portetViaCawl === true || isOney4xEnabled() ? null : ONEY_4X_UNAVAILABLE_MESSAGE,
       preview: display.preview,
       sandbox: Boolean(display.preview),
     });
@@ -4489,6 +4813,52 @@ function createApp() {
       return res.json({ ok: true, order_id: order.order_id, ...confirmed, order: undefined });
     } catch (err) {
       logError('Webhook PayPal', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/webhooks/cawl', async (req, res) => {
+    try {
+      if (!isCawlEnabled()) {
+        return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
+      }
+      const body = req.body || {};
+      const payment = body.payment || body;
+      const hostedCheckoutId = String(
+        body.hostedCheckoutId ||
+          body.hosted_checkout_id ||
+          payment?.hostedCheckoutSpecificOutput?.hostedCheckoutId ||
+          ''
+      ).trim();
+      const merchantRef = String(
+        payment?.paymentOutput?.references?.merchantReference ||
+          body.merchantReference ||
+          ''
+      ).trim();
+      const orderId = merchantRef.startsWith('BC-') ? merchantRef : '';
+      if (!hostedCheckoutId && !orderId) {
+        return res.json({ ok: true, ignored: true });
+      }
+      let order = orderId ? await loadOrderAsync(orderId) : null;
+      if (!order && hostedCheckoutId) {
+        const all = await listAllOrdersAsync();
+        order = all.find((o) => cawlIdCandidates(o).includes(hostedCheckoutId)) || null;
+      }
+      if (!order) {
+        return res.json({ ok: true, ignored: true, reason: 'order_not_found' });
+      }
+      const confirmed = await confirmCawlCheckoutForOrder(
+        order,
+        hostedCheckoutId || order.payment?.cawl_hosted_checkout_id
+      );
+      logInfo('Webhook CAWL', {
+        order_id: order.order_id,
+        paid: Boolean(confirmed.paid || confirmed.already_paid),
+        error: confirmed.error || null,
+      });
+      return res.json({ ok: true, order_id: order.order_id, ...confirmed, order: undefined });
+    } catch (err) {
+      logError('Webhook CAWL', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });
@@ -4747,6 +5117,52 @@ function createApp() {
     } catch (err) {
       logError('Erreur confirm PayPal', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/checkout/confirm-cawl', async (req, res) => {
+    try {
+      const { order_id: orderId, hosted_checkout_id: hostedCheckoutId } = req.body || {};
+      const token = requestAccessToken(req);
+      if (!orderId || !token) {
+        return res.status(400).json({ ok: false, error: 'order_id et token requis' });
+      }
+      let order = await loadOrderAsync(orderId);
+      if (!order || !verifyAccess(order, token)) {
+        return res.status(403).json({ ok: false, error: 'forbidden' });
+      }
+      if (order.payment?.status === 'paid') {
+        return res.json({
+          ok: true,
+          already_paid: true,
+          redirect: inscriptionRedirect(order),
+        });
+      }
+      if (!isCawlEnabled()) {
+        return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
+      }
+      const id = String(hostedCheckoutId || order.payment?.cawl_hosted_checkout_id || '').trim();
+      const confirmed = await confirmCawlCheckoutForOrder(order, id);
+      if (confirmed.already_paid || confirmed.paid) {
+        const paidOrder = confirmed.order || order;
+        return res.json({
+          ok: true,
+          paid: Boolean(confirmed.paid),
+          already_paid: Boolean(confirmed.already_paid),
+          redirect: inscriptionRedirect(paidOrder),
+        });
+      }
+      if (confirmed.error === 'payment_mismatch' || confirmed.error === 'amount_mismatch') {
+        return res.status(409).json({ ok: false, error: confirmed.error });
+      }
+      return res.status(402).json({
+        ok: false,
+        error: 'payment_not_completed',
+        message: 'Paiement CAWL non confirmé',
+      });
+    } catch (err) {
+      logError('Erreur confirm CAWL', { error: err.message });
+      res.status(500).json({ ok: false, error: formatCawlError(err) || err.message });
     }
   });
 

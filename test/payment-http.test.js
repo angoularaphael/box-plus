@@ -6,6 +6,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const http = require('http');
@@ -21,11 +22,21 @@ process.env.PAYPAL_PORTET_CLIENT_ID = '';
 process.env.PAYPAL_PORTET_CLIENT_SECRET = '';
 process.env.PAYPAL_TEST_CLIENT_ID = '';
 process.env.PAYPAL_TEST_CLIENT_SECRET = '';
+process.env.CAWL_MERCHANT_ID = '';
+process.env.CAWL_API_KEY_ID = '';
+process.env.CAWL_API_SECRET = '';
+process.env.CAWL_TEST_MERCHANT_ID = '';
+process.env.CAWL_TEST_API_KEY_ID = '';
+process.env.CAWL_TEST_API_SECRET = '';
 process.env.STRIPE_SECRET_KEY = '';
 process.env.STRIPE_WEBHOOK_SECRET = '';
 process.env.BOXPLUS_ORDERS_DIR = path.join(os.tmpdir(), `boxplus-pay-http-${Date.now()}`);
 process.env.BOXPLUS_MATERIEL_ORDERS_DIR = path.join(os.tmpdir(), `boxplus-mat-http-${Date.now()}`);
 process.env.BOXPLUS_ORDERS_REMOTE = '0';
+const emptyTestEnv = path.join(os.tmpdir(), `boxplus-empty-test-env-${Date.now()}`);
+fs.writeFileSync(emptyTestEnv, '');
+process.env.BOXPLUS_TEST_ENV_FILE = emptyTestEnv;
+require('../storefront/lib/test-env').resetTestFileCache();
 
 const { createApp } = require('../storefront/server');
 const { uniqueTestCustomer } = require('../lib/test-fixtures');
