@@ -11,8 +11,54 @@
 
 const crypto = require('crypto');
 const { paymentVar, useTestPayments } = require('./test-env');
+const { PRODUCTION_STORE_URL } = require('../../lib/app-urls');
 
 const ONEY_4X_PRODUCT_ID = 5112;
+/** Limite CAWL preprod observée (~200 car.) sur hostedCheckoutSpecificInput.returnUrl */
+const CAWL_RETURN_URL_MAX_LEN = 200;
+
+function normalizeCawlReturnBase(baseUrl) {
+  let url = String(baseUrl || '').trim().replace(/\/+$/, '');
+  if (!url) url = PRODUCTION_STORE_URL;
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(url)) {
+    return PRODUCTION_STORE_URL;
+  }
+  if (url.startsWith('http://')) {
+    url = `https://${url.slice(7)}`;
+  }
+  return url;
+}
+
+/**
+ * URL de retour Hosted Checkout — courte (pas de bc_token dupliqué), ≤ 200 car.
+ * Le token est récupéré côté navigateur via localStorage / cookie de reprise.
+ */
+function buildCawlReturnUrl({
+  baseUrl,
+  path = '/inscription',
+  orderId = '',
+  accessToken = '',
+  step = null,
+} = {}) {
+  const base = normalizeCawlReturnBase(baseUrl);
+  const route = String(path || '/inscription').startsWith('/') ? path : `/${path}`;
+  const oid = String(orderId || '').trim();
+  const tok = String(accessToken || '').trim();
+  const candidates = [];
+  if (oid && tok) {
+    const withStep = `${base}${route}?order=${encodeURIComponent(oid)}&token=${encodeURIComponent(tok)}&cawl_return=1&step=${encodeURIComponent(step ?? 4)}`;
+    const noStep = `${base}${route}?order=${encodeURIComponent(oid)}&token=${encodeURIComponent(tok)}&cawl_return=1`;
+    candidates.push(withStep, noStep);
+  }
+  if (oid) {
+    candidates.push(`${base}${route}?order=${encodeURIComponent(oid)}&cawl_return=1`);
+  }
+  candidates.push(`${base}${route}?cawl_return=1`, `${base}${route}`);
+  for (const url of candidates) {
+    if (url.length <= CAWL_RETURN_URL_MAX_LEN) return url;
+  }
+  return candidates[candidates.length - 1];
+}
 
 function cawlMode() {
   const mode = String(paymentVar('CAWL_MODE') || (!useTestPayments() && process.env.CAWL_MODE) || 'live').toLowerCase();
@@ -175,12 +221,15 @@ function formatCawlError(err) {
     return 'CAWL Portet est mal configuré (clé API). Vérifiez PSPID, API Key ID et secret.';
   }
   if (code === '1008' || /INVALID_VALUE/i.test(String(first.id || ''))) {
+    if (/returnUrl/i.test(property)) {
+      return 'URL de retour CAWL trop longue ou invalide. Réessayez : le paiement rouvre la boutique automatiquement.';
+    }
     if (/merchantId|merchant/i.test(property) || /BoxingCenterTEST|CA131066056934/i.test(raw)) {
       return 'CAWL test : le PSPID ne correspond pas à l’environnement preprod. Utilisez le compte test, pas le PSPID live.';
     }
     return property
-      ? `CAWL a refusé le champ « ${property} ». En studio, les clés TEST (preprod) sont obligatoires.`
-      : 'CAWL a refusé la demande (code 1008). En studio, il faut le PSPID test preprod, pas le compte live.';
+      ? `CAWL a refusé le champ « ${property} ». Vérifiez la configuration du compte test.`
+      : 'CAWL a refusé la demande (code 1008). Vérifiez PSPID, clés API et méthodes de paiement actives.';
   }
   const httpBit = err?.status ? `CAWL HTTP ${err.status}` : null;
   return [raw && !/^CAWL HTTP /i.test(raw) ? raw : httpBit, parts.filter((p) => p !== raw).join(' ; ')]
@@ -360,11 +409,14 @@ async function createHostedCheckout({
   customerOverrides = {},
 }) {
   const { merchantId } = credentials();
-  const returnBase = order?.access_token
-    ? `${baseUrl}/inscription?order=${encodeURIComponent(order.order_id)}&token=${encodeURIComponent(order.access_token)}&bc_token=${encodeURIComponent(order.access_token)}`
-    : `${baseUrl}/`;
   const resolvedReturn =
-    returnUrl || `${returnBase}${returnBase.includes('?') ? '&' : '?'}step=4&cawl_return=1`;
+    returnUrl ||
+    buildCawlReturnUrl({
+      baseUrl,
+      orderId: order?.order_id || metadata.order_id,
+      accessToken: order?.access_token,
+      step: 4,
+    });
   void cancelUrl;
 
   if (paymentPlan === '4x') {
@@ -447,6 +499,9 @@ module.exports = {
   customerFromOrder,
   validateOneyCustomer,
   formatCawlError,
+  buildCawlReturnUrl,
+  normalizeCawlReturnBase,
+  CAWL_RETURN_URL_MAX_LEN,
   createHostedCheckout,
   getHostedCheckout,
   getPayment,

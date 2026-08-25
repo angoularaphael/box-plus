@@ -16,6 +16,8 @@ const {
   isCawlEnabled,
   cawlMode,
   formatCawlError,
+  buildCawlReturnUrl,
+  CAWL_RETURN_URL_MAX_LEN,
 } = require('../storefront/lib/cawl');
 const { resolveDisplay } = require('../storefront/lib/payment-display');
 const { cawlMatches, rememberPreviousCawlId, cawlIdCandidates } = require('../storefront/lib/payment-bind');
@@ -209,8 +211,43 @@ test('formatCawlError explique le 1008 sans jargon HTTP', () => {
   err.body = {
     errors: [{ code: '1008', id: 'INVALID_VALUE', propertyName: 'order.amountOfMoney' }],
   };
-  assert.match(formatCawlError(err), /order\.amountOfMoney|clés TEST|1008/i);
+  assert.match(formatCawlError(err), /order\.amountOfMoney|configuration du compte test|1008/i);
   assert.doesNotMatch(formatCawlError(err), /^CAWL HTTP 400 — 1008$/);
+
+  const returnErr = new Error('CAWL HTTP 400');
+  returnErr.status = 400;
+  returnErr.body = {
+    errors: [{ code: '1008', id: 'INVALID_VALUE', propertyName: 'hostedCheckoutSpecificInput.returnUrl' }],
+  };
+  assert.match(formatCawlError(returnErr), /URL de retour CAWL/i);
+});
+
+test('buildCawlReturnUrl reste sous la limite CAWL (pas de bc_token dupliqué)', () => {
+  const token = 'a'.repeat(48);
+  const orderId = `BC-${Date.now()}`;
+  const url = buildCawlReturnUrl({
+    baseUrl: 'https://boutique.boxingcenter.fr',
+    orderId,
+    accessToken: token,
+    step: 4,
+  });
+  assert.ok(url.length <= CAWL_RETURN_URL_MAX_LEN);
+  assert.match(url, /cawl_return=1/);
+  assert.doesNotMatch(url, /bc_token=/);
+  assert.doesNotMatch(url, /token=.*token=/);
+});
+
+test('buildCawlReturnUrl bascule sans token si URL encore trop longue', () => {
+  const longOrder = `BC-${'x'.repeat(80)}`;
+  const url = buildCawlReturnUrl({
+    baseUrl: 'https://boutique.boxingcenter.fr',
+    orderId: longOrder,
+    accessToken: 'b'.repeat(48),
+    step: 4,
+  });
+  assert.ok(url.length <= CAWL_RETURN_URL_MAX_LEN);
+  assert.match(url, /order=/);
+  assert.doesNotMatch(url, /token=/);
 });
 
 test('studio sans CAWL_TEST_* ne mélange pas le PSPID live avec preprod', () => {
