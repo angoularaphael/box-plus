@@ -53,13 +53,24 @@ function pickVariant(list) {
 
 function matchManagerFromText(text) {
   const t = String(text || '');
-  const asksManager =
-    /manager|responsable|qui\s+(g[eè]re|dirige|s'?occupe)|chef\s+de\s+salle|coach\s+de\s+(la\s+)?salle|voir\s+(le|un)\s+manager/i.test(
+
+  /* MANAGER ET COACH SONT DEUX METIERS, ET DEUX VOCABULAIRES.
+     Le declencheur contenait « coach » : le mot suffisait a entrer ici, si
+     bien que « c'est qui le coach de MMA aux Etats-Unis ? » ressortait par
+     « le manager de Etats-Unis, c'est Sebastien ». La bonne reponse est
+     Zouhir, et la base la connait — ce raccourci repondait avant elle.
+     Desormais : qui parle de coach sans parler de manager passe au modele. */
+  const parleDeCoach = /coach|entra[iî]neur|\bprof\b|encadre|qui donne le cours/i.test(t);
+  const parleDeManager =
+    /manager|responsable|chef\s+de\s+salle|qui\s+(g[eè]re|dirige|s'?occupe|s['’]occupe)|voir\s+(le|un)\s+manager/i.test(
       t
-    ) ||
-    (/qui\s+c['’]?est|c['’]est\s+qui|quel\s+(est\s+)?(le|la)/i.test(t) &&
-      /minimes|ramonville|portet|cyprien|[eé]tats/i.test(t) &&
-      /manager|responsable|coach/i.test(t));
+    );
+  if (parleDeCoach && !parleDeManager) return null;
+
+  const nommeUneSalle = /minimes|ramonville|portet|cyprien|[eé]tats/i.test(t);
+  const asksManager =
+    parleDeManager ||
+    (/qui\s+c['’]?est|c['’]est\s+qui|quel\s+(est\s+)?(le|la)/i.test(t) && nommeUneSalle && parleDeManager);
 
   const gymHit = (id) => {
     const g = MANAGERS[id];
@@ -67,7 +78,7 @@ function matchManagerFromText(text) {
     return GYMS[id] && GYMS[id].match.test(t) ? g : null;
   };
 
-  if (/manager|responsable|qui\s+g[eè]re|coach/i.test(t) || asksManager) {
+  if (asksManager) {
     for (const id of Object.keys(MANAGERS)) {
       const g = gymHit(id);
       if (g) {
@@ -79,7 +90,7 @@ function matchManagerFromText(text) {
         ]);
       }
     }
-    if (/manager|responsable|managers|coach/i.test(t)) {
+    if (parleDeManager || /managers/i.test(t)) {
       return pickVariant([
         'Les managers : **Medhi** (Minimes), **Pascal** (Ramonville), **Daddy** (St-Cyprien), **Valentin** (Portet), **Sébastien** (États-Unis). Quelle salle ?',
         'Selon la salle : **Medhi** Minimes, **Pascal** Ramonville, **Daddy** St-Cyprien, **Valentin** Portet, **Sébastien** États-Unis. Tu vises laquelle ?',
