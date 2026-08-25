@@ -51,3 +51,9 @@ boutique-bot/auth_info_baileys/
 storefront/public/media/_src/
 storefront/public/media/_backup_360p/
 storefront/public/media/_recompress_tmp/
+
+# Toute variante du .env porte des cles : sauvegardes, .env.local,
+# .env.production, dumps. `.env` seul ne les attrapait pas.
+.env.*
+!.env.example
+!.env.vercel.example
