@@ -31,7 +31,7 @@ describe('lifecycle tunnel', () => {
     assert.ok(featured.length <= 3);
   });
 
-  it('sortAdminOrders — États-Unis en premier, puis plus récent', () => {
+  it('sortAdminOrders — plus récent en premier', () => {
     const { sortAdminOrders } = require('../storefront/lib/order-lifecycle');
     const sorted = sortAdminOrders([
       { gym: 'minimes', created_at: '2026-08-25T12:00:00.000Z', order_id: 'BC-1' },
@@ -39,10 +39,10 @@ describe('lifecycle tunnel', () => {
       { gym: 'etats-unis', created_at: '2026-08-25T00:00:00.000Z', order_id: 'BC-3' },
       { gym: 'st-cyprien', created_at: '2026-08-25T13:00:00.000Z', order_id: 'BC-4' },
     ]);
-    assert.equal(sorted[0].order_id, 'BC-3');
-    assert.equal(sorted[1].order_id, 'BC-2');
-    assert.equal(sorted[2].order_id, 'BC-1');
-    assert.equal(sorted[3].order_id, 'BC-4');
+    assert.equal(sorted[0].order_id, 'BC-4');
+    assert.equal(sorted[1].order_id, 'BC-1');
+    assert.equal(sorted[2].order_id, 'BC-3');
+    assert.equal(sorted[3].order_id, 'BC-2');
   });
 
   it('draft → pay → profile → sign flow', async () => {

@@ -458,14 +458,14 @@
     }
     return `
       <div class="fourx-schedule__inner">
-        <p class="fourx-schedule__title">Calendrier 4× sans frais (carte Oney)</p>
+        <p class="fourx-schedule__title">Calendrier 4× sans frais</p>
         <ul>
           <li><strong>Aujourd’hui</strong> — paiement immédiat de <strong>${quartLabel}&nbsp;€</strong></li>
           <li><strong>${dates[1]}</strong> — 2ᵉ échéance ${quartLabel}&nbsp;€</li>
           <li><strong>${dates[2]}</strong> — 3ᵉ échéance ${quartLabel}&nbsp;€</li>
           <li><strong>${dates[3]}</strong> — 4ᵉ échéance ${quartLabel}&nbsp;€</li>
         </ul>
-        <p class="fourx-schedule__note">Dates estimées à partir d’aujourd’hui (± selon Oney / CAWL).</p>
+        <p class="fourx-schedule__note">Dates indicatives à partir d’aujourd’hui.</p>
       </div>`;
   }
 
@@ -1101,7 +1101,7 @@
           showPaypal,
           preferPaypal: !portetViaCawl,
           cardTitle: '4× sans frais',
-          cardSmall: portetViaCawl ? 'Carte CAWL / Oney' : 'Carte PayPlug / Oney',
+          cardSmall: portetViaCawl ? 'Carte bancaire' : 'Carte PayPlug / Oney',
           paypalTitle: 'PayPal 4×',
           paypalSmall: '4× Pay Later si éligible — sinon paiement du montant total',
           cardLogo: portetViaCawl ? 'card' : 'payplug',
@@ -1138,7 +1138,7 @@
           <div id="onceMethods" class="billing-choice-row">${onceMethods || emptyPayHtml}</div>
           <div id="fourXMethods" class="billing-choice-row" style="display:none">${fourMethods || emptyPayHtml}</div>
           <div id="fourXAddress" class="form-grid" style="display:none;margin-top:12px">
-            <p class="sub full" style="margin:0 0 8px">Adresse et civilité requises pour le 4× carte (Oney) :</p>
+            <p class="sub full" style="margin:0 0 8px">Adresse et civilité requises pour le 4× carte :</p>
             <div>
               <label>Civilité *</label>
               <select name="gender">

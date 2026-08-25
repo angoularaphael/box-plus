@@ -522,18 +522,7 @@ function toAdminSummary(order) {
   };
 }
 
-/** Ordre d’affichage admin — États-Unis en tête, puis les autres salles BC. */
-const ADMIN_GYM_ORDER = ['etats-unis', 'minimes', 'ramonville', 'portet', 'st-cyprien', 'balma'];
-
-function adminGymSortRank(gym) {
-  const key = String(gym || '').trim().toLowerCase();
-  const idx = ADMIN_GYM_ORDER.indexOf(key);
-  return idx >= 0 ? idx : ADMIN_GYM_ORDER.length;
-}
-
 function compareAdminOrders(a, b) {
-  const gymDiff = adminGymSortRank(a?.gym) - adminGymSortRank(b?.gym);
-  if (gymDiff !== 0) return gymDiff;
   const ta = Date.parse(a?.created_at || '') || 0;
   const tb = Date.parse(b?.created_at || '') || 0;
   if (tb !== ta) return tb - ta;
@@ -591,7 +580,6 @@ module.exports = {
   toAdminSummary,
   sortAdminOrders,
   compareAdminOrders,
-  adminGymSortRank,
   gymLabel,
   GYM_LABELS,
   productSnapshot,

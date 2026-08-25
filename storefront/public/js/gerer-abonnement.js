@@ -484,7 +484,7 @@
           ${methods('change_pay_method_once', 'payplug', 'paypal', 'Carte bancaire', cardSmall, cardLogoKind, 'Paiement sécurisé')}
         </div>
         <div id="changeFourMethods" class="billing-choice-row" style="display:none">
-          ${methods('change_pay_method_4x', portetViaCawl ? 'cawl' : 'payplug', 'paypal', '4× sans frais', portetViaCawl ? 'Carte CAWL / Oney' : 'Carte PayPlug / Oney', portetViaCawl ? 'card' : 'payplug', 'Pay Later si éligible — sinon montant total', { showCard: showCard && oney4x, preferPaypal: !portetViaCawl })}
+          ${methods('change_pay_method_4x', portetViaCawl ? 'cawl' : 'payplug', 'paypal', '4× sans frais', portetViaCawl ? 'Carte bancaire' : 'Carte PayPlug / Oney', portetViaCawl ? 'card' : 'payplug', 'Pay Later si éligible — sinon montant total', { showCard: showCard && oney4x, preferPaypal: !portetViaCawl })}
         </div>
         ${
           showCard && oney4x
