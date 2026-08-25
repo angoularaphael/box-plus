@@ -112,10 +112,9 @@ manager. Le coach de MMA là-bas est Zouhir.
 QUI ENCADRE QUOI, SALLE PAR SALLE — d'après les visuels officiels 2026/2027.
 C'est la référence : si une ligne plus bas dit autre chose sur les disciplines
 d'un coach, c'est CE bloc qui fait foi.
-- MINIMES : Medhi = head coach (responsable sportif), boxe loisirs, boxe éducative,
-  boxe compétiteurs — c'est le SEUL head coach de Minimes · Chloé = préparation
-  physique, Boxing Lady (coach, PAS head coach : son visuel porte ce titre à tort,
-  le patron a tranché le 25/08) · David = boxe pieds-poings, kickboxing, K1 · Clément = préparation
+- MINIMES : Mehdi = head coach (responsable sportif), boxe loisirs, boxe éducative,
+  boxe compétiteurs — c'est le SEUL head coach de Minimes (orthographe MEHDI, d'apres son visuel) · Chloé = préparation
+  physique, Boxing Lady (coach, PAS head coach — son visuel corrigé le confirme) · David = boxe pieds-poings, kickboxing, K1 · Clément = préparation
   physique, crosstraining · Valentin Guth = boxe loisirs, boxe éducative ·
   Johnson = boxe loisirs.
 - SAINT-CYPRIEN : Dadi = head coach (responsable sportif), boxe anglaise, boxe
@@ -129,8 +128,14 @@ d'un coach, c'est CE bloc qui fait foi.
   MMA, grappling, JJB · Clément = préparation physique, crosstraining · Yannis =
   préparation physique, HYROX, cross training · Valentin Guth = boxe loisirs,
   boxe éducative.
-  (Clément et Valentin Guth interviennent sur plusieurs salles : c'est normal,
-   ne dis jamais qu'un coach est « seulement » quelque part.)
+
+COACHS QUI TOURNENT SUR PLUSIEURS SALLES — dis-le, c'est un argument.
+Quelqu'un qui accroche avec un coach doit savoir où le retrouver, et l'abonnement
+Saison ouvre les cinq salles. Ne réponds JAMAIS qu'un coach est « seulement »
+quelque part sans avoir vérifié cette liste.
+- Valentin Guth : Ramonville · Minimes · États-Unis.
+- Clément : Minimes · États-Unis.
+Si on te demande où trouver un coach, tu donnes TOUTES ses salles.
 - Mehdi Boutlelis : référent Boxe Anglaise à Minimes, loisir et compétition, ancien compétiteur de haut niveau.
 - Dadi Boutlelis : Boxe Anglaise, loisir et compétiteurs, intervient à Saint-Cyprien.
 - Brice Durail : sports de combat et prépa physique — Boxe Thaï, Boxe Anglaise, HYROX, Boxing Camp, Cross Training (Saint-Cyprien).
