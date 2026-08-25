@@ -376,6 +376,8 @@
         oney4xMessage: cfg.oney_4x_message || '',
         portetViaPaypal: cfg.portet_via_paypal === true,
         portetViaCawl: cfg.portet_via_cawl === true,
+        portetPaused: cfg.portet_paused === true,
+        portetPausedMessage: cfg.portet_paused_message || '',
       };
     } catch {
       return {
@@ -385,13 +387,15 @@
         oney4x: false,
         portetViaPaypal: false,
         portetViaCawl: false,
+        portetPaused: false,
       };
     }
   }
 
   async function renderChangePayChoices({ product, gym }) {
     changePayFlags = await loadPayFlags(gym);
-    const portetViaCawl = changePayFlags.portetViaCawl === true;
+    const portetPaused = changePayFlags.portetPaused === true && !changePayFlags.preview;
+    const portetViaCawl = !portetPaused && changePayFlags.portetViaCawl === true;
     const showCard = portetViaCawl || changePayFlags.showCard;
     const showPaypal = portetViaCawl ? false : changePayFlags.showPaypal;
     const oney4x = portetViaCawl ? true : changePayFlags.oney4x === true;
@@ -436,6 +440,18 @@
     let html = '';
     if (changePayFlags.preview) {
       html += `<p class="portet-pay-notice">Studio : tous les moyens branchés s’affichent. Les visiteurs verront les cases enregistrées après déconnexion.</p>`;
+    }
+    if (portetPaused) {
+      html += `<p class="portet-pay-notice">${
+        changePayFlags.portetPausedMessage ||
+        'Les paiements en ligne pour la salle de Portet sont momentanément indisponibles. Contactez le club ou passez à l’accueil.'
+      }</p>`;
+      changePayChoices.innerHTML = html;
+      if (changePayBtn) {
+        changePayBtn.disabled = true;
+        changePayBtn.hidden = true;
+      }
+      return;
     }
     if (installment && !oney4x) {
       html += `<p class="portet-pay-notice">${
@@ -495,6 +511,10 @@
         </div>`;
     }
     changePayChoices.innerHTML = html;
+    if (changePayBtn) {
+      changePayBtn.disabled = false;
+      changePayBtn.hidden = false;
+    }
 
     if (installment) {
       const sync = () => {
@@ -585,6 +605,14 @@
       changeMsg.textContent = 'Recommencez la vérification de vos informations.';
       return;
     }
+    if (changePayFlags.portetPaused && !changePayFlags.preview) {
+      changeMsg.hidden = false;
+      changeMsg.className = 'form-msg err';
+      changeMsg.textContent =
+        changePayFlags.portetPausedMessage ||
+        'Les paiements en ligne pour la salle de Portet sont momentanément indisponibles. Contactez le club ou passez à l’accueil.';
+      return;
+    }
     const oney4x = changePayFlags.oney4x === true;
     const installment =
       changeProductSummary?.supports_installment_choice ||
@@ -658,6 +686,8 @@
         changeMsg.textContent =
           data.error === 'paypal_not_configured'
             ? 'PayPal temporairement indisponible.'
+            : data.error === 'portet_payments_paused'
+              ? data.message || 'Les paiements Portet sont momentanément indisponibles.'
             : data.error === 'cawl_not_configured'
               ? 'Paiement CAWL temporairement indisponible.'
             : data.error === 'payplug_not_configured'

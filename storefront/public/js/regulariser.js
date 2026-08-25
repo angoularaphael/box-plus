@@ -99,6 +99,14 @@
       if (lead) lead.textContent = 'Ce lien n’est plus valable. Merci de vous rapprocher de l’accueil de votre salle.';
       return;
     }
+    if (data.portet_paused) {
+      if (lead) {
+        lead.textContent = data.portet_paused_message ||
+          'Les paiements en ligne pour la salle de Portet sont momentanément indisponibles. Contactez le club ou passez à l’accueil.';
+      }
+      setStatus('', false);
+      return;
+    }
     const who = data.prenom ? `Bonjour ${data.prenom},` : 'Bonjour,';
     if (lead) {
       lead.textContent = `${who} merci de régler l’échéance ci-dessous afin de conserver votre accès aux salles Boxing Center.`;

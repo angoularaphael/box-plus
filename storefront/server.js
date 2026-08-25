@@ -140,6 +140,7 @@ const {
   getPaymentDisplay,
   setPaymentDisplay,
   resolvePaymentDisplay,
+  PORTET_PAUSED_MESSAGE,
 } = require('./lib/payment-display');
 const {
   getEnrichedProducts,
@@ -2999,6 +3000,13 @@ function createApp() {
           redirect: inscriptionRedirect(order, STEPS.DOSSIER),
         });
       }
+      if (display.portetPaused) {
+        return res.status(503).json({
+          ok: false,
+          error: 'portet_payments_paused',
+          message: display.portetPausedMessage || PORTET_PAUSED_MESSAGE,
+        });
+      }
       let preferredCheckout =
         payMethod === 'cawl' || display.portetViaCawl
           ? 'cawl'
@@ -3600,6 +3608,13 @@ function createApp() {
         paypalReady: isPaypalEnabled(gymNorm),
         cawlReady: isCawlEnabled(),
       });
+      if (display.portetPaused) {
+        return res.status(503).json({
+          ok: false,
+          error: 'portet_payments_paused',
+          message: display.portetPausedMessage || PORTET_PAUSED_MESSAGE,
+        });
+      }
       let preferCawl = method === 'cawl' || display.portetViaCawl === true;
       let preferPaypal =
         !preferCawl && (method === 'paypal' || display.portetViaPaypal === true);
@@ -4765,6 +4780,8 @@ function createApp() {
       show_cawl: display.show_cawl === true,
       portet_via_paypal: display.portetViaPaypal === true,
       portet_via_cawl: display.portetViaCawl === true,
+      portet_paused: display.portetPaused === true,
+      portet_paused_message: display.portetPaused ? display.portetPausedMessage || PORTET_PAUSED_MESSAGE : null,
       oney_4x: display.portetViaCawl === true ? true : isOney4xEnabled(),
       oney_4x_message:
         display.portetViaCawl === true || isOney4xEnabled() ? null : ONEY_4X_UNAVAILABLE_MESSAGE,

@@ -520,6 +520,8 @@
         oney4xMessage: cfg.oney_4x_message || '',
         portetViaPaypal: cfg.portet_via_paypal === true,
         portetViaCawl: cfg.portet_via_cawl === true,
+        portetPaused: cfg.portet_paused === true,
+        portetPausedMessage: cfg.portet_paused_message || '',
       };
     } catch {
       return {
@@ -530,6 +532,7 @@
         oney4x: false,
         portetViaPaypal: false,
         portetViaCawl: false,
+        portetPaused: false,
       };
     }
   }
@@ -835,6 +838,12 @@
     if (data.error === 'payplug_url_missing') {
       return 'Impossible d\'ouvrir le paiement PayPlug. Réessayez ou choisissez PayPal.';
     }
+    if (data.error === 'portet_payments_paused') {
+      return (
+        data.message ||
+        'Les paiements en ligne pour la salle de Portet sont momentanément indisponibles. Contactez le club ou passez à l’accueil.'
+      );
+    }
     if (data.error === 'cawl_not_configured') {
       return 'Paiement CAWL temporairement indisponible. Contactez le club.';
     }
@@ -1019,7 +1028,8 @@
     const savedPlan = state.order?.payment?.billing_plan === 'paypal' ? 'paypal' : 'rib';
     const full = state.order?.customer_full || {};
     const payFlags = await loadPayFlags(full.gym);
-    const portetViaCawl = payFlags.portetViaCawl === true;
+    const portetPaused = payFlags.portetPaused === true && !payFlags.preview;
+    const portetViaCawl = !portetPaused && payFlags.portetViaCawl === true;
     const oney4x = portetViaCawl ? true : payFlags.oney4x === true;
     const savedInstallment = state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
     const oneyNotice =
@@ -1043,8 +1053,12 @@
               <div data-pp-message data-pp-style-layout="text" data-pp-style-logo-type="inline" data-pp-amount="${(Number(p.price_cents || 0) / 100).toFixed(2)}"></div>
             </div>`
       : '';
-    const emptyPayHtml =
-      '<p class="portet-pay-notice">Paiement temporairement indisponible. Contactez le club.</p>';
+    const emptyPayHtml = `<p class="portet-pay-notice">${esc(
+      portetPaused
+        ? payFlags.portetPausedMessage ||
+            'Les paiements en ligne pour la salle de Portet sont momentanément indisponibles. Contactez le club ou passez à l’accueil.'
+        : 'Paiement temporairement indisponible. Contactez le club.'
+    )}</p>`;
     const balmaBadgeNotice =
       isBalmaRetour() && (state.productId === 'offre-duo' || /29/.test(String(state.productId || '')))
         ? `<p class="portet-pay-notice">Badge d’accès : ton ancien badge est réactivé. Il n’est <strong>pas prélevé</strong> (offert, déjà réglé).</p>`
@@ -1056,7 +1070,13 @@
       : '';
 
     let billingHtml = '';
-    if (installmentChoice) {
+    if (portetPaused) {
+      billingHtml = `
+        <div class="full billing-plan-block">
+          ${previewNotice}
+          ${emptyPayHtml}
+        </div>`;
+    } else if (installmentChoice) {
       const quart = ((Number(p.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
       const savedMethod = state.order?.payment?.preferred_checkout || 'card';
       const onceMethods = payMethodsHtml({
@@ -1210,9 +1230,13 @@
       <form id="payForm">
         ${aventureEmailHtml}
         ${billingHtml}
-        <button type="submit" class="btn stripe block" id="payBtn">${
-          p?.requires_payment === false ? 'Continuer' : 'Payer'
-        }</button>
+        ${
+          portetPaused
+            ? ''
+            : `<button type="submit" class="btn stripe block" id="payBtn">${
+                p?.requires_payment === false ? 'Continuer' : 'Payer'
+              }</button>`
+        }
         ${
           isBalmaRetour()
             ? `<button type="button" class="btn secondary block" id="aventureDossierBtn" style="margin-top:12px">Continuer le dossier sans payer maintenant</button>`
@@ -1221,7 +1245,7 @@
         ${backButton('← Retour', 3)}
       </form>`;
     bindBillingPlanForm();
-    if (installmentChoice) {
+    if (installmentChoice && !portetPaused) {
       const quart = ((Number(p.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
       const syncInstallmentUi = () => {
         const plan = document.querySelector('input[name="payment_plan"]:checked')?.value || 'once';
@@ -1272,6 +1296,14 @@
     if (payBtnEl && !showCard && !showPaypal) payBtnEl.disabled = true;
     document.getElementById('payForm').onsubmit = async (e) => {
       e.preventDefault();
+      if (portetPaused) {
+        setMsg(
+          payFlags.portetPausedMessage ||
+            'Les paiements en ligne pour la salle de Portet sont momentanément indisponibles. Contactez le club ou passez à l’accueil.',
+          'err'
+        );
+        return;
+      }
       setMsg('Redirection…');
       saveProgress();
       const body = payRequestBody();
@@ -1510,10 +1542,28 @@
         <div class="full"><label for="gym">Salle principale *</label>
           <select id="gym" name="gym" required>${gymsOptions(selected)}</select>
         </div>
+        <p id="portetPayPause" class="portet-pay-notice" hidden></p>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
         <div class="full">${backButton('← Retour à l\'offre', 1)}</div>
       </form>`;
     bindBackButtons();
+    const gymSelect = document.getElementById('gym');
+    const pauseEl = document.getElementById('portetPayPause');
+    const syncPortetPause = (flags) => {
+      if (!pauseEl || !gymSelect) return;
+      const show = flags?.portetPaused === true && gymSelect.value === 'portet';
+      pauseEl.hidden = !show;
+      pauseEl.textContent = show
+        ? flags.portetPausedMessage ||
+          'Les paiements en ligne pour la salle de Portet sont momentanément indisponibles. Contactez le club ou passez à l’accueil.'
+        : '';
+    };
+    loadPayFlags('portet')
+      .then((flags) => {
+        syncPortetPause(flags);
+        gymSelect?.addEventListener('change', () => syncPortetPause(flags));
+      })
+      .catch(() => {});
     document.getElementById('gymForm').onsubmit = async (e) => {
       e.preventDefault();
       const gym = document.getElementById('gym').value;

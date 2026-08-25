@@ -28,7 +28,7 @@ const {
   formatCawlError,
   cawlPaymentId,
 } = require('./cawl');
-const { resolvePaymentDisplay, isPortetGym } = require('./payment-display');
+const { resolvePaymentDisplay, isPortetGym, PORTET_PAUSED_MESSAGE } = require('./payment-display');
 
 const OFFER_LABELS = {
   '29': '29 €',
@@ -176,6 +176,10 @@ function registerEcheancierPayRoutes(app) {
       show_cawl: showCawl,
       portet_via_paypal: info.portet && showPaypal,
       portet_via_cawl: showCawl,
+      portet_paused: Boolean(display.portetPaused),
+      portet_paused_message: display.portetPaused
+        ? display.portetPausedMessage || PORTET_PAUSED_MESSAGE
+        : null,
     });
   });
 
@@ -195,6 +199,18 @@ function registerEcheancierPayRoutes(app) {
         customer_full: { gym: info.gym, email: info.email, first_name: info.prenom, last_name: info.nom },
       };
       const meta = metaFromInfo(info);
+      const display = await resolvePaymentDisplay(req, info.gym, {
+        payplugReady: isPayplugEnabled(),
+        paypalReady: isPaypalEnabled(info.gym),
+        cawlReady: isCawlEnabled(),
+      });
+      if (display.portetPaused) {
+        return res.status(503).json({
+          ok: false,
+          error: 'portet_payments_paused',
+          message: display.portetPausedMessage || PORTET_PAUSED_MESSAGE,
+        });
+      }
 
       if (method === 'cawl' || (info.portet && isCawlEnabled() && method !== 'paypal' && method !== 'payplug')) {
         if (!isCawlEnabled()) {

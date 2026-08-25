@@ -135,6 +135,36 @@ test('Portet sans CAWL reste sur PayPal', () => {
   assert.equal(vis.show_paypal, true);
 });
 
+test('Portet en pause masque tous les paiements (sauf studio)', () => {
+  const vis = resolveDisplay({
+    stored: { payplug: true, paypal: true },
+    preview: false,
+    gym: 'portet',
+    payplugReady: true,
+    paypalReady: true,
+    cawlReady: true,
+    portetPaused: true,
+  });
+  assert.equal(vis.portetPaused, true);
+  assert.equal(vis.show_cawl, false);
+  assert.equal(vis.show_paypal, false);
+  assert.equal(vis.show_payplug, false);
+  assert.equal(vis.portetViaCawl, false);
+
+  const studio = resolveDisplay({
+    stored: { payplug: true, paypal: true },
+    preview: true,
+    gym: 'portet',
+    payplugReady: true,
+    paypalReady: true,
+    cawlReady: true,
+    portetPaused: true,
+  });
+  assert.equal(studio.portetPaused, false);
+  assert.equal(studio.show_cawl, true);
+  assert.equal(studio.preview, true);
+});
+
 test('Minimes ignore CAWL même si clés présentes', () => {
   const vis = resolveDisplay({
     stored: { payplug: true, paypal: true },
