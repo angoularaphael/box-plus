@@ -34,6 +34,7 @@ test('ventes du jour + plus vendu + aventure sans vente Deciplus', () => {
       },
       {
         order_id: 'BC-2',
+        gym: 'portet',
         payment: { status: 'paid', paid_at: `${today}T11:00:00.000Z` },
         product_id: 'dp-100',
         product_snapshot: { display_name: 'OFFRE 259€', price_cents: 25900 },
@@ -49,6 +50,7 @@ test('ventes du jour + plus vendu + aventure sans vente Deciplus', () => {
       {
         payment: { status: 'paid' },
         paid_at: `${today}T12:00:00.000Z`,
+        pickup_gym: 'minimes',
         total_cents: 2899,
         items: [{ product_id: 'gants', name: 'Gants', qty: 2, line_total_cents: 2899 }],
       },
@@ -64,6 +66,13 @@ test('ventes du jour + plus vendu + aventure sans vente Deciplus', () => {
   assert.equal(todayBar.total, 3);
   assert.equal(todayBar.inscriptions, 2);
   assert.equal(todayBar.materiel, 1);
+  const byGym = Object.fromEntries(extras.by_gym.map((g) => [g.gym, g]));
+  assert.equal(byGym.portet.inscription_orders, 1);
+  assert.equal(byGym.portet.inscription_revenue, 25900);
+  assert.equal(byGym.minimes.materiel_orders, 1);
+  assert.equal(byGym.minimes.materiel_revenue, 2899);
+  assert.equal(byGym.balma.inscription_orders, 1);
+  assert.equal(byGym.balma.revenue, 2900);
 });
 
 test('plus vendu fusionne la même offre sous des ids différents', () => {
@@ -100,6 +109,46 @@ test('plus vendu fusionne la même offre sous des ids différents', () => {
   assert.equal(extras.top_products.filter((p) => /OFFRE PROMO 12/.test(p.name)).length, 1);
 });
 
+test('chiffre d’affaires par salle — inscriptions + matériel, hors période ignoré', () => {
+  const extras = buildAdminSalesExtras({
+    inscriptionOrders: [
+      {
+        gym: 'portet',
+        payment: { status: 'paid', paid_at: '2026-08-10T10:00:00.000Z' },
+        product_snapshot: { display_name: 'OFFRE 259€', price_cents: 25900 },
+      },
+      {
+        customer_full: { gym: 'ramonville' },
+        payment: { status: 'paid', paid_at: '2026-08-11T10:00:00.000Z' },
+        product_snapshot: { display_name: 'OFFRE A 29€', price_cents: 2900 },
+      },
+      {
+        gym: 'minimes',
+        payment: { status: 'paid', paid_at: '2026-07-01T10:00:00.000Z' },
+        product_snapshot: { display_name: 'OFFRE 259€', price_cents: 25900 },
+      },
+    ],
+    materielOrders: [
+      {
+        payment: { status: 'paid' },
+        paid_at: '2026-08-12T10:00:00.000Z',
+        pickup_gym: 'portet',
+        total_cents: 4500,
+      },
+    ],
+    fromMonth: '2026-08',
+    toMonth: '2026-08',
+  });
+  const byGym = Object.fromEntries(extras.by_gym.map((g) => [g.gym, g]));
+  assert.equal(byGym.portet.orders, 2);
+  assert.equal(byGym.portet.revenue, 30400);
+  assert.equal(byGym.portet.inscription_orders, 1);
+  assert.equal(byGym.portet.materiel_orders, 1);
+  assert.equal(byGym.ramonville.inscription_revenue, 2900);
+  assert.equal(byGym.minimes.orders, 0);
+  assert.ok(extras.by_gym.some((g) => g.gym === 'st-cyprien' && g.orders === 0));
+});
+
 test('stats admin — plus vendu à la place de Stripe, ventes du jour', () => {
   const html = fs.readFileSync(
     path.join(__dirname, '..', 'storefront', 'public', 'admin', 'index.html'),
@@ -110,9 +159,12 @@ test('stats admin — plus vendu à la place de Stripe, ventes du jour', () => {
   assert.match(html, /Plus vendu/);
   assert.match(html, /Ventes par jour/);
   assert.match(html, /Ventes aujourd’hui/);
+  assert.match(html, /Chiffre d’affaires par salle/);
+  assert.match(html, /id="gymSalesBody"/);
   assert.doesNotMatch(html, /Aventure Balma \(payées\)/);
   assert.doesNotMatch(html, /id="aventureStatsWrap"/);
   assert.match(js, /daily_sales/);
   assert.match(js, /top_products/);
+  assert.match(js, /by_gym/);
   assert.match(js, /kpiTodaySales/);
 });

@@ -214,7 +214,7 @@
           <div class="admin-section-head" style="flex-wrap:wrap;gap:10px">
             <div>
               <h2 class="admin-section-title">Statistiques des ventes</h2>
-              <p class="admin-section-desc">Ventes matériel et inscriptions par période.</p>
+              <p class="admin-section-desc">Ventes matériel et inscriptions par période, détaillées par salle.</p>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <label style="font-size:13px;color:var(--bc-muted)">Du</label>
@@ -235,6 +235,26 @@
             <div class="stats-kpi"><span class="stats-kpi-label">Ventes aujourd’hui</span><span class="stats-kpi-value" id="kpiTodaySales">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">Visites (30 j)</span><span class="stats-kpi-value" id="kpiVisits">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">Conversion tunnel</span><span class="stats-kpi-value" id="kpiFunnelConv">—</span></div>
+          </div>
+
+          <div id="gymSalesWrap" hidden style="margin-top:24px">
+            <h3 class="admin-catalog-block-title">Chiffre d’affaires par salle</h3>
+            <p class="admin-section-desc">Inscriptions et matériel payés sur la période choisie, ventilés par salle.</p>
+            <div style="overflow-x:auto;margin-top:12px">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Salle</th>
+                    <th style="text-align:right">Inscriptions</th>
+                    <th style="text-align:right">CA abonnements</th>
+                    <th style="text-align:right">Cmd matériel</th>
+                    <th style="text-align:right">CA matériel</th>
+                    <th style="text-align:right">Total CA</th>
+                  </tr>
+                </thead>
+                <tbody id="gymSalesBody"></tbody>
+              </table>
+            </div>
           </div>
 
           <div id="funnelWrap" hidden style="margin-top:24px">

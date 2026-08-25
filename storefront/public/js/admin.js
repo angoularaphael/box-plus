@@ -1539,6 +1539,28 @@
         if (kpiConv) kpiConv.textContent = `${data.funnel?.conversion_pct ?? 0} %`;
       }
 
+      const gymWrap = document.getElementById('gymSalesWrap');
+      const gymBody = document.getElementById('gymSalesBody');
+      if (gymBody) {
+        const gyms = data.by_gym || [];
+        gymBody.innerHTML = gyms.length
+          ? gyms
+              .map(
+                (g) => `
+            <tr>
+              <td style="font-weight:600">${escapeHtml(g.label || gymLabel(g.gym))}</td>
+              <td style="text-align:right">${g.inscription_orders || 0}</td>
+              <td style="text-align:right">${fmtEur(g.inscription_revenue || 0)}</td>
+              <td style="text-align:right">${g.materiel_orders || 0}</td>
+              <td style="text-align:right">${fmtEur(g.materiel_revenue || 0)}</td>
+              <td style="text-align:right;font-weight:700;color:var(--bc-navy)">${fmtEur(g.revenue || 0)}</td>
+            </tr>`
+              )
+              .join('')
+          : '<tr><td colspan="6" style="text-align:center;color:var(--bc-muted)">Aucune vente sur cette période</td></tr>';
+        if (gymWrap) gymWrap.hidden = false;
+      }
+
       const funnelWrap = document.getElementById('funnelWrap');
       const funnelBody = document.getElementById('funnelBody');
       if (funnelBody && data.funnel?.funnel) {

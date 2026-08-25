@@ -1,6 +1,18 @@
 'use strict';
 
+const { matchGymSlug, BOXING_CENTER_GYM_SLUGS } = require('../../lib/gym-slugs');
+
 const PARIS_TZ = 'Europe/Paris';
+
+const GYM_DISPLAY = {
+  minimes: 'Minimes',
+  ramonville: 'Ramonville',
+  portet: 'Portet',
+  'etats-unis': 'États-Unis',
+  'st-cyprien': 'Saint-Cyprien',
+  balma: 'Balma',
+  unknown: 'Sans salle',
+};
 
 function parisDayKey(dateStr) {
   if (!dateStr) return null;
@@ -106,6 +118,49 @@ function bumpProduct(map, { id, name, kind, qty = 1, revenue = 0 }) {
   map[key].revenue += revenue;
 }
 
+function gymSlugFromOrder(order = {}) {
+  const candidates = [
+    order.gym,
+    order.customer_full?.gym,
+    order.customer?.gym,
+    order.pickup_gym,
+    order.customer?.pickup_gym,
+  ];
+  for (const raw of candidates) {
+    const slug = matchGymSlug(raw);
+    if (slug) return slug;
+  }
+  if (isAventureOrder(order)) return 'balma';
+  return 'unknown';
+}
+
+function emptyGymRow(gym) {
+  return {
+    gym,
+    label: GYM_DISPLAY[gym] || gym,
+    orders: 0,
+    revenue: 0,
+    inscription_orders: 0,
+    inscription_revenue: 0,
+    materiel_orders: 0,
+    materiel_revenue: 0,
+  };
+}
+
+function bumpGym(map, gym, { kind, revenue = 0 } = {}) {
+  if (!map[gym]) map[gym] = emptyGymRow(gym);
+  const cents = Number(revenue) || 0;
+  map[gym].orders += 1;
+  map[gym].revenue += cents;
+  if (kind === 'materiel') {
+    map[gym].materiel_orders += 1;
+    map[gym].materiel_revenue += cents;
+  } else {
+    map[gym].inscription_orders += 1;
+    map[gym].inscription_revenue += cents;
+  }
+}
+
 function lastNDayKeys(n = 14) {
   const keys = [];
   const now = new Date();
@@ -137,6 +192,10 @@ function buildAdminSalesExtras({
 
   const products = {};
   const byDay = {};
+  const byGym = {};
+  for (const slug of BOXING_CENTER_GYM_SLUGS) {
+    byGym[slug] = emptyGymRow(slug);
+  }
   const today = parisTodayKey();
   let today_count = 0;
   let today_revenue = 0;
@@ -170,12 +229,17 @@ function buildAdminSalesExtras({
       byDay[day].revenue += membershipRevenueCents(o);
     }
     if (!monthInRange(paidAt)) continue;
+    const membershipRevenue = membershipRevenueCents(o);
+    bumpGym(byGym, gymSlugFromOrder(o), {
+      kind: isAventureOrder(o) ? 'aventure' : 'abonnement',
+      revenue: membershipRevenue,
+    });
     bumpProduct(products, {
       id: membershipProductId(o),
       name: membershipProductName(o),
       kind: isAventureOrder(o) ? 'aventure' : 'abonnement',
       qty: 1,
-      revenue: membershipRevenueCents(o),
+      revenue: membershipRevenue,
     });
   }
 
@@ -194,6 +258,7 @@ function buildAdminSalesExtras({
       byDay[day].revenue += revenue;
     }
     if (!monthInRange(paidAt)) continue;
+    bumpGym(byGym, gymSlugFromOrder(o), { kind: 'materiel', revenue });
     const items = Array.isArray(o.items) ? o.items : [];
     if (!items.length) {
       bumpProduct(products, {
@@ -228,10 +293,19 @@ function buildAdminSalesExtras({
     revenue: byDay[day]?.revenue || 0,
   }));
 
+  const by_gym = Object.values(byGym)
+    .filter((row) => BOXING_CENTER_GYM_SLUGS.includes(row.gym) || row.orders > 0)
+    .sort((a, b) => {
+      if (a.gym === 'unknown') return 1;
+      if (b.gym === 'unknown') return -1;
+      return b.revenue - a.revenue || String(a.label).localeCompare(String(b.label), 'fr');
+    });
+
   return {
     today: { day: today, count: today_count, revenue: today_revenue },
     top_products,
     daily_sales,
+    by_gym,
     aventure,
   };
 }
@@ -241,5 +315,6 @@ module.exports = {
   parisTodayKey,
   isAventureOrder,
   isMembershipSale,
+  gymSlugFromOrder,
   buildAdminSalesExtras,
 };

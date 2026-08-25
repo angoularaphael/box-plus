@@ -1524,6 +1524,7 @@ function createApp() {
         today: extras.today,
         top_products: extras.top_products,
         daily_sales: extras.daily_sales,
+        by_gym: extras.by_gym,
         aventure: extras.aventure,
       });
     } catch (err) {
