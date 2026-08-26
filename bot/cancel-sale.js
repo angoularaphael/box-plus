@@ -155,7 +155,7 @@ async function findActiveContracts(page, options = {}) {
           !/r[ée]sili[ée]|annul[ée]/i.test(label);
         if (
           !expiredPrestation &&
-          /r[ée]sili[ée]|annul[ée]e?|termin[ée]|expir[ée]|inactif|cl[ôo]tur/i.test(label)
+          /r[ée]sili[ée]|annul[ée]e?|termin[ée]|expir[ée]|inactif|cl[ôo]tur|archiv/i.test(label)
         ) {
           continue;
         }

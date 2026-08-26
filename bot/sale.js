@@ -19,6 +19,7 @@ const {
   scoreCatalogTile,
 } = require('../lib/catalog-sale');
 const { saleContractMatches } = require('../lib/sale-contract-match');
+const { isPendingOrFutureContract } = require('./cancel-sale');
 
 /** Vrai uniquement pour le produit Badge Deciplus (~34,99 €), jamais essai/coaching. */
 function isBadgeSale(productConfig) {
@@ -2765,7 +2766,12 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
     const { findActiveContracts } = require('./cancel-sale');
     const before = await findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => []);
     const existingMatch = before.find(
-      (c) => c && !c.isBadge && saleContractMatches(c.label, productConfig)
+      (c) =>
+        c &&
+        !c.isBadge &&
+        saleContractMatches(c.label, productConfig) &&
+        !isPendingOrFutureContract(c.label) &&
+        !options.forceNewSale
     );
     if (existingMatch) {
       logInfo('Contrat déjà présent — pas de nouvelle vente', {

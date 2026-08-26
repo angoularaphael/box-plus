@@ -26,6 +26,16 @@ test('259 € n’est pas validé par un abo 44,99 déjà sur la fiche', () => {
   );
 });
 
+test('un 259 € archivé ne valide pas une nouvelle vente promo', () => {
+  assert.equal(
+    saleContractMatches(
+      'ARCHIVÉE : OFFRE PROMO 12 MOIS CONTRAT N°C2025-038631 vendu le 25/09/2025 30 jours restants',
+      promo259
+    ),
+    false
+  );
+});
+
 test('44,99 match le contrat mensuel, pas le 12 mois', () => {
   assert.equal(
     saleContractMatches(
