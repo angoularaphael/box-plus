@@ -182,7 +182,7 @@
         <div class="footer-bottom">
           © ${new Date().getFullYear()} Boxing Center — Tous droits réservés
         </div>
-        <p class="ai-dev-credit" aria-hidden="true">chef equipe dev : Angoula Onambele Germain Raphael</p>
+        <p class="ai-dev-credit" aria-hidden="true">chef equipe dev : <a href="https://fr.linkedin.com/in/germain-raphael-angoula-onambele-a6b858395" rel="noopener noreferrer">Angoula Onambele Germain Raphael</a> · dev : mbosseu brad bruel</p>
       </footer>`;
   }
 
