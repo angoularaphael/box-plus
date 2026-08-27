@@ -942,7 +942,9 @@ function createApp() {
           req.originalUrl === '/api/webhooks/paypal' ||
           req.path === '/api/webhooks/paypal' ||
           req.originalUrl === '/api/webhooks/cawl' ||
-          req.path === '/api/webhooks/cawl'
+          req.path === '/api/webhooks/cawl' ||
+          req.originalUrl === '/api/analytics/event' ||
+          req.path === '/api/analytics/event'
         ) {
           req.rawBody = buf;
         }
@@ -1518,10 +1520,10 @@ function createApp() {
         ok: true,
         rows,
         totals,
-        visits: summarizeVisits(30),
+        visits: await summarizeVisits(30),
         seance_offerte: await require('./lib/seance-offerte-visits').summarizeSeanceOfferteVisits(14),
         funnel: summarizeFunnelFromOrders(allOrders),
-        funnel_events: summarizeFunnelEvents(30),
+        funnel_events: await summarizeFunnelEvents(30),
         unpaid,
         today: extras.today,
         top_products: extras.top_products,
@@ -1534,18 +1536,28 @@ function createApp() {
     }
   });
 
-  app.post('/api/analytics/event', (req, res) => {
+  app.post('/api/analytics/event', async (req, res) => {
     try {
-      const { trackPageview, trackEvent } = require('./lib/analytics');
-      const { type, name, path: pagePath, props, referrer } = req.body || {};
-      if (type === 'pageview') {
-        trackPageview({
+      const { trackPageviewAsync, trackEventAsync } = require('./lib/analytics');
+      let payload = req.body;
+      if ((!payload || typeof payload !== 'object' || Array.isArray(payload) || !Object.keys(payload).length) && req.rawBody) {
+        try {
+          payload = JSON.parse(String(req.rawBody));
+        } catch {
+          payload = {};
+        }
+      }
+      const { type, name, path: pagePath, props, referrer, vid } = payload || {};
+      const ua = req.headers['user-agent'];
+      if (type === 'pageview' || (!type && pagePath)) {
+        await trackPageviewAsync({
           path: pagePath || req.headers.referer || '/',
           referrer,
-          ua: req.headers['user-agent'],
+          ua,
+          vid,
         });
       } else {
-        trackEvent({ name: name || 'event', props, path: pagePath });
+        await trackEventAsync({ name: name || 'event', props, path: pagePath, ua, vid });
       }
       res.json({ ok: true });
     } catch (err) {

@@ -1543,7 +1543,7 @@
         const todayEl = document.getElementById('kpiTodaySales');
         if (todayEl) todayEl.textContent = String(data.today?.count ?? 0);
         const kpiVisits = document.getElementById('kpiVisits');
-        if (kpiVisits) kpiVisits.textContent = data.visits?.total ?? '—';
+        if (kpiVisits) kpiVisits.textContent = data.visits?.unique_visitors ?? data.visits?.total ?? '—';
         const kpiConv = document.getElementById('kpiFunnelConv');
         if (kpiConv) kpiConv.textContent = `${data.funnel?.conversion_pct ?? 0} %`;
       }
@@ -1597,6 +1597,18 @@
         visitsBody.innerHTML = pages.length
           ? pages.map((p) => `<tr><td>${escapeHtml(p.path)}</td><td style="text-align:right">${escapeHtml(p.count)}</td></tr>`).join('')
           : '<tr><td colspan="2" style="text-align:center;color:var(--bc-muted)">Pas encore de visites trackées</td></tr>';
+        let visitsHint = document.getElementById('visitsSummary');
+        if (!visitsHint && visitsWrap) {
+          visitsHint = document.createElement('p');
+          visitsHint.id = 'visitsSummary';
+          visitsHint.className = 'admin-section-desc';
+          visitsWrap.appendChild(visitsHint);
+        }
+        if (visitsHint) {
+          const uniques = data.visits?.unique_visitors ?? data.visits?.total ?? 0;
+          const views = data.visits?.pageviews ?? 0;
+          visitsHint.textContent = `${uniques} visiteur${uniques > 1 ? 's' : ''} unique${uniques > 1 ? 's' : ''} · ${views} page${views > 1 ? 's' : ''} vue${views > 1 ? 's' : ''}`;
+        }
         if (visitsWrap) visitsWrap.hidden = false;
       }
 

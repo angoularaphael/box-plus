@@ -282,9 +282,13 @@
 
   function ensureTracking() {
     if (window.BCTrack) return;
+    if (document.querySelector('script[data-bc-track], script[src*="tracking.js"]')) return;
+    const p = currentPath();
+    if (/^\/admin(\/|$)/i.test(p) || /\/admin\//i.test(location.pathname)) return;
     const s = document.createElement('script');
-    s.src = (window.BCPaths?.asset('js/tracking.js') || 'js/tracking.js');
-    s.defer = true;
+    s.src = '/js/tracking.js?v=2';
+    s.async = false;
+    s.dataset.bcTrack = '1';
     document.head.appendChild(s);
   }
 
@@ -350,4 +354,6 @@
   }
 
   window.BCLayout = { renderHeader, renderFooter, currentPath, L, A };
+
+  ensureTracking();
 })();
