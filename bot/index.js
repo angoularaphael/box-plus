@@ -854,11 +854,42 @@ async function maybeTriggerInscriptionNudges() {
   }
 }
 
+async function maybeTriggerEssaiFollowup() {
+  const role = String(process.env.BOT_ROLE || 'all').toLowerCase();
+  if (role === 'sales') return;
+  const storeBase = (
+    process.env.BOXPLUS_STORE_URL ||
+    process.env.STORE_URL ||
+    ''
+  ).replace(/\/$/, '');
+  const secret = process.env.SYNC_SECRET || process.env.ADMIN_SECRET || '';
+  if (!storeBase || !secret) return;
+  try {
+    const res = await fetch(`${storeBase}/api/cron/essai-followup`, {
+      method: 'GET',
+      headers: { 'x-sync-secret': secret },
+    });
+    if (!res.ok) {
+      logWarn('Poll essai 10 € followup HTTP', { status: res.status });
+    }
+  } catch (err) {
+    logWarn('Poll essai 10 € followup', { error: err.message });
+  }
+}
+
 let lastNudgePollAt = 0;
 const NUDGE_POLL_MS = Number(process.env.BOT_NUDGE_POLL_MS || 60 * 1000);
+let lastEssaiFollowupPollAt = 0;
+const ESSAI_FOLLOWUP_POLL_MS = Number(process.env.BOT_ESSAI_FOLLOWUP_POLL_MS || 2 * 60 * 1000);
 
 async function processCheckSaleJob(page, order) {
   const { findActiveContracts } = require('./cancel-sale');
+  const { isMembershipContract } = require('../storefront/lib/essai-followup');
+  const essaiFollowup =
+    Boolean(order.essai_followup) ||
+    String(order.check_kind || '') === 'abo' ||
+    /#essai-abo$/i.test(String(order.order_id || ''));
+
   let memberId = order.deciplus_member_id || null;
   if (!memberId) {
     const found = await findMemberByIdentity(page, {
@@ -870,44 +901,74 @@ async function processCheckSaleJob(page, order) {
     }).catch(() => null);
     memberId = found?.found ? found.member_id : found?.member_id || null;
   }
+
+  const storeBase = String(
+    order.status_callback_base ||
+      (essaiFollowup
+        ? process.env.BOXPLUS_STORE_URL || process.env.STORE_URL
+        : process.env.SEANCE_OFFERTE_URL) ||
+      ''
+  ).replace(/\/$/, '');
+  const secret = process.env.SYNC_SECRET || process.env.BRIDGE_SECRET || '';
+  const callbackPath = essaiFollowup ? '/api/internal/essai-followup' : '/api/internal/relance-check';
+
+  const postCheck = async (payload) => {
+    if (!storeBase || !secret) return;
+    await fetch(`${storeBase}${callbackPath}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-sync-secret': secret },
+      body: JSON.stringify(payload),
+    }).catch((err) => {
+      logWarn('Callback vérif abo/vente échoué', {
+        error: err.message,
+        order_id: order.order_id,
+        path: callbackPath,
+      });
+    });
+  };
+
   if (!memberId) {
+    if (essaiFollowup) {
+      await postCheck({
+        order_id: order.order_id,
+        deciplus_member_id: null,
+        has_abo: false,
+        has_sale: false,
+        contracts: [],
+        reason: 'membre introuvable',
+      });
+    }
     return { status: STATUS.MANUAL_REVIEW, action: 'check_sale', error: 'membre introuvable', has_sale: false };
   }
 
   await openMemberCheck(page, memberId).catch(() => {});
   const contracts = await findActiveContracts(page).catch(() => []);
-  const hasSale = contracts.some((c) => c && !c.isBadge);
+  const hasAbo = contracts.some((c) => isMembershipContract(c));
+  const hasSale = essaiFollowup ? hasAbo : contracts.some((c) => c && !c.isBadge);
   const paidLike = contracts.length > 0;
+  const converted = essaiFollowup ? hasAbo : hasSale || paidLike;
 
-  const storeBase = String(order.status_callback_base || process.env.SEANCE_OFFERTE_URL || '')
-    .replace(/\/$/, '');
-  const secret = process.env.SYNC_SECRET || process.env.BRIDGE_SECRET || '';
-  if (storeBase && secret) {
-    await fetch(`${storeBase}/api/internal/relance-check`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-sync-secret': secret },
-      body: JSON.stringify({
-        order_id: order.order_id,
-        deciplus_member_id: memberId,
-        has_sale: hasSale || paidLike,
-        contracts: contracts.map((c) => c.label).slice(0, 8),
-      }),
-    }).catch((err) => {
-      logWarn('Callback relance-check échoué', { error: err.message, order_id: order.order_id });
-    });
-  }
+  await postCheck({
+    order_id: order.order_id,
+    deciplus_member_id: memberId,
+    has_abo: hasAbo,
+    has_sale: converted,
+    contracts: contracts.map((c) => c.label).slice(0, 8),
+  });
 
-  logInfo('Vérif vente séance offerte', {
+  logInfo(essaiFollowup ? 'Vérif abo après essai 10 €' : 'Vérif vente séance offerte', {
     order_id: order.order_id,
     member_id: memberId,
-    has_sale: hasSale || paidLike,
+    has_abo: hasAbo,
+    has_sale: converted,
     contracts: contracts.length,
   });
   return {
     status: STATUS.SUCCESS,
     action: 'check_sale',
     deciplus_member_id: memberId,
-    has_sale: hasSale || paidLike,
+    has_abo: hasAbo,
+    has_sale: converted,
   };
 }
 
@@ -1340,6 +1401,10 @@ async function runLoop(once = false) {
     if (Date.now() - lastNudgePollAt >= NUDGE_POLL_MS) {
       lastNudgePollAt = Date.now();
       await maybeTriggerInscriptionNudges();
+    }
+    if (Date.now() - lastEssaiFollowupPollAt >= ESSAI_FOLLOWUP_POLL_MS) {
+      lastEssaiFollowupPollAt = Date.now();
+      await maybeTriggerEssaiFollowup();
     }
     if (pending.length === 0) {
       if (once) break;

@@ -101,6 +101,7 @@ function buildOrderSummary(order) {
       last_name: short.last_name || null,
       email: short.email || null,
       phone: short.phone || null,
+      birthdate: short.birthdate || null,
     },
     customer_full: {
       gym: full.gym || null,
@@ -156,6 +157,11 @@ function buildOrderSummary(order) {
     bot_status: order.bot_status || null,
     bot_error: order.bot_error || null,
     manual_migration: Boolean(order.manual_migration),
+    essai_followup_status: order.essai_followup_status || null,
+    essai_followup_at: order.essai_followup_at || null,
+    essai_followup_check_queued_at: order.essai_followup_check_queued_at || null,
+    essai_abo_checked_at: order.essai_abo_checked_at || null,
+    essai_has_abo: Boolean(order.essai_has_abo),
   };
 }
 

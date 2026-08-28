@@ -1665,6 +1665,16 @@ function createApp() {
     } catch (err) {
       logWarn('Relances inscription (cron catalogue)', { error: err.message });
     }
+    let essaiFollowup = { skipped: true };
+    try {
+      const { dispatchDueEssaiFollowups } = require('./lib/essai-followup');
+      essaiFollowup = await dispatchDueEssaiFollowups({
+        dryRun: process.env.DRY_RUN === '1',
+      });
+    } catch (err) {
+      logWarn('Relances essai 10 € (cron catalogue)', { error: err.message });
+      essaiFollowup = { ok: false, error: err.message };
+    }
     let payplug = { skipped: true };
     try {
       if (isPayplugEnabled()) {
@@ -1685,6 +1695,7 @@ function createApp() {
       ok: result.ok !== false,
       ...result,
       nudges: { count: nudges.count || 0 },
+      essai_followup: { sent: essaiFollowup.sent || 0, checks: essaiFollowup.checks || 0 },
       payplug: { marked: payplug.marked || 0, checked: payplug.checked || 0 },
       deciplus_sales: {
         missing: deciplus.missing || 0,
@@ -1702,6 +1713,38 @@ function createApp() {
       res.json(result);
     } catch (err) {
       logError('Cron relances inscription', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/cron/essai-followup', async (req, res) => {
+    if (!isAuthorizedCron(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { dispatchDueEssaiFollowups } = require('./lib/essai-followup');
+      const result = await dispatchDueEssaiFollowups({
+        dryRun: process.env.DRY_RUN === '1',
+      });
+      res.json(result);
+    } catch (err) {
+      logError('Cron essai 10 € followup', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/internal/essai-followup', async (req, res) => {
+    if (!isAuthorizedSync(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { applyEssaiAboCheck } = require('./lib/essai-followup');
+      const order = await applyEssaiAboCheck(req.body?.order_id, req.body || {});
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      res.json({
+        ok: true,
+        order_id: order.order_id,
+        has_abo: Boolean(order.essai_has_abo),
+        status: order.essai_followup_status,
+      });
+    } catch (err) {
+      logError('Callback essai followup', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });
