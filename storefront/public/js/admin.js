@@ -1699,7 +1699,11 @@
           const bestTxt = best
             ? ` · meilleur jour ${new Date(`${best.day}T12:00:00`).toLocaleDateString('fr-FR')} (${best.total} ventes, ${fmtEur(best.revenue)})`
             : '';
-          dailySummary.textContent = `${sum} vente(s) sur 14 jours · aujourd’hui ${data.today?.count || 0} (${fmtEur(data.today?.revenue || 0)})${lookedTxt}${bestTxt}`;
+          dailySummary.textContent = `${sum} vente(s) sur 14 jours · aujourd’hui ${data.today?.count || 0} (${fmtEur(data.today?.revenue || 0)})${lookedTxt}${bestTxt}${
+            data.missing_deciplus_sale
+              ? ` · ${data.missing_deciplus_sale} vente(s) Payplug sans contrat Deciplus (relance auto)`
+              : ''
+          }`;
         }
         dailyWrap.hidden = false;
       }

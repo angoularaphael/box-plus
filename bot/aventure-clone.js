@@ -373,14 +373,17 @@ async function runBalmaSwitch(page, order) {
       customer,
     }).catch((err) => {
       logWarn('Vente Aventure sur fiche Minimes échouée', { error: err.message });
-      return { error: err.message };
+      return { error: err.message, sale_id: null };
     });
   }
 
+  const saleFailed = shouldCreateChosenOfferSale(order) && !sale?.sale_id;
   return {
-    status: sale?.error ? STATUS.MANUAL_REVIEW : STATUS.SUCCESS,
+    status: saleFailed ? STATUS.MANUAL_REVIEW : STATUS.SUCCESS,
     action: 'balma_switch',
     deciplus_member_id: created.member_id,
+    deciplus_sale_id: sale?.sale_id || null,
+    error: sale?.error || (saleFailed ? 'Vente Deciplus absente après création Minimes' : null),
     balma_member_id: match.member_id,
     cancelled: false,
     migrated: false,

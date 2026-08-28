@@ -519,6 +519,7 @@ function toAdminSummary(order) {
     deciplus_sale_id: order.deciplus_sale_id || null,
     bot_status: order.bot_status || null,
     bot_error: order.bot_error || null,
+    skip_bot: Boolean(order.skip_bot),
     manual_migration: Boolean(order.manual_migration),
   };
 }

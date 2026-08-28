@@ -541,28 +541,36 @@ async function processSaleJob(page, order, jobMeta = {}) {
     }
   }
 
-  if (checkpoint.sale_done) {
+  const paid = String(order.payment?.status || '').toLowerCase() === 'paid';
+  const needsSale =
+    productConfig.create_sale !== false && String(productConfig.sale_type || '').toLowerCase() !== 'none';
+
+  if (checkpoint.sale_done && checkpoint.deciplus_sale_id) {
     logInfo('Reprise job — vente déjà enregistrée', {
       order_id: order.order_id,
-      sale_id: checkpoint.deciplus_sale_id || null,
+      sale_id: checkpoint.deciplus_sale_id,
     });
     saleResult = {
-      sale_id: checkpoint.deciplus_sale_id || null,
+      sale_id: checkpoint.deciplus_sale_id,
       action: 'checkpoint_resume',
       badge_action: checkpoint.badge_action || null,
     };
-  } else if (productConfig.requires_payment !== false && order.payment.status === 'paid') {
+  } else if (productConfig.requires_payment !== false && paid) {
     saleResult = await recordSale(page, order, productConfig, memberId, gymConfig, {
       badgeProductConfig,
     });
+    const saleOk = Boolean(saleResult.sale_id);
     mark('sale');
     saveCheckpoint({
       step: 'sale',
       deciplus_member_id: memberId,
-      sale_done: true,
+      sale_done: saleOk,
       deciplus_sale_id: saleResult.sale_id || null,
       badge_action: saleResult.badge_action || null,
     });
+    if (needsSale && !saleOk && !saleResult.manual_review) {
+      throw new Error('Vente Deciplus non confirmée (sale_id manquant)');
+    }
   } else if (productConfig.sale_type === 'none') {
     saleResult = await recordSale(page, order, productConfig, memberId, gymConfig, {
       badgeProductConfig,
@@ -574,6 +582,10 @@ async function processSaleJob(page, order, jobMeta = {}) {
       sale_done: true,
       deciplus_sale_id: null,
     });
+  }
+
+  if (paid && needsSale && !saleResult.sale_id && !saleResult.manual_review && !ibanError) {
+    throw new Error('Vente Deciplus non confirmée (sale_id manquant)');
   }
 
   const finalStatus =
@@ -1055,9 +1067,9 @@ async function pushBotSaleStatus(order, outcome = {}) {
       body: JSON.stringify({
         order_id: order.order_id,
         status: outcome.status || null,
-        error: outcome.error || null,
+        error: outcome.error || outcome.sale?.error || null,
         deciplus_member_id: outcome.deciplus_member_id || null,
-        deciplus_sale_id: outcome.deciplus_sale_id || null,
+        deciplus_sale_id: outcome.deciplus_sale_id || outcome.sale?.sale_id || null,
         action,
       }),
     });

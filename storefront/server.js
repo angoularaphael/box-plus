@@ -476,10 +476,15 @@ async function maybeNotifyOffre29Friend(order, friendInput) {
 async function dispatchLifecycleOrder(order, { force_requeue = false } = {}) {
   const { hydrateOrderMedia, applyDeciplusPhoto } = require('./lib/cloudinary');
   const { isBalmaRetourOrder } = require('../lib/balma');
+  const { orderNeedsDeciplusSale } = require('./lib/deciplus-sale-reconcile');
   const hydrated = await hydrateOrderMedia(order);
   const product = findProduct(order.product_id) || order.product_snapshot;
   const payload = applyDeciplusPhoto(buildOrderFromLifecycle(hydrated, product), hydrated);
-  if (force_requeue) payload.force_requeue = true;
+  const needsSale = orderNeedsDeciplusSale(order);
+  if (force_requeue || needsSale) {
+    payload.force_requeue = true;
+    payload.force_sale_retry = true;
+  }
   if (order.deciplus_member_id) payload.deciplus_member_id = String(order.deciplus_member_id);
   if (payload.photo_path && /(?:^|[\\/])tmp[\\/]/i.test(String(payload.photo_path))) {
     payload.photo_path = null;
@@ -490,20 +495,36 @@ async function dispatchLifecycleOrder(order, { force_requeue = false } = {}) {
   if (isBalmaRetourOrder(order) || order.aventure) {
     const { aventureBotPolicy } = require('../lib/aventure-policy');
     const policy = aventureBotPolicy();
-    payload.action = 'balma_switch';
-    payload.skip_restore = policy.skip_restore;
-    payload.skip_cancel = policy.skip_cancel;
-    payload.skip_migrate = policy.skip_migrate;
-    payload.create_duplicate = policy.create_duplicate;
-    payload.offer = order.product_id;
-    payload.gym = payload.gym || policy.create_gym;
+    if (order.deciplus_member_id && !order.deciplus_sale_id) {
+      payload.action = 'sale';
+      payload.gym = payload.gym || policy.create_gym;
+      payload.deciplus_member_id = String(order.deciplus_member_id);
+    } else {
+      payload.action = 'balma_switch';
+      payload.skip_restore = policy.skip_restore;
+      payload.skip_cancel = policy.skip_cancel;
+      payload.skip_migrate = policy.skip_migrate;
+      payload.create_duplicate = policy.create_duplicate;
+      payload.offer = order.product_id;
+      payload.gym = payload.gym || policy.create_gym;
+    }
   }
   const result = await dispatchOrder(payload);
   order.dispatched_at = new Date().toISOString();
-  order.dispatch_result = { queued: result.queued, forwarded: result.forwarded };
+  order.dispatch_result = {
+    queued: result.queued,
+    forwarded: result.forwarded,
+    reason: result.reason || null,
+  };
   const { saveOrderAsync } = require('./lib/order-lifecycle');
   await saveOrderAsync(order);
-  logInfo('Commande lifecycle → BOXPLUS', { order_id: order.order_id, queued: result.queued });
+  logInfo('Commande lifecycle → BOXPLUS', {
+    order_id: order.order_id,
+    queued: result.queued,
+    forwarded: result.forwarded,
+    reason: result.reason || null,
+    action: payload.action || 'sale',
+  });
   return result;
 }
 
@@ -511,6 +532,19 @@ const { setAventurePaidHandler } = require('./lib/aventure-dispatch');
 setAventurePaidHandler(async (order) => {
   await dispatchLifecycleOrder(order);
 });
+
+async function runDeciplusSaleReconcile() {
+  const { listAllOrdersAsync, loadOrderAsync, saveOrderAsync } = require('./lib/order-lifecycle');
+  const { reconcileMissingDeciplusSales } = require('./lib/deciplus-sale-reconcile');
+  const { sendAlert } = require('../lib/logger');
+  return reconcileMissingDeciplusSales({
+    listOrders: listAllOrdersAsync,
+    loadOrder: loadOrderAsync,
+    saveOrder: saveOrderAsync,
+    dispatchOrder: (order, opts) => dispatchLifecycleOrder(order, opts),
+    sendAlert,
+  });
+}
 
 /** Photo seule — ne recrée pas la vente (job_id = {order_id}#photo). */
 async function dispatchMemberPhoto(order) {
@@ -1533,6 +1567,7 @@ function createApp() {
         daily_sales: extras.daily_sales,
         by_gym: extras.by_gym,
         aventure: extras.aventure,
+        missing_deciplus_sale: extras.missing_deciplus_sale || 0,
       });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
@@ -1639,11 +1674,23 @@ function createApp() {
       logWarn('PayPlug réconciliation (cron catalogue)', { error: err.message });
       payplug = { ok: false, error: err.message };
     }
+    let deciplus = { skipped: true };
+    try {
+      deciplus = await runDeciplusSaleReconcile();
+    } catch (err) {
+      logWarn('Relance ventes Deciplus (cron catalogue)', { error: err.message });
+      deciplus = { ok: false, error: err.message };
+    }
     res.json({
       ok: result.ok !== false,
       ...result,
       nudges: { count: nudges.count || 0 },
       payplug: { marked: payplug.marked || 0, checked: payplug.checked || 0 },
+      deciplus_sales: {
+        missing: deciplus.missing || 0,
+        redispatched: deciplus.redispatched?.length || 0,
+        exhausted: deciplus.exhausted?.length || 0,
+      },
     });
   });
 
@@ -2687,9 +2734,13 @@ function createApp() {
 
       if (order.step >= STEPS.CONFIRMED || order.signature?.signed_at) {
         let dispatchError = null;
-        if (!order.dispatched_at && !order.dispatch_result?.queued) {
+        const {
+          orderNeedsDeciplusSale,
+          recentlyAttemptedDispatch,
+        } = require('./lib/deciplus-sale-reconcile');
+        if (orderNeedsDeciplusSale(order) && !recentlyAttemptedDispatch(order)) {
           try {
-            await dispatchLifecycleOrder(order);
+            await dispatchLifecycleOrder(order, { force_requeue: true });
             order = (await loadOrderAsync(order.order_id)) || order;
           } catch (dispatchErr) {
             dispatchError = dispatchErr.message;
@@ -5037,6 +5088,17 @@ function createApp() {
       res.json({ ...out, nudges: { count: nudges.count || 0 } });
     } catch (err) {
       logError('Cron PayPlug réconciliation', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/cron/deciplus-sale-reconcile', async (req, res) => {
+    if (!isAuthorizedCron(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const out = await runDeciplusSaleReconcile();
+      res.json(out);
+    } catch (err) {
+      logError('Cron ventes Deciplus', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });

@@ -1,6 +1,7 @@
 'use strict';
 
 const { matchGymSlug, BOXING_CENTER_GYM_SLUGS } = require('../../lib/gym-slugs');
+const { orderNeedsDeciplusSale } = require('./deciplus-sale-reconcile');
 
 const PARIS_TZ = 'Europe/Paris';
 
@@ -230,6 +231,7 @@ function buildAdminSalesExtras({
     dispatched: 0,
     missing_sale: 0,
   };
+  let missing_deciplus_sale = 0;
 
   for (const o of inscriptionOrders) {
     if (isAventureOrder(o)) {
@@ -239,6 +241,7 @@ function buildAdminSalesExtras({
       if (o.dispatched_at) aventure.dispatched += 1;
       if (o.payment?.status === 'paid' && !aventureSaleRecorded(o)) aventure.missing_sale += 1;
     }
+    if (orderNeedsDeciplusSale(o)) missing_deciplus_sale += 1;
     if (!isMembershipSale(o)) continue;
     const paidAt = membershipPaidAt(o);
     const day = parisDayKey(paidAt);
@@ -342,6 +345,7 @@ function buildAdminSalesExtras({
     daily_sales,
     by_gym,
     aventure,
+    missing_deciplus_sale,
   };
 }
 

@@ -60,6 +60,7 @@ test('ventes du jour + plus vendu + aventure sans vente Deciplus', () => {
   assert.equal(extras.today.count, 3);
   assert.equal(extras.aventure.paid, 1);
   assert.equal(extras.aventure.missing_sale, 1);
+  assert.equal(extras.missing_deciplus_sale, 1);
   assert.equal(extras.top_products[0].name, 'Gants');
   assert.equal(extras.top_products[0].qty, 2);
   const todayBar = extras.daily_sales.find((d) => d.day === today);
@@ -88,6 +89,7 @@ test('aventure migré à la main n’est pas une vente Deciplus manquante', () =
   });
   assert.equal(extras.aventure.paid, 1);
   assert.equal(extras.aventure.missing_sale, 0);
+  assert.equal(extras.missing_deciplus_sale, 0);
 });
 
 test('stats — ventes d’un jour choisi et meilleur jour', () => {

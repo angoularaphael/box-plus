@@ -49,6 +49,10 @@
     {
       "path": "/api/cron/sync-catalog",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/deciplus-sale-reconcile",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
