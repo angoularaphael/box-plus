@@ -31,7 +31,7 @@ const AUTH_DIR = process.env.WA_AUTH_DIR
   : path.join(__dirname, 'auth_info_baileys');
 const MAX_RECONNECT_ATTEMPTS = 8;
 const QR_REUSE_MS = 18000;
-const BUILD = 'wa-send-3';
+const BUILD = 'wa-send-4';
 
 const app = express();
 app.use(cors());
@@ -318,6 +318,10 @@ async function connectToWhatsAppUnlocked({ force = false, clearAuth = false } = 
       await saveCreds();
     }
 
+    if (events['messages.update']) {
+      for (const update of events['messages.update']) rememberMessageUpdate(update);
+    }
+
     if (!events['connection.update']) return;
     const { connection, lastDisconnect, qr } = events['connection.update'];
 
@@ -564,50 +568,34 @@ function waitForMessageAck(msgId, timeoutMs = 10000) {
     const started = Date.now();
     let best = { ack: null, ackName: null, stub: null, waitMs: 0, timeout: true };
 
-    const finish = (payload) => {
-      clearTimeout(timer);
-      if (sock) sock.ev.off('messages.update', onUpdate);
-      resolve({ ...payload, waitMs: Date.now() - started });
-    };
-
-    const consider = (update) => {
-      if (!update?.key || update.key.id !== msgId || update.update?.status == null) return false;
-      const status = update.update.status;
-      best = {
-        ack: status,
-        ackName: ACK_NAMES[status] || String(status),
-        stub: update.update.messageStubParameters || null,
-        waitMs: Date.now() - started,
-        timeout: false,
-      };
-      if (status === 0 || status >= 3) {
-        finish(best);
-        return true;
+    const considerStored = () => {
+      for (const previous of lastMessageUpdates) {
+        if (previous.id !== msgId || previous.status == null) continue;
+        best = {
+          ack: previous.status,
+          ackName: ACK_NAMES[previous.status] || String(previous.status),
+          stub: previous.stub || null,
+          waitMs: Date.now() - started,
+          timeout: false,
+        };
+        if (previous.status === 0 || previous.status >= 3) return true;
       }
       return false;
     };
 
-    function onUpdate(updates) {
-      if (!Array.isArray(updates)) return;
-      for (const update of updates) {
-        if (consider(update)) return;
+    const tick = setInterval(() => {
+      if (considerStored()) {
+        clearInterval(tick);
+        clearTimeout(timer);
+        resolve(best);
       }
-    }
+    }, 150);
 
-    const timer = setTimeout(() => finish(best), timeoutMs);
-    if (sock) sock.ev.on('messages.update', onUpdate);
-    for (const previous of lastMessageUpdates) {
-      if (previous.id === msgId && previous.status != null) {
-        if (
-          consider({
-            key: { id: previous.id },
-            update: { status: previous.status, messageStubParameters: previous.stub },
-          })
-        ) {
-          return;
-        }
-      }
-    }
+    const timer = setTimeout(() => {
+      clearInterval(tick);
+      considerStored();
+      resolve({ ...best, waitMs: Date.now() - started, timeout: best.ack == null });
+    }, timeoutMs);
   });
 }
 
