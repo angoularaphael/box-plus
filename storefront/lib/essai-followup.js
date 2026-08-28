@@ -23,17 +23,8 @@ const GYM_COACH_WHATSAPP = {
   'st-cyprien': { telephone: '+33625745369', label: 'Saint-Cyprien' },
 };
 
-const ABO_PRODUCT_IDS = new Set([
-  'dp-104',
-  'dp-100',
-  'offre-duo',
-  'offre-saison',
-  'offre_29',
-  'offre_259',
-  'offre-29',
-  '44-99-4-semaines',
-  'comptant-12-mois',
-]);
+const OFFRE_29_IDS = new Set(['dp-104', 'offre-duo', 'offre_29', 'offre-29']);
+const OFFRE_259_IDS = new Set(['dp-100', 'offre-saison', 'offre_259', 'offre-12mois']);
 
 function fold(value) {
   return String(value || '')
@@ -124,21 +115,29 @@ function isPaidEssaiOrder(order = {}) {
   return true;
 }
 
+function isOffre29Order(order = {}) {
+  const id = productIdOf(order);
+  if (OFFRE_29_IDS.has(id)) return true;
+  const name = productNameOf(order);
+  if (/259/.test(name) || /44\s*99/.test(name)) return false;
+  return /offre\s*(a|duo)?\s*29|29\s*99|29,99|29\.99/.test(name);
+}
+
+function isOffre259Order(order = {}) {
+  const id = productIdOf(order);
+  if (OFFRE_259_IDS.has(id)) return true;
+  const name = productNameOf(order);
+  if (/29\s*99|offre\s*(a|duo)?\s*29/.test(name) && !/259/.test(name)) return false;
+  return /\b259\b|offre promo 12 mois|offre saison/.test(name);
+}
+
+/** Abonnement boutique qui compte : uniquement 29 € ou 259 €. */
 function isMembershipOrder(order = {}) {
   if (!order || order.action) return false;
   if (/^(COACH|CHANGE|VERIFY|CANCEL)-/i.test(String(order.order_id || ''))) return false;
   if (String(order.payment?.status || '').toLowerCase() !== 'paid') return false;
   if (isPaidEssaiOrder(order)) return false;
-  const id = productIdOf(order);
-  if (/^coaching|materiel|badge/.test(id)) return false;
-  const name = productNameOf(order);
-  if (name.includes('essai') && !/29|259|abo/.test(name)) return false;
-  if (ABO_PRODUCT_IDS.has(id)) return true;
-  const cents = Number(order.product_snapshot?.price_cents || order.payment?.amount_cents || 0);
-  const amount = Number(order.payment?.amount || 0);
-  if (cents >= 2900 || amount >= 29) return true;
-  if (/offre|abonnement|12 mois|4 semain|259|29 99|2999/.test(name)) return true;
-  return false;
+  return isOffre29Order(order) || isOffre259Order(order);
 }
 
 function getGymCoachTarget(salle) {
@@ -148,9 +147,12 @@ function getGymCoachTarget(salle) {
 
 function isMembershipContract(contract) {
   if (!contract || contract.isBadge) return false;
-  const label = String(contract.label || '');
-  if (/essai|coaching/i.test(label)) return false;
-  return true;
+  const label = fold(contract.label);
+  if (/essai|coaching|badge/.test(label)) return false;
+  if (/44\s*99/.test(label)) return false;
+  if (/\b259\b|offre promo 12 mois|offre saison/.test(label)) return true;
+  if (/offre\s*(a|duo)?\s*29|29\s*99/.test(label)) return true;
+  return false;
 }
 
 function formatFrDate(isoOrMs) {
@@ -171,7 +173,7 @@ function gymEssaiFollowupText(order) {
   return [
     'Séance d’essai 10 € — pas d’abonnement',
     '',
-    'Cette personne a pris une séance d’essai à 10 € et n’a pas pris d’abonnement 3 jours plus tard. Merci de la recontacter.',
+    'Cette personne a pris une séance d’essai à 10 € et n’a pas pris d’abonnement 29 € ni 259 € 3 jours plus tard. Merci de la recontacter.',
     '',
     `Salle : ${salle}`,
     `Nom : ${orderName(order) || 'non renseigné'}`,
@@ -457,5 +459,8 @@ module.exports = {
   orderEmail,
   orderPhone,
   orderGym,
+  orderName,
   paidAtMs,
+  isOffre29Order,
+  isOffre259Order,
 };

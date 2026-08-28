@@ -55,7 +55,7 @@ test('essai 10 € payé reconnu, essai gratuit web ignoré', () => {
   assert.equal(isPaidEssaiOrder(essai({ payment: { status: 'pending', amount: 10 } })), false);
 });
 
-test('abonnement 29 / 259 reconnu, coaching et essai non', () => {
+test('abonnement 29 / 259 reconnu, 44,99 et coaching ignorés', () => {
   assert.equal(
     isMembershipOrder({
       order_id: 'BC-ABO',
@@ -65,7 +65,25 @@ test('abonnement 29 / 259 reconnu, coaching et essai non', () => {
     }),
     true
   );
+  assert.equal(
+    isMembershipOrder({
+      order_id: 'BC-259',
+      product_id: 'dp-100',
+      payment: { status: 'paid', amount: 259 },
+      product_snapshot: { price_cents: 25900, name: 'OFFRE PROMO 12 MOIS' },
+    }),
+    true
+  );
   assert.equal(isMembershipOrder(essai()), false);
+  assert.equal(
+    isMembershipOrder({
+      order_id: 'BC-44',
+      product_id: '44-99-4-semaines',
+      payment: { status: 'paid', amount: 44.99 },
+      product_snapshot: { price_cents: 4499, name: '44,99 € / 4 semaines' },
+    }),
+    false
+  );
   assert.equal(
     isMembershipOrder({
       order_id: 'BC-COACH',
@@ -86,10 +104,12 @@ test('Minimes et États-Unis = même numéro, Portet et St-Cyprien distincts, Ra
   assert.equal(getGymCoachTarget('ramonville'), null);
 });
 
-test('contrat Deciplus essai / badge n’est pas un abo', () => {
+test('contrat Deciplus 29 / 259 compte, essai / 44,99 non', () => {
   assert.equal(isMembershipContract({ isBadge: true, label: 'Badge' }), false);
   assert.equal(isMembershipContract({ isBadge: false, label: "SEANCE D'ESSAI" }), false);
+  assert.equal(isMembershipContract({ isBadge: false, label: '44,99 € / 4 semaines' }), false);
   assert.equal(isMembershipContract({ isBadge: false, label: 'OFFRE A 29€' }), true);
+  assert.equal(isMembershipContract({ isBadge: false, label: 'OFFRE PROMO 12 MOIS 259€' }), true);
 });
 
 test('message coach contient nom, tel, salle et 10 €', () => {
@@ -98,7 +118,7 @@ test('message coach contient nom, tel, salle et 10 €', () => {
   assert.match(text, /Camille Durand/);
   assert.match(text, /0612345678/);
   assert.match(text, /États-Unis/);
-  assert.match(text, /pas d’abonnement/);
+  assert.match(text, /29 € ni 259 €/);
 });
 
 test('avant 3 jours → wait, après 3 jours sans abo → check Deciplus', () => {
