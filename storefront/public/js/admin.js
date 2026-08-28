@@ -1525,8 +1525,19 @@
     setStatsMsg('Chargement des stats…');
     const from = document.getElementById('statsFrom')?.value || '';
     const to = document.getElementById('statsTo')?.value || '';
+    const dayEl = document.getElementById('statsDay');
+    if (dayEl && !dayEl.value) {
+      const iso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(new Date());
+      dayEl.value = iso;
+    }
+    const day = dayEl?.value || '';
     try {
-      const url = `/api/admin/stats${from || to ? `?from=${from}&to=${to}` : ''}`;
+      const params = new URLSearchParams();
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      if (day) params.set('day', day);
+      const qs = params.toString();
+      const url = `/api/admin/stats${qs ? `?${qs}` : ''}`;
       const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) throw new Error(`Erreur ${res.status}`);
       const data = await res.json();
@@ -1542,6 +1553,18 @@
         document.getElementById('kpiInscOrders').textContent = data.totals.inscription_orders;
         const todayEl = document.getElementById('kpiTodaySales');
         if (todayEl) todayEl.textContent = String(data.today?.count ?? 0);
+        const bestEl = document.getElementById('kpiBestDay');
+        if (bestEl) {
+          const b = data.best_day;
+          bestEl.textContent = b
+            ? `${b.total} · ${new Date(`${b.day}T12:00:00`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
+            : '—';
+        }
+        const lookupEl = document.getElementById('kpiLookupDay');
+        if (lookupEl) {
+          const l = data.lookup_day;
+          lookupEl.textContent = l ? String(l.total) : '—';
+        }
         const kpiVisits = document.getElementById('kpiVisits');
         if (kpiVisits) kpiVisits.textContent = data.visits?.unique_visitors ?? data.visits?.total ?? '—';
         const kpiConv = document.getElementById('kpiFunnelConv');
@@ -1664,7 +1687,15 @@
           : '<p class="admin-section-desc">Pas encore de ventes quotidiennes.</p>';
         if (dailySummary) {
           const sum = daily.reduce((n, d) => n + (d.total || 0), 0);
-          dailySummary.textContent = `${sum} vente(s) sur 14 jours · aujourd’hui ${data.today?.count || 0} (${fmtEur(data.today?.revenue || 0)})`;
+          const best = data.best_day;
+          const looked = data.lookup_day;
+          const lookedTxt = looked
+            ? ` · ${new Date(`${looked.day}T12:00:00`).toLocaleDateString('fr-FR')} : ${looked.total} vente(s) (${looked.inscriptions} abo, ${looked.materiel} matériel)`
+            : '';
+          const bestTxt = best
+            ? ` · meilleur jour ${new Date(`${best.day}T12:00:00`).toLocaleDateString('fr-FR')} (${best.total} ventes, ${fmtEur(best.revenue)})`
+            : '';
+          dailySummary.textContent = `${sum} vente(s) sur 14 jours · aujourd’hui ${data.today?.count || 0} (${fmtEur(data.today?.revenue || 0)})${lookedTxt}${bestTxt}`;
         }
         dailyWrap.hidden = false;
       }

@@ -180,6 +180,7 @@ function buildAdminSalesExtras({
   fromMonth = '',
   toMonth = '',
   dayCount = 14,
+  lookupDay = '',
 } = {}) {
   function monthInRange(iso) {
     const key = parisDayKey(iso);
@@ -199,6 +200,21 @@ function buildAdminSalesExtras({
   const today = parisTodayKey();
   let today_count = 0;
   let today_revenue = 0;
+
+  function dayTotal(row) {
+    return (row.inscriptions || 0) + (row.materiel || 0);
+  }
+
+  function snapshotDay(day) {
+    const row = byDay[day] || { day, inscriptions: 0, materiel: 0, revenue: 0 };
+    return {
+      day,
+      inscriptions: row.inscriptions || 0,
+      materiel: row.materiel || 0,
+      total: dayTotal(row),
+      revenue: row.revenue || 0,
+    };
+  }
 
   const aventure = {
     total: 0,
@@ -293,6 +309,16 @@ function buildAdminSalesExtras({
     revenue: byDay[day]?.revenue || 0,
   }));
 
+  let best_day = null;
+  for (const row of Object.values(byDay)) {
+    const snap = snapshotDay(row.day);
+    if (!best_day || snap.total > best_day.total || (snap.total === best_day.total && snap.revenue > best_day.revenue)) {
+      best_day = snap;
+    }
+  }
+
+  const lookup_day = lookupDay ? snapshotDay(lookupDay) : null;
+
   const by_gym = Object.values(byGym)
     .filter((row) => BOXING_CENTER_GYM_SLUGS.includes(row.gym) || row.orders > 0)
     .sort((a, b) => {
@@ -303,6 +329,8 @@ function buildAdminSalesExtras({
 
   return {
     today: { day: today, count: today_count, revenue: today_revenue },
+    lookup_day,
+    best_day,
     top_products,
     daily_sales,
     by_gym,

@@ -1443,7 +1443,7 @@ function createApp() {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
       const { summarizeVisits, summarizeFunnelFromOrders, summarizeFunnelEvents } = require('./lib/analytics');
-      const { from, to } = req.query; // format: YYYY-MM
+      const { from, to, day } = req.query; // from/to: YYYY-MM ; day: YYYY-MM-DD
 
       function monthKey(dateStr) {
         if (!dateStr) return null;
@@ -1514,6 +1514,7 @@ function createApp() {
         materielOrders,
         fromMonth: from || '',
         toMonth: to || '',
+        lookupDay: day || '',
       });
 
       res.json({
@@ -1526,6 +1527,8 @@ function createApp() {
         funnel_events: await summarizeFunnelEvents(30),
         unpaid,
         today: extras.today,
+        lookup_day: extras.lookup_day,
+        best_day: extras.best_day,
         top_products: extras.top_products,
         daily_sales: extras.daily_sales,
         by_gym: extras.by_gym,

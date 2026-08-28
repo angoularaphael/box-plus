@@ -221,6 +221,8 @@
               <input type="month" id="statsFrom" class="admin-search" style="width:150px" />
               <label style="font-size:13px;color:var(--bc-muted)">au</label>
               <input type="month" id="statsTo" class="admin-search" style="width:150px" />
+              <label style="font-size:13px;color:var(--bc-muted)">Jour</label>
+              <input type="date" id="statsDay" class="admin-search" style="width:150px" />
               <button type="button" class="btn sm" id="loadStatsBtn">Actualiser</button>
             </div>
           </div>
@@ -233,6 +235,8 @@
             <div class="stats-kpi"><span class="stats-kpi-label">CA Abonnements</span><span class="stats-kpi-value" id="kpiInscRev">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">Inscriptions</span><span class="stats-kpi-value" id="kpiInscOrders">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">Ventes aujourd’hui</span><span class="stats-kpi-value" id="kpiTodaySales">—</span></div>
+            <div class="stats-kpi"><span class="stats-kpi-label">Meilleur jour</span><span class="stats-kpi-value" id="kpiBestDay">—</span></div>
+            <div class="stats-kpi"><span class="stats-kpi-label">Ventes du jour choisi</span><span class="stats-kpi-value" id="kpiLookupDay">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">Visites (30 j)</span><span class="stats-kpi-value" id="kpiVisits">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">Conversion tunnel</span><span class="stats-kpi-value" id="kpiFunnelConv">—</span></div>
           </div>
@@ -295,7 +299,7 @@
 
           <div id="dailySalesWrap" hidden style="margin-top:24px">
             <h3 class="admin-catalog-block-title">Ventes par jour</h3>
-            <p class="admin-section-desc" id="dailySalesSummary">Inscriptions et commandes matériel payées (14 derniers jours, heure de Paris).</p>
+            <p class="admin-section-desc" id="dailySalesSummary">Choisissez un jour pour le détail. Le meilleur jour est celui avec le plus de ventes payées (abos + matériel).</p>
             <div class="flux-chart" id="dailySalesChart" aria-label="Nombre de ventes par jour"></div>
           </div>
 
