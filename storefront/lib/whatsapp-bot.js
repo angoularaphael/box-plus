@@ -85,6 +85,7 @@ async function getWhatsAppStatus({ includeQr = false } = {}) {
       pairingCode: data.pairingCode || null,
       qrError: data.qrError || null,
       build: data.build || null,
+      me: data.me || null,
     };
   } catch (err) {
     return {

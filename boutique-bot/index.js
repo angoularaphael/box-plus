@@ -31,7 +31,7 @@ const AUTH_DIR = process.env.WA_AUTH_DIR
   : path.join(__dirname, 'auth_info_baileys');
 const MAX_RECONNECT_ATTEMPTS = 8;
 const QR_REUSE_MS = 18000;
-const BUILD = 'wa-nudge-1';
+const BUILD = 'wa-send-2';
 
 const app = express();
 app.use(cors());
@@ -363,6 +363,7 @@ async function connectToWhatsAppUnlocked({ force = false, clearAuth = false } = 
 }
 
 function publicStatus(includeQr) {
+  const me = sock?.user || sock?.authState?.creds?.me || null;
   return {
     ok: true,
     service: 'boxplus-boutique-bot',
@@ -373,6 +374,12 @@ function publicStatus(includeQr) {
     qr: includeQr || !isConnected ? currentQrBase64 : null,
     pairingCode,
     qrError,
+    me: me
+      ? {
+          id: String(me.id || me.lid || '').split(':')[0],
+          name: me.name || me.verifiedName || null,
+        }
+      : null,
   };
 }
 
@@ -479,23 +486,56 @@ app.post('/api/logout', async (_req, res) => {
   res.json({ ok: true, success: true, message: 'Logged out', build: BUILD });
 });
 
+async function resolveWhatsAppJid(phone) {
+  const digits = normalizePhone(phone);
+  if (!digits || !sock) return { digits, jid: '', exists: false };
+  const fallback = `${digits}@s.whatsapp.net`;
+  if (typeof sock.onWhatsApp !== 'function') {
+    return { digits, jid: fallback, exists: null };
+  }
+  try {
+    const found = await sock.onWhatsApp(digits, fallback);
+    const hit = Array.isArray(found) ? found.find((x) => x && x.exists) || found[0] : found;
+    if (hit && hit.exists === false) return { digits, jid: fallback, exists: false };
+    const jid = String(hit?.jid || hit?.lid || fallback);
+    return { digits, jid, exists: hit?.exists !== false };
+  } catch {
+    return { digits, jid: fallback, exists: null };
+  }
+}
+
 app.post('/api/send-message', async (req, res) => {
   if (!verifyApiSecret(req, res)) return;
   if (!isConnected || !sock) return res.status(503).json({ error: 'Bot not connected' });
   const { phone, message } = req.body || {};
   if (!message) return res.status(400).json({ error: 'message required' });
-  const jid = phoneToJid(phone);
-  if (!jid) return res.status(400).json({ error: 'phone required' });
+  const resolved = await resolveWhatsAppJid(phone);
+  if (!resolved.jid) return res.status(400).json({ error: 'phone required' });
+  if (resolved.exists === false) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Ce numéro n’a pas WhatsApp',
+      phone: resolved.digits,
+      exists: false,
+    });
+  }
   try {
-    await Promise.race([
-      sock.sendMessage(jid, { text: String(message) }),
+    const sent = await Promise.race([
+      sock.sendMessage(resolved.jid, { text: String(message) }),
       sleep(20000).then(() => {
         throw new Error('WhatsApp send timeout 20s');
       }),
     ]);
-    res.json({ ok: true, success: true, phone: normalizePhone(phone) });
+    res.json({
+      ok: true,
+      success: true,
+      phone: resolved.digits,
+      jid: resolved.jid,
+      exists: resolved.exists,
+      id: sent?.key?.id || null,
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, phone: resolved.digits, jid: resolved.jid });
   }
 });
 
