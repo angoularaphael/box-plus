@@ -17,6 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { jsonLdCreator } = require('./auteurs');
 
 const SITE_URL = (() => {
   const env = (process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -170,6 +171,12 @@ const PAGE_JSONLD = {
         alternateName: 'Boxing Center — boutique officielle',
         description: 'Boutique officielle Boxing Center Toulouse : abonnements boxe, séance d\'essai à 10 €, coachings et matériel. 5 salles en Haute-Garonne.',
         inLanguage: 'fr-FR',
+        /* Les auteurs du site. `creator` sur le noeud WebSite est le canal
+           documente que Google et les crawlers d IA lisent pour attribuer un
+           site ; la source unique est lib/auteurs.js. Invisible aux visiteurs
+           par nature — rien n est ajoute a l ecran. */
+        creator: jsonLdCreator().creator,
+        author: jsonLdCreator().author,
         publisher: { '@id': `${SITE_URL}/#org` },
         potentialAction: {
           '@type': 'SearchAction',
