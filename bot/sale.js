@@ -20,7 +20,6 @@ const {
 } = require('../lib/catalog-sale');
 const { saleContractMatches } = require('../lib/sale-contract-match');
 const { classifyMemberContracts } = require('../lib/replace-existing-abo');
-const { isAventureOrder } = require('../lib/aventure-policy');
 const { isPendingOrFutureContract } = require('./cancel-sale');
 
 /** Vrai uniquement pour le produit Badge Deciplus (~34,99 €), jamais essai/coaching. */
@@ -1997,17 +1996,39 @@ async function finalizeBadgePayment(page, productConfig = {}, gymConfig = {}) {
     throw new Error('Badge — « Clôturer la note » introuvable');
   }
   logInfo('Badge — note clôturée');
-  await randomDelay(500, 800);
+  await randomDelay(800, 1400);
+  await dismissPostApplyDialogs(page, { allowRib: false }).catch(() => {});
 
-  let done = await clickTerminerVente(page);
-  if (!done) {
-    done = await clickVenteFooterAction(page, /\bTerminer\b/i, { preferClass: 'verticalDocumentBar' });
+  let done = false;
+  for (let i = 0; i < 5 && !done; i += 1) {
+    done = await clickTerminerVente(page);
+    if (!done) {
+      done = await clickVenteFooterAction(page, /\bTerminer\b/i, { preferClass: 'verticalDocumentBar' });
+    }
+    if (!done) {
+      done = await clickFirst(page, sel('payment_finalize.terminer')).catch(() => false);
+    }
+    if (!done) {
+      const snap = await venteUiSnapshot(page).catch(() => []);
+      const blob = JSON.stringify(snap);
+      if (
+        /check\.php|fichemembre|fiche membre|Achat Abonnement/i.test(blob) &&
+        !/Cl[ôo]turer/i.test(blob)
+      ) {
+        logInfo('Badge — écran vente déjà quitté après Clôturer');
+        done = true;
+        break;
+      }
+      await page.waitForTimeout(700);
+    }
   }
   if (!done) {
-    done = await clickFirst(page, sel('payment_finalize.terminer'));
-  }
-  if (!done) {
-    throw new Error('Badge — bouton « Terminer » introuvable');
+    // Clôturer a déjà enregistré la note : Terminer ne fait que quitter l’écran.
+    // On laisse verifyCreatedContract confirmer le Badge sur la fiche.
+    logWarn('Badge — Terminer absent après Clôturer, vérification du contrat', {
+      screenshot: await captureSaleDebugScreenshot(page, 'badge-deferred-terminer-missing'),
+      ui: await venteUiSnapshot(page).catch(() => []),
+    });
   }
 
   logInfo('Paiement finalisé Deciplus', { mode: 'prelevement_differe', badge_differe: true });
@@ -2732,7 +2753,7 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
         label: productConfig.name || productConfig.title || 'Badge',
       });
       result.sale_id = badgeContract.idc;
-      const enforce = await enforceBadgeEcheance(page, memberId, productConfig).catch((err) => ({
+      const enforce = await enforceBadgeEcheance(page, memberId, productConfig, gymConfig).catch((err) => ({
         ok: false,
         reason: err.message,
       }));
@@ -2769,7 +2790,9 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
     const before = await findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => []);
     const classified = classifyMemberContracts(before, productConfig, {
       isPendingOrFuture: isPendingOrFutureContract,
-      skipCancel: isAventureOrder(order),
+      // Aventure : la vente est sur la fiche Minimes. Un 44,99 / saison déjà
+      // dessus doit être résilié — Balma n’est pas sur cette fiche.
+      skipCancel: false,
     });
 
     if (classified.toCancel.length) {
@@ -2848,7 +2871,7 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
             label: badgeProductConfig.name || badgeProductConfig.title || 'Badge',
           });
           result.badge_sale_id = badgeContract.idc;
-          const enforce = await enforceBadgeEcheance(page, memberId, badgeProductConfig).catch(
+          const enforce = await enforceBadgeEcheance(page, memberId, badgeProductConfig, gymConfig).catch(
             (err) => ({ ok: false, reason: err.message })
           );
           result.badge_echeance_ok = enforce.ok;
@@ -2886,7 +2909,7 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
  * Vérification post-vente : ouvre le contrat badge et force l'échéance à J+delayDays
  * via « Reporter » si Deciplus a gardé sa date par défaut (ex. fin de mois).
  */
-async function enforceBadgeEcheance(page, memberId, badgeConfig = {}) {
+async function enforceBadgeEcheance(page, memberId, badgeConfig = {}, gymConfig = {}) {
   const timing = String(badgeConfig.badge_timing || 'deferred').toLowerCase();
   if (timing === 'immediate' || badgeConfig.paiement_comptant === true) {
     return { ok: true, skipped: true };

@@ -128,6 +128,7 @@ async function inspectMember(page, order) {
   if (!memberId) {
     const cs = order.payload.customer_short || {};
     const cf = order.payload.customer_full || {};
+    const { CHANGE_MATCH_FIELDS } = require('../bot/member');
     const match = await findMemberOnBoxingCenterGyms(
       page,
       {
@@ -137,7 +138,11 @@ async function inspectMember(page, order) {
         phone: cs.phone || cf.phone,
         email: cs.email || cf.email,
       },
-      { preferredGym: order.gym, includeBalma: false }
+      {
+        preferredGym: order.gym,
+        includeBalma: false,
+        matchFields: CHANGE_MATCH_FIELDS,
+      }
     );
     if (!match.found) {
       return { ok: false, issue: 'member_not_found', match };
@@ -154,7 +159,7 @@ async function inspectMember(page, order) {
     deciplus_product_search: 'OFFRE A 29',
   }, {
     isPendingOrFuture: isPendingOrFutureContract,
-    skipCancel: order.aventure,
+    skipCancel: false,
   });
 
   const issues = [];
@@ -198,12 +203,11 @@ async function repairMember(page, order, inspect) {
     ),
     { payment: { status: 'paid', amount: order.amount || 29, billing_plan: 'rib' } }
   );
-  const badgeProductConfig = productConfig.auto_badge
-    ? resolveBadgeProductConfig(catalog, {
-        badge_timing: 'deferred',
-        badge_method: 'iban',
-      })
-    : null;
+  productConfig.auto_badge = true;
+  const badgeProductConfig = resolveBadgeProductConfig(catalog, {
+    badge_timing: 'deferred',
+    badge_method: 'iban',
+  });
 
   const saleOrder = {
     order_id: order.order_id,

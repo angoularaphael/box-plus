@@ -189,6 +189,8 @@ async function createChosenOfferSale(page, memberId, gymConfig, order) {
     productConfig.paiement_comptant = true;
     productConfig.requires_iban = false;
     productConfig.auto_badge = false;
+  } else {
+    productConfig.auto_badge = true;
   }
   productConfig.skip_rib_prompt = true;
 

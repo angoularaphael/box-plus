@@ -133,6 +133,14 @@ test('Badge actif → pas de nouveau badge ; Badge absent → besoin', () => {
   assert.equal(noBadge.needsBadge, true);
 });
 
+test('Aventure 29 € force le badge auto', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/aventure-clone.js'), 'utf8');
+  assert.match(src, /productConfig\.auto_badge = true/);
+  const idx = require('fs').readFileSync(require('path').join(__dirname, '../bot/index.js'), 'utf8');
+  assert.match(idx, /isOffre29Product/);
+  assert.match(idx, /badgeDone/);
+});
+
 test('le bot ventes résilie l’ancien abo avant de vendre le nouveau', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/sale.js'), 'utf8');
   assert.match(src, /classifyMemberContracts/);
@@ -140,7 +148,7 @@ test('le bot ventes résilie l’ancien abo avant de vendre le nouveau', () => {
   assert.match(src, /Badge déjà actif/);
 });
 
-test('Aventure / Balma : on ne résilie pas l’ancien abo', () => {
+test('Aventure Minimes : un 44,99 déjà sur la fiche est bien à résilier', () => {
   const contracts = [
     {
       idc: '10',
@@ -148,10 +156,28 @@ test('Aventure / Balma : on ne résilie pas l’ancien abo', () => {
       label: '44,99€/4 SEMAINES SANS ENGAGEMENT 80 jours restants',
     },
   ];
-  const c = classifyMemberContracts(contracts, offre29, {
-    ...opts,
-    skipCancel: true,
-  });
-  assert.equal(c.toCancel.length, 0);
+  const c = classifyMemberContracts(contracts, offre29, opts);
+  assert.equal(c.toCancel.length, 1);
   assert.equal(c.needsNewSale, true);
+  assert.equal(c.needsBadge, true);
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/sale.js'), 'utf8');
+  assert.match(src, /skipCancel:\s*false/);
+});
+
+test('badge différé : Terminer absent n’abandonne pas le Badge', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/sale.js'), 'utf8');
+  const start = src.indexOf('async function finalizeBadgePayment');
+  const end = src.indexOf('async function configureBadgeDeferredDates');
+  const body = src.slice(start, end);
+  assert.doesNotMatch(body, /throw new Error\('Badge — bouton « Terminer » introuvable'\)/);
+  assert.match(body, /vérification du contrat/);
+});
+
+test('échéance badge : gymConfig est un argument (plus de ReferenceError)', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/sale.js'), 'utf8');
+  assert.match(
+    src,
+    /async function enforceBadgeEcheance\(page, memberId, badgeConfig = \{\}, gymConfig = \{\}\)/
+  );
+  assert.match(src, /enforceBadgeEcheance\(page, memberId, badgeProductConfig, gymConfig\)/);
 });

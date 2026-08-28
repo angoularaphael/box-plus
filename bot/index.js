@@ -327,6 +327,11 @@ async function processSaleJob(page, order, jobMeta = {}) {
 
   if (isCartePrestationConfig(productConfig)) {
     productConfig.auto_badge = false;
+  } else {
+    const { isOffre29Product } = require('../lib/sale-contract-match');
+    if (isOffre29Product(productConfig) || isOffre29Product(order)) {
+      productConfig.auto_badge = true;
+    }
   }
 
   let badgeProductConfig = null;
@@ -545,7 +550,10 @@ async function processSaleJob(page, order, jobMeta = {}) {
   const needsSale =
     productConfig.create_sale !== false && String(productConfig.sale_type || '').toLowerCase() !== 'none';
 
-  if (checkpoint.sale_done && checkpoint.deciplus_sale_id) {
+  const badgeDone =
+    !badgeProductConfig ||
+    /created|already_on_file/i.test(String(checkpoint.badge_action || saleResult?.badge_action || ''));
+  if (checkpoint.sale_done && checkpoint.deciplus_sale_id && badgeDone) {
     logInfo('Reprise job — vente déjà enregistrée', {
       order_id: order.order_id,
       sale_id: checkpoint.deciplus_sale_id,
