@@ -31,7 +31,7 @@ const AUTH_DIR = process.env.WA_AUTH_DIR
   : path.join(__dirname, 'auth_info_baileys');
 const MAX_RECONNECT_ATTEMPTS = 8;
 const QR_REUSE_MS = 18000;
-const BUILD = 'wa-send-2';
+const BUILD = 'wa-send-3';
 
 const app = express();
 app.use(cors());
@@ -51,6 +51,28 @@ let pairingRequested = false;
 let qrError = null;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
+let lastMessageUpdates = [];
+
+const ACK_NAMES = {
+  0: 'ERROR',
+  1: 'PENDING',
+  2: 'SERVER',
+  3: 'DELIVERY',
+  4: 'READ',
+  5: 'PLAYED',
+};
+
+function rememberMessageUpdate(update) {
+  lastMessageUpdates.unshift({
+    at: new Date().toISOString(),
+    id: update?.key?.id || null,
+    remoteJid: update?.key?.remoteJid || null,
+    status: update?.update?.status,
+    statusName: ACK_NAMES[update?.update?.status] || null,
+    stub: update?.update?.messageStubParameters || null,
+  });
+  lastMessageUpdates = lastMessageUpdates.slice(0, 20);
+}
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -284,6 +306,10 @@ async function connectToWhatsAppUnlocked({ force = false, clearAuth = false } = 
   if (version) socketConf.version = version;
 
   sock = makeWASocket(socketConf);
+  sock.ev.on('messages.update', (updates) => {
+    if (!Array.isArray(updates)) return;
+    for (const update of updates) rememberMessageUpdate(update);
+  });
 
   sock.ev.process(async (events) => {
     if (gen !== connectGen) return;
@@ -486,23 +512,109 @@ app.post('/api/logout', async (_req, res) => {
   res.json({ ok: true, success: true, message: 'Logged out', build: BUILD });
 });
 
+function lidFromMapping(value) {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  return value.lid || value.id || null;
+}
+
 async function resolveWhatsAppJid(phone) {
   const digits = normalizePhone(phone);
-  if (!digits || !sock) return { digits, jid: '', exists: false };
+  if (!digits || !sock) return { digits, jid: '', pnJid: '', lid: null, exists: false };
   const fallback = `${digits}@s.whatsapp.net`;
-  if (typeof sock.onWhatsApp !== 'function') {
-    return { digits, jid: fallback, exists: null };
+  let pnJid = fallback;
+  let exists = null;
+
+  if (typeof sock.onWhatsApp === 'function') {
+    try {
+      const found = await sock.onWhatsApp(fallback);
+      const hit = Array.isArray(found) ? found.find((x) => x && x.exists) || found[0] : found;
+      if (hit && hit.exists === false) {
+        return { digits, jid: fallback, pnJid: fallback, lid: null, exists: false };
+      }
+      if (hit) {
+        exists = hit.exists !== false;
+        if (hit.jid) pnJid = String(hit.jid);
+      }
+    } catch {
+      /* keep fallback */
+    }
   }
+
+  let lid = null;
   try {
-    const found = await sock.onWhatsApp(digits, fallback);
-    const hit = Array.isArray(found) ? found.find((x) => x && x.exists) || found[0] : found;
-    if (hit && hit.exists === false) return { digits, jid: fallback, exists: false };
-    const jid = String(hit?.jid || hit?.lid || fallback);
-    return { digits, jid, exists: hit?.exists !== false };
+    const map = sock.signalRepository?.lidMapping;
+    if (map?.getLIDForPN) lid = lidFromMapping(await map.getLIDForPN(pnJid));
+    else if (map?.getStoredLIDForPN) lid = lidFromMapping(await map.getStoredLIDForPN(pnJid));
   } catch {
-    return { digits, jid: fallback, exists: null };
+    lid = null;
   }
+
+  return {
+    digits,
+    jid: lid || pnJid,
+    pnJid,
+    lid,
+    exists,
+  };
 }
+
+function waitForMessageAck(msgId, timeoutMs = 10000) {
+  return new Promise((resolve) => {
+    const started = Date.now();
+    let best = { ack: null, ackName: null, stub: null, waitMs: 0, timeout: true };
+
+    const finish = (payload) => {
+      clearTimeout(timer);
+      if (sock) sock.ev.off('messages.update', onUpdate);
+      resolve({ ...payload, waitMs: Date.now() - started });
+    };
+
+    const consider = (update) => {
+      if (!update?.key || update.key.id !== msgId || update.update?.status == null) return false;
+      const status = update.update.status;
+      best = {
+        ack: status,
+        ackName: ACK_NAMES[status] || String(status),
+        stub: update.update.messageStubParameters || null,
+        waitMs: Date.now() - started,
+        timeout: false,
+      };
+      if (status === 0 || status >= 3) {
+        finish(best);
+        return true;
+      }
+      return false;
+    };
+
+    function onUpdate(updates) {
+      if (!Array.isArray(updates)) return;
+      for (const update of updates) {
+        if (consider(update)) return;
+      }
+    }
+
+    const timer = setTimeout(() => finish(best), timeoutMs);
+    if (sock) sock.ev.on('messages.update', onUpdate);
+    for (const previous of lastMessageUpdates) {
+      if (previous.id === msgId && previous.status != null) {
+        if (
+          consider({
+            key: { id: previous.id },
+            update: { status: previous.status, messageStubParameters: previous.stub },
+          })
+        ) {
+          return;
+        }
+      }
+    }
+  });
+}
+
+app.get('/api/last-acks', (req, res) => {
+  if (!verifyApiSecret(req, res)) return;
+  res.json({ ok: true, build: BUILD, items: lastMessageUpdates });
+});
 
 app.post('/api/send-message', async (req, res) => {
   if (!verifyApiSecret(req, res)) return;
@@ -520,19 +632,34 @@ app.post('/api/send-message', async (req, res) => {
     });
   }
   try {
+    if (typeof sock.presenceSubscribe === 'function') {
+      await sock.presenceSubscribe(resolved.jid).catch(() => {});
+    }
     const sent = await Promise.race([
       sock.sendMessage(resolved.jid, { text: String(message) }),
       sleep(20000).then(() => {
         throw new Error('WhatsApp send timeout 20s');
       }),
     ]);
-    res.json({
-      ok: true,
-      success: true,
+    const msgId = sent?.key?.id || null;
+    const ack = msgId ? await waitForMessageAck(msgId, 10000) : { ack: null, timeout: true, waitMs: 0 };
+    const failed = ack.ack === 0;
+    const delivered = Number(ack.ack) >= 3;
+    res.status(failed ? 502 : 200).json({
+      ok: !failed,
+      success: !failed,
       phone: resolved.digits,
       jid: resolved.jid,
+      pnJid: resolved.pnJid,
+      lid: resolved.lid,
       exists: resolved.exists,
-      id: sent?.key?.id || null,
+      id: msgId,
+      ack: ack.ack,
+      ackName: ack.ackName || null,
+      stub: ack.stub || null,
+      delivered,
+      ackTimeout: Boolean(ack.timeout),
+      ackWaitMs: ack.waitMs || 0,
     });
   } catch (err) {
     res.status(500).json({ error: err.message, phone: resolved.digits, jid: resolved.jid });
