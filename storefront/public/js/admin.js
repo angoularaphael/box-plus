@@ -653,7 +653,11 @@
         <td>${escapeHtml(o.name)}</td>
         <td>${
           o.aventure || o.source === 'balma_retour' || o.origine === 'Aventure Balma'
-            ? '<span class="badge aventure" title="Parcours Aventure Balma — 5 salles Boxing Center">Aventure Balma</span>'
+            ? `<span class="badge aventure" title="Parcours Aventure Balma — 5 salles Boxing Center">Aventure Balma</span>${
+                o.manual_migration || o.bot_status === 'manual_ok'
+                  ? ' <span class="badge pending" title="Migration Deciplus faite par le coach, hors bot">Migré à la main</span>'
+                  : ''
+              }`
             : '<span class="badge pending">Boutique</span>'
         }</td>
         <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>

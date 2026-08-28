@@ -147,6 +147,11 @@ function buildOrderSummary(order) {
     email_sent_at: order.email_sent_at || null,
     created_at: order.created_at || null,
     updated_at: order.updated_at || null,
+    deciplus_member_id: order.deciplus_member_id || null,
+    deciplus_sale_id: order.deciplus_sale_id || null,
+    bot_status: order.bot_status || null,
+    bot_error: order.bot_error || null,
+    manual_migration: Boolean(order.manual_migration),
   };
 }
 
@@ -230,6 +235,11 @@ function reconstructOrderFromListRow(row) {
     },
     dispatched_at: rowValue(row, 'dispatched_at', 'payload->dispatched_at') || null,
     email_sent_at: rowValue(row, 'email_sent_at', 'payload->email_sent_at') || null,
+    deciplus_member_id: rowValue(row, 'deciplus_member_id', 'payload->deciplus_member_id') || null,
+    deciplus_sale_id: rowValue(row, 'deciplus_sale_id', 'payload->deciplus_sale_id') || null,
+    bot_status: rowValue(row, 'bot_status', 'payload->bot_status') || null,
+    bot_error: rowValue(row, 'bot_error', 'payload->bot_error') || null,
+    manual_migration: Boolean(rowValue(row, 'manual_migration', 'payload->manual_migration')),
     created_at: rowValue(row, 'created_at', 'payload->created_at') || row.created_at || null,
     updated_at: row.updated_at || rowValue(row, 'payload->updated_at') || null,
   };
@@ -272,6 +282,11 @@ const SLIM_SELECT = [
   'photo:payload->documents->photo',
   'photo_filename:payload->documents->photo_filename',
   'photo_url:payload->documents->photo_url',
+  'deciplus_member_id:payload->deciplus_member_id',
+  'deciplus_sale_id:payload->deciplus_sale_id',
+  'bot_status:payload->bot_status',
+  'bot_error:payload->bot_error',
+  'manual_migration:payload->manual_migration',
 ].join(',\n');
 
 async function fetchAllPages(makeQuery) {

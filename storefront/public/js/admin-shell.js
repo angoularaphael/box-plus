@@ -383,7 +383,7 @@
             ? `<span class="pan-tag pan-tag--ko">Accès bloqué</span>`
             : `<span class="pan-tag pan-tag--att">Signé, à transmettre</span>`;
         return `<tr>
-          <td data-l="Adhérent"><strong>${esc(o.name)}</strong>${o.aventure || o.source === "balma_retour" ? ' <span class="pan-tag pan-tag--aventure">Aventure Balma</span>' : ""}<br><span style="color:var(--pan-mute);font-size:12px">${esc(o.email)}</span></td>
+          <td data-l="Adhérent"><strong>${esc(o.name)}</strong>${o.aventure || o.source === "balma_retour" ? ' <span class="pan-tag pan-tag--aventure">Aventure Balma</span>' : ""}${o.manual_migration || o.bot_status === "manual_ok" ? ' <span class="pan-tag pan-tag--neutre">Migré à la main</span>' : ""}<br><span style="color:var(--pan-mute);font-size:12px">${esc(o.email)}</span></td>
           <td data-l="Offre">${esc(o.product)}</td>
           <td data-l="Salle">${esc(o.gym_label || o.gym || "—")}</td>
           <td data-l="Motif">${motif}</td>
@@ -411,7 +411,7 @@
     zone.innerHTML = `<div class="pan-tablewrap"><table class="pan-table pan-table--cartes">
       <thead><tr><th>Adhérent</th><th>Offre</th><th>Salle</th><th>Étape</th><th>Paiement</th><th>Ouvert le</th><th></th></tr></thead>
       <tbody>${tri.map((o) => `<tr>
-        <td data-l="Adhérent"><strong>${esc(o.name)}</strong>${o.aventure || o.source === "balma_retour" ? ' <span class="pan-tag pan-tag--aventure">Aventure Balma</span>' : ""}</td>
+        <td data-l="Adhérent"><strong>${esc(o.name)}</strong>${o.aventure || o.source === "balma_retour" ? ' <span class="pan-tag pan-tag--aventure">Aventure Balma</span>' : ""}${o.manual_migration || o.bot_status === "manual_ok" ? ' <span class="pan-tag pan-tag--neutre">Migré à la main</span>' : ""}</td>
         <td data-l="Offre">${esc(o.product)}</td>
         <td data-l="Salle">${esc(o.gym_label || o.gym || "—")}</td>
         <td data-l="Étape"><span class="pan-tag pan-tag--neutre">${esc(o.step_label || LIB_ETAPE[o.step] || o.step)}</span></td>

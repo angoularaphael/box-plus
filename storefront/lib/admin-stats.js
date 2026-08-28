@@ -34,6 +34,13 @@ function isAventureOrder(order = {}) {
   );
 }
 
+function aventureSaleRecorded(order = {}) {
+  if (order.deciplus_sale_id) return true;
+  if (order.manual_migration) return true;
+  const st = String(order.bot_status || '').toLowerCase();
+  return st === 'manual_ok' || st === 'manual_coach';
+}
+
 function isMembershipSale(order = {}) {
   if (order.action) return false;
   if (/^(COACH|CHANGE|VERIFY|CANCEL)-/i.test(String(order.order_id || ''))) return false;
@@ -230,7 +237,7 @@ function buildAdminSalesExtras({
       if (o.payment?.status === 'paid') aventure.paid += 1;
       if (o.signature?.signed_at) aventure.signed += 1;
       if (o.dispatched_at) aventure.dispatched += 1;
-      if (o.payment?.status === 'paid' && !o.deciplus_sale_id) aventure.missing_sale += 1;
+      if (o.payment?.status === 'paid' && !aventureSaleRecorded(o)) aventure.missing_sale += 1;
     }
     if (!isMembershipSale(o)) continue;
     const paidAt = membershipPaidAt(o);
@@ -342,6 +349,7 @@ module.exports = {
   parisDayKey,
   parisTodayKey,
   isAventureOrder,
+  aventureSaleRecorded,
   isMembershipSale,
   gymSlugFromOrder,
   buildAdminSalesExtras,

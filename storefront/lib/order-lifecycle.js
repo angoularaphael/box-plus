@@ -519,6 +519,7 @@ function toAdminSummary(order) {
     deciplus_sale_id: order.deciplus_sale_id || null,
     bot_status: order.bot_status || null,
     bot_error: order.bot_error || null,
+    manual_migration: Boolean(order.manual_migration),
   };
 }
 
@@ -541,6 +542,10 @@ async function applyBotSaleStatus(orderId, patch = {}) {
   if (memberId) order.deciplus_member_id = memberId;
   if (saleId) order.deciplus_sale_id = saleId;
   if (patch.status) order.bot_status = String(patch.status);
+  if (patch.manual_migration) {
+    order.manual_migration = true;
+    order.skip_bot = true;
+  }
   order.bot_error = patch.error ? String(patch.error).slice(0, 500) : null;
   order.bot_processed_at = new Date().toISOString();
   await saveOrderAsync(order);

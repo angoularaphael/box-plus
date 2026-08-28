@@ -1111,6 +1111,26 @@ async function processOneJob(job) {
   }
 
   const order = normalizeOrder(job);
+  if (
+    job.skip_bot ||
+    job.manual_migration ||
+    String(job.bot_status || '').toLowerCase() === 'manual_ok'
+  ) {
+    const skipOutcome = {
+      status: STATUS.SUCCESS,
+      action: job.action || 'sale',
+      skipped: 'manual_migration',
+      deciplus_member_id: job.deciplus_member_id || order.deciplus_member_id || null,
+      deciplus_sale_id: job.deciplus_sale_id || null,
+    };
+    markProcessed(jobId, skipOutcome);
+    removeJob(filePath);
+    logInfo('Job ignoré — migration déjà faite à la main', {
+      job_id: jobId,
+      order_id: order.order_id,
+    });
+    return { ok: true, skipped: true };
+  }
   const validationErrors = validateOrder(order);
   if (validationErrors.length) {
     rejectJob(job, filePath, validationErrors.join(', '));

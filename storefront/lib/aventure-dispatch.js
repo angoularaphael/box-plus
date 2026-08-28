@@ -16,6 +16,7 @@ async function notifyAventurePaid(order) {
 async function notifyAventureDispatch(order) {
   if (!order || !isAventureOrder(order)) return;
   if (order.dispatched_at || order.dispatch_result?.queued) return;
+  if (order.manual_migration || order.skip_bot) return;
   if (!onPaid) return;
   await onPaid(order);
 }

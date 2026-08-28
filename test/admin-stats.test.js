@@ -71,6 +71,25 @@ test('ventes du jour + plus vendu + aventure sans vente Deciplus', () => {
   assert.equal(extras.best_day.day, today);
 });
 
+test('aventure migré à la main n’est pas une vente Deciplus manquante', () => {
+  const extras = buildAdminSalesExtras({
+    inscriptionOrders: [
+      {
+        order_id: 'BC-1787833279215-624967',
+        aventure: true,
+        source: 'balma_retour',
+        payment: { status: 'paid', paid_at: '2026-08-27T12:22:24.010Z' },
+        deciplus_member_id: '14238',
+        bot_status: 'manual_ok',
+        manual_migration: true,
+        product_snapshot: { display_name: 'OFFRE A 29€', price_cents: 2900 },
+      },
+    ],
+  });
+  assert.equal(extras.aventure.paid, 1);
+  assert.equal(extras.aventure.missing_sale, 0);
+});
+
 test('stats — ventes d’un jour choisi et meilleur jour', () => {
   const extras = buildAdminSalesExtras({
     inscriptionOrders: [
