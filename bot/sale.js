@@ -19,6 +19,8 @@ const {
   scoreCatalogTile,
 } = require('../lib/catalog-sale');
 const { saleContractMatches } = require('../lib/sale-contract-match');
+const { classifyMemberContracts } = require('../lib/replace-existing-abo');
+const { isAventureOrder } = require('../lib/aventure-policy');
 const { isPendingOrFutureContract } = require('./cancel-sale');
 
 /** Vrai uniquement pour le produit Badge Deciplus (~34,99 €), jamais essai/coaching. */
@@ -2765,14 +2767,42 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
   } else if (productConfig.sale_type === 'abonnement') {
     const { findActiveContracts } = require('./cancel-sale');
     const before = await findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => []);
-    const existingMatch = before.find(
-      (c) =>
-        c &&
-        !c.isBadge &&
-        saleContractMatches(c.label, productConfig) &&
-        !isPendingOrFutureContract(c.label) &&
-        !options.forceNewSale
-    );
+    const classified = classifyMemberContracts(before, productConfig, {
+      isPendingOrFuture: isPendingOrFutureContract,
+      skipCancel: isAventureOrder(order),
+    });
+
+    if (classified.toCancel.length) {
+      const cancelIds = new Set(classified.toCancel.map((c) => String(c.idc)));
+      logInfo('Ancien abo à résilier avant nouvelle vente', {
+        order_id: order.order_id,
+        member_id: memberId,
+        labels: classified.toCancel.map((c) => String(c.label || '').slice(0, 80)),
+      });
+      const cancelOutcome = await cancelSale(page, memberId, {
+        cancelReason: 'change_replace_existing',
+        filter: (c) => c && !c.isBadge && cancelIds.has(String(c.idc)),
+      });
+      logInfo('Ancien abo résilié', {
+        order_id: order.order_id,
+        member_id: memberId,
+        cancelled_count: cancelOutcome?.cancelled_count ?? 0,
+        details: (cancelOutcome?.details || []).map((d) => d.reason || d.idc).slice(0, 8),
+      });
+      await closeGreyboxIfOpen(page);
+      await openMemberCheck(page, memberId, gymConfig);
+    }
+
+    const afterCancel = classified.toCancel.length
+      ? await findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => [])
+      : before;
+    const afterClassified = classifyMemberContracts(afterCancel, productConfig, {
+      isPendingOrFuture: isPendingOrFutureContract,
+      skipCancel: true,
+    });
+    const existingMatch =
+      !options.forceNewSale && afterClassified.matchingStarted[0] ? afterClassified.matchingStarted[0] : null;
+
     if (existingMatch) {
       logInfo('Contrat déjà présent — pas de nouvelle vente', {
         order_id: order.order_id,
@@ -2780,52 +2810,62 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
         idc: existingMatch.idc,
         contract: existingMatch.label,
       });
-      return {
+      result = {
         sale_id: existingMatch.idc,
         action: 'already_on_file',
         member_id: memberId,
       };
+    } else {
+      const existingIds = afterCancel.filter((c) => !c.isBadge).map((c) => c.idc);
+      result = await buyAbonnement(page, productConfig, gymConfig);
+      const subscriptionContract = await verifyCreatedContract(page, memberId, {
+        badge: false,
+        label: productConfig.name || productConfig.title || order.product_name,
+        productConfig,
+        existingIds,
+      });
+      result.sale_id = subscriptionContract.idc;
     }
-    const existingIds = before.filter((c) => !c.isBadge).map((c) => c.idc);
-    result = await buyAbonnement(page, productConfig, gymConfig);
-    const subscriptionContract = await verifyCreatedContract(page, memberId, {
-      badge: false,
-      label: productConfig.name || productConfig.title || order.product_name,
-      productConfig,
-      existingIds,
-    });
-    result.sale_id = subscriptionContract.idc;
 
     if (badgeProductConfig) {
-      logInfo('Création badge après abonnement', { member_id: memberId, order_id: order.order_id });
       await closeGreyboxIfOpen(page);
       await openMemberCheck(page, memberId, gymConfig);
-      await randomDelay(400, 700);
-      try {
-        const badgeResult = await buyCarteBadge(page, badgeProductConfig, gymConfig, memberId);
-        result.badge_action = badgeResult.action;
-        const badgeContract = await verifyCreatedContract(page, memberId, {
-          badge: true,
-          label: badgeProductConfig.name || badgeProductConfig.title || 'Badge',
-        });
-        result.badge_sale_id = badgeContract.idc;
-        const enforce = await enforceBadgeEcheance(page, memberId, badgeProductConfig).catch(
-          (err) => ({ ok: false, reason: err.message })
-        );
-        result.badge_echeance_ok = enforce.ok;
-        if (!enforce.ok) {
-          result.manual_review = true;
-          result.badge_error = `Échéance badge J+${resolveBadgePrelevementDelayDays(badgeProductConfig)} non confirmée (${enforce.reason || 'inconnue'})`;
-        }
-      } catch (err) {
-        logWarn('Badge non créé — prélèvement différé requis', {
+      const live = await findActiveContracts(page).catch(() => []);
+      if (live.some((c) => c.isBadge)) {
+        logInfo('Badge déjà actif — pas de nouveau prélèvement', {
           order_id: order.order_id,
           member_id: memberId,
-          error: err.message,
         });
-        result.badge_action = 'badge_failed';
-        result.badge_error = err.message;
-        result.manual_review = true;
+        result.badge_action = result.badge_action || 'already_on_file';
+      } else {
+        logInfo('Création badge après abonnement', { member_id: memberId, order_id: order.order_id });
+        await randomDelay(400, 700);
+        try {
+          const badgeResult = await buyCarteBadge(page, badgeProductConfig, gymConfig, memberId);
+          result.badge_action = badgeResult.action;
+          const badgeContract = await verifyCreatedContract(page, memberId, {
+            badge: true,
+            label: badgeProductConfig.name || badgeProductConfig.title || 'Badge',
+          });
+          result.badge_sale_id = badgeContract.idc;
+          const enforce = await enforceBadgeEcheance(page, memberId, badgeProductConfig).catch(
+            (err) => ({ ok: false, reason: err.message })
+          );
+          result.badge_echeance_ok = enforce.ok;
+          if (!enforce.ok) {
+            result.manual_review = true;
+            result.badge_error = `Échéance badge J+${resolveBadgePrelevementDelayDays(badgeProductConfig)} non confirmée (${enforce.reason || 'inconnue'})`;
+          }
+        } catch (err) {
+          logWarn('Badge non créé — prélèvement différé requis', {
+            order_id: order.order_id,
+            member_id: memberId,
+            error: err.message,
+          });
+          result.badge_action = 'badge_failed';
+          result.badge_error = err.message;
+          result.manual_review = true;
+        }
       }
     }
   } else {

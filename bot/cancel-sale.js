@@ -969,11 +969,16 @@ async function cancelSale(page, memberId, options = {}) {
   const isChange =
     cancelReason === 'change_to_comptant' || cancelReason.startsWith('change_');
 
+  const extraFilter = typeof options.filter === 'function' ? options.filter : null;
+
   if (options.pendingOnly) {
     const outcome = await cancelAllMemberSales(page, memberId, {
       maxSales: 15,
       cancelDate,
-      filter: (c) => !c.isBadge && isPendingOrFutureContract(c.label),
+      filter: (c) =>
+        !c.isBadge &&
+        isPendingOrFutureContract(c.label) &&
+        (!extraFilter || extraFilter(c)),
     });
     return {
       action: 'sale_cancelled',
@@ -1013,6 +1018,7 @@ async function cancelSale(page, memberId, options = {}) {
   const outcome = await cancelAllMemberSales(page, memberId, {
     maxSales: 15,
     cancelDate,
+    filter: extraFilter,
   });
   if (outcome.cancelled_count === 0) {
     const reason = outcome.details[0]?.reason || 'inconnu';
