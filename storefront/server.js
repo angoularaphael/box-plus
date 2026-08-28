@@ -5358,6 +5358,11 @@ function createApp() {
   // SEO/GEO layer: robots.txt, sitemap.xml, llms.txt, canonical + JSON-LD
   // injection, slug product URLs. Registered first so its routes win.
   require('./lib/seo').registerSeo(app, PUBLIC_DIR);
+  /* ⚠ MAINTENU À LA MAIN — voir lib/auteurs.js. L'attribution des auteurs :
+     /humans.txt, /.well-known/mcp(.json) et le serveur MCP sur /api/mcp.
+     Enregistré juste après le SEO, au même niveau : ce sont les mêmes
+     surfaces, lues par les mêmes robots. */
+  require('./lib/auteurs').registerAuteurs(app);
 
   const pageRoutes = {
     '/abonnements': 'abonnements.html',
