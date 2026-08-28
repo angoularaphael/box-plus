@@ -323,6 +323,10 @@ const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
 const STORE_URL = getStoreUrl();
 const SYNC_SECRET = process.env.SYNC_SECRET || process.env.BRIDGE_SECRET || '';
 const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
+const { DEFAULT_WHATSAPP_BOT_SECRET } = require('./lib/whatsapp-bot');
+const WHATSAPP_BOT_SECRET = String(
+  process.env.WHATSAPP_BOT_SECRET || DEFAULT_WHATSAPP_BOT_SECRET || ''
+).trim();
 
 function makeUploader(subdir) {
   return multer({
@@ -407,12 +411,21 @@ function isAuthorizedSync(req) {
   return secretsEqual(token, SYNC_SECRET);
 }
 
+function isAuthorizedWhatsAppBot(req) {
+  if (!WHATSAPP_BOT_SECRET) return false;
+  const token = String(req.headers['x-api-secret'] || req.headers['authorization'] || '')
+    .replace(/^Bearer\s+/i, '')
+    .trim();
+  return secretsEqual(token, WHATSAPP_BOT_SECRET);
+}
+
 function isAuthorizedCron(req) {
   if (isAuthorizedSync(req)) return true;
+  if (isAuthorizedWhatsAppBot(req)) return true;
   const cron = String(process.env.CRON_SECRET || '').trim();
   if (!cron) return false;
-  const header = req.headers['authorization'] || '';
-  const token = String(header).replace(/^Bearer\s+/i, '').trim();
+  const header = String(req.headers['authorization'] || '');
+  const token = header.replace(/^Bearer\s+/i, '').trim();
   return secretsEqual(token, cron);
 }
 

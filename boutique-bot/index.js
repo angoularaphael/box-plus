@@ -31,7 +31,7 @@ const AUTH_DIR = process.env.WA_AUTH_DIR
   : path.join(__dirname, 'auth_info_baileys');
 const MAX_RECONNECT_ATTEMPTS = 8;
 const QR_REUSE_MS = 18000;
-const BUILD = 'wa-link-2';
+const BUILD = 'wa-nudge-1';
 
 const app = express();
 app.use(cors());
@@ -487,7 +487,12 @@ app.post('/api/send-message', async (req, res) => {
   const jid = phoneToJid(phone);
   if (!jid) return res.status(400).json({ error: 'phone required' });
   try {
-    await sock.sendMessage(jid, { text: String(message) });
+    await Promise.race([
+      sock.sendMessage(jid, { text: String(message) }),
+      sleep(20000).then(() => {
+        throw new Error('WhatsApp send timeout 20s');
+      }),
+    ]);
     res.json({ ok: true, success: true, phone: normalizePhone(phone) });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -505,6 +510,41 @@ setTimeout(() => {
     });
   }
 }, 1500);
+
+function startStoreNudgePoll() {
+  const store = String(process.env.STORE_URL || process.env.BOXPLUS_STORE_URL || 'https://boutique.boxingcenter.fr')
+    .trim()
+    .replace(/\/$/, '');
+  const secret = SITE_API_SECRET;
+  if (!store || !secret) {
+    console.warn('[boutique-bot] poll relances inscription : STORE_URL / secret manquant');
+    return;
+  }
+  const interval = Math.max(30000, parseInt(process.env.STORE_NUDGE_POLL_MS || '60000', 10) || 60000);
+  const tick = async () => {
+    if (!isConnected) return;
+    try {
+      const res = await fetch(`${store}/api/cron/inscription-nudges`, {
+        method: 'GET',
+        headers: { 'x-api-secret': secret },
+        signal: AbortSignal.timeout(25000),
+      });
+      if (!res.ok) {
+        console.warn('[boutique-bot] relances inscription HTTP', res.status);
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      if (data.count) {
+        console.log('[boutique-bot] relances inscription', { count: data.count });
+      }
+    } catch (err) {
+      console.warn('[boutique-bot] relances inscription:', err.message);
+    }
+  };
+  setTimeout(tick, 8000);
+  setInterval(tick, interval);
+  console.log('[boutique-bot] relances 30 min / 29 € →', `${store}/api/cron/inscription-nudges`, 'every', interval, 'ms');
+}
 
 function startConcoursWaRetry() {
   const url = String(process.env.CONCOURS_CRON_URL || '').trim();
@@ -539,4 +579,5 @@ app.listen(PORT, HOST, () => {
   console.log('[boutique-bot] QR : backoffice boutique → WhatsApp');
   if (!SITE_API_SECRET) console.warn('[boutique-bot] SITE_API_SECRET manquant');
   startConcoursWaRetry();
+  startStoreNudgePoll();
 });

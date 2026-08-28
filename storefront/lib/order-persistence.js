@@ -127,6 +127,9 @@ function buildOrderSummary(order) {
     signature: { signed_at: order.signature?.signed_at || null },
     funnel: {
       complete_deadline_at: order.funnel?.complete_deadline_at || null,
+      step_entered_at: order.funnel?.step_entered_at || null,
+      last_nudge_at: order.funnel?.last_nudge_at || null,
+      nudge_attempts: Number(order.funnel?.nudge_attempts || 0) || 0,
       nudge_sent_at: order.funnel?.nudge_sent_at || null,
       nudge_email_sent_at: order.funnel?.nudge_email_sent_at || null,
       nudge_whatsapp_sent_at: order.funnel?.nudge_whatsapp_sent_at || null,
