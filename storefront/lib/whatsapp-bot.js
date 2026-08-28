@@ -126,7 +126,7 @@ async function sendWhatsAppMessage(phone, message) {
   return botFetch('/api/send-message', {
     method: 'POST',
     body: { phone: to, message },
-    timeoutMs: 18000,
+    timeoutMs: 45000,
   });
 }
 

@@ -44,6 +44,7 @@ async function listDuoSince(sinceIso) {
           'customer_short:payload->customer_short',
           'product_id:payload->product_id',
           'product_snapshot:payload->product_snapshot',
+          'payment:payload->payment',
         ].join(',')
       )
       .gte('created_at', sinceIso)
@@ -57,6 +58,7 @@ async function listDuoSince(sinceIso) {
   }
   return all.filter((row) => {
     if (!isOffre29Order(row)) return false;
+    if (String(row.payment?.status || '').toLowerCase() !== 'paid') return false;
     const friend = sanitizeFriend(row.referral_friend);
     return Boolean(friend);
   });
@@ -91,6 +93,10 @@ async function main() {
   const targets = missingWa;
   for (const row of targets) {
     const friend = sanitizeFriend(row.referral_friend);
+    if (!friend) {
+      console.log(JSON.stringify({ skipped: 'no_friend', order_id: row.order_id }));
+      continue;
+    }
     const referrer = row.customer_short || {};
     const copy = buildReferralCopy({
       friendPrenom: friend.prenom,
@@ -124,6 +130,7 @@ async function main() {
         await saveOrderAsync(order);
       }
       console.log(JSON.stringify({ sent: true, ...summary }));
+      await new Promise((r) => setTimeout(r, 2200));
     } catch (err) {
       console.log(JSON.stringify({ sent: false, error: err.message, ...summary }));
     }

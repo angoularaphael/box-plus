@@ -14,6 +14,7 @@ describe('referral-notify', () => {
     const friend = sanitizeFriend({ prenom: 'Léa', nom: 'Martin', telephone: '06 12 34 56 78' });
     assert.equal(friend.prenom, 'Léa');
     assert.equal(friend.telephone, '06 12 34 56 78');
+    assert.equal(sanitizeFriend(null), null);
   });
 
   it('detects offre 29', () => {

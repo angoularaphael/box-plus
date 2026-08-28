@@ -12,10 +12,11 @@ function clean(v, max = 80) {
 }
 
 function sanitizeFriend(input = {}) {
-  const prenom = clean(input.prenom || input.first_name);
-  const nom = clean(input.nom || input.last_name);
-  const telephone = clean(input.telephone || input.phone, 20);
-  const email = clean(input.email, 120).toLowerCase();
+  const src = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+  const prenom = clean(src.prenom || src.first_name);
+  const nom = clean(src.nom || src.last_name);
+  const telephone = clean(src.telephone || src.phone, 20);
+  const email = clean(src.email, 120).toLowerCase();
   if (!prenom || !telephone) return null;
   return {
     prenom,
