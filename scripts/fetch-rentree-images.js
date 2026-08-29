@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const http = require('http');
+const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
 const DEST = path.join(ROOT, 'storefront', 'public', 'img', 'materiel', 'rentree');
@@ -245,6 +246,14 @@ async function main() {
     fs.mkdirSync(path.join(DEST, dir), { recursive: true });
     fs.copyFileSync(path.join(ASSETS, match), path.join(DEST, dir, name));
     console.log(`copied screenshot → ${dir}/${name}`);
+  }
+
+  const crop = spawnSync('python', [path.join(ROOT, 'scripts', 'fit-rentree-cadres.py')], {
+    cwd: ROOT,
+    stdio: 'inherit',
+  });
+  if (crop.status !== 0) {
+    console.warn('fit-rentree-cadres.py skipped or failed');
   }
   console.log('ok', DEST);
 }

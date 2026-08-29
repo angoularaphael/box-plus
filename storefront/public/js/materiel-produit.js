@@ -28,7 +28,7 @@
     const hasVariants = combos.length > 1 || (combos[0]?.label && combos[0].label !== 'Standard');
 
     const gallery = (p.images?.length ? p.images : p.image ? [p.image] : [])
-      .map((src) => `<img src="${A(src)}" alt="" class="product-gallery-img" />`)
+      .map((src) => `<div class="product-gallery-frame"><img src="${A(src)}" alt="" class="product-gallery-img" /></div>`)
       .join('');
 
     root.innerHTML = `

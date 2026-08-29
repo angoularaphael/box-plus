@@ -40,7 +40,7 @@
   function renderProduct(p) {
     const stock = stockInfo(p.stock);
     const img = p.image
-      ? `<img src="${A(p.image)}" alt="" class="materiel-img-photo" loading="lazy" />`
+      ? `<div class="materiel-img"><img src="${A(p.image)}" alt="" class="materiel-img-photo" loading="lazy" /></div>`
       : `<div class="materiel-img-placeholder">${(p.category_label || p.category || 'Produit').slice(0, 12)}</div>`;
     const disabled = p.stock <= 0 ? 'disabled' : '';
     const variantId = p.default_variant_id || p.combinations?.[0]?.id || '';
