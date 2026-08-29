@@ -32,7 +32,7 @@ const GYMS = {
     fullLabel: 'Ramonville-Saint-Agne',
     address: '33 rue des Ormes, 31520 Ramonville-Saint-Agne',
     manager: 'Pascal',
-    url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/',
+    url: 'https://mmatoulouse.com/',
     match: /ramonville|saint[-\s]?agne|des\s+ormes/i,
   },
   'st-cyprien': {

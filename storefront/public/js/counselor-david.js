@@ -20,7 +20,7 @@ window.BCCounselor = (function () {
     ramonville: {
       label: 'Ramonville',
       manager: 'Pascal',
-      url: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/',
+      url: 'https://mmatoulouse.com/',
     },
     portet: {
       label: 'Portet',
