@@ -38,6 +38,9 @@ test('Blade n’apparaît que dans destockage / tout', () => {
 test('upsell uniquement après paiement d’un abo adulte ou essai', () => {
   assert.equal(adultAboEligible({ tab: 'abonnements', subsection: 'comptant' }), true);
   assert.equal(adultAboEligible({ tab: 'seance-essai', subsection: 'essai' }), true);
+  assert.equal(adultAboEligible({ subsection: 'comptant' }), true);
+  assert.equal(adultAboEligible({ subsection: 'prelevement' }), true);
+  assert.equal(adultAboEligible({ subsection: 'promo' }), true);
   assert.equal(adultAboEligible({ tab: 'abonnements', subsection: 'enfants' }), false);
   assert.equal(adultAboEligible({ tab: 'coachings', subsection: 'coaching' }), false);
 

@@ -75,6 +75,7 @@ function productSnapshot(product) {
     requires_payment: product.requires_payment,
     sale_type: product.sale_type,
     deciplus_id: product.deciplus_id || null,
+    tab: product.tab || null,
     subsection: product.subsection || null,
   };
 }

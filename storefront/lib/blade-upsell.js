@@ -79,6 +79,8 @@ function isBladeProductId(id) {
   return String(id || '') === BLADE_ID || String(id || '') === BLADE_SLUG;
 }
 
+const ADULT_ABO_SUBSECTIONS = new Set(['comptant', 'prelevement', 'promo']);
+
 function adultAboEligible(product) {
   const p = product || {};
   const tab = String(p.tab || '');
@@ -87,6 +89,8 @@ function adultAboEligible(product) {
   if (subsection === 'enfants') return false;
   if (tab === 'seance-essai' || subsection === 'essai') return true;
   if (tab === 'abonnements') return true;
+  // Snapshots d’avant le champ `tab` : un abo adulte a subsection comptant / prelevement / promo.
+  if (ADULT_ABO_SUBSECTIONS.has(subsection)) return true;
   return false;
 }
 
