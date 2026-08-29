@@ -168,7 +168,7 @@ function shouldSkipWhatsApp(order, env = process.env) {
   return method === 'demo';
 }
 
-const WA_FALLBACK_EMAIL = 'boxing31@gmail.com';
+const WA_FALLBACK_EMAIL = 'boxingcenter31@gmail.com';
 
 function managerEmail(manager) {
   if (manager?.email) return String(manager.email).trim();
