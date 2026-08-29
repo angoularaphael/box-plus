@@ -7,7 +7,7 @@
  */
 const API = 'https://api.resend.com/emails';
 const DEFAULT_SENDER_EMAIL = 'no-reply@boxingcenter.fr';
-const DEFAULT_SENDER_NAME = 'Boxing Center';
+const DEFAULT_SENDER_NAME = 'Guillaume de Boxing Center';
 const DEFAULT_REPLY_TO = 'boxingcenter31@gmail.com';
 
 function readApiKey() {

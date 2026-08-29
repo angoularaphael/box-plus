@@ -1,21 +1,19 @@
 'use strict';
 
-const CAMPAIGN_FROM_NAME = 'Boxing Center';
+const CAMPAIGN_FROM_NAME = 'Guillaume de Boxing Center';
 
 function offerLink(hubUrl) {
   return String(hubUrl || 'https://boutique.boxingcenter.fr/offres-speciales');
 }
 
 function buildOfferCampaignEmail({ name, hubUrl }) {
-  const subject = 'Boxing Center';
-  const greeting = name
-    ? `Salut ${name}, c’est l’équipe BC.`
-    : 'Salut, c’est l’équipe BC.';
+  const subject = name ? `${name}, c’est Guillaume` : 'C’est Guillaume';
+  const greeting = name ? `Salut ${name},` : 'Salut,';
   const link = offerLink(hubUrl);
   const emailText = [
     greeting,
     '',
-    'Il reste encore quelques places pour les deux formules en cours.',
+    'C’est Guillaume. Il reste encore quelques places pour les deux formules en cours.',
     '',
     '29 euros les 4 semaines : sans engagement, sans préavis si tu pars, accès aux 5 salles, toutes les disciplines, tous les cours.',
     '',
@@ -27,7 +25,7 @@ function buildOfferCampaignEmail({ name, hubUrl }) {
     '29 euros sans engagement, 259 euros pour l’année. Tant qu’il reste de la place.',
     '',
     'À plus tard,',
-    'BC',
+    'Guillaume de Boxing Center',
   ].join('\n');
 
   return {

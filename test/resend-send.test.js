@@ -29,10 +29,10 @@ test('mail campagne : texte perso, pas de HTML pub', () => {
     hubUrl: 'https://boutique.boxingcenter.fr/offres-speciales',
     email: 'boxingcenter31@gmail.com',
   });
-  assert.equal(mail.subject, 'Boxing Center');
-  assert.match(mail.emailText, /Salut Guillaume, c’est l’équipe BC/);
-  assert.match(mail.emailText, /\nBC$/);
-  assert.equal(mail.fromName, 'Boxing Center');
+  assert.match(mail.subject, /c’est Guillaume/);
+  assert.match(mail.emailText, /C’est Guillaume/);
+  assert.match(mail.emailText, /Guillaume de Boxing Center/);
+  assert.equal(mail.fromName, 'Guillaume de Boxing Center');
   assert.equal(mail.html, undefined);
   assert.match(mail.emailText, /29 euros les 4 semaines/);
   assert.match(mail.emailText, /259 euros les 12 mois/);
