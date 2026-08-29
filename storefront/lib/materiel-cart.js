@@ -233,12 +233,7 @@ async function markMaterielPaidAsync(orderId, paymentMeta = {}) {
   }
   if (!order.manager_notify?.sent) {
     try {
-      const notify = await Promise.race([
-        notifyMaterielSale(order, { source: 'materiel' }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('whatsapp_timeout')), 8000)
-        ),
-      ]);
+      const notify = await notifyMaterielSale(order, { source: 'materiel' });
       applyManagerNotify(order, notify, 'materiel');
     } catch (err) {
       applyManagerNotify(order, { sent: false, error: err.message }, 'materiel');

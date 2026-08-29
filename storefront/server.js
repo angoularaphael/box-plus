@@ -2478,9 +2478,6 @@ function createApp() {
         await maybeRecordTunnelLeadFromOrder(order).catch((err) =>
           logError('Lead tunnel (draft)', { order_id: order.order_id, error: err.message })
         );
-        await maybeNotifyOffre29Friend(order, rest.referral_friend || rest.friend).catch((err) =>
-          logWarn('Notif ami offre 29 (draft)', { order_id: order.order_id, error: err.message })
-        );
       }
       res.json({
         ok: true,
@@ -2597,9 +2594,6 @@ function createApp() {
       const updated = await updateShortProfile(order.order_id, short);
       await syncInscriptionClient(updated).catch((err) =>
         logError('Sync client inscription (identity)', { order_id: order.order_id, error: err.message })
-      );
-      await maybeNotifyOffre29Friend(updated, friend).catch((err) =>
-        logWarn('Notif ami offre 29 (identity)', { order_id: order.order_id, error: err.message })
       );
       res.json({
         ok: true,
@@ -3268,6 +3262,24 @@ function createApp() {
         });
       }
 
+      if (signed.addons?.blade?.status === 'paid') {
+        try {
+          const { notifyMaterielSale, applyManagerNotify } = require('./lib/gym-materiel-managers');
+          const notify = await notifyMaterielSale(signed, { source: 'upsell' });
+          applyManagerNotify(signed, notify, 'upsell');
+          await saveOrderAsync(signed);
+        } catch (err) {
+          logWarn('Notif manager Blade à la signature', {
+            order_id: signed.order_id,
+            error: err.message,
+          });
+        }
+      }
+
+      await maybeNotifyOffre29Friend(signed).catch((err) =>
+        logWarn('Notif ami offre 29 (signature)', { order_id: signed.order_id, error: err.message })
+      );
+
       const emailResult = await sendConfirmationEmail(signed);
       if (emailResult.sent) await markEmailSent(signed.order_id);
 
@@ -3427,9 +3439,6 @@ function createApp() {
       };
       await syncInscriptionClient(orderForSync).catch((err) =>
         logError('Sync client inscription (pay)', { order_id: order.order_id, error: err.message })
-      );
-      await maybeNotifyOffre29Friend(order).catch((err) =>
-        logWarn('Notif ami offre 29 (pay)', { order_id: order.order_id, error: err.message })
       );
 
       const short = order.customer_short;

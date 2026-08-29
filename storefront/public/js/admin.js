@@ -1206,9 +1206,15 @@
 
   function notifyLabel(sale) {
     const n = sale.manager_notify || {};
+    if (n.sent && n.via === 'email') {
+      return { text: `Email (${n.manager || sale.manager_name || '—'})`, cls: 'badge ok' };
+    }
     if (n.sent) return { text: `Envoyé (${n.manager || sale.manager_name || '—'})`, cls: 'badge ok' };
     if (n.skipped === 'demo') return { text: 'Ignoré (démo)', cls: 'badge warn' };
     if (n.error) return { text: n.error, cls: 'badge err' };
+    if (sale.source === 'upsell' && sale.payment_status === 'paid') {
+      return { text: 'À la signature', cls: 'badge warn' };
+    }
     if (sale.payment_status !== 'paid') return { text: 'Après paiement', cls: 'badge' };
     return { text: 'Pas encore', cls: 'badge warn' };
   }

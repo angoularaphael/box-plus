@@ -132,7 +132,7 @@ async function logoutWhatsAppBot() {
   return botFetch('/api/logout', { method: 'POST', timeoutMs: 10000 });
 }
 
-async function sendWhatsAppMessage(phone, message, { kind = 'transactional' } = {}) {
+async function sendWhatsAppMessage(phone, message, { kind = 'transactional', timeoutMs = 6000 } = {}) {
   const to = toWhatsAppPhone(phone);
   if (!to) throw new Error('Numéro WhatsApp invalide');
   const { isAllWhatsAppPaused, isPromoWhatsAppPaused } = require('./whatsapp-outbound');
@@ -143,7 +143,7 @@ async function sendWhatsAppMessage(phone, message, { kind = 'transactional' } = 
   return botFetch('/api/send-message', {
     method: 'POST',
     body: { phone: to, message, kind },
-    timeoutMs: 45000,
+    timeoutMs,
   });
 }
 

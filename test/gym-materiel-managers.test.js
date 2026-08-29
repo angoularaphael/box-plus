@@ -10,6 +10,7 @@ const {
   shouldSkipWhatsApp,
   materielSaleSummary,
   listMaterielSales,
+  notifyMaterielSale,
 } = require('../storefront/lib/gym-materiel-managers');
 
 test('chaque salle de retrait a un manager et un numéro distinct', () => {
@@ -189,4 +190,24 @@ test('le produit s’affiche même sans order_type (payload slim)', () => {
   );
   assert.match(row.product, /Bandes 4m/);
   assert.equal(row.manager_name, 'Tapia');
+});
+
+test('si WhatsApp échoue, le manager reçoit un email', async () => {
+  const order = {
+    order_id: 'MAT-mail',
+    order_type: 'materiel',
+    pickup_gym: 'Portet-sur-Garonne',
+    payment: { method: 'payplug', status: 'paid' },
+    customer: { first_name: 'Léa', last_name: 'Martin', phone: '0611223344' },
+    items: [{ name: 'Gants', qty: 1, line_total_cents: 1370 }],
+  };
+  const out = await notifyMaterielSale(order, {
+    sendWa: async () => {
+      throw new Error('restricted');
+    },
+    sendEmail: async () => ({ sent: true, to: 'boxingcenter31@gmail.com' }),
+  });
+  assert.equal(out.sent, true);
+  assert.equal(out.via, 'email');
+  assert.equal(out.whatsapp.sent, false);
 });

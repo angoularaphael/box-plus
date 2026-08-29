@@ -168,10 +168,38 @@ function shouldSkipWhatsApp(order, env = process.env) {
   return method === 'demo';
 }
 
+function managerEmail(manager) {
+  if (manager?.email) return String(manager.email).trim();
+  try {
+    const { getManagerContact } = require('./membership');
+    return String(getManagerContact(manager?.slug)?.email || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+async function sendManagerSaleEmail(manager, message, order) {
+  const to = managerEmail(manager);
+  if (!to) return { sent: false, reason: 'no_email' };
+  const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
+  if (!isConfigured()) return { sent: false, reason: 'brevo_not_configured', to };
+  const ref = order?.order_id || '';
+  const result = await sendEmailViaBrevo({
+    to,
+    subject: `Vente matériel ${manager.label || manager.slug || ''} — ${ref}`.trim(),
+    text: message,
+    html: `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;font-size:15px">${String(message || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')}</pre>`,
+  });
+  return { sent: Boolean(result), to };
+}
+
 function applyManagerNotify(order, result, source) {
   if (!order) return null;
   const payload = {
     sent: Boolean(result?.sent),
+    via: result?.via || null,
     skipped: result?.skipped || null,
     error: result?.error || null,
     manager: result?.manager || null,
@@ -185,29 +213,68 @@ function applyManagerNotify(order, result, source) {
   return payload;
 }
 
-async function notifyManager(manager, message, order) {
-  if (!manager?.phone) return { sent: false, error: 'no_manager' };
-  if (shouldSkipWhatsApp(order)) {
+async function notifyManager(manager, message, order, hooks = {}) {
+  if (!manager?.phone && !managerEmail(manager)) return { sent: false, error: 'no_manager' };
+  if (!hooks.sendWa && !hooks.sendEmail && shouldSkipWhatsApp(order)) {
     logInfo('WhatsApp manager matériel ignoré (tests/démo)', {
       manager: manager.name,
       gym: manager.slug,
     });
     return { sent: false, skipped: 'demo', manager: manager.name, gym: manager.slug };
   }
-  try {
-    await sendWhatsAppMessage(manager.phone, message);
-    return { sent: true, manager: manager.name, gym: manager.slug, phone: manager.phone };
-  } catch (err) {
-    logWarn('WhatsApp manager matériel', {
-      manager: manager.name,
-      gym: manager.slug,
-      error: err.message,
-    });
-    return { sent: false, error: err.message, manager: manager.name, gym: manager.slug };
+
+  const sendWa =
+    hooks.sendWa ||
+    ((phone, text) => sendWhatsAppMessage(phone, text, { kind: 'transactional', timeoutMs: 4000 }));
+  const sendEmail = hooks.sendEmail || sendManagerSaleEmail;
+
+  let whatsapp = { sent: false };
+  const { isAllWhatsAppPaused, isPromoWhatsAppPaused } = require('./whatsapp-outbound');
+  const skipWa = isAllWhatsAppPaused() || isPromoWhatsAppPaused();
+  if (!skipWa && manager.phone) {
+    try {
+      await sendWa(manager.phone, message);
+      whatsapp = { sent: true };
+    } catch (err) {
+      whatsapp = { sent: false, error: err.message };
+      logWarn('WhatsApp manager matériel', {
+        manager: manager.name,
+        gym: manager.slug,
+        error: err.message,
+      });
+    }
+  } else if (skipWa) {
+    whatsapp = { sent: false, skipped: 'restricted' };
   }
+
+  let email = { sent: false };
+  if (!whatsapp.sent) {
+    try {
+      email = await sendEmail(manager, message, order);
+    } catch (err) {
+      email = { sent: false, error: err.message };
+      logWarn('Email manager matériel', {
+        manager: manager.name,
+        gym: manager.slug,
+        error: err.message,
+      });
+    }
+  }
+
+  const sent = Boolean(whatsapp.sent || email.sent);
+  return {
+    sent,
+    via: whatsapp.sent ? 'whatsapp' : email.sent ? 'email' : null,
+    whatsapp,
+    email,
+    error: sent ? null : email.error || whatsapp.error || 'not_sent',
+    manager: manager.name,
+    gym: manager.slug,
+    phone: manager.phone,
+  };
 }
 
-async function notifyMaterielSale(order, { source = 'materiel', force = false } = {}) {
+async function notifyMaterielSale(order, { source = 'materiel', force = false, ...hooks } = {}) {
   const existing = order?.manager_notify || order?.addons?.blade?.manager_notify;
   if (!force && existing?.sent) {
     return { ...existing, already: true, sent: true };
@@ -219,13 +286,14 @@ async function notifyMaterielSale(order, { source = 'materiel', force = false } 
     return { sent: false, error: 'unknown_gym', gym: gymRaw };
   }
   const message = saleWhatsAppText(order, source);
-  const result = await notifyManager(manager, message, order);
+  const result = await notifyManager(manager, message, order, hooks);
   logInfo('Vente matériel notifiée', {
     order_id: order?.order_id,
     gym: manager.slug,
     manager: manager.name,
     source,
     sent: result.sent,
+    via: result.via || null,
     skipped: result.skipped || null,
     error: result.error || null,
   });
@@ -297,6 +365,8 @@ module.exports = {
   applyManagerNotify,
   notifyManager,
   notifyMaterielSale,
+  sendManagerSaleEmail,
+  managerEmail,
   materielSaleSummary,
   listMaterielSales,
 };
