@@ -163,7 +163,12 @@ async function main() {
 
   const coachJobs = [];
   for (const item of coaches) {
-    if (item.status === 'sent' || item.status === 'converted' || item.status === 'skipped') {
+    if (
+      item.status === 'sent' ||
+      item.status === 'converted' ||
+      item.status === 'skipped' ||
+      item.status === 'missing'
+    ) {
       console.log(
         JSON.stringify({
           skipped: true,
