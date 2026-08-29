@@ -62,6 +62,50 @@ def product_box(im: Image.Image) -> tuple[tuple[int, int, int], tuple[int, int, 
     return bg, (minx, miny, min(w, maxx + step), min(h, maxy + step))
 
 
+def product_box_full(im: Image.Image, thresh: int = 8) -> tuple[int, int, int, int]:
+    """Pixel-accurate bbox for white-studio group shots (no step sampling)."""
+    rgb = im.convert("RGB")
+    w, h = rgb.size
+    px = rgb.load()
+    minx, miny, maxx, maxy = w, h, 0, 0
+    bg = bg_color(rgb)
+    for y in range(h):
+        for x in range(w):
+            p = px[x, y]
+            if max(abs(p[i] - bg[i]) for i in range(3)) > thresh:
+                if x < minx:
+                    minx = x
+                if y < miny:
+                    miny = y
+                if x > maxx:
+                    maxx = x
+                if y > maxy:
+                    maxy = y
+    if maxx <= minx:
+        return (0, 0, w, h)
+    return (minx, miny, maxx + 1, maxy + 1)
+
+
+def fit_centered_wide(im: Image.Image, pad_ratio: float = 0.07) -> Image.Image:
+    """Keep a wide product set fully visible and centered in a square."""
+    rgb = im.convert("RGB")
+    w, h = rgb.size
+    x0, y0, x1, y1 = product_box_full(rgb)
+    bw, bh = max(1, x1 - x0), max(1, y1 - y0)
+    pad = max(48, int(pad_ratio * max(bw, bh)))
+    side = max(bw, bh) + 2 * pad
+    cx = (x0 + x1) / 2
+    cy = (y0 + y1) / 2
+    canvas = Image.new("RGB", (side, side), (255, 255, 255))
+    ox = int(round(side / 2 - cx))
+    oy = int(round(side / 2 - cy))
+    canvas.paste(rgb, (ox, oy))
+    out_size = min(OUT_SIZE, max(side, int(max(w, h) * 1.15)))
+    if canvas.size[0] != out_size:
+        canvas = canvas.resize((out_size, out_size), Image.Resampling.LANCZOS)
+    return canvas
+
+
 def fit_square(im: Image.Image) -> Image.Image:
     rgb = im.convert("RGB")
     w, h = rgb.size
@@ -110,7 +154,10 @@ def main() -> int:
         if any(part in SKIP_DIRS for part in path.parts):
             continue
         src = Image.open(path)
-        out = fit_square(src)
+        if path.name == "pack-enfant.jpg":
+            out = fit_centered_wide(src)
+        else:
+            out = fit_square(src)
         save_image(out, path)
         print(f"cadre {path.relative_to(DEST)}  {src.size} -> {out.size}")
         count += 1
