@@ -1717,7 +1717,11 @@ function createApp() {
       ok: result.ok !== false,
       ...result,
       nudges: { count: nudges.count || 0 },
-      essai_followup: { sent: essaiFollowup.sent || 0, checks: essaiFollowup.checks || 0 },
+      essai_followup: {
+        sent: essaiFollowup.sent || 0,
+        checks: essaiFollowup.checks || 0,
+        customer_nudges: essaiFollowup.customer_nudges || 0,
+      },
       payplug: { marked: payplug.marked || 0, checked: payplug.checked || 0 },
       deciplus_sales: {
         missing: deciplus.missing || 0,

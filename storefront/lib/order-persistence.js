@@ -165,6 +165,9 @@ function buildOrderSummary(order) {
     essai_followup_check_queued_at: order.essai_followup_check_queued_at || null,
     essai_abo_checked_at: order.essai_abo_checked_at || null,
     essai_has_abo: Boolean(order.essai_has_abo),
+    essai_customer_nudges: Array.isArray(order.essai_customer_nudges)
+      ? order.essai_customer_nudges.slice(0, 3)
+      : [],
   };
 }
 

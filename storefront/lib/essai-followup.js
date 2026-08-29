@@ -1,9 +1,10 @@
 'use strict';
 
 /**
- * Essais boutique à 10 € → si pas d’abonnement 3 jours plus tard,
- * WhatsApp au coach de la salle (bot boutique), 2 min entre chaque envoi.
- * Périmètre : paiements depuis le 13 août 2026.
+ * Essais boutique à 10 € :
+ *  - J+0 / J+1 / J+2 : WhatsApp + e-mail au client (abonnement 29 € / 259 €)
+ *  - J+3 : si toujours pas d’abo, WhatsApp au coach de la salle
+ * Écart WhatsApp : 2 min. Périmètre : paiements depuis le 13 août 2026.
  */
 const { matchGymSlug } = require('../../lib/gym-slugs');
 const { getStoreUrl } = require('../../lib/app-urls');
@@ -12,6 +13,8 @@ const { sendWhatsAppMessage } = require('./whatsapp-bot');
 
 const ESSAI_SINCE_MS = Date.parse('2026-08-13T00:00:00+02:00');
 const FOLLOWUP_AFTER_MS = 3 * 24 * 60 * 60 * 1000;
+const CUSTOMER_NUDGE_DAYS = 3;
+const CUSTOMER_NUDGE_GAP_MS = 24 * 60 * 60 * 1000;
 const WA_GAP_MS = 2 * 60 * 1000;
 const CHECK_STALE_MS = 6 * 60 * 60 * 1000;
 const MAX_CHECKS_PER_TICK = 5;
@@ -187,6 +190,165 @@ function gymEssaiFollowupText(order) {
     .join('\n');
 }
 
+function offer29Url() {
+  return `${getStoreUrl()}/offre/29`;
+}
+
+function offer259Url() {
+  return `${getStoreUrl()}/offre/259`;
+}
+
+function customerNudges(order = {}) {
+  return Array.isArray(order.essai_customer_nudges) ? order.essai_customer_nudges : [];
+}
+
+function firstNameOf(order = {}) {
+  return String(
+    order.customer_short?.first_name || order.customer_full?.first_name || order.customer?.first_name || ''
+  ).trim();
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function customerNudgeCopy(order, day = 1) {
+  const hello = firstNameOf(order) ? `Bonjour ${firstNameOf(order)},` : 'Bonjour,';
+  const url29 = offer29Url();
+  const url259 = offer259Url();
+  const bodies = {
+    1: {
+      subject: 'Votre séance d’essai Boxing Center — rejoignez le club',
+      text:
+        `${hello}\n\n` +
+        `Merci d’avoir testé la boxe chez Boxing Center. Pour continuer, deux formules :\n\n` +
+        `• 29 € / 4 semaines, sans engagement :\n${url29}\n\n` +
+        `• 259 € la saison (12 mois) :\n${url259}\n\n` +
+        `Cours illimités, 5 salles. On vous attend sur le plateau.\n\n` +
+        `Sportivement,\nL’équipe Boxing Center`,
+    },
+    2: {
+      subject: '4 semaines de boxe à 29 €, sans engagement',
+      text:
+        `${hello}\n\n` +
+        `Vous avez déjà mis les gants. Le plus simple pour enchaîner : 29 € les 4 semaines, sans engagement, toutes disciplines, les 5 salles.\n\n` +
+        `Je m’inscris — 29 € :\n${url29}\n\n` +
+        `Ou la saison à 259 € :\n${url259}\n\n` +
+        `Sportivement,\nL’équipe Boxing Center`,
+    },
+    3: {
+      subject: 'Dernier jour : 29 € ou 259 € chez Boxing Center',
+      text:
+        `${hello}\n\n` +
+        `Dernier rappel après votre séance d’essai. Pour rester au club :\n\n` +
+        `• Sans engagement — 29 € / 4 semaines :\n${url29}\n\n` +
+        `• Saison — 259 € :\n${url259}\n\n` +
+        `Inscription en ligne, en une minute.\n\n` +
+        `Sportivement,\nL’équipe Boxing Center`,
+    },
+  };
+  const pack = bodies[day] || bodies[1];
+  const html = `<!DOCTYPE html>
+<html lang="fr">
+<body style="font-family:Arial,Helvetica,sans-serif;color:#0C1829;max-width:600px;margin:0 auto;padding:24px;background:#f4f5f7">
+  <div style="background:#0C1829;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0">
+    <p style="margin:0;letter-spacing:0.12em;font-size:12px;color:#C8902F;text-transform:uppercase">Boxing Center</p>
+    <h1 style="margin:8px 0 0;font-size:22px;line-height:1.3">${escapeHtml(pack.subject)}</h1>
+  </div>
+  <div style="background:#fff;padding:24px;border-radius:0 0 12px 12px">
+    <p>${escapeHtml(hello)}</p>
+    <p>Après votre séance d’essai à 10&nbsp;€, rejoignez le club :</p>
+    <p style="text-align:center;margin:24px 0 12px">
+      <a href="${escapeHtml(url29)}" style="display:inline-block;background:#E8001C;color:#fff;text-decoration:none;font-weight:700;padding:14px 24px;border-radius:8px">Je m’inscris — 29 €</a>
+    </p>
+    <p style="text-align:center;margin:0 0 20px">
+      <a href="${escapeHtml(url259)}" style="color:#E8001C;font-weight:700">Ou la saison à 259 €</a>
+    </p>
+    <p style="color:#334155;font-size:14px">Cours illimités, accès aux 5 salles. Inscription en ligne.</p>
+    <p style="margin:28px 0 0">Sportivement,<br/><strong>L’équipe Boxing Center</strong></p>
+  </div>
+</body>
+</html>`;
+  return { day, subject: pack.subject, text: pack.text, html, url29, url259 };
+}
+
+function classifyCustomerNudge(order, { now = Date.now(), membershipKeys } = {}) {
+  if (!isPaidEssaiOrder(order)) return { action: 'skip', reason: 'not_paid_essai' };
+  const paid = paidAtMs(order);
+  if (!paid || paid < ESSAI_SINCE_MS) return { action: 'skip', reason: 'before_13_aout' };
+  const status = String(order.essai_followup_status || '');
+  if (status === 'converted' || order.essai_has_abo) {
+    return { action: 'skip', reason: 'converted' };
+  }
+  if (hasLaterMembership(order, membershipKeys || { emails: new Set(), phones: new Set() })) {
+    return { action: 'skip', reason: 'has_membership' };
+  }
+  if (now >= paid + FOLLOWUP_AFTER_MS) return { action: 'skip', reason: 'coach_window' };
+  const sent = customerNudges(order);
+  if (sent.length >= CUSTOMER_NUDGE_DAYS) return { action: 'skip', reason: 'nudges_done' };
+  const day = sent.length + 1;
+  const earliest = paid + (day - 1) * CUSTOMER_NUDGE_GAP_MS;
+  if (now < earliest) return { action: 'wait', reason: 'before_day', day };
+  if (!orderEmail(order) && !orderPhone(order)) {
+    return { action: 'skip', reason: 'no_contact' };
+  }
+  return { action: 'nudge_customer', day, reason: `day_${day}` };
+}
+
+async function sendCustomerNudge(
+  order,
+  day,
+  { sendWa = sendWhatsAppMessage, sendEmail, dryRun = false } = {}
+) {
+  const copy = customerNudgeCopy(order, day);
+  const emailTo = orderEmail(order);
+  const phone = orderPhone(order) || order.customer_short?.phone || order.customer?.phone || '';
+  const out = { day, email: { sent: false }, whatsapp: { sent: false }, copy };
+  if (dryRun) return { ...out, dry: true };
+
+  if (emailTo) {
+    try {
+      const send = sendEmail || (async (payload) => {
+        const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
+        if (!isConfigured()) return { sent: false, reason: 'brevo_not_configured' };
+        const result = await sendEmailViaBrevo(payload);
+        if (!result) return { sent: false, reason: 'brevo_not_configured' };
+        return { sent: true, via: result.via || 'brevo' };
+      });
+      out.email = await send({
+        to: emailTo,
+        subject: copy.subject,
+        html: copy.html,
+        text: copy.text,
+      });
+    } catch (err) {
+      out.email = { sent: false, error: err.message };
+      logWarn('Email relance essai 10 €', { order_id: order.order_id, error: err.message });
+    }
+  } else {
+    out.email = { sent: false, reason: 'no_email' };
+  }
+
+  if (phone) {
+    try {
+      const wa = await sendWa(phone, copy.text);
+      out.whatsapp = { sent: true, to: phone, wa };
+    } catch (err) {
+      out.whatsapp = { sent: false, error: err.message, to: phone };
+      logWarn('WhatsApp relance essai 10 € client', { order_id: order.order_id, error: err.message });
+    }
+  } else {
+    out.whatsapp = { sent: false, reason: 'no_phone' };
+  }
+
+  out.sent = Boolean(out.email.sent || out.whatsapp.sent);
+  return out;
+}
+
 function membershipKeysFromOrders(orders = []) {
   const emails = new Set();
   const phones = new Set();
@@ -211,8 +373,14 @@ function hasLaterMembership(order, keys) {
 function lastFollowupWaAt(orders = []) {
   let latest = 0;
   for (const order of orders) {
-    const t = Date.parse(order.essai_followup_at || '');
-    if (Number.isFinite(t) && t > latest) latest = t;
+    const stamps = [order.essai_followup_at];
+    for (const nudge of customerNudges(order)) {
+      stamps.push(nudge.wa_at || nudge.at);
+    }
+    for (const stamp of stamps) {
+      const t = Date.parse(stamp || '');
+      if (Number.isFinite(t) && t > latest) latest = t;
+    }
   }
   return latest;
 }
@@ -334,6 +502,7 @@ async function dispatchDueEssaiFollowups({
   loadOrder,
   saveOrder,
   sendWa = sendWhatsAppMessage,
+  sendEmail,
   forwardJob,
 } = {}) {
   const { listAllOrdersAsync, loadOrderAsync, saveOrderAsync } = require('./order-lifecycle');
@@ -343,20 +512,72 @@ async function dispatchDueEssaiFollowups({
   const results = [];
   let checks = 0;
   let sent = 0;
+  let customerNudgesSent = 0;
 
   const due = listed
     .filter(isPaidEssaiOrder)
     .sort((a, b) => paidAtMs(a) - paidAtMs(b));
 
   for (const slim of due) {
+    const load = loadOrder || loadOrderAsync;
+    const save = saveOrder || saveOrderAsync;
+
+    const customerDecision = classifyCustomerNudge(slim, { now, membershipKeys: keys });
+    if (customerDecision.action === 'nudge_customer') {
+      if (sent + customerNudgesSent >= 1 || now - lastWaAt < WA_GAP_MS) {
+        results.push({
+          order_id: slim.order_id,
+          action: 'wait',
+          reason: 'wa_gap',
+          kind: 'customer',
+        });
+        continue;
+      }
+      const order = (await load(slim.order_id)) || slim;
+      const live = classifyCustomerNudge(order, { now, membershipKeys: keys });
+      if (live.action !== 'nudge_customer') {
+        results.push({ order_id: order.order_id, ...live, kind: 'customer' });
+      } else {
+        const nudge = await sendCustomerNudge(order, live.day, { sendWa, sendEmail, dryRun });
+        if (nudge.sent || dryRun) {
+          order.essai_customer_nudges = [
+            ...customerNudges(order),
+            {
+              day: live.day,
+              at: new Date(now).toISOString(),
+              wa_at: nudge.whatsapp?.sent ? new Date(now).toISOString() : null,
+              email: Boolean(nudge.email?.sent),
+              whatsapp: Boolean(nudge.whatsapp?.sent),
+            },
+          ].slice(0, CUSTOMER_NUDGE_DAYS);
+          lastWaAt = now;
+          customerNudgesSent += 1;
+          if (nudge.whatsapp?.sent) {
+            logInfo('WhatsApp essai 10 € → client', {
+              order_id: order.order_id,
+              day: live.day,
+            });
+          }
+        }
+        if (typeof save === 'function') await save(order);
+        results.push({
+          order_id: order.order_id,
+          action: 'nudge_customer',
+          day: live.day,
+          sent: Boolean(nudge.sent || dryRun),
+          email: nudge.email,
+          whatsapp: nudge.whatsapp,
+        });
+      }
+      continue;
+    }
+
     const decision = classifyEssaiFollowup(slim, { now, membershipKeys: keys, lastWaAt });
     if (decision.action === 'skip' || decision.action === 'wait') {
       results.push({ order_id: slim.order_id, ...decision });
       continue;
     }
 
-    const load = loadOrder || loadOrderAsync;
-    const save = saveOrder || saveOrderAsync;
     const order = (await load(slim.order_id)) || slim;
 
     if (decision.action === 'converted') {
@@ -397,7 +618,7 @@ async function dispatchDueEssaiFollowups({
     }
 
     if (decision.action === 'send') {
-      if (sent >= 1) {
+      if (sent >= 1 || customerNudgesSent >= 1) {
         results.push({ order_id: order.order_id, action: 'wait', reason: 'wa_gap' });
         continue;
       }
@@ -434,6 +655,7 @@ async function dispatchDueEssaiFollowups({
     essais: due.length,
     checks,
     sent,
+    customer_nudges: customerNudgesSent,
     results,
   };
 }
@@ -441,6 +663,8 @@ async function dispatchDueEssaiFollowups({
 module.exports = {
   ESSAI_SINCE_MS,
   FOLLOWUP_AFTER_MS,
+  CUSTOMER_NUDGE_DAYS,
+  CUSTOMER_NUDGE_GAP_MS,
   WA_GAP_MS,
   GYM_COACH_WHATSAPP,
   isPaidEssaiOrder,
@@ -448,6 +672,9 @@ module.exports = {
   isMembershipContract,
   getGymCoachTarget,
   gymEssaiFollowupText,
+  customerNudgeCopy,
+  classifyCustomerNudge,
+  sendCustomerNudge,
   membershipKeysFromOrders,
   hasLaterMembership,
   classifyEssaiFollowup,

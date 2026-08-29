@@ -10,12 +10,15 @@ const {
   gymEssaiFollowupText,
   membershipKeysFromOrders,
   classifyEssaiFollowup,
+  classifyCustomerNudge,
+  customerNudgeCopy,
   essaiCheckSaleJob,
   stripEssaiAboSuffix,
   applyEssaiAboCheck,
   dispatchDueEssaiFollowups,
   ESSAI_SINCE_MS,
   FOLLOWUP_AFTER_MS,
+  CUSTOMER_NUDGE_GAP_MS,
   WA_GAP_MS,
 } = require('../storefront/lib/essai-followup');
 
@@ -121,6 +124,37 @@ test('message coach contient nom, tel, salle et 10 €', () => {
   assert.match(text, /29 € ni 259 €/);
 });
 
+test('relance client J+0 / J+1 / J+2 puis stop à J+3', () => {
+  const paid = Date.parse('2026-08-20T10:00:00.000Z');
+  const keys = membershipKeysFromOrders([]);
+  const d1 = classifyCustomerNudge(essai(), { now: paid + 60 * 1000, membershipKeys: keys });
+  assert.equal(d1.action, 'nudge_customer');
+  assert.equal(d1.day, 1);
+  const after1 = essai({
+    essai_customer_nudges: [{ day: 1, at: new Date(paid + 60 * 1000).toISOString() }],
+  });
+  const tooSoon = classifyCustomerNudge(after1, {
+    now: paid + 2 * 60 * 60 * 1000,
+    membershipKeys: keys,
+  });
+  assert.equal(tooSoon.action, 'wait');
+  const d2 = classifyCustomerNudge(after1, {
+    now: paid + CUSTOMER_NUDGE_GAP_MS + 1000,
+    membershipKeys: keys,
+  });
+  assert.equal(d2.action, 'nudge_customer');
+  assert.equal(d2.day, 2);
+  const copy = customerNudgeCopy(essai(), 1);
+  assert.match(copy.text, /29 €/);
+  assert.match(copy.text, /259 €/);
+  const after72h = classifyCustomerNudge(essai(), {
+    now: paid + THREE_DAYS + 1000,
+    membershipKeys: keys,
+  });
+  assert.equal(after72h.action, 'skip');
+  assert.equal(after72h.reason, 'coach_window');
+});
+
 test('avant 3 jours → wait, après 3 jours sans abo → check Deciplus', () => {
   const paid = Date.parse('2026-08-20T10:00:00.000Z');
   const keys = membershipKeysFromOrders([]);
@@ -216,6 +250,41 @@ test('callback Deciplus sans abo → ready, avec abo → converted', async () =>
   assert.equal(store.get(trial.order_id).essai_followup_status, 'converted');
 });
 
+test('dispatch : relance client avant J+3, 1 WhatsApp max', async () => {
+  const paid = Date.parse('2026-08-27T10:00:00.000Z');
+  const now = paid + 2 * 60 * 60 * 1000;
+  const trial = essai({
+    payment: { status: 'paid', paid_at: new Date(paid).toISOString(), amount: 10 },
+  });
+  const store = new Map([[trial.order_id, { ...trial }]]);
+  const sent = [];
+  const mails = [];
+  const out = await dispatchDueEssaiFollowups({
+    now,
+    listOrders: async () => [...store.values()],
+    loadOrder: async (id) => store.get(id),
+    saveOrder: async (order) => {
+      store.set(order.order_id, order);
+      return order;
+    },
+    sendWa: async (phone, message) => {
+      sent.push({ phone, message });
+      return { sent: true };
+    },
+    sendEmail: async (payload) => {
+      mails.push(payload);
+      return { sent: true };
+    },
+    forwardJob: async () => ({ forwarded: true }),
+  });
+  assert.equal(sent.length, 1);
+  assert.equal(mails.length, 1);
+  assert.equal(sent[0].phone, '0612345678');
+  assert.equal(store.get(trial.order_id).essai_customer_nudges.length, 1);
+  assert.equal(out.customer_nudges, 1);
+  assert.equal(out.sent, 0);
+});
+
 test('dispatch : 1 WhatsApp max, 2 min, Portet / St-Cyprien / Minimes', async () => {
   const now = Date.parse('2026-08-28T12:00:00.000Z');
   const orders = [
@@ -225,6 +294,11 @@ test('dispatch : 1 WhatsApp max, 2 min, Portet / St-Cyprien / Minimes', async ()
       essai_abo_checked_at: '2026-08-24T10:00:00.000Z',
       essai_has_abo: false,
       essai_followup_status: 'ready',
+      essai_customer_nudges: [
+        { day: 1, at: '2026-08-20T10:05:00.000Z' },
+        { day: 2, at: '2026-08-21T10:05:00.000Z' },
+        { day: 3, at: '2026-08-22T10:05:00.000Z' },
+      ],
     }),
     essai({
       order_id: 'BC-POR',
