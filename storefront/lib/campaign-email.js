@@ -7,7 +7,7 @@ function offerLink(hubUrl) {
 }
 
 function buildOfferCampaignEmail({ name, hubUrl }) {
-  const subject = name ? `${name}, c’est l’équipe BC` : 'C’est l’équipe BC';
+  const subject = 'Boxing Center';
   const greeting = name
     ? `Salut ${name}, c’est l’équipe BC.`
     : 'Salut, c’est l’équipe BC.';
