@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-08-29T13:16:31.458Z",
+  "synced_at": "2026-08-29T13:26:24.341Z",
   "source": "rentree-2026",
   "count": 12,
   "categories": [
@@ -63,9 +63,7 @@
       "image": "/img/materiel/rentree/blade/blade-nb-01.jpg",
       "images": [
         "/img/materiel/rentree/blade/blade-nb-01.jpg",
-        "/img/materiel/rentree/blade/blade-nb-02.jpg",
-        "/img/materiel/rentree/blade/blade-or-01.jpg",
-        "/img/materiel/rentree/blade/blade-or-02.jpg"
+        "/img/materiel/rentree/blade/blade-nb-02.jpg"
       ],
       "description_short": "Gants Blade destockage rentrée 2026 — coloris Noir/Blanc et Blanc/Or. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Retrait Minimes le jour même.",
       "description": "Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir/Blanc et Blanc/Or. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\nRetrait uniquement à Boxing Center Toulouse Minimes. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Retrait le jour même de la commande uniquement.",
@@ -82,7 +80,11 @@
           "price_cents": 1790,
           "price_label": "17,90 €",
           "stock": 10,
-          "image": "/img/materiel/rentree/blade/blade-nb-01.jpg"
+          "image": "/img/materiel/rentree/blade/blade-nb-01.jpg",
+          "images": [
+            "/img/materiel/rentree/blade/blade-nb-01.jpg",
+            "/img/materiel/rentree/blade/blade-nb-02.jpg"
+          ]
         },
         {
           "id": "blade-noir-blanc-12oz",
@@ -96,7 +98,11 @@
           "price_cents": 1790,
           "price_label": "17,90 €",
           "stock": 10,
-          "image": "/img/materiel/rentree/blade/blade-nb-01.jpg"
+          "image": "/img/materiel/rentree/blade/blade-nb-01.jpg",
+          "images": [
+            "/img/materiel/rentree/blade/blade-nb-01.jpg",
+            "/img/materiel/rentree/blade/blade-nb-02.jpg"
+          ]
         },
         {
           "id": "blade-noir-blanc-14oz",
@@ -110,7 +116,11 @@
           "price_cents": 1790,
           "price_label": "17,90 €",
           "stock": 10,
-          "image": "/img/materiel/rentree/blade/blade-nb-01.jpg"
+          "image": "/img/materiel/rentree/blade/blade-nb-01.jpg",
+          "images": [
+            "/img/materiel/rentree/blade/blade-nb-01.jpg",
+            "/img/materiel/rentree/blade/blade-nb-02.jpg"
+          ]
         },
         {
           "id": "blade-blanc-or-10oz",
@@ -124,7 +134,11 @@
           "price_cents": 1790,
           "price_label": "17,90 €",
           "stock": 10,
-          "image": "/img/materiel/rentree/blade/blade-or-01.jpg"
+          "image": "/img/materiel/rentree/blade/blade-or-01.jpg",
+          "images": [
+            "/img/materiel/rentree/blade/blade-or-01.jpg",
+            "/img/materiel/rentree/blade/blade-or-02.jpg"
+          ]
         },
         {
           "id": "blade-blanc-or-12oz",
@@ -138,7 +152,11 @@
           "price_cents": 1790,
           "price_label": "17,90 €",
           "stock": 10,
-          "image": "/img/materiel/rentree/blade/blade-or-01.jpg"
+          "image": "/img/materiel/rentree/blade/blade-or-01.jpg",
+          "images": [
+            "/img/materiel/rentree/blade/blade-or-01.jpg",
+            "/img/materiel/rentree/blade/blade-or-02.jpg"
+          ]
         },
         {
           "id": "blade-blanc-or-14oz",
@@ -152,7 +170,11 @@
           "price_cents": 1790,
           "price_label": "17,90 €",
           "stock": 10,
-          "image": "/img/materiel/rentree/blade/blade-or-01.jpg"
+          "image": "/img/materiel/rentree/blade/blade-or-01.jpg",
+          "images": [
+            "/img/materiel/rentree/blade/blade-or-01.jpg",
+            "/img/materiel/rentree/blade/blade-or-02.jpg"
+          ]
         }
       ],
       "display_name": "Gants de boxe Blade Noir et Blanc",

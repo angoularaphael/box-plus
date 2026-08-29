@@ -24,7 +24,7 @@ function money(cents) {
   return `${(cents / 100).toFixed(2).replace('.', ',')} €`;
 }
 
-function combo({ id, label, attrs, ref, cents, stock, image }) {
+function combo({ id, label, attrs, ref, cents, stock, image, images }) {
   return {
     id,
     label,
@@ -34,6 +34,7 @@ function combo({ id, label, attrs, ref, cents, stock, image }) {
     price_label: money(cents),
     stock,
     image,
+    ...(images ? { images } : {}),
   };
 }
 
@@ -111,12 +112,7 @@ const products = [
     pickup_hours: 'Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h.',
     pickup_note: NOTE_BLADE,
     image: IMG.blade,
-    images: [
-      IMG.blade,
-      '/img/materiel/rentree/blade/blade-nb-02.jpg',
-      IMG.bladeOr,
-      '/img/materiel/rentree/blade/blade-or-02.jpg',
-    ],
+    images: [IMG.blade, '/img/materiel/rentree/blade/blade-nb-02.jpg'],
     description_short:
       'Gants Blade destockage rentrée 2026 — coloris Noir/Blanc et Blanc/Or. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Retrait Minimes le jour même.',
     description:
@@ -125,6 +121,10 @@ const products = [
     combinations: ['noir-blanc', 'blanc-or'].flatMap((color) => {
       const colorLabel = color === 'noir-blanc' ? 'Noir / Blanc' : 'Blanc / Or';
       const image = color === 'noir-blanc' ? IMG.blade : IMG.bladeOr;
+      const images =
+        color === 'noir-blanc'
+          ? [IMG.blade, '/img/materiel/rentree/blade/blade-nb-02.jpg']
+          : [IMG.bladeOr, '/img/materiel/rentree/blade/blade-or-02.jpg'];
       return ['10oz', '12oz', '14oz'].map((size) =>
         combo({
           id: `blade-${color}-${size}`,
@@ -134,6 +134,7 @@ const products = [
           cents: 1790,
           stock: 10,
           image,
+          images,
         })
       );
     }),

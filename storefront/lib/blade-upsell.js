@@ -22,11 +22,19 @@ const BLADE_COLORS = [
     id: 'noir-blanc',
     label: 'Noir / Blanc',
     image: '/img/materiel/rentree/blade/blade-nb-01.jpg',
+    images: [
+      '/img/materiel/rentree/blade/blade-nb-01.jpg',
+      '/img/materiel/rentree/blade/blade-nb-02.jpg',
+    ],
   },
   {
     id: 'blanc-or',
     label: 'Blanc / Or',
     image: '/img/materiel/rentree/blade/blade-or-01.jpg',
+    images: [
+      '/img/materiel/rentree/blade/blade-or-01.jpg',
+      '/img/materiel/rentree/blade/blade-or-02.jpg',
+    ],
   },
 ];
 
@@ -45,6 +53,7 @@ function bladeCombinations() {
       price_label: '17,90 €',
       stock: 10,
       image: color.image,
+      images: color.images,
     }))
   );
 }
@@ -72,8 +81,6 @@ const BLADE_PRODUCT = {
   images: [
     '/img/materiel/rentree/blade/blade-nb-01.jpg',
     '/img/materiel/rentree/blade/blade-nb-02.jpg',
-    '/img/materiel/rentree/blade/blade-or-01.jpg',
-    '/img/materiel/rentree/blade/blade-or-02.jpg',
   ],
   combinations: bladeCombinations(),
   pickup_gyms: [MINIMES_PICKUP],

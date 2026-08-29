@@ -32,6 +32,12 @@ test('findMaterielProduct retrouve Blade par id et par slug', () => {
   assert.ok(byId.combinations.some((c) => c.id.includes('14oz')));
   assert.match(byId.pickup_note, /Minimes/);
   assert.match(byId.pickup_hours, /17h–21h/);
+  assert.ok(byId.images.every((src) => src.includes('blade-nb')));
+  assert.ok(!byId.images.some((src) => src.includes('blade-or')));
+  const noir = byId.combinations.find((c) => c.id === 'blade-noir-blanc-12oz');
+  const or = byId.combinations.find((c) => c.id === 'blade-blanc-or-12oz');
+  assert.ok(noir.images.every((src) => src.includes('blade-nb')));
+  assert.ok(or.images.every((src) => src.includes('blade-or')));
 });
 
 test('Blade n’apparaît que dans destockage / tout', () => {

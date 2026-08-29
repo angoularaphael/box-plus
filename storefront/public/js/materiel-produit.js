@@ -24,24 +24,44 @@
     if (!res.ok) throw new Error('not_found');
     const { product: p } = await res.json();
 
-    const combos = p.combinations?.length ? p.combinations : [{ id: p.id, label: 'Standard', price_cents: p.price_cents, price_label: p.price_label, stock: p.stock }];
+    const combos = p.combinations?.length ? p.combinations : [{ id: p.id, label: 'Standard', price_cents: p.price_cents, price_label: p.price_label, stock: p.stock, image: p.image, images: p.images }];
     const hasVariants = combos.length > 1 || (combos[0]?.label && combos[0].label !== 'Standard');
 
-    const gallery = (p.images?.length ? p.images : p.image ? [p.image] : [])
-      .map((src) => `<div class="product-gallery-frame"><img src="${A(src)}" alt="" class="product-gallery-img" /></div>`)
-      .join('');
+    function galleryFor(combo) {
+      if (combo?.images?.length) return combo.images.filter(Boolean);
+      if (combo?.image) {
+        const rest = (p.images || []).filter((src) => src !== combo.image);
+        return [combo.image, ...rest];
+      }
+      return (p.images?.length ? p.images : p.image ? [p.image] : []).filter(Boolean);
+    }
+
+    function renderGallery(sources) {
+      if (!sources.length) return '<div class="materiel-img-placeholder">Photo</div>';
+      const main = sources[0];
+      const thumbs = sources.length > 1
+        ? `<div class="product-gallery-thumbs">${sources.map((src, i) =>
+            `<button type="button" class="product-gallery-thumb${i === 0 ? ' is-active' : ''}" data-src="${A(src)}" aria-label="Photo ${i + 1}">
+              <img src="${A(src)}" alt="" />
+            </button>`
+          ).join('')}</div>`
+        : '';
+      return `<div class="product-gallery-main"><img src="${A(main)}" alt="" class="product-gallery-img" id="productMainImg" /></div>${thumbs}`;
+    }
+
+    const initialCombo = combos.find((c) => String(c.id) === String(p.default_variant_id)) || combos[0];
 
     root.innerHTML = `
       <div class="breadcrumb"><a href="${L('/')}">Accueil</a> / <a href="${L('/materiel')}">Matériel</a> / ${p.name}</div>
       <div class="product-detail-grid">
-        <div class="product-gallery">${gallery || '<div class="materiel-img-placeholder">Photo</div>'}</div>
+        <div class="product-gallery" id="productGallery">${renderGallery(galleryFor(initialCombo))}</div>
         <div class="product-info">
           <span class="materiel-cat">${p.category_label || p.category || ''}</span>
           <h1>${p.name}</h1>
           <p class="product-ref">${p.reference ? `Réf. ${p.reference}` : ''}</p>
           <div class="materiel-price" id="productPrice">${p.price_label}${p.price_was_label ? ` <s class="materiel-price-was">${p.price_was_label}</s>` : ''}</div>
           <p id="productStock" class="stock-ok"></p>
-          ${hasVariants ? `<label>Variante<select id="variantSelect">${combos.map((c) => `<option value="${c.id}" data-price="${c.price_cents}" data-label="${c.price_label}" data-stock="${c.stock}" ${String(c.id) === String(p.default_variant_id) ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label>` : ''}
+          ${hasVariants ? `<label>Variante<select id="variantSelect">${combos.map((c) => `<option value="${c.id}" data-price="${c.price_cents}" data-label="${c.price_label}" data-stock="${c.stock}" data-image="${c.image || p.image || ''}" ${String(c.id) === String(p.default_variant_id) ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label>` : ''}
           <p class="product-pickup"><strong>Salle de retrait :</strong> ${p.pickup_note || 'choisissez votre salle au panier — retrait en club uniquement.'}</p>
           <label>Quantité<input type="number" id="qtyInput" min="1" value="1" max="99" /></label>
           <button type="button" class="btn block" id="addBtn">Ajouter au panier</button>
@@ -55,22 +75,30 @@
     const variantSelect = document.getElementById('variantSelect');
     const priceEl = document.getElementById('productPrice');
     const stockEl = document.getElementById('productStock');
+    const galleryEl = document.getElementById('productGallery');
 
     function selectedCombo() {
       if (!variantSelect) return combos[0];
-      const opt = variantSelect.selectedOptions[0];
-      return {
-      id: variantSelect.value,
-        price_cents: Number(opt.dataset.price),
-        price_label: opt.dataset.label,
-        stock: Number(opt.dataset.stock),
-        label: opt.textContent,
-      };
+      return combos.find((c) => String(c.id) === String(variantSelect.value)) || combos[0];
+    }
+
+    function bindThumbs() {
+      galleryEl?.querySelectorAll('.product-gallery-thumb').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const main = document.getElementById('productMainImg');
+          if (main && btn.dataset.src) main.src = btn.dataset.src;
+          galleryEl.querySelectorAll('.product-gallery-thumb').forEach((b) => b.classList.toggle('is-active', b === btn));
+        });
+      });
     }
 
     function updateVariant() {
       const c = selectedCombo();
-      priceEl.textContent = c.price_label;
+      if (p.price_was_label) {
+        priceEl.innerHTML = `${c.price_label} <s class="materiel-price-was">${p.price_was_label}</s>`;
+      } else {
+        priceEl.textContent = c.price_label;
+      }
       if (c.stock > 5) {
         stockEl.className = 'stock-ok';
         stockEl.textContent = 'En stock';
@@ -83,8 +111,13 @@
       }
       document.getElementById('addBtn').disabled = c.stock <= 0;
       document.getElementById('qtyInput').max = Math.max(1, c.stock);
+      if (galleryEl) {
+        galleryEl.innerHTML = renderGallery(galleryFor(c));
+        bindThumbs();
+      }
     }
 
+    bindThumbs();
     if (variantSelect) {
       variantSelect.addEventListener('change', updateVariant);
       updateVariant();
@@ -102,7 +135,7 @@
         variant_label: c.label,
         price_cents: c.price_cents,
         price_label: c.price_label,
-        image: p.image,
+        image: c.image || p.image,
         qty,
       });
       document.getElementById('addBtn').textContent = 'Ajouté au panier ✓';
