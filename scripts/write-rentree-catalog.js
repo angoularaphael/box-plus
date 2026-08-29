@@ -61,7 +61,7 @@ const IMG = {
   blade: '/img/materiel/rentree/blade/blade-nb-01.jpg',
   bladeOr: '/img/materiel/rentree/blade/blade-or-01.jpg',
   pack: '/img/materiel/rentree/pack/pack-enfant.jpg',
-  packKeychain: '/img/materiel/rentree/pack/pack-keychain.png',
+  packKeychain: '/img/materiel/rentree/pack/pack-keychain.jpg',
   mitaine: '/img/materiel/rentree/mitaines/mitaine-01.jpg',
   mitaine2: '/img/materiel/rentree/mitaines/mitaine-02.png',
   sparring: '/img/materiel/rentree/sparring/sparring-01.jpg',

@@ -235,9 +235,24 @@ async function main() {
     console.log('copied Desktop pack enfant.jpeg → pack/pack-enfant.jpg');
   }
 
+  const desktop = process.env.USERPROFILE || '';
+  const keychainCandidates = fs.existsSync(path.join(desktop, 'Desktop'))
+    ? fs.readdirSync(path.join(desktop, 'Desktop')).filter(
+        (f) => /^WhatsApp Image 2026-08-29 at 15\.13\.34\.(jpe?g)$/i.test(f)
+      )
+    : [];
+  if (keychainCandidates.length) {
+    const destDir = path.join(DEST, 'pack');
+    fs.mkdirSync(destDir, { recursive: true });
+    fs.copyFileSync(
+      path.join(desktop, 'Desktop', keychainCandidates[0]),
+      path.join(destDir, 'pack-keychain.jpg')
+    );
+    console.log('copied Desktop WhatsApp keychain → pack/pack-keychain.jpg');
+  }
+
   const shots = fs.existsSync(ASSETS) ? fs.readdirSync(ASSETS).filter((f) => f.endsWith('.png')) : [];
   const userShots = [
-    ['image-e7c8cb56', 'pack', 'pack-keychain.png'],
     ['image-44ceef60', 'one', 'one-jr.png'],
   ];
   for (const [needle, dir, name] of userShots) {
