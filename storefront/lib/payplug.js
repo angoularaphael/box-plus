@@ -3,7 +3,7 @@
 const API_BASE = 'https://api.payplug.com/v1';
 const API_VERSION = process.env.PAYPLUG_API_VERSION || '2019-08-06';
 
-const { paymentVar, useTestPayments } = require('./test-env');
+const { paymentVar, useTestPayments, runPaymentContext } = require('./test-env');
 
 /** Message visiteur tant que PayPlug LIVE n’a pas activé Oney 4× sans frais. */
 const ONEY_4X_UNAVAILABLE_MESSAGE =
@@ -297,6 +297,20 @@ function retrievePayment(paymentId) {
   return request(`/payments/${encodeURIComponent(paymentId)}`, { method: 'GET' });
 }
 
+/** Live d’abord, puis clés test (IPN PayPlug sans cookie studio). */
+async function retrievePaymentLiveOrTest(paymentId) {
+  try {
+    return { payment: await retrievePayment(paymentId), test: false };
+  } catch (liveErr) {
+    try {
+      const payment = await runPaymentContext({ test: true }, () => retrievePayment(paymentId));
+      return { payment, test: true };
+    } catch {
+      throw liveErr;
+    }
+  }
+}
+
 async function listPayments({ page = 0, perPage = 10 } = {}) {
   const q = new URLSearchParams();
   const pageNum = Number(page);
@@ -331,6 +345,7 @@ module.exports = {
   createFourTimesPayment,
   createHostedPayment,
   retrievePayment,
+  retrievePaymentLiveOrTest,
   listPayments,
   isPayplugPaymentPaid,
   isPayplugPaymentPending,

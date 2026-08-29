@@ -357,7 +357,12 @@ async function markBladeAddonPaid(order, paymentMeta = {}) {
   await recordBladeSale(order, { source: paymentMeta.source || 'upsell' });
   const { notifyMaterielSale, applyManagerNotify } = require('./gym-materiel-managers');
   try {
-    const notify = await notifyMaterielSale(order, { source: paymentMeta.source || 'upsell' });
+    const notify = await Promise.race([
+      notifyMaterielSale(order, { source: paymentMeta.source || 'upsell' }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('whatsapp_timeout')), 8000)
+      ),
+    ]);
     applyManagerNotify(order, notify, paymentMeta.source || 'upsell');
   } catch (err) {
     applyManagerNotify(order, { sent: false, error: err.message }, paymentMeta.source || 'upsell');

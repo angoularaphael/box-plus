@@ -58,6 +58,7 @@ const {
   createFourTimesPayment,
   createHostedPayment,
   retrievePayment,
+  retrievePaymentLiveOrTest,
   listPayments,
   isPayplugPaymentPaid,
   isPayplugPaymentPending,
@@ -671,11 +672,20 @@ async function fulfillMaterielCheckout(sessionId, stripeSession = null) {
   };
 }
 
-async function fulfillMaterielPayplug(paymentId) {
+async function fulfillMaterielPayplug(paymentId, paymentHint = null) {
   if (!paymentId) return { ok: false, error: 'payment_id manquant' };
   if (!isPayplugEnabled()) return { ok: false, error: 'payplug_not_configured' };
 
-  const payment = await retrievePayment(paymentId);
+  let payment = paymentHint && paymentHint.id ? paymentHint : null;
+  if (!payment) {
+    try {
+      const got = await retrievePaymentLiveOrTest(paymentId);
+      payment = got.payment;
+    } catch (err) {
+      logError('PayPlug matériel retrieve', { payment_id: paymentId, error: err.message });
+      return { ok: false, error: 'retrieve_failed', message: err.message };
+    }
+  }
   const meta = payment.metadata || {};
   const pending = loadPendingCheckout(paymentId);
   const orderId = meta.order_id || pending?.order_id;
@@ -5113,7 +5123,12 @@ function createApp() {
         return;
       }
       const metaType = String(payment.metadata?.order_type || '');
-      if (metaType === 'echeancier' || metaType === 'materiel' || metaType === 'membership_change') {
+      if (metaType === 'materiel') {
+        const out = await fulfillMaterielPayplug(id, payment);
+        results.push({ payment_id: id, ...out });
+        return;
+      }
+      if (metaType === 'echeancier' || metaType === 'membership_change') {
         results.push({ payment_id: id, ok: true, skipped: metaType });
         return;
       }
@@ -5335,9 +5350,11 @@ function createApp() {
 
       let payment;
       try {
-        payment = await retrievePayment(paymentId);
+        const got = await retrievePaymentLiveOrTest(paymentId);
+        payment = got.payment;
       } catch (err) {
-        payment = await runPaymentContext({ test: true }, () => retrievePayment(paymentId));
+        logError('PayPlug webhook retrieve', { payment_id: paymentId, error: err.message });
+        return res.json({ ok: true, received: true, ignored: true, error: 'retrieve_failed' });
       }
       const meta = payment.metadata || {};
 
@@ -5377,7 +5394,7 @@ function createApp() {
 
       // Matériel
       if (meta.order_type === 'materiel') {
-        const out = await fulfillMaterielPayplug(paymentId);
+        const out = await fulfillMaterielPayplug(paymentId, payment);
         return res.json({
           ok: true,
           materiel: true,
@@ -5427,7 +5444,7 @@ function createApp() {
       return res.json({ ok: true, ...out });
     } catch (err) {
       logError('Erreur webhook PayPlug', { error: err.message });
-      res.status(500).json({ ok: false, error: err.message });
+      return res.status(200).json({ ok: true, received: true, error: err.message });
     }
   });
 
