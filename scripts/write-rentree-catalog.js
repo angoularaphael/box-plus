@@ -62,15 +62,32 @@ const IMG = {
   bladeOr: '/img/materiel/rentree/blade/blade-or-01.jpg',
   pack: '/img/materiel/rentree/pack/pack-keychain.png',
   mitaine: '/img/materiel/rentree/mitaines/mitaine-01.jpg',
+  mitaine2: '/img/materiel/rentree/mitaines/mitaine-02.png',
   sparring: '/img/materiel/rentree/sparring/sparring-01.jpg',
+  sparring2: '/img/materiel/rentree/sparring/sparring-02.jpg',
+  sparring3: '/img/materiel/rentree/sparring/sparring-03.jpg',
   ergo: '/img/materiel/rentree/ergo/ergo-01.jpg',
+  ergo2: '/img/materiel/rentree/ergo/ergo-02.jpg',
   shell: '/img/materiel/rentree/shell/shell-01.jpg',
-  one: '/img/materiel/rentree/one/one-jr.png',
-  bandes4: '/img/materiel/50/bandes-de-boxe-4m-metal-boxe.jpg',
-  bandes25: '/img/materiel/37/bandes-de-boxe-2m50-metal-boxe.jpg',
-  dents: '/img/materiel/56/protege-dents-gel-metal-boxe.jpg',
-  tibias: '/img/materiel/39/protege-tibias-pieds-coton-elastique-metal-boxe.jpg',
-  short: '/img/materiel/51/short-boxe-anglaise-military-pro-line-metal-boxe.jpg',
+  shell2: '/img/materiel/rentree/shell/shell-02.jpg',
+  one: '/img/materiel/rentree/one/one-official.jpg',
+  oneShot: '/img/materiel/rentree/one/one-jr.png',
+  ensemble: '/img/materiel/rentree/ensemble/ensemble-01.png',
+  ensemble2: '/img/materiel/rentree/ensemble/ensemble-02.png',
+  ensembleNoir: '/img/materiel/rentree/ensemble/ensemble-noir.jpg',
+  ensembleMetal: '/img/materiel/rentree/ensemble/ensemble-metal-01.jpg',
+  bandes4: '/img/materiel/rentree/bandes/bandes-4m-01.jpg',
+  bandes42: '/img/materiel/rentree/bandes/bandes-4m-02.png',
+  bandes43: '/img/materiel/rentree/bandes/bandes-4m-03.jpg',
+  bandes25: '/img/materiel/rentree/bandes/bandes-250-01.jpg',
+  dentsAdulte: '/img/materiel/rentree/dents/dents-adulte-01.jpg',
+  dentsAdulte2: '/img/materiel/rentree/dents/dents-adulte-02.jpg',
+  dentsEnfant: '/img/materiel/rentree/dents/dents-enfant-01.png',
+  dentsEnfant2: '/img/materiel/rentree/dents/dents-enfant-02.png',
+  tibias: '/img/materiel/rentree/tibias/tibias-blanc-01.jpg',
+  tibias2: '/img/materiel/rentree/tibias/tibias-blanc-02.png',
+  tibias3: '/img/materiel/rentree/tibias/tibias-blanc-03.jpg',
+  tibias4: '/img/materiel/rentree/tibias/tibias-blanc-04.jpg',
 };
 
 const products = [
@@ -137,7 +154,7 @@ const products = [
     pickup_hours: '12h–14h et 17h–21h15',
     pickup_note: NOTE_PACK,
     image: IMG.pack,
-    images: [IMG.pack, IMG.one, IMG.mitaine],
+    images: [IMG.pack, IMG.one, IMG.oneShot, IMG.mitaine, IMG.mitaine2],
     description_short:
       'Pack enfants : gants + mitaines + porte-clés sac de frappe Metal. Tailles 4/7 ans ou 8/15 ans. 25 € au lieu de 35 €. Retrait Minimes ou Portet le jour même.',
     description:
@@ -179,7 +196,7 @@ const products = [
     pickup_delay: '48h',
     pickup_note: `Retrait : Minimes, Portet ou St-Cyprien. ${NOTE_48H}`,
     image: IMG.sparring,
-    images: [IMG.sparring, '/img/materiel/rentree/sparring/sparring-02.jpg'],
+    images: [IMG.sparring, IMG.sparring2, IMG.sparring3],
     description_short:
       'Gants de sparring Metal Boxe 16oz (MBGAN010N14). 34,90 € au lieu de 70 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
     description:
@@ -212,7 +229,7 @@ const products = [
     pickup_delay: '48h',
     pickup_note: `Retrait : Minimes, Portet ou St-Cyprien. ${NOTE_48H}`,
     image: IMG.ergo,
-    images: [IMG.ergo, '/img/materiel/rentree/ergo/ergo-02.jpg'],
+    images: [IMG.ergo, IMG.ergo2],
     description_short:
       'Gants ERGO 90 Metal Boxe 14oz (MBG301K14). 24,90 € au lieu de 50 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
     description:
@@ -245,7 +262,7 @@ const products = [
     pickup_delay: '48h',
     pickup_note: `Retrait : Ramonville, États-Unis ou Portet. ${NOTE_48H}`,
     image: IMG.shell,
-    images: [IMG.shell, '/img/materiel/rentree/shell/shell-02.jpg'],
+    images: [IMG.shell, IMG.shell2],
     description_short:
       'Gants MMA sparring The Shell. Tailles S à XL. 19,90 € au lieu de 40 €. Retrait Ramonville, États-Unis ou Portet sous 48h.',
     description:
@@ -267,7 +284,7 @@ const products = [
     id: 'mat-one-enfant',
     slug: 'gants-boxe-enfant-one',
     name: 'Gants de boxe enfant « ONE »',
-    reference: 'BC-ONE-JR',
+    reference: 'MBGAN002',
     price_cents: 1990,
     price_was_cents: 4000,
     category: 'gants',
@@ -278,18 +295,18 @@ const products = [
     pickup_delay: '48h',
     pickup_note: `Retrait : Minimes, Portet ou St-Cyprien. ${NOTE_48H}`,
     image: IMG.one,
-    images: [IMG.one],
+    images: [IMG.one, IMG.oneShot],
     description_short:
-      'Gants de boxe enfant Metal Boxe « ONE ». 4/7 ans ou 8/15 ans. 19,90 € au lieu de 40 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
+      'Gants de boxe enfant Metal Boxe « ONE » (MBGAN002). 4/7 ans ou 8/15 ans. 19,90 € au lieu de 40 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
     description:
-      'Gants de boxe enfant modèle ONE (Junior). Tailles 4/7 ans et 8/15 ans.\n\nRetrait Minimes, Portet ou St-Cyprien. ' +
+      'Gants de boxe enfant modèle ONE (MBGAN002). PU, mousse injectée, velcro large. Tailles 4/7 ans et 8/15 ans.\n\nRetrait Minimes, Portet ou St-Cyprien. ' +
       NOTE_48H,
     combinations: [
       combo({
         id: 'one-4-7',
         label: '4 / 7 ans',
         attrs: { Taille: '4 / 7 ans' },
-        ref: 'BC-ONE-JR-47',
+        ref: 'MBGAN002NE',
         cents: 1990,
         stock: 20,
         image: IMG.one,
@@ -298,7 +315,7 @@ const products = [
         id: 'one-8-15',
         label: '8 / 15 ans',
         attrs: { Taille: '8 / 15 ans' },
-        ref: 'BC-ONE-JR-815',
+        ref: 'MBGAN002NJR',
         cents: 1990,
         stock: 20,
         image: IMG.one,
@@ -309,7 +326,7 @@ const products = [
     id: 'mat-ensemble-enfants',
     slug: 'ensemble-enfants-short-debardeur',
     name: 'Ensemble enfants short et débardeur',
-    reference: 'BC-ENSEMBLE-ENFANTS',
+    reference: 'MB6473',
     price_cents: 2490,
     price_was_cents: 3000,
     category: 'short',
@@ -319,33 +336,33 @@ const products = [
     pickup_gyms: G3,
     pickup_delay: '48h',
     pickup_note: `Retrait : Minimes, Portet ou St-Cyprien. ${NOTE_48H}`,
-    image: IMG.short,
-    images: [IMG.short],
+    image: IMG.ensemble,
+    images: [IMG.ensemble, IMG.ensemble2, IMG.ensembleNoir, IMG.ensembleMetal],
     description_short:
-      'Ensemble enfants short + débardeur. Tailles 6/8, 8/10 et 10/12 ans. 24,90 € au lieu de 30 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
+      'Ensemble enfants short + débardeur Metal Boxe (MB6473). Tailles 6/8, 8/10 et 10/12 ans. 24,90 € au lieu de 30 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
     description:
-      'Ensemble enfants : short et débardeur. Tailles 6/8 ans, 8/10 ans et 10/12 ans.\n\nRetrait Minimes, Portet ou St-Cyprien. ' +
+      'Ensemble boxe anglaise enfants Metal Boxe MB6473 : short satin + débardeur. Tailles 6/8 ans, 8/10 ans et 10/12 ans.\n\nRetrait Minimes, Portet ou St-Cyprien. ' +
       NOTE_48H,
     combinations: [
-      ['6-8', '6 / 8 ans'],
-      ['8-10', '8 / 10 ans'],
-      ['10-12', '10 / 12 ans'],
-    ].map(([id, label]) =>
+      ['6-8', '6 / 8 ans', 'MB6473-68'],
+      ['8-10', '8 / 10 ans', 'MB6473-810'],
+      ['10-12', '10 / 12 ans', 'MB6473-1012'],
+    ].map(([id, label, ref]) =>
       combo({
         id: `ensemble-${id}`,
         label,
         attrs: { Taille: label },
-        ref: `BC-ENSEMBLE-${id}`,
+        ref,
         cents: 2490,
         stock: 5,
-        image: IMG.short,
+        image: IMG.ensemble,
       })
     ),
   }),
   product({
     id: 'mat-bandes-4m',
     slug: 'bandes-4m-mb120bt',
-    name: 'Bandes 4m',
+    name: 'Bandes 4m Rouge / Blanc / Bleu',
     reference: 'MB120BT',
     price_cents: 690,
     price_was_cents: 1000,
@@ -357,31 +374,28 @@ const products = [
     pickup_delay: '48h',
     pickup_note: `Retrait : Minimes, Portet ou St-Cyprien. ${NOTE_48H}`,
     image: IMG.bandes4,
-    images: [IMG.bandes4],
+    images: [IMG.bandes4, IMG.bandes42, IMG.bandes43],
     description_short:
-      'Bandes 4m Metal Boxe (MB120BT). Rouge, blanc ou bleu. 6,90 € au lieu de 10 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
+      'Bandes 4m Metal Boxe MB120BT, coloris Rouge / Blanc / Bleu. 6,90 € au lieu de 10 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
     description:
-      'Bandes de boxe 4 mètres, coloris rouge, blanc ou bleu.\n\nRetrait Minimes, Portet ou St-Cyprien. ' + NOTE_48H,
+      'Bandes de boxe 4 mètres Metal Boxe (MB120BT), coloris tricolore Rouge / Blanc / Bleu. Coton/nylon, passant pouce, velcro. Vendues à la paire.\n\nRetrait Minimes, Portet ou St-Cyprien. ' +
+      NOTE_48H,
     combinations: [
-      ['rouge', 'Rouge', 17],
-      ['blanc', 'Blanc', 17],
-      ['bleu', 'Bleu', 16],
-    ].map(([id, label, stock]) =>
       combo({
-        id: `bandes4-${id}`,
-        label,
-        attrs: { Couleur: label },
+        id: 'bandes4-rwb',
+        label: 'Rouge / Blanc / Bleu',
+        attrs: { Couleur: 'Rouge / Blanc / Bleu', Longueur: '4m' },
         ref: 'MB120BT',
         cents: 690,
-        stock,
+        stock: 50,
         image: IMG.bandes4,
-      })
-    ),
+      }),
+    ],
   }),
   product({
     id: 'mat-bandes-250',
     slug: 'bandes-2m50-mb120t',
-    name: 'Bandes 2m50',
+    name: 'Bandes 2m50 Rouge / Blanc / Bleu',
     reference: 'MB120T',
     price_cents: 590,
     price_was_cents: 800,
@@ -393,27 +407,23 @@ const products = [
     pickup_delay: '48h',
     pickup_note: `Retrait : Minimes, Portet ou St-Cyprien. ${NOTE_48H}`,
     image: IMG.bandes25,
-    images: [IMG.bandes25],
+    images: [IMG.bandes25, IMG.bandes4, IMG.bandes42],
     description_short:
-      'Bandes 2,50m Metal Boxe (MB120T). Rouge, blanc ou bleu. 5,90 € au lieu de 8 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
+      'Bandes 2,50m Metal Boxe MB120T, coloris Rouge / Blanc / Bleu. 5,90 € au lieu de 8 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
     description:
-      'Bandes de boxe 2,50 mètres, coloris rouge, blanc ou bleu.\n\nRetrait Minimes, Portet ou St-Cyprien. ' +
+      'Bandes de boxe 2,50 mètres Metal Boxe (MB120T), coloris tricolore Rouge / Blanc / Bleu. Coton/nylon, passant pouce, velcro. Vendues à la paire.\n\nRetrait Minimes, Portet ou St-Cyprien. ' +
       NOTE_48H,
     combinations: [
-      ['rouge', 'Rouge', 7],
-      ['blanc', 'Blanc', 7],
-      ['bleu', 'Bleu', 6],
-    ].map(([id, label, stock]) =>
       combo({
-        id: `bandes25-${id}`,
-        label,
-        attrs: { Couleur: label },
+        id: 'bandes25-rwb',
+        label: 'Rouge / Blanc / Bleu',
+        attrs: { Couleur: 'Rouge / Blanc / Bleu', Longueur: '2m50' },
         ref: 'MB120T',
         cents: 590,
-        stock,
+        stock: 20,
         image: IMG.bandes25,
-      })
-    ),
+      }),
+    ],
   }),
   product({
     id: 'mat-dents-adulte',
@@ -428,12 +438,13 @@ const products = [
     pickup_gyms: G3,
     pickup_delay: '48h',
     pickup_note: `Retrait : Minimes, Portet ou St-Cyprien. ${NOTE_48H}`,
-    image: IMG.dents,
-    images: [IMG.dents],
+    image: IMG.dentsAdulte,
+    images: [IMG.dentsAdulte, IMG.dentsAdulte2],
     description_short:
       'Protège dents adulte translucide (MBPRO458SRT). 5,90 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
     description:
-      'Protège dents adulte translucide Metal Boxe.\n\nRetrait Minimes, Portet ou St-Cyprien. ' + NOTE_48H,
+      'Protège dents adulte simple translucide Metal Boxe MBPRO458SRT. Gel médical, thermoformable, livré avec boîtier.\n\nRetrait Minimes, Portet ou St-Cyprien. ' +
+      NOTE_48H,
     combinations: [
       combo({
         id: 'dents-adulte',
@@ -442,7 +453,7 @@ const products = [
         ref: 'MBPRO458SRT',
         cents: 590,
         stock: 50,
-        image: IMG.dents,
+        image: IMG.dentsAdulte,
       }),
     ],
   }),
@@ -459,12 +470,13 @@ const products = [
     pickup_gyms: G3,
     pickup_delay: '48h',
     pickup_note: `Retrait : Minimes, Portet ou St-Cyprien. ${NOTE_48H}`,
-    image: IMG.dents,
-    images: [IMG.dents],
+    image: IMG.dentsEnfant,
+    images: [IMG.dentsEnfant, IMG.dentsEnfant2],
     description_short:
       'Protège dents enfants gel (MB459JRW). 12 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
     description:
-      'Protège dents enfants gel Metal Boxe.\n\nRetrait Minimes, Portet ou St-Cyprien. ' + NOTE_48H,
+      'Protège dents enfants gel thermoformable Metal Boxe MB459 (JR). Moulage à l’eau chaude.\n\nRetrait Minimes, Portet ou St-Cyprien. ' +
+      NOTE_48H,
     combinations: [
       combo({
         id: 'dents-enfant',
@@ -473,7 +485,7 @@ const products = [
         ref: 'MB459JRW',
         cents: 1200,
         stock: 20,
-        image: IMG.dents,
+        image: IMG.dentsEnfant,
       }),
     ],
   }),
@@ -492,16 +504,16 @@ const products = [
     pickup_delay: '48h',
     pickup_note: `Retrait : Minimes, Portet ou St-Cyprien. ${NOTE_48H}`,
     image: IMG.tibias,
-    images: [IMG.tibias],
+    images: [IMG.tibias, IMG.tibias2, IMG.tibias3, IMG.tibias4],
     description_short:
-      'Protège tibias + pieds coton (MB153WM). S à XL. 14,90 € au lieu de 20 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
+      'Protège tibias + pieds coton blanc (MB153WM). S à XL. 14,90 € au lieu de 20 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
     description:
-      'Protège tibias-pieds coton élastique Metal Boxe. Tailles S, M, L, XL.\n\nRetrait Minimes, Portet ou St-Cyprien. ' +
+      'Protège tibias-pieds coton élastique Metal Boxe MB153, coloris blanc. Mousse EVA, velcro de serrage. Tailles S, M, L, XL.\n\nRetrait Minimes, Portet ou St-Cyprien. ' +
       NOTE_48H,
     combinations: ['S', 'M', 'L', 'XL'].map((size) =>
       combo({
         id: `tibias-${size.toLowerCase()}`,
-        label: size === 'XL' ? 'XL' : size,
+        label: size,
         attrs: { Taille: size },
         ref: 'MB153WM',
         cents: 1490,

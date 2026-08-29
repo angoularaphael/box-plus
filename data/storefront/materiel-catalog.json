@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-08-29T13:50:00.000Z",
+  "synced_at": "2026-08-29T12:31:05.309Z",
   "source": "rentree-2026",
   "count": 12,
   "categories": [
@@ -167,7 +167,7 @@
       "requires_iban": false,
       "requires_payment": true,
       "sale_type": "materiel",
-      "default_variant_id": "blade-noir-blanc-12oz"
+      "default_variant_id": "blade-noir-blanc-10oz"
     },
     {
       "id": "mat-pack-enfants",
@@ -191,8 +191,10 @@
       "image": "/img/materiel/rentree/pack/pack-keychain.png",
       "images": [
         "/img/materiel/rentree/pack/pack-keychain.png",
+        "/img/materiel/rentree/one/one-official.jpg",
         "/img/materiel/rentree/one/one-jr.png",
-        "/img/materiel/rentree/mitaines/mitaine-01.jpg"
+        "/img/materiel/rentree/mitaines/mitaine-01.jpg",
+        "/img/materiel/rentree/mitaines/mitaine-02.png"
       ],
       "description_short": "Pack enfants : gants + mitaines + porte-clés sac de frappe Metal. Tailles 4/7 ans ou 8/15 ans. 25 € au lieu de 35 €. Retrait Minimes ou Portet le jour même.",
       "description": "Pack enfants Boxing Center : une paire de gants, des mitaines sous-gants et un porte-clés sac de frappe Metal.\n\nTailles : 4 à 7 ans, ou 8 à 15 ans.\n\nRetrait uniquement à Minimes ou Portet-sur-Garonne, le jour même. 12h–14h et 17h–21h15.",
@@ -257,7 +259,8 @@
       "image": "/img/materiel/rentree/sparring/sparring-01.jpg",
       "images": [
         "/img/materiel/rentree/sparring/sparring-01.jpg",
-        "/img/materiel/rentree/sparring/sparring-02.jpg"
+        "/img/materiel/rentree/sparring/sparring-02.jpg",
+        "/img/materiel/rentree/sparring/sparring-03.jpg"
       ],
       "description_short": "Gants de sparring Metal Boxe 16oz (MBGAN010N14). 34,90 € au lieu de 70 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
       "description": "Gants de boxe sparring Metal Boxe, taille 16oz. Mousse injectée Ergo 90, manchette haute, pouce attaché, aération WindTec.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
@@ -435,7 +438,7 @@
       "id": "mat-one-enfant",
       "slug": "gants-boxe-enfant-one",
       "name": "Gants de boxe enfant « ONE »",
-      "reference": "BC-ONE-JR",
+      "reference": "MBGAN002",
       "price_cents": 1990,
       "price_was_cents": 4000,
       "category": "gants",
@@ -449,12 +452,13 @@
       ],
       "pickup_delay": "48h",
       "pickup_note": "Retrait : Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
-      "image": "/img/materiel/rentree/one/one-jr.png",
+      "image": "/img/materiel/rentree/one/one-official.jpg",
       "images": [
+        "/img/materiel/rentree/one/one-official.jpg",
         "/img/materiel/rentree/one/one-jr.png"
       ],
-      "description_short": "Gants de boxe enfant Metal Boxe « ONE ». 4/7 ans ou 8/15 ans. 19,90 € au lieu de 40 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
-      "description": "Gants de boxe enfant modèle ONE (Junior). Tailles 4/7 ans et 8/15 ans.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
+      "description_short": "Gants de boxe enfant Metal Boxe « ONE » (MBGAN002). 4/7 ans ou 8/15 ans. 19,90 € au lieu de 40 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
+      "description": "Gants de boxe enfant modèle ONE (MBGAN002). PU, mousse injectée, velcro large. Tailles 4/7 ans et 8/15 ans.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
       "combinations": [
         {
           "id": "one-4-7",
@@ -462,11 +466,11 @@
           "attributes": {
             "Taille": "4 / 7 ans"
           },
-          "reference": "BC-ONE-JR-47",
+          "reference": "MBGAN002NE",
           "price_cents": 1990,
           "price_label": "19,90 €",
           "stock": 20,
-          "image": "/img/materiel/rentree/one/one-jr.png"
+          "image": "/img/materiel/rentree/one/one-official.jpg"
         },
         {
           "id": "one-8-15",
@@ -474,11 +478,11 @@
           "attributes": {
             "Taille": "8 / 15 ans"
           },
-          "reference": "BC-ONE-JR-815",
+          "reference": "MBGAN002NJR",
           "price_cents": 1990,
           "price_label": "19,90 €",
           "stock": 20,
-          "image": "/img/materiel/rentree/one/one-jr.png"
+          "image": "/img/materiel/rentree/one/one-official.jpg"
         }
       ],
       "display_name": "Gants de boxe enfant « ONE »",
@@ -499,7 +503,7 @@
       "id": "mat-ensemble-enfants",
       "slug": "ensemble-enfants-short-debardeur",
       "name": "Ensemble enfants short et débardeur",
-      "reference": "BC-ENSEMBLE-ENFANTS",
+      "reference": "MB6473",
       "price_cents": 2490,
       "price_was_cents": 3000,
       "category": "short",
@@ -513,12 +517,15 @@
       ],
       "pickup_delay": "48h",
       "pickup_note": "Retrait : Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
-      "image": "/img/materiel/51/short-boxe-anglaise-military-pro-line-metal-boxe.jpg",
+      "image": "/img/materiel/rentree/ensemble/ensemble-01.png",
       "images": [
-        "/img/materiel/51/short-boxe-anglaise-military-pro-line-metal-boxe.jpg"
+        "/img/materiel/rentree/ensemble/ensemble-01.png",
+        "/img/materiel/rentree/ensemble/ensemble-02.png",
+        "/img/materiel/rentree/ensemble/ensemble-noir.jpg",
+        "/img/materiel/rentree/ensemble/ensemble-metal-01.jpg"
       ],
-      "description_short": "Ensemble enfants short + débardeur. Tailles 6/8, 8/10 et 10/12 ans. 24,90 € au lieu de 30 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
-      "description": "Ensemble enfants : short et débardeur. Tailles 6/8 ans, 8/10 ans et 10/12 ans.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
+      "description_short": "Ensemble enfants short + débardeur Metal Boxe (MB6473). Tailles 6/8, 8/10 et 10/12 ans. 24,90 € au lieu de 30 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
+      "description": "Ensemble boxe anglaise enfants Metal Boxe MB6473 : short satin + débardeur. Tailles 6/8 ans, 8/10 ans et 10/12 ans.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
       "combinations": [
         {
           "id": "ensemble-6-8",
@@ -526,11 +533,11 @@
           "attributes": {
             "Taille": "6 / 8 ans"
           },
-          "reference": "BC-ENSEMBLE-6-8",
+          "reference": "MB6473-68",
           "price_cents": 2490,
           "price_label": "24,90 €",
           "stock": 5,
-          "image": "/img/materiel/51/short-boxe-anglaise-military-pro-line-metal-boxe.jpg"
+          "image": "/img/materiel/rentree/ensemble/ensemble-01.png"
         },
         {
           "id": "ensemble-8-10",
@@ -538,11 +545,11 @@
           "attributes": {
             "Taille": "8 / 10 ans"
           },
-          "reference": "BC-ENSEMBLE-8-10",
+          "reference": "MB6473-810",
           "price_cents": 2490,
           "price_label": "24,90 €",
           "stock": 5,
-          "image": "/img/materiel/51/short-boxe-anglaise-military-pro-line-metal-boxe.jpg"
+          "image": "/img/materiel/rentree/ensemble/ensemble-01.png"
         },
         {
           "id": "ensemble-10-12",
@@ -550,11 +557,11 @@
           "attributes": {
             "Taille": "10 / 12 ans"
           },
-          "reference": "BC-ENSEMBLE-10-12",
+          "reference": "MB6473-1012",
           "price_cents": 2490,
           "price_label": "24,90 €",
           "stock": 5,
-          "image": "/img/materiel/51/short-boxe-anglaise-military-pro-line-metal-boxe.jpg"
+          "image": "/img/materiel/rentree/ensemble/ensemble-01.png"
         }
       ],
       "display_name": "Ensemble enfants short et débardeur",
@@ -574,7 +581,7 @@
     {
       "id": "mat-bandes-4m",
       "slug": "bandes-4m-mb120bt",
-      "name": "Bandes 4m",
+      "name": "Bandes 4m Rouge / Blanc / Bleu",
       "reference": "MB120BT",
       "price_cents": 690,
       "price_was_cents": 1000,
@@ -589,51 +596,30 @@
       ],
       "pickup_delay": "48h",
       "pickup_note": "Retrait : Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
-      "image": "/img/materiel/50/bandes-de-boxe-4m-metal-boxe.jpg",
+      "image": "/img/materiel/rentree/bandes/bandes-4m-01.jpg",
       "images": [
-        "/img/materiel/50/bandes-de-boxe-4m-metal-boxe.jpg"
+        "/img/materiel/rentree/bandes/bandes-4m-01.jpg",
+        "/img/materiel/rentree/bandes/bandes-4m-02.png",
+        "/img/materiel/rentree/bandes/bandes-4m-03.jpg"
       ],
-      "description_short": "Bandes 4m Metal Boxe (MB120BT). Rouge, blanc ou bleu. 6,90 € au lieu de 10 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
-      "description": "Bandes de boxe 4 mètres, coloris rouge, blanc ou bleu.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
+      "description_short": "Bandes 4m Metal Boxe MB120BT, coloris Rouge / Blanc / Bleu. 6,90 € au lieu de 10 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
+      "description": "Bandes de boxe 4 mètres Metal Boxe (MB120BT), coloris tricolore Rouge / Blanc / Bleu. Coton/nylon, passant pouce, velcro. Vendues à la paire.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
       "combinations": [
         {
-          "id": "bandes4-rouge",
-          "label": "Rouge",
+          "id": "bandes4-rwb",
+          "label": "Rouge / Blanc / Bleu",
           "attributes": {
-            "Couleur": "Rouge"
+            "Couleur": "Rouge / Blanc / Bleu",
+            "Longueur": "4m"
           },
           "reference": "MB120BT",
           "price_cents": 690,
           "price_label": "6,90 €",
-          "stock": 17,
-          "image": "/img/materiel/50/bandes-de-boxe-4m-metal-boxe.jpg"
-        },
-        {
-          "id": "bandes4-blanc",
-          "label": "Blanc",
-          "attributes": {
-            "Couleur": "Blanc"
-          },
-          "reference": "MB120BT",
-          "price_cents": 690,
-          "price_label": "6,90 €",
-          "stock": 17,
-          "image": "/img/materiel/50/bandes-de-boxe-4m-metal-boxe.jpg"
-        },
-        {
-          "id": "bandes4-bleu",
-          "label": "Bleu",
-          "attributes": {
-            "Couleur": "Bleu"
-          },
-          "reference": "MB120BT",
-          "price_cents": 690,
-          "price_label": "6,90 €",
-          "stock": 16,
-          "image": "/img/materiel/50/bandes-de-boxe-4m-metal-boxe.jpg"
+          "stock": 50,
+          "image": "/img/materiel/rentree/bandes/bandes-4m-01.jpg"
         }
       ],
-      "display_name": "Bandes 4m",
+      "display_name": "Bandes 4m Rouge / Blanc / Bleu",
       "stock": 50,
       "price_label": "6,90 €",
       "price_was_label": "10,00 €",
@@ -645,12 +631,12 @@
       "requires_iban": false,
       "requires_payment": true,
       "sale_type": "materiel",
-      "default_variant_id": "bandes4-rouge"
+      "default_variant_id": "bandes4-rwb"
     },
     {
       "id": "mat-bandes-250",
       "slug": "bandes-2m50-mb120t",
-      "name": "Bandes 2m50",
+      "name": "Bandes 2m50 Rouge / Blanc / Bleu",
       "reference": "MB120T",
       "price_cents": 590,
       "price_was_cents": 800,
@@ -665,51 +651,30 @@
       ],
       "pickup_delay": "48h",
       "pickup_note": "Retrait : Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
-      "image": "/img/materiel/37/bandes-de-boxe-2m50-metal-boxe.jpg",
+      "image": "/img/materiel/rentree/bandes/bandes-250-01.jpg",
       "images": [
-        "/img/materiel/37/bandes-de-boxe-2m50-metal-boxe.jpg"
+        "/img/materiel/rentree/bandes/bandes-250-01.jpg",
+        "/img/materiel/rentree/bandes/bandes-4m-01.jpg",
+        "/img/materiel/rentree/bandes/bandes-4m-02.png"
       ],
-      "description_short": "Bandes 2,50m Metal Boxe (MB120T). Rouge, blanc ou bleu. 5,90 € au lieu de 8 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
-      "description": "Bandes de boxe 2,50 mètres, coloris rouge, blanc ou bleu.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
+      "description_short": "Bandes 2,50m Metal Boxe MB120T, coloris Rouge / Blanc / Bleu. 5,90 € au lieu de 8 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
+      "description": "Bandes de boxe 2,50 mètres Metal Boxe (MB120T), coloris tricolore Rouge / Blanc / Bleu. Coton/nylon, passant pouce, velcro. Vendues à la paire.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
       "combinations": [
         {
-          "id": "bandes25-rouge",
-          "label": "Rouge",
+          "id": "bandes25-rwb",
+          "label": "Rouge / Blanc / Bleu",
           "attributes": {
-            "Couleur": "Rouge"
+            "Couleur": "Rouge / Blanc / Bleu",
+            "Longueur": "2m50"
           },
           "reference": "MB120T",
           "price_cents": 590,
           "price_label": "5,90 €",
-          "stock": 7,
-          "image": "/img/materiel/37/bandes-de-boxe-2m50-metal-boxe.jpg"
-        },
-        {
-          "id": "bandes25-blanc",
-          "label": "Blanc",
-          "attributes": {
-            "Couleur": "Blanc"
-          },
-          "reference": "MB120T",
-          "price_cents": 590,
-          "price_label": "5,90 €",
-          "stock": 7,
-          "image": "/img/materiel/37/bandes-de-boxe-2m50-metal-boxe.jpg"
-        },
-        {
-          "id": "bandes25-bleu",
-          "label": "Bleu",
-          "attributes": {
-            "Couleur": "Bleu"
-          },
-          "reference": "MB120T",
-          "price_cents": 590,
-          "price_label": "5,90 €",
-          "stock": 6,
-          "image": "/img/materiel/37/bandes-de-boxe-2m50-metal-boxe.jpg"
+          "stock": 20,
+          "image": "/img/materiel/rentree/bandes/bandes-250-01.jpg"
         }
       ],
-      "display_name": "Bandes 2m50",
+      "display_name": "Bandes 2m50 Rouge / Blanc / Bleu",
       "stock": 20,
       "price_label": "5,90 €",
       "price_was_label": "8,00 €",
@@ -721,7 +686,7 @@
       "requires_iban": false,
       "requires_payment": true,
       "sale_type": "materiel",
-      "default_variant_id": "bandes25-rouge"
+      "default_variant_id": "bandes25-rwb"
     },
     {
       "id": "mat-dents-adulte",
@@ -740,12 +705,13 @@
       ],
       "pickup_delay": "48h",
       "pickup_note": "Retrait : Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
-      "image": "/img/materiel/56/protege-dents-gel-metal-boxe.jpg",
+      "image": "/img/materiel/rentree/dents/dents-adulte-01.jpg",
       "images": [
-        "/img/materiel/56/protege-dents-gel-metal-boxe.jpg"
+        "/img/materiel/rentree/dents/dents-adulte-01.jpg",
+        "/img/materiel/rentree/dents/dents-adulte-02.jpg"
       ],
       "description_short": "Protège dents adulte translucide (MBPRO458SRT). 5,90 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
-      "description": "Protège dents adulte translucide Metal Boxe.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
+      "description": "Protège dents adulte simple translucide Metal Boxe MBPRO458SRT. Gel médical, thermoformable, livré avec boîtier.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
       "combinations": [
         {
           "id": "dents-adulte",
@@ -757,7 +723,7 @@
           "price_cents": 590,
           "price_label": "5,90 €",
           "stock": 50,
-          "image": "/img/materiel/56/protege-dents-gel-metal-boxe.jpg"
+          "image": "/img/materiel/rentree/dents/dents-adulte-01.jpg"
         }
       ],
       "display_name": "Protège dents adulte",
@@ -790,12 +756,13 @@
       ],
       "pickup_delay": "48h",
       "pickup_note": "Retrait : Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
-      "image": "/img/materiel/56/protege-dents-gel-metal-boxe.jpg",
+      "image": "/img/materiel/rentree/dents/dents-enfant-01.png",
       "images": [
-        "/img/materiel/56/protege-dents-gel-metal-boxe.jpg"
+        "/img/materiel/rentree/dents/dents-enfant-01.png",
+        "/img/materiel/rentree/dents/dents-enfant-02.png"
       ],
       "description_short": "Protège dents enfants gel (MB459JRW). 12 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
-      "description": "Protège dents enfants gel Metal Boxe.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
+      "description": "Protège dents enfants gel thermoformable Metal Boxe MB459 (JR). Moulage à l’eau chaude.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
       "combinations": [
         {
           "id": "dents-enfant",
@@ -807,7 +774,7 @@
           "price_cents": 1200,
           "price_label": "12,00 €",
           "stock": 20,
-          "image": "/img/materiel/56/protege-dents-gel-metal-boxe.jpg"
+          "image": "/img/materiel/rentree/dents/dents-enfant-01.png"
         }
       ],
       "display_name": "Protège dents enfants",
@@ -841,12 +808,15 @@
       ],
       "pickup_delay": "48h",
       "pickup_note": "Retrait : Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
-      "image": "/img/materiel/39/protege-tibias-pieds-coton-elastique-metal-boxe.jpg",
+      "image": "/img/materiel/rentree/tibias/tibias-blanc-01.jpg",
       "images": [
-        "/img/materiel/39/protege-tibias-pieds-coton-elastique-metal-boxe.jpg"
+        "/img/materiel/rentree/tibias/tibias-blanc-01.jpg",
+        "/img/materiel/rentree/tibias/tibias-blanc-02.png",
+        "/img/materiel/rentree/tibias/tibias-blanc-03.jpg",
+        "/img/materiel/rentree/tibias/tibias-blanc-04.jpg"
       ],
-      "description_short": "Protège tibias + pieds coton (MB153WM). S à XL. 14,90 € au lieu de 20 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
-      "description": "Protège tibias-pieds coton élastique Metal Boxe. Tailles S, M, L, XL.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
+      "description_short": "Protège tibias + pieds coton blanc (MB153WM). S à XL. 14,90 € au lieu de 20 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
+      "description": "Protège tibias-pieds coton élastique Metal Boxe MB153, coloris blanc. Mousse EVA, velcro de serrage. Tailles S, M, L, XL.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
       "combinations": [
         {
           "id": "tibias-s",
@@ -858,7 +828,7 @@
           "price_cents": 1490,
           "price_label": "14,90 €",
           "stock": 5,
-          "image": "/img/materiel/39/protege-tibias-pieds-coton-elastique-metal-boxe.jpg"
+          "image": "/img/materiel/rentree/tibias/tibias-blanc-01.jpg"
         },
         {
           "id": "tibias-m",
@@ -870,7 +840,7 @@
           "price_cents": 1490,
           "price_label": "14,90 €",
           "stock": 5,
-          "image": "/img/materiel/39/protege-tibias-pieds-coton-elastique-metal-boxe.jpg"
+          "image": "/img/materiel/rentree/tibias/tibias-blanc-01.jpg"
         },
         {
           "id": "tibias-l",
@@ -882,7 +852,7 @@
           "price_cents": 1490,
           "price_label": "14,90 €",
           "stock": 5,
-          "image": "/img/materiel/39/protege-tibias-pieds-coton-elastique-metal-boxe.jpg"
+          "image": "/img/materiel/rentree/tibias/tibias-blanc-01.jpg"
         },
         {
           "id": "tibias-xl",
@@ -894,7 +864,7 @@
           "price_cents": 1490,
           "price_label": "14,90 €",
           "stock": 5,
-          "image": "/img/materiel/39/protege-tibias-pieds-coton-elastique-metal-boxe.jpg"
+          "image": "/img/materiel/rentree/tibias/tibias-blanc-01.jpg"
         }
       ],
       "display_name": "Protège tibias + pieds coton",

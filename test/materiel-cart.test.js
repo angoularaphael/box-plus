@@ -24,6 +24,18 @@ test('catalogue rentrée 2026 — 12 produits destockage', () => {
   assert.equal(catalog.products.length, 12);
   assert.ok(catalog.products.every((p) => p.id.startsWith('mat-')));
   assert.ok(catalog.products.every((p) => p.image));
+  assert.ok(catalog.products.every((p) => String(p.image).startsWith('/img/materiel/rentree/')));
+});
+
+test('bandes MB120BT / MB120T sont le coloris tricolore, stock 50 et 20', () => {
+  const catalog = JSON.parse(fs.readFileSync(CATALOG_FILE, 'utf8'));
+  const b4 = catalog.products.find((p) => p.id === 'mat-bandes-4m');
+  const b25 = catalog.products.find((p) => p.id === 'mat-bandes-250');
+  assert.equal(b4.combinations.length, 1);
+  assert.equal(b4.stock, 50);
+  assert.equal(b4.combinations[0].label, 'Rouge / Blanc / Bleu');
+  assert.equal(b25.combinations.length, 1);
+  assert.equal(b25.stock, 20);
 });
 
 test('getMaterielProducts filtre par catégorie', () => {
