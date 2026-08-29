@@ -8,7 +8,6 @@
 const { matchGymSlug } = require('../../lib/gym-slugs');
 const { resolvePickupGym } = require('./gym-pickup');
 const { sendWhatsAppMessage } = require('./whatsapp-bot');
-const { isDemoCheckoutAllowed } = require('./security');
 const { logInfo, logWarn } = require('../../lib/logger');
 
 const GYM_MATERIEL_MANAGERS = {
@@ -163,15 +162,36 @@ function saleWhatsAppText(order, source) {
   ].join('\n');
 }
 
-function shouldSkipWhatsApp() {
-  if (process.env.NODE_ENV === 'test') return true;
-  return isDemoCheckoutAllowed();
+function shouldSkipWhatsApp(order, env = process.env) {
+  if (String(env.NODE_ENV || '').toLowerCase() === 'test') return true;
+  const method = String(order?.payment?.method || order?.addons?.blade?.method || '');
+  return method === 'demo';
 }
 
-async function notifyManager(manager, message) {
+function applyManagerNotify(order, result, source) {
+  if (!order) return null;
+  const payload = {
+    sent: Boolean(result?.sent),
+    skipped: result?.skipped || null,
+    error: result?.error || null,
+    manager: result?.manager || null,
+    gym: result?.gym || null,
+    already: Boolean(result?.already),
+    at: new Date().toISOString(),
+    source: source || result?.source || 'materiel',
+  };
+  order.manager_notify = payload;
+  if (order.addons?.blade) order.addons.blade.manager_notify = payload;
+  return payload;
+}
+
+async function notifyManager(manager, message, order) {
   if (!manager?.phone) return { sent: false, error: 'no_manager' };
-  if (shouldSkipWhatsApp()) {
-    logInfo('WhatsApp manager matériel ignoré (démo/test)', { manager: manager.name, gym: manager.slug });
+  if (shouldSkipWhatsApp(order)) {
+    logInfo('WhatsApp manager matériel ignoré (tests/démo)', {
+      manager: manager.name,
+      gym: manager.slug,
+    });
     return { sent: false, skipped: 'demo', manager: manager.name, gym: manager.slug };
   }
   try {
@@ -187,7 +207,11 @@ async function notifyManager(manager, message) {
   }
 }
 
-async function notifyMaterielSale(order, { source = 'materiel' } = {}) {
+async function notifyMaterielSale(order, { source = 'materiel', force = false } = {}) {
+  const existing = order?.manager_notify || order?.addons?.blade?.manager_notify;
+  if (!force && existing?.sent) {
+    return { ...existing, already: true, sent: true };
+  }
   const gymRaw = pickupGymFromOrder(order, source);
   const manager = resolveManagerForPickup(gymRaw);
   if (!manager) {
@@ -195,15 +219,71 @@ async function notifyMaterielSale(order, { source = 'materiel' } = {}) {
     return { sent: false, error: 'unknown_gym', gym: gymRaw };
   }
   const message = saleWhatsAppText(order, source);
-  const result = await notifyManager(manager, message);
+  const result = await notifyManager(manager, message, order);
   logInfo('Vente matériel notifiée', {
     order_id: order?.order_id,
     gym: manager.slug,
     manager: manager.name,
     source,
     sent: result.sent,
+    skipped: result.skipped || null,
+    error: result.error || null,
   });
   return { ...result, message };
+}
+
+function materielSaleSummary(order, source) {
+  const src = source || (order?.order_type === 'materiel' ? 'materiel' : 'upsell');
+  const lines = saleLines(order, src);
+  const customer = customerFromOrder(order);
+  const gymRaw = pickupGymFromOrder(order, src);
+  const manager = resolveManagerForPickup(gymRaw);
+  const notify = order?.manager_notify || order?.addons?.blade?.manager_notify || null;
+  const paid =
+    src === 'upsell'
+      ? order?.addons?.blade?.status === 'paid'
+      : order?.payment?.status === 'paid';
+  const total =
+    src === 'upsell'
+      ? Number(order?.addons?.blade?.price_cents || 0)
+      : Number(order?.total_cents || 0);
+  return {
+    order_id: order?.order_id,
+    source: src,
+    created_at: order?.created_at || null,
+    paid_at: order?.paid_at || order?.addons?.blade?.paid_at || order?.payment?.paid_at || null,
+    payment_status: paid ? 'paid' : order?.payment?.status || 'pending',
+    payment_method: order?.payment?.method || order?.addons?.blade?.method || null,
+    total_cents: total,
+    product:
+      lines.map((l) => [l.name, l.variant].filter(Boolean).join(' ')).join(', ') || '—',
+    items: lines,
+    customer,
+    pickup_gym: gymRaw,
+    pickup_label: manager?.label || gymRaw || '—',
+    manager_name: manager?.name || null,
+    manager_phone: manager?.phone || null,
+    manager_notify: notify,
+    email_sent: Boolean(order?.email_sent),
+  };
+}
+
+function listMaterielSales(materielOrders = [], inscriptionOrders = []) {
+  const rows = [];
+  for (const order of materielOrders) {
+    rows.push(materielSaleSummary(order, 'materiel'));
+  }
+  for (const order of inscriptionOrders) {
+    if (order?.addons?.blade?.status === 'paid') {
+      rows.push(materielSaleSummary(order, 'upsell'));
+    }
+  }
+  rows.sort(
+    (a, b) =>
+      new Date(b.paid_at || b.created_at || 0).getTime() -
+      new Date(a.paid_at || a.created_at || 0).getTime()
+  );
+  return rows;
 }
 
 module.exports = {
@@ -212,6 +292,10 @@ module.exports = {
   resolveManagerForPickup,
   saleWhatsAppText,
   pickupGymFromOrder,
+  shouldSkipWhatsApp,
+  applyManagerNotify,
   notifyManager,
   notifyMaterielSale,
+  materielSaleSummary,
+  listMaterielSales,
 };

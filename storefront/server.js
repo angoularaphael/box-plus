@@ -1505,6 +1505,63 @@ function createApp() {
     }
   });
 
+  app.get('/api/admin/materiel-orders', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { listMaterielSales } = require('./lib/gym-materiel-managers');
+      const materiel = await listAllMaterielOrdersAsync();
+      const inscriptions = await listAllOrdersAsync();
+      const orders = listMaterielSales(materiel, inscriptions);
+      res.json({ ok: true, orders, count: orders.length });
+    } catch (err) {
+      logError('Admin ventes matériel', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/materiel-orders/:id/notify-manager', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const {
+        notifyMaterielSale,
+        applyManagerNotify,
+        materielSaleSummary,
+      } = require('./lib/gym-materiel-managers');
+      const id = sanitizeOrderId(req.params.id) || String(req.params.id || '').trim();
+      let order = await loadMaterielOrderAsync(id);
+      let source = 'materiel';
+      let persist = saveMaterielOrderRecordAsync;
+      if (!order) {
+        order = await loadOrderAsync(id);
+        source = 'upsell';
+        persist = saveOrderAsync;
+      }
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      const paid =
+        source === 'upsell'
+          ? order.addons?.blade?.status === 'paid'
+          : order.payment?.status === 'paid';
+      if (!paid) {
+        return res.status(400).json({
+          ok: false,
+          error: 'not_paid',
+          message: 'Notifier le manager uniquement après paiement.',
+        });
+      }
+      const notify = await notifyMaterielSale(order, { source, force: true });
+      applyManagerNotify(order, notify, source);
+      await persist(order);
+      res.json({
+        ok: true,
+        notify: order.manager_notify,
+        sale: materielSaleSummary(order, source),
+      });
+    } catch (err) {
+      logError('Admin notif manager matériel', { order_id: req.params.id, error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   // Stats admin — ventes + funnel + visites
   app.get('/api/admin/stats', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
@@ -2148,7 +2205,9 @@ function createApp() {
 
   app.get('/api/admin/orders/:id', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
-    const order = await loadOrderAsync(req.params.id);
+    const id = String(req.params.id || '').trim();
+    let order = await loadOrderAsync(id);
+    if (!order) order = await loadMaterielOrderAsync(id);
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
     const { access_token, ...safe } = order;
     res.json({ ok: true, order: safe });
@@ -2156,9 +2215,25 @@ function createApp() {
 
   app.get('/api/admin/orders/:id/contract.pdf', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
-    const order = await loadOrderAsync(req.params.id);
-    if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
-    streamOrderFacturePdf(order, res);
+    const id = String(req.params.id || '').trim();
+    const inscription = await loadOrderAsync(id);
+    if (inscription) return streamOrderFacturePdf(inscription, res);
+    const materiel = await loadMaterielOrderAsync(id);
+    if (!materiel) return res.status(404).json({ ok: false, error: 'not_found' });
+    try {
+      const result = await generateMaterielInvoicePdf(materiel);
+      if (!result?.filepath) {
+        return res.status(500).json({ ok: false, error: 'Génération PDF échouée' });
+      }
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="facture-${materiel.order_id}.pdf"`
+      );
+      require('fs').createReadStream(result.filepath).pipe(res);
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
   });
 
   app.delete('/api/admin/orders/:id', async (req, res) => {

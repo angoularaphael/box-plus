@@ -7,6 +7,9 @@ const {
   resolveManagerForPickup,
   saleWhatsAppText,
   pickupGymFromOrder,
+  shouldSkipWhatsApp,
+  materielSaleSummary,
+  listMaterielSales,
 } = require('../storefront/lib/gym-materiel-managers');
 
 test('chaque salle de retrait a un manager et un numéro distinct', () => {
@@ -110,4 +113,40 @@ test('upsell Blade → toujours Remus / Minimes, pas la salle d’inscription', 
   assert.match(text, /Minimes/);
   assert.doesNotMatch(text, /Portet/);
   assert.match(text, /jour même/);
+});
+
+test('live (production) envoie bien au manager — la démo seule est ignorée', () => {
+  assert.equal(shouldSkipWhatsApp({ payment: { method: 'payplug' } }, { NODE_ENV: 'production' }), false);
+  assert.equal(shouldSkipWhatsApp({ payment: { method: 'payplug' } }, { NODE_ENV: 'test' }), true);
+  assert.equal(shouldSkipWhatsApp({ payment: { method: 'demo' } }, { NODE_ENV: 'production' }), true);
+  assert.equal(
+    shouldSkipWhatsApp(
+      { addons: { blade: { method: 'paypal' } } },
+      { NODE_ENV: 'production', STORE_DEMO_ENABLED: 'true' }
+    ),
+    false
+  );
+});
+
+test('récap vente : manager de la salle choisie + statut WhatsApp', () => {
+  const order = {
+    order_id: 'MAT-live',
+    order_type: 'materiel',
+    created_at: '2026-08-29T15:00:00.000Z',
+    paid_at: '2026-08-29T15:01:00.000Z',
+    payment: { status: 'paid', method: 'payplug' },
+    total_cents: 1370,
+    pickup_gym: 'Portet-sur-Garonne',
+    customer: { first_name: 'Brad', last_name: 'Mbosseu', phone: '0600000000' },
+    items: [{ name: 'Gants', variant_label: '12oz', qty: 1, line_total_cents: 1370 }],
+    manager_notify: { sent: true, manager: 'Tapia', gym: 'portet' },
+  };
+  const row = materielSaleSummary(order, 'materiel');
+  assert.equal(row.manager_name, 'Tapia');
+  assert.equal(row.pickup_label, 'Portet-sur-Garonne');
+  assert.equal(row.total_cents, 1370);
+  assert.equal(row.manager_notify.sent, true);
+  const listed = listMaterielSales([order], []);
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].order_id, 'MAT-live');
 });

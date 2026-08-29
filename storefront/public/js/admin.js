@@ -325,7 +325,10 @@
     });
     if (name === 'contracts') loadOrders();
     if (name === 'coachings') loadCoachings();
-    if (name === 'materiel') loadMateriel();
+    if (name === 'materiel') {
+      loadMateriel();
+      loadMaterielSales();
+    }
     if (name === 'stats') initStats();
     if (name === 'whatsapp') loadWhatsApp(true);
     if (location.hash !== `#${name}`) {
@@ -1187,6 +1190,124 @@
   let materielProducts = [];
   let materielCategories = [];
   let materielLoaded = false;
+  let materielSales = [];
+  let materielSalesLoaded = false;
+
+  function notifyLabel(sale) {
+    const n = sale.manager_notify || {};
+    if (n.sent) return { text: `Envoyé (${n.manager || sale.manager_name || '—'})`, cls: 'badge ok' };
+    if (n.skipped === 'demo') return { text: 'Ignoré (démo)', cls: 'badge warn' };
+    if (n.error) return { text: n.error, cls: 'badge err' };
+    if (sale.payment_status !== 'paid') return { text: 'Après paiement', cls: 'badge' };
+    return { text: 'Pas encore', cls: 'badge warn' };
+  }
+
+  function renderMaterielSales() {
+    const tbody = document.getElementById('materielSalesBody');
+    const countEl = document.getElementById('materielSalesCount');
+    if (!tbody) return;
+    if (!materielSales.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="8" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune vente matériel pour l’instant.</td></tr>';
+      if (countEl) countEl.textContent = '';
+      return;
+    }
+    tbody.innerHTML = materielSales
+      .map((s) => {
+        const wa = notifyLabel(s);
+        const when = s.paid_at || s.created_at;
+        const dateTxt = when
+          ? new Date(when).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+          : '—';
+        const name = [s.customer?.first_name, s.customer?.last_name].filter(Boolean).join(' ') || '—';
+        const paid = s.payment_status === 'paid';
+        const facture = paid
+          ? `<a class="btn sm secondary" href="/api/admin/orders/${encodeURIComponent(s.order_id)}/contract.pdf" target="_blank">Facture</a>`
+          : '';
+        const relance = paid
+          ? `<button type="button" class="btn sm" data-notify-sale="${escapeHtml(s.order_id)}">${s.manager_notify?.sent ? 'Renvoyer' : 'Notifier'}</button>`
+          : '';
+        return `<tr>
+          <td>${escapeHtml(dateTxt)}<div style="color:var(--bc-muted);font-size:11px">${escapeHtml(s.order_id || '')}${s.source === 'upsell' ? ' · upsell' : ''}</div></td>
+          <td><strong>${escapeHtml(name)}</strong><div style="color:var(--bc-muted);font-size:12px">${escapeHtml(s.customer?.phone || '')}</div></td>
+          <td>${escapeHtml(s.product || '—')}</td>
+          <td style="text-align:right;font-weight:600">${fmtEur(s.total_cents)}</td>
+          <td>${escapeHtml(s.pickup_label || s.pickup_gym || '—')}</td>
+          <td>${escapeHtml(s.manager_name || '—')}</td>
+          <td><span class="${wa.cls}">${escapeHtml(wa.text)}</span></td>
+          <td style="display:flex;gap:6px;flex-wrap:wrap">${relance}${facture}</td>
+        </tr>`;
+      })
+      .join('');
+    if (countEl) countEl.textContent = `${materielSales.length} vente(s)`;
+    tbody.querySelectorAll('[data-notify-sale]').forEach((btn) => {
+      btn.addEventListener('click', () => notifyMaterielManager(btn.dataset.notifySale, btn));
+    });
+  }
+
+  async function loadMaterielSales(force = false) {
+    if (materielSalesLoaded && !force) {
+      renderMaterielSales();
+      return;
+    }
+    const msg = document.getElementById('materielSalesMsg');
+    try {
+      const res = await fetch('/api/admin/materiel-orders', { credentials: 'include', headers: headers(false) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'unauthorized');
+      materielSales = data.orders || [];
+      materielSalesLoaded = true;
+      renderMaterielSales();
+      if (msg) {
+        msg.textContent = '';
+        msg.className = 'form-msg';
+      }
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message || 'Impossible de charger les ventes';
+        msg.className = 'form-msg err';
+      }
+    }
+  }
+
+  async function notifyMaterielManager(orderId, btn) {
+    const msg = document.getElementById('materielSalesMsg');
+    if (btn) btn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/materiel-orders/${encodeURIComponent(orderId)}/notify-manager`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true),
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || 'Envoi WhatsApp impossible');
+      const idx = materielSales.findIndex((s) => s.order_id === orderId);
+      if (idx >= 0 && data.sale) materielSales[idx] = data.sale;
+      renderMaterielSales();
+      const sent = data.notify?.sent;
+      const text = sent
+        ? `WhatsApp envoyé à ${data.notify?.manager || 'le manager'}`
+        : data.notify?.error || 'WhatsApp non envoyé';
+      if (msg) {
+        msg.textContent = text;
+        msg.className = sent ? 'form-msg ok' : 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast(text, sent ? '' : 'err');
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message;
+        msg.className = 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  document.getElementById('refreshMaterielSalesBtn')?.addEventListener('click', () => {
+    loadMaterielSales(true);
+  });
 
   function setMaterielMsg(text, type) {
     const el = document.getElementById('materielMsg');

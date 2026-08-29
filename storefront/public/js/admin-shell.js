@@ -215,6 +215,20 @@
         <div class="pan-bloc__body" id="panDernieres">
           <div class="pan-squelette"><span></span><span></span><span></span></div>
         </div>
+      </div>
+      <div class="pan-bloc">
+        <div class="pan-bloc__head">
+          <div>
+            <h2 class="pan-bloc__title">Ventes matériel</h2>
+            <p class="pan-bloc__desc">Retrait en salle — le manager de la salle choisie est prévenu sur WhatsApp.</p>
+          </div>
+          <div class="pan-bloc__tools">
+            <button type="button" class="btn secondary sm" data-va="catalogue">Voir le catalogue</button>
+          </div>
+        </div>
+        <div class="pan-bloc__body" id="panMaterielVentes">
+          <div class="pan-squelette"><span></span><span></span><span></span></div>
+        </div>
       </div>`;
     return s;
   }
@@ -290,6 +304,7 @@
     peindreDernieres(zoneD, inscriptions);
     peindreCoachingsRecents(coachings);
     brancherLiensReprise();
+    void peindreVentesMateriel();
 
     const pastille = $('.pan-nav__n[data-n="inscriptions"]');
     if (pastille) {
@@ -427,6 +442,49 @@
           ? `<button type="button" class="btn sm resume-dash pay-dash" data-id="${esc(o.order_id)}">Payer</button>`
           : ""}</td>
       </tr>`).join("")}</tbody></table></div>`;
+  }
+
+  async function peindreVentesMateriel() {
+    const zone = $("#panMaterielVentes");
+    if (!zone) return;
+    let ventes = [];
+    try {
+      const r = await fetch("/api/admin/materiel-orders", { credentials: "include" });
+      const d = await r.json();
+      ventes = d.orders || [];
+    } catch {
+      zone.innerHTML = `<div class="pan-vide"><p class="pan-vide__t">Ventes matériel inaccessibles</p><p class="pan-vide__d">Réessayez avec « Actualiser ».</p></div>`;
+      return;
+    }
+    const host = zone.closest(".pan-bloc");
+    host?.querySelector("[data-va=\"catalogue\"]")?.addEventListener("click", () => {
+      aller("catalogue");
+      $(".pan-filtre[data-sous=\"materiel\"]")?.click();
+    });
+    const payees = ventes.filter((v) => v.payment_status === "paid");
+    const recentes = payees.slice(0, 8);
+    if (!recentes.length) {
+      zone.innerHTML = `<div class="pan-vide"><p class="pan-vide__t">Pas encore de vente matériel</p><p class="pan-vide__d">Les achats gants / destockage apparaissent ici, avec le manager prévenu.</p></div>`;
+      return;
+    }
+    zone.innerHTML = `<div class="pan-tablewrap"><table class="pan-table pan-table--cartes">
+      <thead><tr><th>Client</th><th>Produit</th><th>Montant</th><th>Retrait</th><th>Manager</th><th>WhatsApp</th></tr></thead>
+      <tbody>${recentes.map((s) => {
+        const nom = [s.customer?.first_name, s.customer?.last_name].filter(Boolean).join(" ") || "—";
+        const wa = s.manager_notify?.sent
+          ? '<span class="pan-tag pan-tag--ok">Envoyé</span>'
+          : s.manager_notify?.error
+            ? `<span class="pan-tag pan-tag--ko">${esc(s.manager_notify.error)}</span>`
+            : '<span class="pan-tag pan-tag--att">À envoyer</span>';
+        return `<tr>
+          <td data-l="Client"><strong>${esc(nom)}</strong><br><span style="color:var(--pan-mute);font-size:12px">${esc(s.customer?.phone || "")}</span></td>
+          <td data-l="Produit">${esc(s.product || "—")}${s.source === "upsell" ? ' <span class="pan-tag pan-tag--neutre">upsell</span>' : ""}</td>
+          <td data-l="Montant">${(Number(s.total_cents || 0) / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}</td>
+          <td data-l="Retrait">${esc(s.pickup_label || s.pickup_gym || "—")}</td>
+          <td data-l="Manager">${esc(s.manager_name || "—")}</td>
+          <td data-l="WhatsApp">${wa}</td>
+        </tr>`;
+      }).join("")}</tbody></table></div>`;
   }
 
   function peindreCoachingsRecents(liste) {

@@ -355,8 +355,14 @@ async function markBladeAddonPaid(order, paymentMeta = {}) {
   await saveOrderAsync(order);
   decrementBladeCatalogStock(parseBladeChoice(addon).variantId);
   await recordBladeSale(order, { source: paymentMeta.source || 'upsell' });
-  const { notifyMaterielSale } = require('./gym-materiel-managers');
-  await notifyMaterielSale(order, { source: paymentMeta.source || 'upsell' });
+  const { notifyMaterielSale, applyManagerNotify } = require('./gym-materiel-managers');
+  try {
+    const notify = await notifyMaterielSale(order, { source: paymentMeta.source || 'upsell' });
+    applyManagerNotify(order, notify, paymentMeta.source || 'upsell');
+  } catch (err) {
+    applyManagerNotify(order, { sent: false, error: err.message }, paymentMeta.source || 'upsell');
+  }
+  await saveOrderAsync(order);
   return { order, already: false };
 }
 
