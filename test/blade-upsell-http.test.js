@@ -176,9 +176,10 @@ test('tunnel inscription : écran Blade, Passer, puis dossier', async (t) => {
   assert.match(heading, /gants blade/i);
   assert.ok(await page.locator('#bladePayCard').isVisible());
   assert.ok(await page.locator('#bladePayPaypal').isVisible());
-  assert.ok(await page.locator('#bladeColor').isVisible());
+  assert.equal(await page.locator('#bladeColor').count(), 0);
   assert.ok(await page.locator('#bladeSize').isVisible());
   assert.match(await page.locator('#bladePayCard').innerText(), /17,90/);
+  assert.ok(!/blanc\s*\/\s*or/i.test(await page.locator('.blade-upsell').innerText()));
 
   await page.click('#bladeSkip');
   await page.waitForSelector('#fullForm', { timeout: 15000 });

@@ -27,35 +27,25 @@ const BLADE_COLORS = [
       '/img/materiel/rentree/blade/blade-nb-02.jpg',
     ],
   },
-  {
-    id: 'blanc-or',
-    label: 'Blanc / Or',
-    image: '/img/materiel/rentree/blade/blade-or-01.jpg',
-    images: [
-      '/img/materiel/rentree/blade/blade-or-01.jpg',
-      '/img/materiel/rentree/blade/blade-or-02.jpg',
-    ],
-  },
 ];
 
 function bladeCombinations() {
-  return BLADE_COLORS.flatMap((color) =>
-    BLADE_SIZES.map((size) => ({
-      id: `blade-${color.id}-${size}`,
-      label: `${color.label} — ${size}`,
-      attributes: {
-        Couleur: color.label,
-        Taille: size,
-        'Lieu retrait produits': MINIMES_PICKUP,
-      },
-      reference: color.id === 'noir-blanc' ? `MBGAN205N${size.replace('oz', '')}` : `MBGAN208W${size.replace('oz', '')}`,
-      price_cents: BLADE_PRICE_CENTS,
-      price_label: '17,90 €',
-      stock: 10,
-      image: color.image,
-      images: color.images,
-    }))
-  );
+  const color = BLADE_COLORS[0];
+  return BLADE_SIZES.map((size) => ({
+    id: `blade-${color.id}-${size}`,
+    label: size,
+    attributes: {
+      Couleur: color.label,
+      Taille: size,
+      'Lieu retrait produits': MINIMES_PICKUP,
+    },
+    reference: `MBGAN205N${size.replace('oz', '')}`,
+    price_cents: BLADE_PRICE_CENTS,
+    price_label: '17,90 €',
+    stock: 10,
+    image: color.image,
+    images: color.images,
+  }));
 }
 
 const BLADE_PRODUCT = {
@@ -68,14 +58,14 @@ const BLADE_PRODUCT = {
   price_label: '17,90 €',
   price_was_cents: BLADE_WAS_CENTS,
   price_was_label: '40,00 €',
-  stock: 60,
+  stock: 30,
   category: 'destockage',
   category_label: 'Déstockage',
   category_id: 26,
   description_short:
-    'Gants Blade destockage rentrée 2026 — coloris Noir/Blanc et Blanc/Or. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Retrait Minimes le jour même.',
+    'Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Retrait Minimes le jour même.',
   description:
-    'Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir/Blanc et Blanc/Or. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\n' +
+    'Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir et Blanc. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\n' +
     PICKUP_NOTE,
   image: '/img/materiel/rentree/blade/blade-nb-01.jpg',
   images: [

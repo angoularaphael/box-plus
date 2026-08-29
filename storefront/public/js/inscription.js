@@ -2358,12 +2358,10 @@
     const sizes = u.sizes && u.sizes.length ? u.sizes : ['10oz', '12oz', '14oz'];
     const colors = u.colors && u.colors.length
       ? u.colors
-      : [
-          { id: 'noir-blanc', label: 'Noir / Blanc' },
-          { id: 'blanc-or', label: 'Blanc / Or' },
-        ];
+      : [{ id: 'noir-blanc', label: 'Noir / Blanc' }];
     const defSize = u.default_size || '12oz';
-    const defColor = u.default_color || 'noir-blanc';
+    const defColor = u.default_color || colors[0]?.id || 'noir-blanc';
+    const showColor = colors.length > 1;
     const img = u.image
       ? `<img src="${u.image}" alt="" class="blade-upsell__img" id="bladeUpsellImg" />`
       : '';
@@ -2371,15 +2369,15 @@
       <div class="blade-upsell">
         <p class="eyebrow" style="color:var(--bc-gold);margin-bottom:8px">Destockage rentrée</p>
         <h1>Gants Blade 10 / 12 / 14oz à 17,90&nbsp;€</h1>
-        <p class="sub">Au lieu de 40&nbsp;€ — Noir/Blanc ou Blanc/Or. Paiement carte ou PayPal, sans quitter votre inscription.</p>
+        <p class="sub">Au lieu de 40&nbsp;€ — coloris Noir et Blanc. Paiement carte ou PayPal, sans quitter votre inscription.</p>
         <article class="blade-upsell__card">
           ${img}
           <div>
             <h2>${esc(u.name || 'Gants de boxe Blade Noir et Blanc')}</h2>
             <p class="blade-upsell__price"><strong>17,90&nbsp;€</strong> <s>40,00&nbsp;€</s></p>
             <p class="blade-upsell__pickup"><strong>Retrait :</strong> Boxing Center Toulouse Minimes uniquement, le jour même de la commande.<br />Lun–ven 12h–14h et 17h–21h · samedi 15h–18h.</p>
-            <label for="bladeColor">Couleur</label>
-            <select id="bladeColor">${colors.map((c) => `<option value="${esc(c.id)}" ${c.id === defColor ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>
+            ${showColor ? `<label for="bladeColor">Couleur</label>
+            <select id="bladeColor">${colors.map((c) => `<option value="${esc(c.id)}" ${c.id === defColor ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>` : ''}
             <label for="bladeSize">Taille</label>
             <select id="bladeSize">${sizes.map((s) => `<option value="${esc(s)}" ${s === defSize ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
           </div>

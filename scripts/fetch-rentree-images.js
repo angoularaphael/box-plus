@@ -28,16 +28,6 @@ const FILES = [
     url: 'https://cdn.shopify.com/s/files/1/0805/2480/4445/files/P1150793.jpg?v=1712236605',
   },
   {
-    dir: 'blade',
-    name: 'blade-or-01.jpg',
-    url: 'https://cdn.shopify.com/s/files/1/0805/2480/4445/files/P1150752.jpg?v=1712236998',
-  },
-  {
-    dir: 'blade',
-    name: 'blade-or-02.jpg',
-    url: 'https://cdn.shopify.com/s/files/1/0805/2480/4445/files/P1150765.jpg?v=1712237028',
-  },
-  {
     dir: 'mitaines',
     name: 'mitaine-01.jpg',
     url: 'https://cdn.shopify.com/s/files/1/0805/2480/4445/files/P1152735.jpg?v=1713451980',

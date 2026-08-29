@@ -82,6 +82,7 @@ test('cahier §upsell : Passer / carte / PayPal dans le tunnel, puis dossier', (
   assert.match(inscriptionJs, /id="bladePayPaypal"/);
   assert.match(inscriptionJs, /Passer et continuer l’inscription/);
   assert.match(inscriptionJs, /sans quitter votre inscription/);
+  assert.doesNotMatch(inscriptionJs, /Blanc\/Or|blanc-or/);
   assert.match(inscriptionJs, /Boxing Center Toulouse Minimes/);
   assert.match(inscriptionJs, /17h–21h/);
   assert.match(inscriptionJs, /samedi 15h–18h/);
@@ -131,6 +132,8 @@ test('écarts vs ce PDF (taille 14oz / stock 30 / alerte à 30) — élargi par 
   assert.deepEqual(BLADE_SIZES, ['10oz', '12oz', '14oz']);
   assert.notEqual(ALERT_AT, 30, 'PDF = alerte à 30 vendus ; code actuel = ' + ALERT_AT);
   assert.equal(ALERT_AT, 10);
-  assert.equal(BLADE_PRODUCT.stock, 60);
+  assert.equal(BLADE_PRODUCT.stock, 30);
+  assert.equal(BLADE_PRODUCT.combinations.length, 3);
+  assert.ok(!BLADE_PRODUCT.combinations.some((c) => /blanc-or|Blanc \/ Or/i.test(`${c.id} ${c.label}`)));
   assert.notEqual(BLADE_PRODUCT.name, 'Gants de boxe Blade Gold Blanc Noir');
 });

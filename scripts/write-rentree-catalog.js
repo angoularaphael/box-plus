@@ -54,13 +54,12 @@ function product(p) {
     requires_iban: false,
     requires_payment: true,
     sale_type: 'materiel',
-    default_variant_id: p.combinations[0].id,
+    default_variant_id: p.default_variant_id || p.combinations[0].id,
   };
 }
 
 const IMG = {
   blade: '/img/materiel/rentree/blade/blade-nb-01.jpg',
-  bladeOr: '/img/materiel/rentree/blade/blade-or-01.jpg',
   pack: '/img/materiel/rentree/pack/pack-enfant.jpg',
   packKeychain: '/img/materiel/rentree/pack/pack-keychain.jpg',
   mitaine: '/img/materiel/rentree/mitaines/mitaine-01.jpg',
@@ -106,6 +105,7 @@ const products = [
     sort_order: 1,
     featured_first: true,
     destockage: true,
+    default_variant_id: 'blade-noir-blanc-12oz',
     pickup_gyms: [MINIMES],
     pickup_locked: MINIMES,
     pickup_same_day: true,
@@ -114,30 +114,22 @@ const products = [
     image: IMG.blade,
     images: [IMG.blade, '/img/materiel/rentree/blade/blade-nb-02.jpg'],
     description_short:
-      'Gants Blade destockage rentrée 2026 — coloris Noir/Blanc et Blanc/Or. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Retrait Minimes le jour même.',
+      'Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Retrait Minimes le jour même.',
     description:
-      'Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir/Blanc et Blanc/Or. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\n' +
+      'Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir et Blanc. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\n' +
       NOTE_BLADE,
-    combinations: ['noir-blanc', 'blanc-or'].flatMap((color) => {
-      const colorLabel = color === 'noir-blanc' ? 'Noir / Blanc' : 'Blanc / Or';
-      const image = color === 'noir-blanc' ? IMG.blade : IMG.bladeOr;
-      const images =
-        color === 'noir-blanc'
-          ? [IMG.blade, '/img/materiel/rentree/blade/blade-nb-02.jpg']
-          : [IMG.bladeOr, '/img/materiel/rentree/blade/blade-or-02.jpg'];
-      return ['10oz', '12oz', '14oz'].map((size) =>
-        combo({
-          id: `blade-${color}-${size}`,
-          label: `${colorLabel} — ${size}`,
-          attrs: { Couleur: colorLabel, Taille: size, 'Lieu retrait produits': MINIMES },
-          ref: color === 'noir-blanc' ? `MBGAN205N${size.replace('oz', '')}` : `MBGAN208W${size.replace('oz', '')}`,
-          cents: 1790,
-          stock: 10,
-          image,
-          images,
-        })
-      );
-    }),
+    combinations: ['10oz', '12oz', '14oz'].map((size) =>
+      combo({
+        id: `blade-noir-blanc-${size}`,
+        label: size,
+        attrs: { Couleur: 'Noir / Blanc', Taille: size, 'Lieu retrait produits': MINIMES },
+        ref: `MBGAN205N${size.replace('oz', '')}`,
+        cents: 1790,
+        stock: 10,
+        image: IMG.blade,
+        images: [IMG.blade, '/img/materiel/rentree/blade/blade-nb-02.jpg'],
+      })
+    ),
   }),
   product({
     id: 'mat-pack-enfants',

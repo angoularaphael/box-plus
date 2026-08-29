@@ -17,7 +17,7 @@ test('gants Blade sont en première position du catalogue matériel', () => {
   assert.equal(products[0].id, BLADE_ID);
   assert.equal(products[1].id, 'mat-pack-enfants');
   assert.equal(products[0].price_cents, BLADE_PRICE_CENTS);
-  assert.equal(products[0].combinations.length, 6);
+  assert.equal(products[0].combinations.length, 3);
 });
 
 test('findMaterielProduct retrouve Blade par id et par slug', () => {
@@ -34,10 +34,10 @@ test('findMaterielProduct retrouve Blade par id et par slug', () => {
   assert.match(byId.pickup_hours, /17h–21h/);
   assert.ok(byId.images.every((src) => src.includes('blade-nb')));
   assert.ok(!byId.images.some((src) => src.includes('blade-or')));
+  assert.ok(!byId.combinations.some((c) => /blanc-or|Blanc \/ Or/i.test(c.id + c.label)));
   const noir = byId.combinations.find((c) => c.id === 'blade-noir-blanc-12oz');
-  const or = byId.combinations.find((c) => c.id === 'blade-blanc-or-12oz');
+  assert.ok(noir);
   assert.ok(noir.images.every((src) => src.includes('blade-nb')));
-  assert.ok(or.images.every((src) => src.includes('blade-or')));
 });
 
 test('Blade n’apparaît que dans destockage / tout', () => {
