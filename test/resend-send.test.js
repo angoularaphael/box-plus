@@ -31,8 +31,9 @@ test('mail campagne : texte perso, pas de HTML pub', () => {
   });
   assert.match(mail.subject, /c’est Guillaume/);
   assert.equal(mail.html, undefined);
-  assert.match(mail.emailText, /29 euros/);
-  assert.match(mail.emailText, /259 euros/);
+  assert.match(mail.emailText, /29 euros les 4 semaines/);
+  assert.match(mail.emailText, /259 euros les 12 mois/);
+  assert.match(mail.emailText, /offres-speciales/);
   assert.doesNotMatch(mail.emailText, /🚨|DERNIÈRES PLACES|Voir les offres/);
 });
 
