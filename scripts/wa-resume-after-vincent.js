@@ -29,24 +29,15 @@ const SKIP_INITIAL_WAIT = process.argv.includes('--now');
 const VINCENT_DUO_ORDER = 'BC-1787835445255-998a8a';
 
 const DUO_AFTER_VINCENT = [
-  'BC-1787839649652-9fb9ce', // Mathias — déjà parti
-  'BC-1787839650553-32a58d', // Heloise — déjà parti
-  'BC-1787937593348-3caffc', // Léa — déjà parti
-  'BC-1787937999561-d0dd16', // Tiphaine — déjà parti
-  'BC-1787941290683-169173', // Yacine — déjà parti
-  'BC-1787946324615-1a4f1b', // Thomas — déjà parti
+  'BC-1787839649652-9fb9ce', // Mathias
+  'BC-1787839650553-32a58d', // Heloise
+  'BC-1787937593348-3caffc', // Léa
+  'BC-1787937999561-d0dd16', // Tiphaine
+  'BC-1787941290683-169173', // Yacine
+  'BC-1787946324615-1a4f1b', // Thomas
   'BC-1787946950395-52a56d', // Larissa
   'BC-1787984840143-374006', // Shedi
 ];
-
-const DUO_ALREADY_SENT = new Set([
-  'BC-1787839649652-9fb9ce',
-  'BC-1787839650553-32a58d',
-  'BC-1787937593348-3caffc',
-  'BC-1787937999561-d0dd16',
-  'BC-1787941290683-169173',
-  'BC-1787946324615-1a4f1b',
-]);
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -160,13 +151,18 @@ async function main() {
     await sleep(GAP_MS);
   }
 
-  const jobs = [
-    ...DUO_AFTER_VINCENT.filter((order_id) => !DUO_ALREADY_SENT.has(order_id)).map((order_id) => ({
-      type: 'duo',
-      order_id,
-    })),
-    ...coaches.map((item) => ({ type: 'coach', item })),
-  ];
+  const duoJobs = [];
+  for (const order_id of DUO_AFTER_VINCENT) {
+    const order = await loadOrderAsync(order_id);
+    if (order?.referral_notify?.whatsapp?.resume_after_vincent) {
+      console.log(JSON.stringify({ skipped: true, kind: 'duo', order_id, reason: 'already_resumed' }));
+      continue;
+    }
+    duoJobs.push({ type: 'duo', order_id });
+  }
+
+  const jobs = [...duoJobs, ...coaches.map((item) => ({ type: 'coach', item }))];
+  console.log(JSON.stringify({ remaining: jobs.length, duo_left: duoJobs.length, coaches: coaches.length }));
 
   let sent = 0;
   let failed = 0;
