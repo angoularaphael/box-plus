@@ -257,6 +257,7 @@ function customerNudgeCopy(order, day = 1) {
     headers: mail.headers,
     attachments: mail.attachments,
     fromName: mail.fromName,
+    replyTo: 'boxingcentertls@gmail.com',
     hubUrl,
     name,
   };
@@ -315,6 +316,7 @@ async function sendCustomerNudge(
         headers: copy.headers,
         attachments: copy.attachments,
         fromName: copy.fromName,
+        replyTo: copy.replyTo || 'boxingcentertls@gmail.com',
       });
     } catch (err) {
       out.email = { sent: false, error: err.message };

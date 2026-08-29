@@ -41,7 +41,8 @@ process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || 'resend';
 process.env.EMAIL_UNSUBSCRIBE_BASE =
   process.env.EMAIL_UNSUBSCRIBE_BASE || 'https://manager.boxingcenter.fr';
 process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
-process.env.RESEND_SENDER_NAME = 'Guillaume de Boxing Center';
+process.env.RESEND_SENDER_NAME = 'Boxing Center';
+process.env.RESEND_REPLY_TO = 'boxingcentertls@gmail.com';
 
 const { customerNudgeCopy } = require('../storefront/lib/essai-followup');
 const { sendWhatsAppMessage, toWhatsAppPhone } = require('../storefront/lib/whatsapp-bot');
@@ -81,6 +82,7 @@ async function main() {
     headers: copy.headers,
     attachments: copy.attachments,
     fromName: copy.fromName,
+    replyTo: copy.replyTo || 'boxingcentertls@gmail.com',
   });
 
   if (WITH_WA) {

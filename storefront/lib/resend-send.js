@@ -7,8 +7,8 @@
  */
 const API = 'https://api.resend.com/emails';
 const DEFAULT_SENDER_EMAIL = 'no-reply@boxingcenter.fr';
-const DEFAULT_SENDER_NAME = 'Guillaume de Boxing Center';
-const DEFAULT_REPLY_TO = 'boxingcenter31@gmail.com';
+const DEFAULT_SENDER_NAME = 'Boxing Center';
+const DEFAULT_REPLY_TO = 'boxingcentertls@gmail.com';
 
 function readApiKey() {
   return String(process.env.RESEND_API_KEY || '')
@@ -25,7 +25,9 @@ function senderName() {
 }
 
 function defaultReplyTo() {
-  return process.env.RESEND_REPLY_TO || process.env.MAIL_REPLY_TO || DEFAULT_REPLY_TO;
+  const fromEnv = process.env.RESEND_REPLY_TO || process.env.MAIL_REPLY_TO || '';
+  if (fromEnv && !/boxingcenter31/i.test(fromEnv)) return fromEnv;
+  return DEFAULT_REPLY_TO;
 }
 
 function isConfigured() {
