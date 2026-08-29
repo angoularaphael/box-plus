@@ -22,6 +22,19 @@ test('relance essai client passe par Resend, pas Brevo', () => {
   assert.doesNotMatch(src, /sendEmailViaBrevo/);
 });
 
+test('mail campagne : List-Unsubscribe et objet sans urgence', () => {
+  const { buildOfferCampaignEmail } = require('../storefront/lib/campaign-email');
+  const mail = buildOfferCampaignEmail({
+    name: 'Guillaume',
+    hubUrl: 'https://boutique.boxingcenter.fr/offres-speciales',
+    email: 'boxingcenter31@gmail.com',
+  });
+  assert.match(mail.subject, /offres Boxing Center — 29 € ou 259 €/);
+  assert.match(mail.headers['List-Unsubscribe-Post'], /One-Click/);
+  assert.match(mail.html, /Se désabonner/);
+  assert.doesNotMatch(mail.html, /🚨|DERNIÈRES PLACES|trop tard/);
+});
+
 test('isConfigured suit RESEND_API_KEY', () => {
   const prev = process.env.RESEND_API_KEY;
   process.env.RESEND_API_KEY = '';

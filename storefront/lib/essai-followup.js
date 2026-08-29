@@ -10,6 +10,7 @@ const { matchGymSlug } = require('../../lib/gym-slugs');
 const { getStoreUrl } = require('../../lib/app-urls');
 const { logInfo, logWarn } = require('../../lib/logger');
 const { sendWhatsAppMessage } = require('./whatsapp-bot');
+const { buildOfferCampaignEmail } = require('./campaign-email');
 
 const ESSAI_SINCE_MS = Date.parse('2026-08-13T00:00:00+02:00');
 const FOLLOWUP_AFTER_MS = 3 * 24 * 60 * 60 * 1000;
@@ -216,14 +217,6 @@ function displayFirstName(order = {}) {
     .join('');
 }
 
-function escapeHtml(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 const OFFER_CAMPAIGN_BODY = `🚨 **DERNIÈRES PLACES POUR PROFITER DE L’OFFRE BOXING CENTER** 🥊
 
 **Il reste encore quelques places disponibles.**
@@ -250,41 +243,22 @@ function customerNudgeCopy(order, day = 1) {
   const hubUrl = offersHubUrl();
   const body = OFFER_CAMPAIGN_BODY.replace('__HUB_URL__', hubUrl);
   const text = name ? `${name},\n\n${body}` : body;
-  const subject = name
-    ? `${name}, dernières places pour l’offre Boxing Center`
-    : 'Dernières places pour l’offre Boxing Center';
-  const hello = name ? `${escapeHtml(name)},` : '';
-  const html = `<!DOCTYPE html>
-<html lang="fr">
-<body style="font-family:Arial,Helvetica,sans-serif;color:#0C1829;max-width:600px;margin:0 auto;padding:24px;background:#f4f5f7">
-  <div style="background:#0C1829;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0">
-    <p style="margin:0;letter-spacing:0.12em;font-size:12px;color:#C8902F;text-transform:uppercase">Boxing Center</p>
-    <h1 style="margin:8px 0 0;font-size:22px;line-height:1.3">Dernières places pour l’offre</h1>
-  </div>
-  <div style="background:#fff;padding:24px;border-radius:0 0 12px 12px">
-    ${hello ? `<p style="font-size:18px;font-weight:700;margin:0 0 16px">${hello}</p>` : ''}
-    <p style="margin:0 0 8px;font-size:18px;font-weight:800">🚨 Dernières places pour profiter de l’offre Boxing Center 🥊</p>
-    <p style="margin:0 0 20px"><strong>Il reste encore quelques places disponibles.</strong></p>
-    <div style="border:1px solid #eee;border-radius:12px;padding:16px 18px;margin:0 0 12px">
-      <p style="margin:0 0 8px;font-size:18px;font-weight:800">🔥 29 € / 4 semaines</p>
-      <p style="margin:0">→ Sans engagement<br/>→ Sans préavis en cas de résiliation<br/>→ Accès aux <strong>5 salles</strong>, toutes les disciplines et tous les cours</p>
-    </div>
-    <div style="border:1px solid #eee;border-radius:12px;padding:16px 18px;margin:0 0 20px">
-      <p style="margin:0 0 8px;font-size:18px;font-weight:800">💥 259 € / 12 mois</p>
-      <p style="margin:0">→ Au lieu de 400 €<br/>→ Possibilité de paiement <strong>4 fois sans frais</strong><br/>→ Accès aux <strong>5 salles</strong>, toutes les disciplines et tous les cours</p>
-    </div>
-    <p>⏳ <strong>Profite de ton offre avant qu’il ne soit trop tard.</strong></p>
-    <p style="text-align:center;margin:28px 0 8px">
-      <a href="${escapeHtml(hubUrl)}" style="display:inline-block;background:#E8001C;color:#fff;text-decoration:none;font-weight:700;padding:14px 24px;border-radius:8px">Voir les offres</a>
-    </p>
-    <p style="text-align:center;font-size:13px;color:#64748b;margin:0 0 8px">
-      <a href="${escapeHtml(hubUrl)}" style="color:#E8001C">${escapeHtml(hubUrl)}</a>
-    </p>
-    <p style="text-align:center;font-weight:800;margin:16px 0 0">🥊 29€ sans engagement, 259€ pour 12 mois</p>
-  </div>
-</body>
-</html>`;
-  return { day, subject, text, html, hubUrl, name };
+  const mail = buildOfferCampaignEmail({
+    name,
+    hubUrl,
+    email: orderEmail(order),
+  });
+  return {
+    day,
+    subject: mail.subject,
+    text,
+    html: mail.html,
+    emailText: mail.emailText,
+    headers: mail.headers,
+    attachments: mail.attachments,
+    hubUrl,
+    name,
+  };
 }
 
 function classifyCustomerNudge(order, { now = Date.now(), membershipKeys } = {}) {
@@ -334,7 +308,9 @@ async function sendCustomerNudge(
         to: emailTo,
         subject: copy.subject,
         html: copy.html,
-        text: copy.text,
+        text: copy.emailText || copy.text,
+        headers: copy.headers,
+        attachments: copy.attachments,
       });
     } catch (err) {
       out.email = { sent: false, error: err.message };

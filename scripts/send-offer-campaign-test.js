@@ -38,6 +38,8 @@ loadEnvFile(path.join(ROOT, '..', 'gestion-manager', 'bots', 'deploy', 'email-re
 
 process.env.STORE_URL = 'https://boutique.boxingcenter.fr';
 process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || 'resend';
+process.env.EMAIL_UNSUBSCRIBE_BASE =
+  process.env.EMAIL_UNSUBSCRIBE_BASE || 'https://manager.boxingcenter.fr';
 process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
 process.env.RESEND_SENDER_NAME = process.env.RESEND_SENDER_NAME || 'Boxing Center';
 
@@ -73,7 +75,9 @@ async function main() {
     to: TARGET.email,
     subject: copy.subject,
     html: copy.html,
-    text: copy.text,
+    text: copy.emailText || copy.text,
+    headers: copy.headers,
+    attachments: copy.attachments,
   });
 
   if (WITH_WA) {

@@ -32,9 +32,21 @@ function isConfigured() {
   return Boolean(readApiKey());
 }
 
-async function sendEmailViaResend({ to, subject, html, text, replyTo }) {
+async function sendEmailViaResend({ to, subject, html, text, replyTo, headers, attachments, tags }) {
   if (!to) throw new Error('Destinataire email manquant');
   if (!isConfigured()) throw new Error('RESEND_API_KEY manquant');
+
+  const body = {
+    from: `${senderName()} <${senderEmail()}>`,
+    to: [to],
+    subject: subject || 'Message Boxing Center',
+    text: text || undefined,
+    html: html || undefined,
+    reply_to: replyTo || defaultReplyTo(),
+  };
+  if (headers && typeof headers === 'object') body.headers = headers;
+  if (Array.isArray(attachments) && attachments.length) body.attachments = attachments;
+  body.tags = Array.isArray(tags) && tags.length ? tags : [{ name: 'campaign', value: 'offres' }];
 
   const res = await fetch(API, {
     method: 'POST',
@@ -42,14 +54,7 @@ async function sendEmailViaResend({ to, subject, html, text, replyTo }) {
       Authorization: `Bearer ${readApiKey()}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from: `${senderName()} <${senderEmail()}>`,
-      to: [to],
-      subject: subject || 'Message Boxing Center',
-      text: text || undefined,
-      html: html || undefined,
-      reply_to: replyTo || defaultReplyTo(),
-    }),
+    body: JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
