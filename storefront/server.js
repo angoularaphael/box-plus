@@ -217,6 +217,15 @@ const {
   sortAdminOrders,
 } = require('./lib/order-lifecycle');
 const {
+  BLADE_PRICE_CENTS,
+  shouldOfferUpsell,
+  buildUpsellForOrder,
+  ensureAddon,
+  skipBladeAddon,
+  markBladeAddonPaid,
+  isAddonPaid,
+} = require('./lib/blade-upsell');
+const {
   generateInscriptionInvoicePdf,
   generateMaterielInvoicePdf,
   streamInscriptionInvoicePdf,
@@ -1330,7 +1339,7 @@ function createApp() {
       const { errors: cartErrors, items, total_cents } = validateCartLines(lines);
       if (cartErrors.length) return res.status(400).json({ ok: false, errors: cartErrors });
 
-      const formErrors = validateCustomerForm(customer || {});
+      const formErrors = validateCustomerForm(customer || {}, items);
       if (formErrors.length) return res.status(400).json({ ok: false, errors: formErrors });
 
       const orderId = `MAT-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
@@ -2623,7 +2632,196 @@ function createApp() {
       return res.status(403).json({ ok: false, error: 'forbidden' });
     }
     const safe = redactOrderForClient(order);
+    safe.upsell = buildUpsellForOrder(order);
     res.json({ ok: true, order: safe });
+  });
+
+  app.post('/api/orders/:id/upsell/skip', async (req, res) => {
+    try {
+      const token = req.body?.token || requestAccessToken(req);
+      const order = await loadOrderAsync(req.params.id);
+      if (!order || !verifyAccess(order, token)) {
+        return res.status(403).json({ ok: false, error: 'forbidden' });
+      }
+      if (!shouldOfferUpsell(order) && !isAddonPaid(order)) {
+        if (!order.payment || (order.payment.status !== 'paid' && order.payment.status !== 'free')) {
+          return res.status(409).json({ ok: false, error: 'payment_required' });
+        }
+      }
+      const saved = await skipBladeAddon(order);
+      res.json({ ok: true, skipped: true, upsell: buildUpsellForOrder(saved) });
+    } catch (err) {
+      logError('Upsell Blade skip', { error: err.message, order_id: req.params.id });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/orders/:id/upsell/checkout', async (req, res) => {
+    try {
+      const token = req.body?.token || requestAccessToken(req);
+      let order = await loadOrderAsync(req.params.id);
+      if (!order || !verifyAccess(order, token)) {
+        return res.status(403).json({ ok: false, error: 'forbidden' });
+      }
+      if (!shouldOfferUpsell(order)) {
+        if (isAddonPaid(order)) {
+          return res.json({ ok: true, mode: 'already_paid', upsell: buildUpsellForOrder(order) });
+        }
+        return res.status(409).json({ ok: false, error: 'upsell_not_available' });
+      }
+
+      const addon = ensureAddon(order);
+      const gym = order.customer_full?.gym || 'minimes';
+      const payMethod = String(req.body?.pay_method || 'card').toLowerCase();
+      const baseUrl = getCheckoutBaseUrl(req);
+      const returnBase = `${baseUrl}/inscription?order=${encodeURIComponent(order.order_id)}&token=${encodeURIComponent(order.access_token)}&bc_token=${encodeURIComponent(order.access_token)}`;
+
+      if (isDemoCheckoutAllowed() && !isPayplugEnabled() && !isPaypalEnabled(gym)) {
+        const marked = await markBladeAddonPaid(order, { method: 'demo', source: 'upsell' });
+        return res.json({
+          ok: true,
+          mode: 'demo',
+          upsell: buildUpsellForOrder(marked.order),
+        });
+      }
+
+      if (payMethod === 'paypal') {
+        if (!isPaypalEnabled(gym)) {
+          return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
+        }
+        const ppOrder = await createPaypalOrder({
+          order,
+          product: {
+            id: 'mat-blade-gold',
+            display_name: 'Gants Blade Gold Blanc Noir 14oz',
+            price_cents: BLADE_PRICE_CENTS,
+          },
+          amountCents: BLADE_PRICE_CENTS,
+          baseUrl,
+          paymentPlan: 'once',
+          gym,
+          description: 'Gants Blade Gold Blanc Noir 14oz',
+          metadata: { order_type: 'inscription_addon', addon: 'blade' },
+          returnUrl: `${returnBase}&upsell_return=paypal`,
+          cancelUrl: `${returnBase}&upsell_cancelled=1`,
+          payerEmail: order.customer_short?.email || order.customer_full?.email,
+        });
+        if (!ppOrder.approve_url) {
+          return res.status(502).json({ ok: false, error: 'paypal_url_missing' });
+        }
+        addon.paypal_order_id = ppOrder.id;
+        addon.method = 'paypal';
+        addon.status = 'pending';
+        await saveOrderAsync(order);
+        return res.json({
+          ok: true,
+          mode: 'paypal',
+          url: ppOrder.approve_url,
+          paypal_order_id: ppOrder.id,
+        });
+      }
+
+      if (!isPayplugEnabled()) {
+        return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
+      }
+      const payment = await createHostedPayment({
+        order,
+        amountCents: BLADE_PRICE_CENTS,
+        description: 'Gants Blade Gold Blanc Noir 14oz',
+        baseUrl,
+        metadata: {
+          order_type: 'inscription_addon',
+          addon: 'blade',
+          payment_plan: 'once',
+        },
+        returnUrl: `${returnBase}&upsell_return=payplug`,
+        cancelUrl: `${returnBase}&upsell_cancelled=1`,
+      });
+      const url = hostedPaymentUrl(payment);
+      if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
+      addon.payplug_payment_id = payment.id;
+      addon.method = 'payplug';
+      addon.status = 'pending';
+      await saveOrderAsync(order);
+      res.json({
+        ok: true,
+        mode: 'payplug',
+        url,
+        payment_id: payment.id,
+      });
+    } catch (err) {
+      logError('Upsell Blade checkout', { error: err.message, order_id: req.params.id });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/orders/:id/upsell/confirm', async (req, res) => {
+    try {
+      const token = req.body?.token || requestAccessToken(req);
+      let order = await loadOrderAsync(req.params.id);
+      if (!order || !verifyAccess(order, token)) {
+        return res.status(403).json({ ok: false, error: 'forbidden' });
+      }
+      if (isAddonPaid(order)) {
+        return res.json({ ok: true, already_paid: true, upsell: buildUpsellForOrder(order) });
+      }
+
+      const paypalId = sanitizePaymentId(
+        req.body?.paypal_order_id || order.addons?.blade?.paypal_order_id
+      );
+      const payplugId = sanitizePaymentId(
+        req.body?.payment_id || order.addons?.blade?.payplug_payment_id
+      );
+
+      if (paypalId) {
+        const paypalOpts = {
+          gym: order.customer_full?.gym,
+          account: order.payment?.paypal_account,
+        };
+        let captured = await retrievePaypalOrder(paypalId, paypalOpts);
+        if (!isPaypalOrderPaid(captured)) {
+          captured = await capturePaypalOrder(paypalId, paypalOpts);
+        }
+        if (!isPaypalOrderPaid(captured)) {
+          return res.status(402).json({ ok: false, error: 'payment_not_completed' });
+        }
+        const marked = await markBladeAddonPaid(order, {
+          method: 'paypal',
+          paypal_order_id: paypalId,
+          source: 'upsell',
+        });
+        return res.json({ ok: true, paid: true, upsell: buildUpsellForOrder(marked.order) });
+      }
+
+      if (payplugId) {
+        if (!isPayplugEnabled()) {
+          return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
+        }
+        const payment = await retrievePayment(payplugId);
+        const amountOk = Number(payment.amount || payment.authorized_amount) === BLADE_PRICE_CENTS;
+        if (!amountOk) {
+          return res.status(409).json({ ok: false, error: 'payment_mismatch' });
+        }
+        if (!isPayplugPaymentPaid(payment)) {
+          return res.json({
+            ok: true,
+            pending: true,
+            message: 'Paiement des gants en cours de validation.',
+          });
+        }
+        const marked = await markBladeAddonPaid(order, {
+          method: 'payplug',
+          payplug_payment_id: payplugId,
+          source: 'upsell',
+        });
+        return res.json({ ok: true, paid: true, upsell: buildUpsellForOrder(marked.order) });
+      }
+
+      return res.status(400).json({ ok: false, error: 'payment_id manquant' });
+    } catch (err) {
+      logError('Upsell Blade confirm', { error: err.message, order_id: req.params.id });
+      res.status(500).json({ ok: false, error: err.message });
+    }
   });
 
   app.get('/api/orders/:id/status', async (req, res) => {
@@ -5091,6 +5289,30 @@ function createApp() {
           order_id: out.order_id || meta.order_id || null,
           status: out.error || (out.already_processed ? 'already_paid' : 'ok'),
         });
+      }
+
+      if (String(meta.order_type || '') === 'inscription_addon') {
+        const orderId = meta.lifecycle_order_id || meta.order_id;
+        const order = orderId ? await loadOrderAsync(orderId) : null;
+        if (!order) {
+          return res.json({ ok: true, ignored: true, addon: true });
+        }
+        if (isAddonPaid(order)) {
+          return res.json({ ok: true, already_paid: true, addon: true, order_id: order.order_id });
+        }
+        const amountOk = Number(payment.amount || payment.authorized_amount) === BLADE_PRICE_CENTS;
+        if (!amountOk) {
+          return res.status(409).json({ ok: false, error: 'payment_mismatch', addon: true });
+        }
+        if (isPayplugPaymentPaid(payment)) {
+          await markBladeAddonPaid(order, {
+            method: 'payplug',
+            payplug_payment_id: payment.id,
+            source: 'upsell',
+          });
+          return res.json({ ok: true, paid: true, addon: true, order_id: order.order_id });
+        }
+        return res.json({ ok: true, pending: true, addon: true, order_id: order.order_id });
       }
 
       const out = await fulfillInscriptionPayplug(payment);

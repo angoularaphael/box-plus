@@ -17,6 +17,8 @@
     // curate one product per key category for a varied, representative strip
     var wantCats = ['gants', 'casque', 'short', 'protege-tibias', 'bandes', 'accessoires'];
     var picked = [], seen = {};
+    var blade = products.find(function (x) { return x.id === 'mat-blade-gold'; });
+    if (blade) { picked.push(blade); seen[blade.id] = 1; }
     wantCats.forEach(function (c) {
       var p = products.find(function (x) { return x.category === c && !seen[x.id]; });
       if (p) { picked.push(p); seen[p.id] = 1; }

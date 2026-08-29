@@ -25,6 +25,17 @@
 
   function render() {
     const lines = window.BCCart.read();
+    const bladeOnly = lines.some((l) => l.product_id === 'mat-blade-gold');
+    if (bladeOnly) {
+      pickupSelect.innerHTML =
+        '<option value="Barrière de Paris - Minimes" selected>Barrière de Paris - Minimes (jour même)</option>';
+      pickupSelect.disabled = true;
+    } else {
+      pickupSelect.disabled = false;
+      pickupSelect.innerHTML =
+        '<option value="">Choisir une salle</option>' +
+        GYMS.map((g) => `<option value="${g.value}">${g.label}</option>`).join('');
+    }
     if (!lines.length) {
       emptyEl.hidden = false;
       contentEl.hidden = true;
@@ -85,7 +96,9 @@
       last_name: fd.get('last_name'),
       email: fd.get('email'),
       phone: fd.get('phone'),
-      pickup_gym: fd.get('pickup_gym'),
+      pickup_gym: pickupSelect.disabled
+        ? 'Barrière de Paris - Minimes'
+        : fd.get('pickup_gym'),
     };
     const lines = window.BCCart.read().map((l) => ({
       product_id: l.product_id,

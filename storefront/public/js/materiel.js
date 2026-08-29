@@ -44,13 +44,20 @@
       : `<div class="materiel-img-placeholder">${(p.category_label || p.category || 'Produit').slice(0, 12)}</div>`;
     const disabled = p.stock <= 0 ? 'disabled' : '';
     const variantId = p.default_variant_id || p.combinations?.[0]?.id || '';
+    const featured = p.featured_first ? ' materiel-card--featured' : '';
+    const price = p.price_was_label
+      ? `<div class="materiel-price"><strong>${p.price_label}</strong> <s class="materiel-price-was">${p.price_was_label}</s></div>`
+      : `<div class="materiel-price">${p.price_label}</div>`;
+    const badge = p.featured_first || p.destockage
+      ? `<span class="materiel-badge">Destockage</span>`
+      : '';
     return `
-      <article class="materiel-card">
-        <a href="${L('/materiel/produit')}/${encodeURIComponent(p.slug || p.id)}" class="materiel-img-link">${img}</a>
+      <article class="materiel-card${featured}">
+        <a href="${L('/materiel/produit')}/${encodeURIComponent(p.slug || p.id)}" class="materiel-img-link">${badge}${img}</a>
         <div class="materiel-body">
           <span class="materiel-cat">${p.category_label || p.category || ''}</span>
           <h4><a href="${L('/materiel/produit')}/${encodeURIComponent(p.slug || p.id)}">${p.name}</a></h4>
-          <div class="materiel-price">${p.price_label}</div>
+          ${price}
           <div class="${stock.cls}">${stock.label}</div>
           <div class="materiel-actions">
             <button type="button" class="btn sm block add-cart-btn" data-id="${p.id}" data-variant="${variantId}" data-name="${p.name.replace(/"/g, '&quot;')}" data-price="${p.price_cents}" data-label="${p.price_label}" data-image="${p.image || ''}" ${disabled}>Ajouter au panier</button>

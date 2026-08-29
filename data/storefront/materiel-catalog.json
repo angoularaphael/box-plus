@@ -1,7 +1,7 @@
 {
   "synced_at": "2026-06-30T23:13:19.936Z",
   "source": "prestashop-mirror",
-  "count": 43,
+  "count": 44,
   "categories": [
     {
       "id": 16,
@@ -60,6 +60,65 @@
     }
   ],
   "products": [
+    {
+      "id": "mat-blade-gold",
+      "slug": "gants-boxe-blade-gold-blanc-noir",
+      "name": "Gants de boxe Blade Gold Blanc Noir",
+      "display_name": "Gants de boxe Blade Gold Blanc Noir",
+      "reference": "BC-BLADE-GOLD-14OZ",
+      "price_cents": 1790,
+      "price_label": "17,90 €",
+      "price_was_cents": 4000,
+      "price_was_label": "40,00 €",
+      "stock": 99,
+      "category": "destockage",
+      "category_label": "Déstockage",
+      "category_id": 26,
+      "description_short": "Gants Blade 14oz — destockage rentrée 2026. PU haute qualité, mousse EVA, velcro large, aération WindTec. Taille unique 14oz. 17,90 € au lieu de 40 €.",
+      "description": "Découvrez les gants de boxe Blade (coloris noir / blanc / gold). Fabriqués en PU haute qualité avec mousse EVA injectée haute densité. Large bande velcro, maintien du pouce, mesh WindTec à la paume. Taille 14oz uniquement. Idéal sac, pattes d’ours, sparring léger et boxe fitness.\n\nRetrait uniquement à Boxing Center Toulouse Minimes, le jour même de la commande : lundi–vendredi 12h–14h et 17h–21h15 ; samedi 15h–18h.",
+      "image": "/img/materiel/blade/blade-01.jpg",
+      "images": [
+        "/img/materiel/blade/blade-01.jpg",
+        "/img/materiel/blade/blade-02.jpg",
+        "/img/materiel/blade/blade-03.jpg",
+        "/img/materiel/blade/blade-04.jpg"
+      ],
+      "combinations": [
+        {
+          "id": "blade-14oz",
+          "label": "14oz — Noir / Blanc / Gold",
+          "attributes": {
+            "Taille": "14oz",
+            "Couleur": "Noir Blanc Gold",
+            "Lieu retrait produits": "Barrière de Paris - Minimes"
+          },
+          "reference": "BC-BLADE-GOLD-14OZ",
+          "price_cents": 1790,
+          "price_label": "17,90 €",
+          "stock": 99,
+          "image": "/img/materiel/blade/blade-01.jpg"
+        }
+      ],
+      "pickup_gyms": [
+        "Barrière de Paris - Minimes"
+      ],
+      "pickup_locked": "Barrière de Paris - Minimes",
+      "pickup_same_day": true,
+      "pickup_hours": "Lundi–vendredi 12h–14h et 17h–21h15 ; samedi 15h–18h. Retrait le jour même de la commande uniquement.",
+      "pickup_note": "Retrait uniquement à Boxing Center Toulouse Minimes. Lundi–vendredi 12h–14h et 17h–21h15 ; samedi 15h–18h. Retrait le jour même de la commande uniquement.",
+      "size": "14oz",
+      "featured_first": true,
+      "destockage": true,
+      "active": true,
+      "pickup_only": true,
+      "manual": true,
+      "source": "blade-rentree-2026",
+      "default_variant_id": "blade-14oz",
+      "tab": "materiel",
+      "requires_iban": false,
+      "requires_payment": true,
+      "sale_type": "materiel"
+    },
     {
       "id": "mat-37",
       "prestashop_id": 37,

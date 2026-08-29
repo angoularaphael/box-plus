@@ -77,8 +77,12 @@ function renderInscriptionInvoice(doc, order) {
     (badgeMethod === 'card' || badgeMethod === 'cb');
   const badgeCents = badgeOnStripe ? 3499 : 0;
   const badgeHt = Math.round(badgeCents / 1.2);
-  const totalTtc = priceCents + badgeCents;
-  const totalHt = priceHt + badgeHt;
+  const addon = order.addons?.blade;
+  const addonPaid = addon?.status === 'paid';
+  const addonCents = addonPaid ? Number(addon.price_cents || 0) : 0;
+  const addonHt = Math.round(addonCents / 1.2);
+  const totalTtc = priceCents + badgeCents + addonCents;
+  const totalHt = priceHt + badgeHt + addonHt;
   const totalVat = totalTtc - totalHt;
 
   const club = clubForOrder(order);
@@ -139,6 +143,18 @@ function renderInscriptionInvoice(doc, order) {
     });
   }
 
+  if (addonPaid && addonCents > 0) {
+    rows.push({
+      type: 'Mat.',
+      description: `${addon.name || 'Gants Blade Gold Blanc Noir'} (14oz)\nRetrait Minimes, jour même — ${addon.pickup_gym || 'Minimes'}`,
+      unit: formatEuros(addonHt),
+      qty: '1',
+      vat: '20 %',
+      total: formatEuros(addonHt),
+      height: 40,
+    });
+  }
+
   drawDetailTable(doc, {
     columns: [
       { key: 'type', label: 'Type', width: 0.1 },
@@ -171,6 +187,12 @@ function renderInscriptionInvoice(doc, order) {
   }
   if (full.gym) {
     conditions.push({ label: 'Salle', value: GYM_LABELS[full.gym] || full.gym });
+  }
+  if (addonPaid) {
+    conditions.push({
+      label: 'Retrait gants',
+      value: 'Minimes — jour même (12h–14h / 17h–21h15, sam. 15h–18h)',
+    });
   }
   drawConditions(doc, conditions);
 

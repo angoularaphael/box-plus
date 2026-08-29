@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const { ROOT, ensureDir } = require('../../lib/utils');
 const { findMaterielVariant, loadMaterielCatalog, saveMaterielCatalog } = require('./merch');
 const { sanitizePaymentId } = require('./security');
+const { isBladeProductId, recordBladeSale, MINIMES_PICKUP } = require('./blade-upsell');
 const {
   ORDERS_DIR,
   loadOrder,
@@ -103,7 +104,7 @@ function validateCartLines(lines) {
   return { errors, items, total_cents: total };
 }
 
-function validateCustomerForm(form) {
+function validateCustomerForm(form, items = []) {
   const errors = [];
   if (!form.first_name?.trim()) errors.push('Prénom requis');
   if (!form.last_name?.trim()) errors.push('Nom requis');
@@ -111,7 +112,12 @@ function validateCustomerForm(form) {
     errors.push('Email invalide');
   }
   if (!form.phone?.trim()) errors.push('Téléphone requis');
-  if (!form.pickup_gym?.trim()) errors.push('Lieu de retrait requis');
+  const bladeOnly = (items || []).some((i) => isBladeProductId(i.product_id));
+  if (bladeOnly) {
+    form.pickup_gym = MINIMES_PICKUP;
+  } else if (!form.pickup_gym?.trim()) {
+    errors.push('Lieu de retrait requis');
+  }
   return errors;
 }
 
@@ -192,6 +198,9 @@ async function markMaterielPaidAsync(orderId, paymentMeta = {}) {
     order.payment = { status: 'paid', ...paymentMeta };
     order.paid_at = new Date().toISOString();
     decrementStock(order.items);
+    if ((order.items || []).some((i) => isBladeProductId(i.product_id))) {
+      recordBladeSale(order, { source: 'materiel' }).catch(() => {});
+    }
   } else {
     order.payment = { ...order.payment, ...paymentMeta };
   }

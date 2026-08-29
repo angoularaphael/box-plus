@@ -2328,6 +2328,11 @@
         <div class="info-box" style="text-align:left">
           <strong>Référence :</strong> ${state.orderId}<br />
           <strong>Offre :</strong> ${p?.display_name || p?.name || '—'}
+          ${
+            state.order?.addons?.blade?.status === 'paid'
+              ? `<br /><strong>Gants Blade 14oz :</strong> 17,90 € — retrait Minimes le jour même`
+              : ''
+          }
         </div>
         <div class="success-actions" style="display:flex;flex-direction:column;gap:12px;margin-top:24px">
           <a href="${homeHref}" class="btn block" id="confirmHomeBtn">Retour à l'accueil</a>
@@ -2346,6 +2351,113 @@
   let payplugConfirmDone = false;
   let paypalConfirmDone = false;
   let cawlConfirmDone = false;
+  let upsellConfirmDone = false;
+
+  function renderUpsell() {
+    const u = state.order?.upsell?.product || {};
+    const img = u.image
+      ? `<img src="${u.image}" alt="" class="blade-upsell__img" />`
+      : '';
+    stepContent.innerHTML = `
+      <div class="blade-upsell">
+        <p class="eyebrow" style="color:var(--bc-gold);margin-bottom:8px">Destockage rentrée</p>
+        <h1>Gants Blade 14oz à 17,90&nbsp;€</h1>
+        <p class="sub">Au lieu de 40&nbsp;€ — une paire pour bien démarrer. Paiement carte ou PayPal, sans quitter votre inscription.</p>
+        <article class="blade-upsell__card">
+          ${img}
+          <div>
+            <h2>${esc(u.name || 'Gants de boxe Blade Gold Blanc Noir')}</h2>
+            <p class="blade-upsell__price"><strong>17,90&nbsp;€</strong> <s>40,00&nbsp;€</s> · taille 14oz</p>
+            <p class="blade-upsell__pickup"><strong>Retrait :</strong> Boxing Center Toulouse Minimes uniquement, le jour même de la commande.<br />Lun–ven 12h–14h et 17h–21h15 · samedi 15h–18h.</p>
+          </div>
+        </article>
+        <div class="blade-upsell__actions">
+          <button type="button" class="btn block" id="bladePayCard">Payer 17,90&nbsp;€ par carte</button>
+          <button type="button" class="btn secondary block" id="bladePayPaypal">Payer avec PayPal</button>
+          <button type="button" class="btn secondary block" id="bladeSkip">Passer et continuer l’inscription</button>
+        </div>
+      </div>`;
+
+    async function checkoutBlade(payMethod) {
+      setMsg('Ouverture du paiement…');
+      try {
+        const res = await fetch(`/api/orders/${state.orderId}/upsell/checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: state.token, bc_token: state.token, pay_method: payMethod }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data.mode === 'demo' || data.already_paid) {
+          await loadOrder();
+          setMsg('');
+          await persistAndRender();
+          return;
+        }
+        if (data.url) {
+          window.location.href = data.url;
+          return;
+        }
+        setMsg(orderErrorMessage(data) || 'Paiement indisponible pour le moment.', 'err');
+      } catch {
+        setMsg('Paiement indisponible pour le moment.', 'err');
+      }
+    }
+
+    document.getElementById('bladePayCard').onclick = () => checkoutBlade('card');
+    document.getElementById('bladePayPaypal').onclick = () => checkoutBlade('paypal');
+    document.getElementById('bladeSkip').onclick = async () => {
+      setMsg('Suite de l’inscription…');
+      try {
+        await fetch(`/api/orders/${state.orderId}/upsell/skip`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: state.token, bc_token: state.token }),
+        });
+      } catch {
+        /* continue anyway */
+      }
+      await loadOrder();
+      setMsg('');
+      await persistAndRender();
+    };
+  }
+
+  async function confirmUpsellReturn() {
+    const kind = params.get('upsell_return');
+    if (!kind || upsellConfirmDone) return false;
+    if (!state.orderId || !state.token) return false;
+    upsellConfirmDone = true;
+    setMsg('Vérification du paiement des gants…');
+    try {
+      const res = await fetch(`/api/orders/${state.orderId}/upsell/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: state.token,
+          bc_token: state.token,
+          payment_id: params.get('payment_id'),
+          paypal_order_id: pickPaypalOrderIdFromUrl(params),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      await loadOrder();
+      if (data.ok && (data.paid || data.already_paid)) {
+        setMsg('Gants ajoutés — poursuivez votre inscription.', 'ok');
+        params.delete('upsell_return');
+        syncUrl();
+        return true;
+      }
+      if (data.pending) {
+        setMsg(data.message || 'Paiement des gants en cours…');
+        return true;
+      }
+      setMsg(orderErrorMessage(data) || 'Le paiement des gants n’a pas été confirmé. Vous pouvez réessayer ou passer.', 'err');
+      return false;
+    } catch {
+      setMsg('Le paiement des gants n’a pas été confirmé. Vous pouvez réessayer ou passer.', 'err');
+      return false;
+    }
+  }
 
   async function confirmPayplugReturn() {
     if (params.get('payplug_return') !== '1' || payplugConfirmDone) return false;
@@ -2501,7 +2613,14 @@
   }
 
   async function render() {
+    const showUpsell =
+      Boolean(state.order?.upsell?.show) && state.step >= 5 && state.step < 8;
     updateStepper(state.step);
+    if (showUpsell) {
+      renderUpsell();
+      saveProgress();
+      return;
+    }
     if (state.step === 1) {
       await ensureProductLoaded();
       renderStep1();
@@ -2536,7 +2655,14 @@
       syncUrl();
     }
 
+    if (params.get('upsell_cancelled') === '1') {
+      setMsg('Paiement des gants annulé — vous pouvez réessayer ou continuer sans les gants.');
+      params.delete('upsell_cancelled');
+      syncUrl();
+    }
+
     if (state.orderId && state.token) {
+      await confirmUpsellReturn();
       await confirmPayplugReturn();
       await confirmCawlReturn();
       await confirmPaypalReturn();

@@ -18,6 +18,7 @@ const {
   productSupportsBillingChoice,
   productSupportsInstallmentChoice,
 } = require('../../lib/billing-plan');
+const { mergeBladeIntoList, isBladeProductId, BLADE_PRODUCT } = require('./blade-upsell');
 
 function loadMaterielCatalog() {
   return loadMaterielCatalogLocal();
@@ -52,12 +53,14 @@ function getMaterielProducts(options = {}) {
   const merch = loadMerch();
   const overrides = merch.materiel_overrides || {};
 
-  let products = (catalog.products || [])
-    .map((p) => {
-      const patch = overrides[p.id] || {};
-      return applyMaterielOverrides(p, patch);
-    })
-    .filter(Boolean);
+  let products = mergeBladeIntoList(
+    (catalog.products || [])
+      .map((p) => {
+        const patch = overrides[p.id] || {};
+        return applyMaterielOverrides(p, patch);
+      })
+      .filter(Boolean)
+  );
 
   if (activeOnly) {
     products = products.filter((p) => p.active !== false);
@@ -80,10 +83,19 @@ function getMaterielProducts(options = {}) {
 }
 
 function findMaterielProduct(productId) {
+  const key = decodeURIComponent(String(productId || '')).toLowerCase();
+  if (isBladeProductId(productId) || key === BLADE_PRODUCT.slug) {
+    const merch = loadMerch();
+    const patch = merch.materiel_overrides?.[BLADE_PRODUCT.id] || {};
+    return applyMaterielOverrides(BLADE_PRODUCT, patch);
+  }
   const catalog = loadMaterielCatalog();
   const merch = loadMerch();
   const raw = (catalog.products || []).find(
-    (p) => p.id === productId || String(p.prestashop_id) === String(productId)
+    (p) =>
+      p.id === productId ||
+      String(p.prestashop_id) === String(productId) ||
+      String(p.slug || '').toLowerCase() === key
   );
   if (!raw) return null;
   const patch = merch.materiel_overrides?.[raw.id] || {};

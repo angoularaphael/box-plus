@@ -635,6 +635,12 @@ function findProduct(slugOrId) {
     || CATALOG.find((p) => String(p.id).toLowerCase() === key)
     || CATALOG.find((p) => String(p.prestashop_id) === key);
   if (direct) return direct;
+  try {
+    const { isBladeProductId, BLADE_PRODUCT } = require('./blade-upsell');
+    if (isBladeProductId(slugOrId) || key === BLADE_PRODUCT.slug) return BLADE_PRODUCT;
+  } catch {
+    /* optional */
+  }
   /* PrestaShop : /materiel-de-boxe/58-871-gants-....html → id produit 58 */
   const m = key.match(/^(\d+)(?:-\d+)?-/);
   if (!m) return null;

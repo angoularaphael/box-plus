@@ -769,14 +769,58 @@
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 }
 
-.materiel-card {
+.materiel-card--featured {
+  border-color: var(--bc-gold);
+  box-shadow: 0 8px 24px rgba(200, 144, 47, 0.18);
+}
+.materiel-img-link { position: relative; display: block; }
+.materiel-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  background: var(--bc-red);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+.materiel-price-was {
+  color: var(--bc-muted);
+  font-size: 0.7em;
+  font-weight: 500;
+  margin-left: 6px;
+}
+
+.blade-upsell h1 { margin-bottom: 8px; }
+.blade-upsell__card {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 16px;
+  align-items: center;
   background: var(--bc-card);
   border: 1px solid var(--bc-border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 18px 0;
+}
+.blade-upsell__img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #eef1f5;
+}
+.blade-upsell__card h2 { font-size: 1.15rem; margin: 0 0 6px; }
+.blade-upsell__price { margin: 0 0 8px; }
+.blade-upsell__pickup { margin: 0; color: var(--bc-muted); font-size: 14px; line-height: 1.45; }
+.blade-upsell__actions { display: flex; flex-direction: column; gap: 10px; }
+@media (max-width: 640px) {
+  .blade-upsell__card { grid-template-columns: 1fr; }
+  .blade-upsell__img { width: 100%; height: 200px; }
 }
 .materiel-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
 
