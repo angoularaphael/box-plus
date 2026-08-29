@@ -256,6 +256,7 @@ function customerNudgeCopy(order, day = 1) {
     emailText: mail.emailText,
     headers: mail.headers,
     attachments: mail.attachments,
+    fromName: mail.fromName,
     hubUrl,
     name,
   };
@@ -313,6 +314,7 @@ async function sendCustomerNudge(
         text: copy.emailText || copy.text,
         headers: copy.headers,
         attachments: copy.attachments,
+        fromName: copy.fromName,
       });
     } catch (err) {
       out.email = { sent: false, error: err.message };

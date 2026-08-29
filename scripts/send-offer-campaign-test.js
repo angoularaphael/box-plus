@@ -41,7 +41,7 @@ process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || 'resend';
 process.env.EMAIL_UNSUBSCRIBE_BASE =
   process.env.EMAIL_UNSUBSCRIBE_BASE || 'https://manager.boxingcenter.fr';
 process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
-process.env.RESEND_SENDER_NAME = process.env.RESEND_SENDER_NAME || 'Boxing Center';
+process.env.RESEND_SENDER_NAME = 'L’équipe du club BC';
 
 const { customerNudgeCopy } = require('../storefront/lib/essai-followup');
 const { sendWhatsAppMessage, toWhatsAppPhone } = require('../storefront/lib/whatsapp-bot');
@@ -63,6 +63,7 @@ async function main() {
     name: copy.name,
     subject: copy.subject,
     hubUrl: copy.hubUrl,
+    fromName: copy.fromName,
     from: senderEmail(),
     whatsapp: WITH_WA ? null : { skipped: true },
     email: null,
@@ -79,6 +80,7 @@ async function main() {
     text: copy.emailText || copy.text,
     headers: copy.headers,
     attachments: copy.attachments,
+    fromName: copy.fromName,
   });
 
   if (WITH_WA) {

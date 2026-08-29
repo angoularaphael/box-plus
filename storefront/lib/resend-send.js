@@ -7,7 +7,7 @@
  */
 const API = 'https://api.resend.com/emails';
 const DEFAULT_SENDER_EMAIL = 'no-reply@boxingcenter.fr';
-const DEFAULT_SENDER_NAME = 'Boxing Center';
+const DEFAULT_SENDER_NAME = 'L’équipe du club BC';
 const DEFAULT_REPLY_TO = 'boxingcenter31@gmail.com';
 
 function readApiKey() {
@@ -32,12 +32,22 @@ function isConfigured() {
   return Boolean(readApiKey());
 }
 
-async function sendEmailViaResend({ to, subject, html, text, replyTo, headers, attachments, tags }) {
+async function sendEmailViaResend({
+  to,
+  subject,
+  html,
+  text,
+  replyTo,
+  headers,
+  attachments,
+  tags,
+  fromName,
+}) {
   if (!to) throw new Error('Destinataire email manquant');
   if (!isConfigured()) throw new Error('RESEND_API_KEY manquant');
 
   const body = {
-    from: `${senderName()} <${senderEmail()}>`,
+    from: `${fromName || senderName()} <${senderEmail()}>`,
     to: [to],
     subject: subject || 'Message Boxing Center',
     text: text || undefined,
