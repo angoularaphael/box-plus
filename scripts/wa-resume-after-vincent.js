@@ -161,8 +161,32 @@ async function main() {
     duoJobs.push({ type: 'duo', order_id });
   }
 
-  const jobs = [...duoJobs, ...coaches.map((item) => ({ type: 'coach', item }))];
-  console.log(JSON.stringify({ remaining: jobs.length, duo_left: duoJobs.length, coaches: coaches.length }));
+  const coachJobs = [];
+  for (const item of coaches) {
+    if (item.status === 'sent' || item.status === 'converted' || item.status === 'skipped') {
+      console.log(
+        JSON.stringify({
+          skipped: true,
+          kind: 'coach',
+          order_id: item.order_id,
+          name: item.name,
+          reason: item.status,
+        })
+      );
+      continue;
+    }
+    coachJobs.push({ type: 'coach', item });
+  }
+
+  const jobs = [...duoJobs, ...coachJobs];
+  console.log(
+    JSON.stringify({
+      remaining: jobs.length,
+      duo_left: duoJobs.length,
+      coaches_left: coachJobs.length,
+      coaches: coaches.length,
+    })
+  );
 
   let sent = 0;
   let failed = 0;
