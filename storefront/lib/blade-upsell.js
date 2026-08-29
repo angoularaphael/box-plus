@@ -12,9 +12,8 @@ const BLADE_WAS_CENTS = 4000;
 const ALERT_AT = 10;
 const REMUS_PHONE = '0767919166';
 const MINIMES_PICKUP = 'Barrière de Paris - Minimes';
-const PICKUP_HOURS =
-  'Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Retrait le jour même de la commande uniquement.';
-const PICKUP_NOTE = `Retrait uniquement à Boxing Center Toulouse Minimes. ${PICKUP_HOURS}`;
+const PICKUP_HOURS = 'Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h.';
+const PICKUP_NOTE = `Retrait uniquement à Boxing Center Toulouse Minimes. ${PICKUP_HOURS} Possibilité de retrait dès le jour même.`;
 
 const BLADE_SIZES = ['10oz', '12oz', '14oz'];
 const BLADE_COLORS = [
@@ -63,7 +62,7 @@ const BLADE_PRODUCT = {
   category_label: 'Déstockage',
   category_id: 26,
   description_short:
-    'Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Retrait Minimes le jour même.',
+    'Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Possibilité de retrait dès le jour même à Minimes.',
   description:
     'Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir et Blanc. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\n' +
     PICKUP_NOTE,
@@ -242,7 +241,7 @@ function saleWhatsAppText(order, source) {
     `Nom : ${c.last_name || '—'}`,
     `Tél : ${c.phone || '—'}`,
     `Produit : Gants Blade ${choice.colorLabel} ${choice.size} — 17,90 €`,
-    `Retrait : Minimes, jour même (${PICKUP_HOURS})`,
+    `Retrait : Minimes, possibilité de retrait dès le jour même (${PICKUP_HOURS})`,
     `Réf. : ${ref}${source ? ` (${source})` : ''}`,
   ].join('\n');
 }

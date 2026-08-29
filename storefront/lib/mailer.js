@@ -62,7 +62,7 @@ function buildConfirmationHtml(order, attachmentNames = []) {
     <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Salle principale</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(gym)}</td></tr>
     ${
       order.addons?.blade?.status === 'paid'
-        ? `<tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Gants Blade ${escapeHtml(order.addons.blade.color_label || '')} ${escapeHtml(order.addons.blade.size || '')}</strong></td><td style="padding:8px;border-bottom:1px solid #eee">17,90 € — retrait Minimes le jour même (12h–14h et 17h–21h, sam. 15h–18h)</td></tr>`
+        ? `<tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Gants Blade ${escapeHtml(order.addons.blade.color_label || '')} ${escapeHtml(order.addons.blade.size || '')}</strong></td><td style="padding:8px;border-bottom:1px solid #eee">17,90 € — possibilité de retrait dès le jour même à Minimes (12h–14h et 17h–21h, sam. 15h–18h)</td></tr>`
         : ''
     }
   </table>

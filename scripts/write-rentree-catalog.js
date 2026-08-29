@@ -16,9 +16,9 @@ const G_PACK = [MINIMES, PORTET];
 const NOTE_48H =
   'Disponible dans la salle Boxing Center de votre choix sous 48h.';
 const NOTE_BLADE =
-  'Retrait uniquement à Boxing Center Toulouse Minimes. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Retrait le jour même de la commande uniquement.';
+  'Retrait uniquement à Boxing Center Toulouse Minimes. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Possibilité de retrait dès le jour même.';
 const NOTE_PACK =
-  'Retrait uniquement à Minimes ou Portet-sur-Garonne, le jour même. 12h–14h et 17h–21h15.';
+  'Retrait uniquement à Minimes ou Portet-sur-Garonne, possibilité de retrait dès le jour même. 12h–14h et 17h–21h15.';
 
 function money(cents) {
   return `${(cents / 100).toFixed(2).replace('.', ',')} €`;
@@ -114,7 +114,7 @@ const products = [
     image: IMG.blade,
     images: [IMG.blade, '/img/materiel/rentree/blade/blade-nb-02.jpg'],
     description_short:
-      'Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Retrait Minimes le jour même.',
+      'Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Possibilité de retrait dès le jour même à Minimes.',
     description:
       'Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir et Blanc. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\n' +
       NOTE_BLADE,
@@ -150,7 +150,7 @@ const products = [
     image: IMG.pack,
     images: [IMG.pack, IMG.packKeychain, IMG.one, IMG.mitaine],
     description_short:
-      'Pack enfants : gants + mitaines + porte-clés sac de frappe Metal. Tailles 4/7 ans ou 8/15 ans. 25 € au lieu de 35 €. Retrait Minimes ou Portet le jour même.',
+      'Pack enfants : gants + mitaines + porte-clés sac de frappe Metal. Tailles 4/7 ans ou 8/15 ans. 25 € au lieu de 35 €. Possibilité de retrait dès le jour même à Minimes ou Portet.',
     description:
       'Pack enfants Boxing Center : une paire de gants, des mitaines sous-gants et un porte-clés sac de frappe Metal.\n\nTailles : 4 à 7 ans, ou 8 à 15 ans.\n\n' +
       NOTE_PACK,

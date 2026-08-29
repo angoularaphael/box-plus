@@ -93,7 +93,7 @@ test('cahier §upsell : Passer / carte / PayPal dans le tunnel, puis dossier', (
 test('cahier §facture : abonnement + gants sur la facture et l’e-mail', () => {
   assert.match(invoicePdfJs, /addonPaid && addonCents/);
   assert.match(invoicePdfJs, /Gants Blade/);
-  assert.match(invoicePdfJs, /Retrait Minimes/);
+  assert.match(invoicePdfJs, /possibilité de retrait dès le jour même/);
   assert.match(mailerJs, /addons\?\.blade\?\.status === 'paid'/);
   assert.match(mailerJs, /17,90 €/);
   assert.match(inscriptionJs, /addons\?\.blade\?\.status === 'paid'/);

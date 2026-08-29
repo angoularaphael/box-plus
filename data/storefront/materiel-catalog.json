@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-08-29T16:05:00.000Z",
+  "synced_at": "2026-08-29T16:57:00.000Z",
   "source": "rentree-2026",
   "count": 12,
   "categories": [
@@ -60,14 +60,14 @@
       "pickup_locked": "Barrière de Paris - Minimes",
       "pickup_same_day": true,
       "pickup_hours": "Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h.",
-      "pickup_note": "Retrait uniquement à Boxing Center Toulouse Minimes. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Retrait le jour même de la commande uniquement.",
+      "pickup_note": "Retrait uniquement à Boxing Center Toulouse Minimes. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Possibilité de retrait dès le jour même.",
       "image": "/img/materiel/rentree/blade/blade-nb-01.jpg",
       "images": [
         "/img/materiel/rentree/blade/blade-nb-01.jpg",
         "/img/materiel/rentree/blade/blade-nb-02.jpg"
       ],
-      "description_short": "Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Retrait Minimes le jour même.",
-      "description": "Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir et Blanc. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\nRetrait uniquement à Boxing Center Toulouse Minimes. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Retrait le jour même de la commande uniquement.",
+      "description_short": "Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Possibilité de retrait dès le jour même à Minimes.",
+      "description": "Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir et Blanc. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\nRetrait uniquement à Boxing Center Toulouse Minimes. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Possibilité de retrait dès le jour même.",
       "combinations": [
         {
           "id": "blade-noir-blanc-10oz",
@@ -155,7 +155,7 @@
       ],
       "pickup_same_day": true,
       "pickup_hours": "12h–14h et 17h–21h15",
-      "pickup_note": "Retrait uniquement à Minimes ou Portet-sur-Garonne, le jour même. 12h–14h et 17h–21h15.",
+      "pickup_note": "Retrait uniquement à Minimes ou Portet-sur-Garonne, possibilité de retrait dès le jour même. 12h–14h et 17h–21h15.",
       "image": "/img/materiel/rentree/pack/pack-enfant.jpg",
       "images": [
         "/img/materiel/rentree/pack/pack-enfant.jpg",
@@ -163,8 +163,8 @@
         "/img/materiel/rentree/one/one-official.jpg",
         "/img/materiel/rentree/mitaines/mitaine-01.jpg"
       ],
-      "description_short": "Pack enfants : gants + mitaines + porte-clés sac de frappe Metal. Tailles 4/7 ans ou 8/15 ans. 25 € au lieu de 35 €. Retrait Minimes ou Portet le jour même.",
-      "description": "Pack enfants Boxing Center : une paire de gants, des mitaines sous-gants et un porte-clés sac de frappe Metal.\n\nTailles : 4 à 7 ans, ou 8 à 15 ans.\n\nRetrait uniquement à Minimes ou Portet-sur-Garonne, le jour même. 12h–14h et 17h–21h15.",
+      "description_short": "Pack enfants : gants + mitaines + porte-clés sac de frappe Metal. Tailles 4/7 ans ou 8/15 ans. 25 € au lieu de 35 €. Possibilité de retrait dès le jour même à Minimes ou Portet.",
+      "description": "Pack enfants Boxing Center : une paire de gants, des mitaines sous-gants et un porte-clés sac de frappe Metal.\n\nTailles : 4 à 7 ans, ou 8 à 15 ans.\n\nRetrait uniquement à Minimes ou Portet-sur-Garonne, possibilité de retrait dès le jour même. 12h–14h et 17h–21h15.",
       "combinations": [
         {
           "id": "pack-4-7",

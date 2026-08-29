@@ -2330,7 +2330,7 @@
           <strong>Offre :</strong> ${p?.display_name || p?.name || '—'}
           ${
             state.order?.addons?.blade?.status === 'paid'
-              ? `<br /><strong>Gants Blade ${esc(state.order.addons.blade.color_label || '')} ${esc(state.order.addons.blade.size || '')} :</strong> 17,90 € — retrait Minimes le jour même`
+              ? `<br /><strong>Gants Blade ${esc(state.order.addons.blade.color_label || '')} ${esc(state.order.addons.blade.size || '')} :</strong> 17,90 € — possibilité de retrait dès le jour même à Minimes`
               : ''
           }
         </div>
@@ -2375,7 +2375,7 @@
           <div>
             <h2>${esc(u.name || 'Gants de boxe Blade Noir et Blanc')}</h2>
             <p class="blade-upsell__price"><strong>17,90&nbsp;€</strong> <s>40,00&nbsp;€</s></p>
-            <p class="blade-upsell__pickup"><strong>Retrait :</strong> Boxing Center Toulouse Minimes uniquement, le jour même de la commande.<br />Lun–ven 12h–14h et 17h–21h · samedi 15h–18h.</p>
+            <p class="blade-upsell__pickup"><strong>Retrait :</strong> Boxing Center Toulouse Minimes uniquement. Possibilité de retrait dès le jour même.<br />Lun–ven 12h–14h et 17h–21h · samedi 15h–18h.</p>
             ${showColor ? `<label for="bladeColor">Couleur</label>
             <select id="bladeColor">${colors.map((c) => `<option value="${esc(c.id)}" ${c.id === defColor ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>` : ''}
             <label for="bladeSize">Taille</label>

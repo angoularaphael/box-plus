@@ -108,7 +108,7 @@ function saleLines(order, source) {
 
 function pickupDelayLabel(order, source) {
   if (source === 'upsell' || (order?.addons?.blade?.status === 'paid' && order?.order_type !== 'materiel')) {
-    return 'jour même';
+    return 'possibilité de retrait dès le jour même';
   }
   const lines = Array.isArray(order?.items) ? order.items : [];
   try {
@@ -116,7 +116,7 @@ function pickupDelayLabel(order, source) {
     const allSameDay =
       lines.length > 0 &&
       lines.every((item) => findMaterielProduct(item.product_id)?.pickup_same_day);
-    return allSameDay ? 'jour même' : 'sous 48h';
+    return allSameDay ? 'possibilité de retrait dès le jour même' : 'sous 48h';
   } catch {
     return 'sous 48h';
   }

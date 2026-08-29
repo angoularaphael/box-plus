@@ -54,7 +54,7 @@
       return;
     }
     if (gyms.length === 1) {
-      const hint = sameDay ? ' (jour même)' : ' (sous 48h)';
+      const hint = sameDay ? ' (possibilité de retrait dès le jour même)' : ' (sous 48h)';
       pickupSelect.innerHTML = `<option value="${gyms[0]}" selected>${gyms[0]}${hint}</option>`;
       pickupSelect.disabled = true;
       return;
@@ -62,7 +62,7 @@
     pickupSelect.disabled = false;
     pickupSelect.innerHTML =
       '<option value="">Choisir une salle</option>' +
-      gyms.map((g) => `<option value="${g}">${g}${sameDay ? '' : ' — sous 48h'}</option>`).join('');
+      gyms.map((g) => `<option value="${g}">${g}${sameDay ? ' — possibilité de retrait dès le jour même' : ' — sous 48h'}</option>`).join('');
   }
 
   function render() {
