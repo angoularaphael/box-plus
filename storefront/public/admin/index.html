@@ -413,7 +413,7 @@
           <button type="button" class="btn sm" id="diffusionBtn">Diffusion — envoyer le mail</button>
           <button type="button" class="btn sm secondary" id="diffusionWaBtn">Diffusion — WhatsApp</button>
         </div>
-        <p class="admin-section-desc" style="margin:8px 0 0">Cochez une ou plusieurs personnes, puis <strong>Diffusion</strong> pour le mail de reprise (max 40) ou <strong>WhatsApp</strong> (max 12, bot connecté).</p>
+        <p class="admin-section-desc" style="margin:8px 0 0">Cochez une ou plusieurs personnes, puis <strong>Diffusion</strong> pour le mail de reprise (max 40) ou <strong>WhatsApp</strong> (max 10, bot connecté — promo en pause si le compte est restreint).</p>
         <div class="admin-toolbar" style="margin-top:8px">
           <input type="text" id="resumeRefInput" placeholder="Référence (ex. BC-…)" class="admin-search" autocomplete="off" />
           <button type="button" class="btn sm" id="resumeLinkBtn">Générer le lien de reprise</button>
@@ -455,6 +455,7 @@
             <div>
               <h2 class="admin-section-title">WhatsApp — Offre Duo 29 €</h2>
               <p class="admin-section-desc">WhatsApp → Paramètres → Appareils connectés → Lier un appareil. Clique « Afficher le QR » puis scanne dans les 20 secondes. Si ça échoue, utilise le code (plus fiable).</p>
+              <p class="admin-section-desc" id="waOutboundHint" style="margin-top:8px"></p>
             </div>
             <span class="admin-section-badge" id="waBadge">—</span>
           </div>
@@ -466,6 +467,7 @@
               <button type="button" class="btn sm" id="waStartBtn">Afficher le QR</button>
               <button type="button" class="btn sm secondary" id="waRefreshBtn">Actualiser</button>
               <button type="button" class="btn sm secondary" id="waLogoutBtn">Déconnecter</button>
+              <button type="button" class="btn sm secondary" id="waClearQueueBtn">Vider la file</button>
             </div>
             <div class="wa-pair__code">
               <label for="waPhone">Ou lier avec un code (numéro du téléphone WhatsApp)</label>
@@ -560,7 +562,7 @@
   </div>
 
   <script src="../js/contract-open.js?v=8"></script>
-  <script src="/js/admin.js?v=24"></script>
+  <script src="/js/admin.js?v=25"></script>
   <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
        reecrit pas une ligne (un autre developpeur y travaille). -->
   <script src="/js/admin-shell.js?v=17"></script>

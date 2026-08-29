@@ -270,6 +270,15 @@
       if (typeof window.panToast === 'function') window.panToast('Cochez les personnes à relancer', 'err');
       return;
     }
+    if (viaWa && ids.length > 10) {
+      const text = `Maximum 10 WhatsApp par page. Décochez ${ids.length - 10} personne(s).`;
+      if (msg) {
+        msg.textContent = text;
+        msg.className = 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast(text, 'err');
+      return;
+    }
     const failed = document.getElementById('ordersFilter')?.value === 'failed';
     const confirmText = viaWa
       ? `Envoyer le WhatsApp de reprise à ${ids.length} personne(s) ?`
@@ -1965,9 +1974,28 @@
       if (badge) {
         badge.textContent = data.connected ? 'Connecté' : data.connecting ? 'Scan en cours' : 'Déconnecté';
       }
+      const hint = document.getElementById('waOutboundHint');
+      if (hint) {
+        if (data.outbound?.promoPaused || data.outbound?.allPaused) {
+          const until = data.outbound?.until
+            ? new Date(data.outbound.until).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+            : '';
+          hint.textContent = until
+            ? `Envois promo coupés jusqu’au ${until} — file 10/10. Les relances clients passent par e-mail.`
+            : 'Envois promo coupés — file 10/10. Relances clients par e-mail.';
+        } else {
+          hint.textContent = 'File 10 messages puis pause. Pas d’envoi groupé.';
+        }
+      }
       if (wrap) {
         if (data.connected) {
-          wrap.innerHTML = '<p class="admin-section-desc">C’est bon. Les messages d’offre partent depuis ce WhatsApp.</p>';
+          const paused = data.outbound?.promoPaused || data.outbound?.allPaused;
+          const rest = data.outbound?.restUntil
+            ? ` Pause file jusqu’à ${new Date(data.outbound.restUntil).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.`
+            : '';
+          wrap.innerHTML = paused
+            ? '<p class="admin-section-desc">Connecté — <strong>envois promo coupés</strong> (compte restreint). Les notifs managers passent encore, 10 messages puis une pause. Relances clients : e-mail seulement.</p>'
+            : `<p class="admin-section-desc">Connecté. Envois par paquets de 10, avec une pause entre chaque page.${escapeHtml(rest)}</p>`;
           if (waTimer) { clearInterval(waTimer); waTimer = null; }
         } else if (data.pairingCode) {
           wrap.innerHTML = `<p class="admin-section-desc">Code à saisir dans WhatsApp</p><p style="font-size:28px;letter-spacing:.18em;font-weight:800;margin:8px 0">${escapeHtml(data.pairingCode)}</p>`;
@@ -2033,6 +2061,20 @@
     try {
       await fetch('/api/admin/whatsapp?action=logout', { method: 'POST', credentials: 'include' });
     } catch { /* ignore */ }
+    await loadWhatsApp(false);
+  });
+  document.getElementById('waClearQueueBtn')?.addEventListener('click', async () => {
+    try {
+      const res = await fetch('/api/admin/whatsapp?action=clear-queue', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'File non vidée');
+      if (typeof window.panToast === 'function') window.panToast('File WhatsApp vidée');
+    } catch (err) {
+      if (typeof window.panToast === 'function') window.panToast(err.message || 'File non vidée', 'err');
+    }
     await loadWhatsApp(false);
   });
 

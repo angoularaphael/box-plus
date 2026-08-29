@@ -378,11 +378,15 @@ function resumeWhatsAppText(order, { kind } = {}) {
 }
 
 async function sendResumeWhatsApp(order, { kind = 'resume' } = {}) {
+  const { isPromoWhatsAppPaused } = require('./whatsapp-outbound');
+  if (isPromoWhatsAppPaused()) {
+    return { sent: false, error: 'promo_paused', message: 'WhatsApp promo en pause (compte restreint)' };
+  }
   const { toWhatsAppPhone, sendWhatsAppMessage } = require('./whatsapp-bot');
   const raw = customerPhone(order);
   const dest = toWhatsAppPhone(raw);
   if (!dest) return { sent: false, error: 'no_phone' };
-  await sendWhatsAppMessage(raw, resumeWhatsAppText(order, { kind }));
+  await sendWhatsAppMessage(raw, resumeWhatsAppText(order, { kind }), { kind: 'promo' });
   return { sent: true, to: dest };
 }
 
@@ -448,11 +452,13 @@ async function sendNudgeEmail(order) {
 }
 
 async function sendNudgeWhatsApp(order) {
+  const { isPromoWhatsAppPaused } = require('./whatsapp-outbound');
+  if (isPromoWhatsAppPaused()) return { sent: false, skipped: true, reason: 'promo_paused' };
   const phone = customerPhone(order);
   const { toWhatsAppPhone, sendWhatsAppMessage } = require('./whatsapp-bot');
   const to = toWhatsAppPhone(phone);
   if (!to) return { sent: false, skipped: true, reason: 'no_phone' };
-  await sendWhatsAppMessage(phone, nudgeWhatsAppText(order));
+  await sendWhatsAppMessage(phone, nudgeWhatsAppText(order), { kind: 'promo' });
   return { sent: true, phone: to };
 }
 
@@ -567,7 +573,7 @@ async function sendAndMarkNudge(order) {
 }
 
 async function dispatchDueNudges() {
-  const due = await listDueNudges();
+  const due = (await listDueNudges()).slice(0, 10);
   const results = [];
   for (const item of due) {
     const order = await loadOrderAsync(item.order_id);

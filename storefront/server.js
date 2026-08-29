@@ -245,6 +245,7 @@ const {
   startWhatsAppBot,
   stopWhatsAppBot,
   logoutWhatsAppBot,
+  clearWhatsAppOutboundQueue,
 } = require('./lib/whatsapp-bot');
 const {
   getMaintenance,
@@ -1304,6 +1305,11 @@ function createApp() {
         const result = await logoutWhatsAppBot();
         return res.json({ ok: true, action, ...result });
       }
+      if (action === 'clear-queue') {
+        const result = await clearWhatsAppOutboundQueue();
+        logInfo('File WhatsApp boutique vidée');
+        return res.json({ ok: true, action, ...result });
+      }
       return res.status(400).json({ ok: false, error: 'action inconnue' });
     } catch (err) {
       if (action === 'start' && String(req.body?.method || '').toLowerCase() === 'pair') {
@@ -2184,11 +2190,19 @@ function createApp() {
     if (!ids.length) {
       return res.status(400).json({ ok: false, error: 'empty', message: 'Aucune personne sélectionnée' });
     }
-    if (ids.length > 12) {
+    if (ids.length > 10) {
       return res.status(400).json({
         ok: false,
         error: 'too_many',
-        message: '12 destinataires maximum par diffusion WhatsApp',
+        message: '10 destinataires maximum par diffusion WhatsApp',
+      });
+    }
+    const { isPromoWhatsAppPaused } = require('./lib/whatsapp-outbound');
+    if (isPromoWhatsAppPaused()) {
+      return res.status(423).json({
+        ok: false,
+        error: 'promo_paused',
+        message: 'WhatsApp promo en pause : le compte boutique est restreint. Relance par e-mail seulement.',
       });
     }
     const { sendResumeWhatsApp, canPayOrder } = require('./lib/inscription-nudge');

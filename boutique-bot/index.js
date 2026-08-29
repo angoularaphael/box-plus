@@ -31,7 +31,14 @@ const AUTH_DIR = process.env.WA_AUTH_DIR
   : path.join(__dirname, 'auth_info_baileys');
 const MAX_RECONNECT_ATTEMPTS = 8;
 const QR_REUSE_MS = 18000;
-const BUILD = 'wa-send-4';
+const BUILD = 'wa-send-5';
+const BATCH_SIZE = Math.max(1, parseInt(process.env.WA_BATCH_SIZE || '10', 10) || 10);
+const SEND_GAP_MS = Math.max(0, parseInt(process.env.WA_SEND_GAP_MS || '8000', 10) || 8000);
+const BATCH_REST_MS = Math.max(
+  60_000,
+  parseInt(process.env.WA_BATCH_REST_MS || String(20 * 60 * 1000), 10) || 20 * 60 * 1000
+);
+const DEFAULT_RESTRICTED_UNTIL = '2026-08-30T08:00:00+02:00';
 
 const app = express();
 app.use(cors());
@@ -52,6 +59,10 @@ let qrError = null;
 let reconnectTimer = null;
 let reconnectAttempts = 0;
 let lastMessageUpdates = [];
+let outboundSentInBatch = 0;
+let outboundLastSendAt = 0;
+let outboundRestUntil = 0;
+const outboundDropped = [];
 
 const ACK_NAMES = {
   0: 'ERROR',
@@ -76,6 +87,89 @@ function rememberMessageUpdate(update) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function truthyFlag(raw) {
+  const v = String(raw || '').trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'on' || v === 'yes';
+}
+
+function falsyFlag(raw) {
+  const v = String(raw || '').trim().toLowerCase();
+  return v === '0' || v === 'false' || v === 'off' || v === 'no';
+}
+
+function isAllOutboundPaused() {
+  return truthyFlag(process.env.WA_OUTBOUND_PAUSED || process.env.WHATSAPP_OUTBOUND_PAUSED);
+}
+
+function isPromoOutboundPaused(now = Date.now()) {
+  if (isAllOutboundPaused()) return true;
+  const flag = process.env.WHATSAPP_PROMO_PAUSED || process.env.WA_PROMO_PAUSED;
+  if (falsyFlag(flag)) return false;
+  if (truthyFlag(flag)) return true;
+  const until = Date.parse(process.env.WHATSAPP_RESTRICTED_UNTIL || DEFAULT_RESTRICTED_UNTIL);
+  return Number.isFinite(until) && now < until;
+}
+
+function outboundSnapshot() {
+  const now = Date.now();
+  return {
+    promoPaused: isPromoOutboundPaused(now),
+    allPaused: isAllOutboundPaused(),
+    batchSize: BATCH_SIZE,
+    sentInBatch: outboundSentInBatch,
+    lastSendAt: outboundLastSendAt ? new Date(outboundLastSendAt).toISOString() : null,
+    restUntil: outboundRestUntil > now ? new Date(outboundRestUntil).toISOString() : null,
+    gapMs: SEND_GAP_MS,
+    restMs: BATCH_REST_MS,
+    dropped: outboundDropped.length,
+  };
+}
+
+function clearOutboundLimiter() {
+  outboundSentInBatch = 0;
+  outboundLastSendAt = 0;
+  outboundRestUntil = 0;
+  outboundDropped.length = 0;
+}
+
+function admitOutbound(kind) {
+  const now = Date.now();
+  if (isAllOutboundPaused()) {
+    return { ok: false, status: 423, error: 'WhatsApp boutique en pause' };
+  }
+  if (kind === 'promo' && isPromoOutboundPaused(now)) {
+    return { ok: false, status: 423, error: 'WhatsApp promo en pause (compte restreint)' };
+  }
+  if (outboundRestUntil > now) {
+    return {
+      ok: false,
+      status: 429,
+      error: 'File WhatsApp : pause après 10 envois',
+      retry_ms: outboundRestUntil - now,
+      outbound: outboundSnapshot(),
+    };
+  }
+  if (outboundLastSendAt && now - outboundLastSendAt < SEND_GAP_MS) {
+    return {
+      ok: false,
+      status: 429,
+      error: 'File WhatsApp : attendre entre deux messages',
+      retry_ms: SEND_GAP_MS - (now - outboundLastSendAt),
+      outbound: outboundSnapshot(),
+    };
+  }
+  return { ok: true };
+}
+
+function recordOutboundSend() {
+  outboundLastSendAt = Date.now();
+  outboundSentInBatch += 1;
+  if (outboundSentInBatch >= BATCH_SIZE) {
+    outboundRestUntil = Date.now() + BATCH_REST_MS;
+    outboundSentInBatch = 0;
+  }
 }
 
 function waBrowser() {
@@ -410,6 +504,7 @@ function publicStatus(includeQr) {
           name: me.name || me.verifiedName || null,
         }
       : null,
+    outbound: outboundSnapshot(),
   };
 }
 
@@ -604,11 +699,25 @@ app.get('/api/last-acks', (req, res) => {
   res.json({ ok: true, build: BUILD, items: lastMessageUpdates });
 });
 
+app.post('/api/queue/clear', (req, res) => {
+  if (!verifyApiSecret(req, res)) return;
+  clearOutboundLimiter();
+  console.log('[boutique-bot] file WhatsApp vidée');
+  res.json({ ok: true, success: true, message: 'File vidée', outbound: outboundSnapshot(), build: BUILD });
+});
+
 app.post('/api/send-message', async (req, res) => {
   if (!verifyApiSecret(req, res)) return;
   if (!isConnected || !sock) return res.status(503).json({ error: 'Bot not connected' });
-  const { phone, message } = req.body || {};
+  const { phone, message, kind: rawKind } = req.body || {};
+  const kind = String(rawKind || 'transactional').toLowerCase() === 'promo' ? 'promo' : 'transactional';
   if (!message) return res.status(400).json({ error: 'message required' });
+  const gate = admitOutbound(kind);
+  if (!gate.ok) {
+    outboundDropped.push({ at: new Date().toISOString(), kind, error: gate.error });
+    if (outboundDropped.length > 50) outboundDropped.splice(0, outboundDropped.length - 50);
+    return res.status(gate.status).json({ ok: false, ...gate, kind });
+  }
   const resolved = await resolveWhatsAppJid(phone);
   if (!resolved.jid) return res.status(400).json({ error: 'phone required' });
   if (resolved.exists === false) {
@@ -630,6 +739,7 @@ app.post('/api/send-message', async (req, res) => {
       }),
     ]);
     const msgId = sent?.key?.id || null;
+    recordOutboundSend();
     const ack = msgId ? await waitForMessageAck(msgId, 10000) : { ack: null, timeout: true, waitMs: 0 };
     const failed = ack.ack === 0;
     const delivered = Number(ack.ack) >= 3;
@@ -648,6 +758,7 @@ app.post('/api/send-message', async (req, res) => {
       delivered,
       ackTimeout: Boolean(ack.timeout),
       ackWaitMs: ack.waitMs || 0,
+      outbound: outboundSnapshot(),
     });
   } catch (err) {
     res.status(500).json({ error: err.message, phone: resolved.digits, jid: resolved.jid });

@@ -67,8 +67,17 @@ function toWhatsAppPhone(raw) {
 
 async function getWhatsAppStatus({ includeQr = false } = {}) {
   const url = whatsappBotUrl();
+  const { isPromoWhatsAppPaused, isAllWhatsAppPaused, promoPauseReason, restrictedUntilMs, BATCH_SIZE } =
+    require('./whatsapp-outbound');
+  const outbound = {
+    promoPaused: isPromoWhatsAppPaused(),
+    allPaused: isAllWhatsAppPaused(),
+    reason: promoPauseReason(),
+    until: new Date(restrictedUntilMs()).toISOString(),
+    batchSize: BATCH_SIZE,
+  };
   if (!url) {
-    return { configured: false, connected: false, error: 'WHATSAPP_BOT_URL manquant' };
+    return { configured: false, connected: false, error: 'WHATSAPP_BOT_URL manquant', outbound };
   }
   try {
     const data = await botFetch(includeQr ? '/api/status?qr=1' : '/api/status', {
@@ -86,6 +95,7 @@ async function getWhatsAppStatus({ includeQr = false } = {}) {
       qrError: data.qrError || null,
       build: data.build || null,
       me: data.me || null,
+      outbound: { ...outbound, ...(data.outbound || {}) },
     };
   } catch (err) {
     return {
@@ -100,6 +110,7 @@ async function getWhatsAppStatus({ includeQr = false } = {}) {
       })(),
       connected: false,
       error: err.message || 'Bot inaccessible',
+      outbound,
     };
   }
 }
@@ -121,14 +132,23 @@ async function logoutWhatsAppBot() {
   return botFetch('/api/logout', { method: 'POST', timeoutMs: 10000 });
 }
 
-async function sendWhatsAppMessage(phone, message) {
+async function sendWhatsAppMessage(phone, message, { kind = 'transactional' } = {}) {
   const to = toWhatsAppPhone(phone);
   if (!to) throw new Error('Numéro WhatsApp invalide');
+  const { isAllWhatsAppPaused, isPromoWhatsAppPaused } = require('./whatsapp-outbound');
+  if (isAllWhatsAppPaused()) throw new Error('WhatsApp boutique en pause');
+  if (kind === 'promo' && isPromoWhatsAppPaused()) {
+    throw new Error('WhatsApp promo en pause (compte restreint)');
+  }
   return botFetch('/api/send-message', {
     method: 'POST',
-    body: { phone: to, message },
+    body: { phone: to, message, kind },
     timeoutMs: 45000,
   });
+}
+
+async function clearWhatsAppOutboundQueue() {
+  return botFetch('/api/queue/clear', { method: 'POST', timeoutMs: 8000 });
 }
 
 module.exports = {
@@ -141,4 +161,5 @@ module.exports = {
   stopWhatsAppBot,
   logoutWhatsAppBot,
   sendWhatsAppMessage,
+  clearWhatsAppOutboundQueue,
 };

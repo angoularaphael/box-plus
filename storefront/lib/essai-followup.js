@@ -287,13 +287,15 @@ function classifyCustomerNudge(order, { now = Date.now(), membershipKeys } = {})
 async function sendCustomerNudge(
   order,
   day,
-  { sendWa = sendWhatsAppMessage, sendEmail, dryRun = false } = {}
+  { sendWa, sendEmail, dryRun = false } = {}
 ) {
   const copy = customerNudgeCopy(order, day);
   const emailTo = orderEmail(order);
   const phone = orderPhone(order) || order.customer_short?.phone || order.customer?.phone || '';
   const out = { day, email: { sent: false }, whatsapp: { sent: false }, copy };
   if (dryRun) return { ...out, dry: true };
+  const liveWa = !sendWa;
+  const waSend = sendWa || ((to, text) => sendWhatsAppMessage(to, text, { kind: 'promo' }));
 
   if (emailTo) {
     try {
@@ -321,12 +323,17 @@ async function sendCustomerNudge(
   }
 
   if (phone) {
-    try {
-      const wa = await sendWa(phone, copy.text);
-      out.whatsapp = { sent: true, to: phone, wa };
-    } catch (err) {
-      out.whatsapp = { sent: false, error: err.message, to: phone };
-      logWarn('WhatsApp relance essai 10 € client', { order_id: order.order_id, error: err.message });
+    const { isPromoWhatsAppPaused } = require('./whatsapp-outbound');
+    if (liveWa && isPromoWhatsAppPaused()) {
+      out.whatsapp = { sent: false, skipped: true, reason: 'promo_paused', to: phone };
+    } else {
+      try {
+        const wa = await waSend(phone, copy.text);
+        out.whatsapp = { sent: true, to: phone, wa };
+      } catch (err) {
+        out.whatsapp = { sent: false, error: err.message, to: phone };
+        logWarn('WhatsApp relance essai 10 € client', { order_id: order.order_id, error: err.message });
+      }
     }
   } else {
     out.whatsapp = { sent: false, reason: 'no_phone' };
@@ -470,6 +477,10 @@ async function applyEssaiAboCheck(
 }
 
 async function sendGymFollowup(order, { sendWa = sendWhatsAppMessage, dryRun = false } = {}) {
+  const { isPromoWhatsAppPaused } = require('./whatsapp-outbound');
+  if (sendWa === sendWhatsAppMessage && isPromoWhatsAppPaused()) {
+    return { sent: false, skipped: true, reason: 'promo_paused' };
+  }
   const gym = getGymCoachTarget(orderGym(order));
   if (!gym) return { sent: false, reason: 'gym_no_coach' };
   const text = gymEssaiFollowupText(order);

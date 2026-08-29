@@ -37,6 +37,7 @@ const {
   toWhatsAppPhone,
   getWhatsAppStatus,
 } = require('../storefront/lib/whatsapp-bot');
+const { isPromoWhatsAppPaused } = require('../storefront/lib/whatsapp-outbound');
 
 const START_AT = Date.parse('2026-08-29T17:00:00+02:00');
 const GAP_MS = 3 * 60 * 1000;
@@ -58,6 +59,9 @@ function stamp() {
 }
 
 async function main() {
+  if (isPromoWhatsAppPaused()) {
+    throw new Error('WhatsApp promo en pause (compte restreint) — script 17h annulé');
+  }
   const status = await getWhatsAppStatus();
   if (!status.connected) {
     throw new Error(`Bot boutique non connecté: ${status.error || 'offline'}`);

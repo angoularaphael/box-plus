@@ -3,6 +3,7 @@
 const { getStoreUrl } = require('../../lib/app-urls');
 const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
 const { sendWhatsAppMessage } = require('./whatsapp-bot');
+const { isPromoWhatsAppPaused } = require('./whatsapp-outbound');
 const { logInfo, logWarn } = require('../../lib/logger');
 
 function clean(v, max = 80) {
@@ -98,12 +99,16 @@ async function notifyReferralFriend({ order, friend, referrer, skipEmail = false
     out.email = { sent: true, skipped: true };
   }
 
-  try {
-    await sendWhatsAppMessage(friend.telephone, copy.text);
-    out.whatsapp = { sent: true };
-  } catch (err) {
-    out.whatsapp = { sent: false, error: err.message };
-    logWarn('WhatsApp parrainage ami', { error: err.message, order_id: order.order_id });
+  if (isPromoWhatsAppPaused()) {
+    out.whatsapp = { sent: false, skipped: true, reason: 'promo_paused' };
+  } else {
+    try {
+      await sendWhatsAppMessage(friend.telephone, copy.text, { kind: 'promo' });
+      out.whatsapp = { sent: true };
+    } catch (err) {
+      out.whatsapp = { sent: false, error: err.message };
+      logWarn('WhatsApp parrainage ami', { error: err.message, order_id: order.order_id });
+    }
   }
 
   logInfo('Notif parrainage offre 29', {
