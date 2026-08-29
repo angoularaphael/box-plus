@@ -11,6 +11,7 @@ const {
   materielSaleSummary,
   listMaterielSales,
   notifyMaterielSale,
+  managerEmail,
 } = require('../storefront/lib/gym-materiel-managers');
 
 test('chaque salle de retrait a un manager et un numéro distinct', () => {
@@ -205,9 +206,15 @@ test('si WhatsApp échoue, le manager reçoit un email', async () => {
     sendWa: async () => {
       throw new Error('restricted');
     },
-    sendEmail: async () => ({ sent: true, to: 'boxingcenter31@gmail.com' }),
+    sendEmail: async () => ({ sent: true, to: 'boxing31@gmail.com' }),
   });
   assert.equal(out.sent, true);
   assert.equal(out.via, 'email');
   assert.equal(out.whatsapp.sent, false);
+});
+
+test('le secours WhatsApp part toujours à boxing31@gmail.com', () => {
+  const { WA_FALLBACK_EMAIL } = require('../storefront/lib/gym-materiel-managers');
+  assert.equal(WA_FALLBACK_EMAIL, 'boxing31@gmail.com');
+  assert.equal(managerEmail({ slug: 'portet' }), 'boxing31@gmail.com');
 });

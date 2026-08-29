@@ -168,27 +168,27 @@ function shouldSkipWhatsApp(order, env = process.env) {
   return method === 'demo';
 }
 
+const WA_FALLBACK_EMAIL = 'boxing31@gmail.com';
+
 function managerEmail(manager) {
   if (manager?.email) return String(manager.email).trim();
-  try {
-    const { getManagerContact } = require('./membership');
-    return String(getManagerContact(manager?.slug)?.email || '').trim();
-  } catch {
-    return '';
-  }
+  return WA_FALLBACK_EMAIL;
 }
 
 async function sendManagerSaleEmail(manager, message, order) {
-  const to = managerEmail(manager);
-  if (!to) return { sent: false, reason: 'no_email' };
+  const to = WA_FALLBACK_EMAIL;
   const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
   if (!isConfigured()) return { sent: false, reason: 'brevo_not_configured', to };
   const ref = order?.order_id || '';
+  const who = manager?.name || manager?.label || manager?.slug || 'manager';
   const result = await sendEmailViaBrevo({
     to,
-    subject: `Vente matériel ${manager.label || manager.slug || ''} — ${ref}`.trim(),
+    subject: `WhatsApp non parti — vente ${who} — ${ref}`.trim(),
     text: message,
-    html: `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;font-size:15px">${String(message || '')
+    html: `<p style="font-family:Arial,sans-serif;color:#b45309"><strong>WhatsApp non envoyé</strong> — copie pour ${String(who)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')}.</p>
+<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;font-size:15px">${String(message || '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')}</pre>`,
   });
@@ -367,6 +367,7 @@ module.exports = {
   notifyMaterielSale,
   sendManagerSaleEmail,
   managerEmail,
+  WA_FALLBACK_EMAIL,
   materielSaleSummary,
   listMaterielSales,
 };
