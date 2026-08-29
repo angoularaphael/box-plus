@@ -126,15 +126,10 @@ if (!successText) {
   if (demo) {
     successText.textContent =
       'Commande matériel enregistrée — présentez-vous en salle pour le retrait.';
-  } else if (payplugReturn) {
-    void confirmPayplugMateriel();
   } else if (sessionId) {
     void confirmStripeSession('/panier');
-  } else if (order) {
-    successText.textContent = `Commande ${order} confirmée — retrait en salle.`;
-    showInvoiceButton(order, token);
   } else {
-    successText.textContent = 'Commande matériel confirmée — retrait en salle.';
+    void confirmPayplugMateriel();
   }
 } else if (demo) {
   successText.textContent = 'Commande enregistrée — traitement automatique en cours.';

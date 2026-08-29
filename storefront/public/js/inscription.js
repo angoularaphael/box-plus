@@ -2666,6 +2666,15 @@
   }
 
   async function init() {
+    const orderHint = params.get('order') || '';
+    if (
+      params.get('type') === 'materiel' ||
+      /^MAT-/i.test(orderHint)
+    ) {
+      location.replace(`/success.html${location.search || ''}`);
+      return;
+    }
+
     restoreProgress();
     if (isBalmaRetour() && state.step < 4) {
       state.gymDraft = 'minimes';

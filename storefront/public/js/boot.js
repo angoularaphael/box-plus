@@ -2,6 +2,45 @@
  * Base URL + liens compatibles file:// et serveur Express
  */
 (function () {
+  function isMaterielReturn(pathname, searchParams) {
+    const p =
+      searchParams instanceof URLSearchParams
+        ? searchParams
+        : new URLSearchParams(searchParams || '');
+    const order = String(p.get('order') || '');
+    const type = String(p.get('type') || '');
+    return type === 'materiel' || /^MAT-/i.test(order);
+  }
+
+  /**
+   * Les retours PSP inscription peuvent atterrir hors /inscription.
+   * Ne jamais y envoyer une commande matériel (MAT-…) : le tunnel abo
+   * répond 403 forbidden alors que le paiement est déjà encaissé.
+   */
+  function shouldRedirectToInscription(pathname, searchParams) {
+    const p =
+      searchParams instanceof URLSearchParams
+        ? searchParams
+        : new URLSearchParams(searchParams || '');
+    const order = p.get('order');
+    const token = p.get('token');
+    const product = p.get('product');
+    const step = p.get('step');
+    const onInscription = /^\/inscription(\/|$)/.test(pathname || '');
+    const onContrat = /^\/contrat(\/|$)/.test(pathname || '');
+    const onMonInscription = /^\/mon-inscription(\/|$)/.test(pathname || '');
+    if (onInscription || onContrat || onMonInscription) return false;
+    if (isMaterielReturn(pathname, p)) return false;
+    if (order && token) return true;
+    if (product && (order || (step && Number(step) > 1))) return true;
+    return false;
+  }
+
+  if (typeof module === 'object' && module.exports) {
+    module.exports = { shouldRedirectToInscription, isMaterielReturn };
+    return;
+  }
+
   // Préremplissage inter-sites (assistant des sites Boxing Center) : les
   // coordonnées arrivent en FRAGMENT (#bcp=..., jamais envoyé au serveur ni
   // aux logs), sont rangées en sessionStorage puis effacées de l'URL — le
@@ -19,23 +58,14 @@
 
   if (location.protocol !== 'file:') {
     const qs = location.search;
-    if (qs) {
-      const p = new URLSearchParams(qs);
-      const order = p.get('order');
-      const token = p.get('token');
-      const product = p.get('product');
-      const step = p.get('step');
-      const onInscription = /^\/inscription(\/|$)/.test(location.pathname);
-      const onContrat = /^\/contrat(\/|$)/.test(location.pathname);
-      const onMonInscription = /^\/mon-inscription(\/|$)/.test(location.pathname);
-      if (!onInscription && !onContrat && !onMonInscription && order && token) {
-        location.replace(`/inscription${qs}`);
-        return;
-      }
-      if (!onInscription && product && (order || (step && Number(step) > 1))) {
-        location.replace(`/inscription${qs}`);
-        return;
-      }
+    const onSuccess = /^\/success(\.html)?(\/|$)/i.test(location.pathname);
+    if (qs && isMaterielReturn(location.pathname, qs) && !onSuccess) {
+      location.replace(`/success.html${qs}`);
+      return;
+    }
+    if (qs && shouldRedirectToInscription(location.pathname, qs)) {
+      location.replace(`/inscription${qs}`);
+      return;
     }
   }
 

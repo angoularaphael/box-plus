@@ -1403,7 +1403,15 @@ function createApp() {
       const url = hostedPaymentUrl(payment);
       if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
 
-      savePendingCheckout(payment.id, {
+      order.payment = {
+        ...(order.payment || {}),
+        status: 'pending',
+        method: 'payplug',
+        payplug_payment_id: payment.id,
+      };
+      await saveMaterielOrderRecordAsync(order);
+
+      const pendingPayload = {
         order_type: 'materiel',
         order_id: orderId,
         customer,
@@ -1411,7 +1419,9 @@ function createApp() {
         items,
         total_cents,
         payplug_payment_id: payment.id,
-      });
+      };
+      savePendingCheckout(payment.id, pendingPayload);
+      savePendingCheckout(orderId, pendingPayload);
 
       res.json({
         ok: true,
@@ -5429,6 +5439,32 @@ function createApp() {
       if (!orderId || !token) {
         return res.status(400).json({ ok: false, error: 'order_id et token requis' });
       }
+
+      const materielOrder = await loadMaterielOrderAsync(sanitizeOrderId(orderId) || orderId);
+      if (materielOrder && verifyAccess(materielOrder, token)) {
+        const id = sanitizePaymentId(
+          paymentId || materielOrder.payment?.payplug_payment_id
+        );
+        if (!id) return res.status(400).json({ ok: false, error: 'payment_id manquant' });
+        const out = await fulfillMaterielPayplug(id);
+        if (!out.ok) {
+          const status =
+            out.error === 'payment_failed'
+              ? 402
+              : out.error === 'payment_pending'
+                ? 202
+                : out.error === 'payplug_not_configured'
+                  ? 503
+                  : 400;
+          return res.status(status).json(out);
+        }
+        return res.json({
+          ...out,
+          paid: true,
+          redirect: out.redirect || `/success.html?order=${encodeURIComponent(out.order_id)}&type=materiel`,
+        });
+      }
+
       let order = await loadOrderAsync(orderId);
       if (!order || !verifyAccess(order, token)) {
         return res.status(403).json({ ok: false, error: 'forbidden' });
