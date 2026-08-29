@@ -22,6 +22,7 @@ const {
   saveOrder,
   saveOrderAsync,
   listAllOrdersAsync,
+  purgeUnpaidOrdersAsync,
 } = require('./materiel-order-persistence');
 
 const PENDING_DIR =
@@ -270,6 +271,10 @@ async function listAllMaterielOrdersAsync() {
   return listAllOrdersAsync();
 }
 
+async function purgeUnpaidMaterielOrdersAsync() {
+  return purgeUnpaidOrdersAsync();
+}
+
 module.exports = {
   validateCartLines,
   validateCustomerForm,
@@ -284,6 +289,7 @@ module.exports = {
   removePendingCheckout,
   listAllMaterielOrders,
   listAllMaterielOrdersAsync,
+  purgeUnpaidMaterielOrdersAsync,
   loadOrder,
   loadOrderAsync,
   saveOrder,

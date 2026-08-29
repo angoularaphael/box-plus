@@ -150,3 +150,43 @@ test('récap vente : manager de la salle choisie + statut WhatsApp', () => {
   assert.equal(listed.length, 1);
   assert.equal(listed[0].order_id, 'MAT-live');
 });
+
+test('les brouillons impayés n’apparaissent pas dans les ventes', () => {
+  const unpaid = {
+    order_id: 'MAT-draft',
+    order_type: 'materiel',
+    created_at: '2026-08-29T15:00:00.000Z',
+    payment: { status: 'pending' },
+    total_cents: 2500,
+    customer: { first_name: 'Test', last_name: 'Impayé' },
+    items: [{ name: 'Gants', qty: 1, line_total_cents: 2500 }],
+  };
+  const paid = {
+    order_id: 'MAT-paid',
+    payment: { status: 'paid' },
+    paid_at: '2026-08-29T15:01:00.000Z',
+    total_cents: 1370,
+    customer: { first_name: 'Brad' },
+    items: [{ name: 'Gants Blade', variant_label: '12oz', qty: 1, line_total_cents: 1370 }],
+  };
+  const listed = listMaterielSales([unpaid, paid], []);
+  assert.equal(listed.length, 1);
+  assert.equal(listed[0].order_id, 'MAT-paid');
+  const all = listMaterielSales([unpaid, paid], [], { paidOnly: false });
+  assert.equal(all.length, 2);
+});
+
+test('le produit s’affiche même sans order_type (payload slim)', () => {
+  const row = materielSaleSummary(
+    {
+      order_id: 'MAT-slim',
+      payment: { status: 'paid' },
+      total_cents: 690,
+      customer: { first_name: 'Léa', pickup_gym: 'Portet-sur-Garonne' },
+      items: [{ name: 'Bandes 4m', variant_label: 'Rouge', qty: 1, line_total_cents: 690 }],
+    },
+    'materiel'
+  );
+  assert.match(row.product, /Bandes 4m/);
+  assert.equal(row.manager_name, 'Tapia');
+});

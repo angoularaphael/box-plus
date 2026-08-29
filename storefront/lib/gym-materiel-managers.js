@@ -84,7 +84,7 @@ function saleLines(order, source) {
       ];
     }
   }
-  if (Array.isArray(order?.items) && order.items.length && order.order_type === 'materiel') {
+  if (Array.isArray(order?.items) && order.items.length) {
     return order.items.map((item) => ({
       name: item.name || 'Article',
       variant: item.variant_label || '',
@@ -268,7 +268,7 @@ function materielSaleSummary(order, source) {
   };
 }
 
-function listMaterielSales(materielOrders = [], inscriptionOrders = []) {
+function listMaterielSales(materielOrders = [], inscriptionOrders = [], { paidOnly = true } = {}) {
   const rows = [];
   for (const order of materielOrders) {
     rows.push(materielSaleSummary(order, 'materiel'));
@@ -283,7 +283,8 @@ function listMaterielSales(materielOrders = [], inscriptionOrders = []) {
       new Date(b.paid_at || b.created_at || 0).getTime() -
       new Date(a.paid_at || a.created_at || 0).getTime()
   );
-  return rows;
+  if (!paidOnly) return rows;
+  return rows.filter((row) => row.payment_status === 'paid');
 }
 
 module.exports = {

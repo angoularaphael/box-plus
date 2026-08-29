@@ -1192,6 +1192,8 @@
   let materielLoaded = false;
   let materielSales = [];
   let materielSalesLoaded = false;
+  let materielSalesPage = 1;
+  const MATERIEL_SALES_PER_PAGE = 10;
 
   function notifyLabel(sale) {
     const n = sale.manager_notify || {};
@@ -1202,17 +1204,37 @@
     return { text: 'Pas encore', cls: 'badge warn' };
   }
 
+  function renderMaterielSalesPager() {
+    const pager = document.getElementById('materielSalesPager');
+    const info = document.getElementById('materielSalesPagerInfo');
+    const prev = document.getElementById('materielSalesPrev');
+    const next = document.getElementById('materielSalesNext');
+    const total = materielSales.length;
+    const pages = Math.max(1, Math.ceil(total / MATERIEL_SALES_PER_PAGE));
+    if (materielSalesPage > pages) materielSalesPage = pages;
+    if (materielSalesPage < 1) materielSalesPage = 1;
+    if (pager) pager.hidden = total <= MATERIEL_SALES_PER_PAGE;
+    const start = total ? (materielSalesPage - 1) * MATERIEL_SALES_PER_PAGE + 1 : 0;
+    const end = Math.min(materielSalesPage * MATERIEL_SALES_PER_PAGE, total);
+    if (info) info.textContent = total ? `${start}–${end} sur ${total}` : '';
+    if (prev) prev.disabled = materielSalesPage <= 1;
+    if (next) next.disabled = materielSalesPage >= pages;
+  }
+
   function renderMaterielSales() {
     const tbody = document.getElementById('materielSalesBody');
     const countEl = document.getElementById('materielSalesCount');
     if (!tbody) return;
     if (!materielSales.length) {
       tbody.innerHTML =
-        '<tr><td colspan="8" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune vente matériel pour l’instant.</td></tr>';
+        '<tr><td colspan="8" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune vente matériel payée pour l’instant.</td></tr>';
       if (countEl) countEl.textContent = '';
+      renderMaterielSalesPager();
       return;
     }
-    tbody.innerHTML = materielSales
+    const start = (materielSalesPage - 1) * MATERIEL_SALES_PER_PAGE;
+    const pageRows = materielSales.slice(start, start + MATERIEL_SALES_PER_PAGE);
+    tbody.innerHTML = pageRows
       .map((s) => {
         const wa = notifyLabel(s);
         const when = s.paid_at || s.created_at;
@@ -1239,7 +1261,11 @@
         </tr>`;
       })
       .join('');
-    if (countEl) countEl.textContent = `${materielSales.length} vente(s)`;
+    if (countEl) {
+      const pages = Math.max(1, Math.ceil(materielSales.length / MATERIEL_SALES_PER_PAGE));
+      countEl.textContent = `${materielSales.length} vente(s) · page ${materielSalesPage}/${pages} · 10 par page`;
+    }
+    renderMaterielSalesPager();
     tbody.querySelectorAll('[data-notify-sale]').forEach((btn) => {
       btn.addEventListener('click', () => notifyMaterielManager(btn.dataset.notifySale, btn));
     });
@@ -1257,6 +1283,7 @@
       if (!res.ok) throw new Error(data.error || 'unauthorized');
       materielSales = data.orders || [];
       materielSalesLoaded = true;
+      materielSalesPage = 1;
       renderMaterielSales();
       if (msg) {
         msg.textContent = '';
@@ -1307,6 +1334,52 @@
 
   document.getElementById('refreshMaterielSalesBtn')?.addEventListener('click', () => {
     loadMaterielSales(true);
+  });
+
+  document.getElementById('materielSalesPrev')?.addEventListener('click', () => {
+    if (materielSalesPage <= 1) return;
+    materielSalesPage -= 1;
+    renderMaterielSales();
+    document.getElementById('materielSalesTable')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
+
+  document.getElementById('materielSalesNext')?.addEventListener('click', () => {
+    const pages = Math.max(1, Math.ceil(materielSales.length / MATERIEL_SALES_PER_PAGE));
+    if (materielSalesPage >= pages) return;
+    materielSalesPage += 1;
+    renderMaterielSales();
+    document.getElementById('materielSalesTable')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
+
+  document.getElementById('purgeUnpaidMaterielBtn')?.addEventListener('click', async () => {
+    const msg = document.getElementById('materielSalesMsg');
+    const btn = document.getElementById('purgeUnpaidMaterielBtn');
+    if (btn) btn.disabled = true;
+    try {
+      const res = await fetch('/api/admin/materiel-orders/purge-unpaid', {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true),
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Purge impossible');
+      const n = data.count || 0;
+      const text = n ? `${n} brouillon(s) impayé(s) supprimé(s)` : 'Aucun brouillon impayé';
+      if (msg) {
+        msg.textContent = text;
+        msg.className = 'form-msg ok';
+      }
+      if (typeof window.panToast === 'function') window.panToast(text);
+      await loadMaterielSales(true);
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message || 'Purge impossible';
+        msg.className = 'form-msg err';
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   });
 
   function setMaterielMsg(text, type) {

@@ -181,6 +181,7 @@ const {
   loadPendingCheckout,
   removePendingCheckout,
   listAllMaterielOrdersAsync,
+  purgeUnpaidMaterielOrdersAsync,
   loadOrderAsync: loadMaterielOrderAsync,
   saveOrderAsync: saveMaterielOrderRecordAsync,
 } = require('./lib/materiel-cart');
@@ -1521,10 +1522,23 @@ function createApp() {
       const { listMaterielSales } = require('./lib/gym-materiel-managers');
       const materiel = await listAllMaterielOrdersAsync();
       const inscriptions = await listAllOrdersAsync();
-      const orders = listMaterielSales(materiel, inscriptions);
-      res.json({ ok: true, orders, count: orders.length });
+      const paidOnly = String(req.query.all || '') !== '1';
+      const orders = listMaterielSales(materiel, inscriptions, { paidOnly });
+      res.json({ ok: true, orders, count: orders.length, paid_only: paidOnly });
     } catch (err) {
       logError('Admin ventes matériel', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/materiel-orders/purge-unpaid', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const deleted = await purgeUnpaidMaterielOrdersAsync();
+      logInfo('Brouillons matériel impayés vidés', { count: deleted.length });
+      res.json({ ok: true, deleted, count: deleted.length });
+    } catch (err) {
+      logError('Purge ventes matériel impayées', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });

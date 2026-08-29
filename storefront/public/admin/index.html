@@ -139,12 +139,15 @@
           <div class="admin-section-head" style="flex-wrap:wrap;gap:10px">
             <div>
               <h2 class="admin-section-title">Ventes matériel</h2>
-              <p class="admin-section-desc">Commandes panier et upsell Blade — salle de retrait et WhatsApp au manager.</p>
+              <p class="admin-section-desc">Ventes payées uniquement — 10 par page. Les brouillons impayés restent hors tableau.</p>
             </div>
-            <button type="button" class="btn sm secondary" id="refreshMaterielSalesBtn">Actualiser</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" class="btn sm secondary" id="refreshMaterielSalesBtn">Actualiser</button>
+              <button type="button" class="btn sm secondary" id="purgeUnpaidMaterielBtn">Vider les impayés</button>
+            </div>
           </div>
           <p class="form-msg" id="materielSalesMsg"></p>
-          <div style="overflow-x:auto;margin-top:12px">
+          <div class="admin-table-wrap" style="overflow-x:auto;margin-top:12px">
             <table class="admin-table" id="materielSalesTable">
               <thead>
                 <tr>
@@ -162,6 +165,13 @@
                 <tr><td colspan="8" style="text-align:center;color:var(--bc-muted)">Chargement…</td></tr>
               </tbody>
             </table>
+          </div>
+          <div id="materielSalesPager" class="pan-pagination" hidden>
+            <span id="materielSalesPagerInfo" class="pan-pagination__n"></span>
+            <span class="pan-pagination__b">
+              <button type="button" class="btn sm secondary" id="materielSalesPrev">Précédent</button>
+              <button type="button" class="btn sm secondary" id="materielSalesNext">Suivant</button>
+            </span>
           </div>
           <p id="materielSalesCount" class="admin-section-foot" style="margin-top:10px"></p>
         </div>
@@ -550,7 +560,7 @@
   </div>
 
   <script src="../js/contract-open.js?v=8"></script>
-  <script src="/js/admin.js?v=23"></script>
+  <script src="/js/admin.js?v=24"></script>
   <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
        reecrit pas une ligne (un autre developpeur y travaille). -->
   <script src="/js/admin-shell.js?v=17"></script>

@@ -84,6 +84,9 @@ const MATERIEL_SLIM_SELECT = [
   'email_sent:payload->email_sent',
   'customer:payload->customer',
   'items:payload->items',
+  'order_type:payload->order_type',
+  'pickup_gym:payload->pickup_gym',
+  'manager_notify:payload->manager_notify',
 ].join(',');
 
 async function listOrdersFromRemote() {
@@ -110,6 +113,9 @@ async function listOrdersFromRemote() {
         email_sent: Boolean(row.email_sent),
         customer: row.customer || {},
         items: row.items || [],
+        order_type: row.order_type || 'materiel',
+        pickup_gym: row.pickup_gym || row.customer?.pickup_gym || '',
+        manager_notify: row.manager_notify || null,
       });
     }
     if (batch.length < page) break;
@@ -191,6 +197,41 @@ async function listAllOrdersAsync() {
   return listOrdersFromFs();
 }
 
+function isPaidMaterielOrder(order) {
+  return order?.payment?.status === 'paid' || Boolean(order?.paid_at);
+}
+
+function deleteOrderFromFs(orderId) {
+  const file = orderPath(orderId);
+  if (file && fs.existsSync(file)) fs.unlinkSync(file);
+}
+
+async function deleteOrderFromRemote(orderId) {
+  const sb = getSupabase();
+  const { error } = await sb.from('boxplus_materiel_orders').delete().eq('order_id', orderId);
+  if (error) throw error;
+}
+
+async function deleteOrderAsync(orderId) {
+  deleteOrderFromFs(orderId);
+  if (useRemoteStore()) {
+    await deleteOrderFromRemote(orderId);
+  }
+}
+
+async function purgeUnpaidOrdersAsync() {
+  const all = await listAllOrdersAsync();
+  const deleted = [];
+  for (const order of all) {
+    if (isPaidMaterielOrder(order)) continue;
+    const id = order?.order_id;
+    if (!id) continue;
+    await deleteOrderAsync(id);
+    deleted.push(id);
+  }
+  return deleted;
+}
+
 module.exports = {
   ORDERS_DIR,
   useRemoteStore,
@@ -199,4 +240,7 @@ module.exports = {
   saveOrder,
   saveOrderAsync,
   listAllOrdersAsync,
+  deleteOrderAsync,
+  purgeUnpaidOrdersAsync,
+  isPaidMaterielOrder,
 };
