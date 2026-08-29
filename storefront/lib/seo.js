@@ -637,7 +637,7 @@ function findProduct(slugOrId) {
   if (direct) return direct;
   try {
     const { isBladeProductId, BLADE_PRODUCT } = require('./blade-upsell');
-    if (isBladeProductId(slugOrId) || key === BLADE_PRODUCT.slug) return BLADE_PRODUCT;
+    if (isBladeProductId(slugOrId) || key === BLADE_PRODUCT.slug || key === 'gants-boxe-blade-gold-blanc-noir') return BLADE_PRODUCT;
   } catch {
     /* optional */
   }

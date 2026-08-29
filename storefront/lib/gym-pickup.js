@@ -25,6 +25,15 @@ function resolvePickupGym(pickupGym) {
   return partial || { id: null, label: raw, address: null };
 }
 
+function intersectPickupGyms(lists) {
+  const all = PICKUP_GYMS.map((g) => g.label);
+  if (!Array.isArray(lists) || !lists.length) return all;
+  return lists.reduce((acc, list) => {
+    const allowed = Array.isArray(list) && list.length ? list : all;
+    return acc.filter((g) => allowed.includes(g));
+  }, all);
+}
+
 function formatPickupLine(pickupGym) {
   const gym = resolvePickupGym(pickupGym);
   if (!gym) return '—';
@@ -36,4 +45,5 @@ module.exports = {
   PICKUP_GYMS,
   resolvePickupGym,
   formatPickupLine,
+  intersectPickupGyms,
 };

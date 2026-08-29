@@ -224,6 +224,7 @@ const {
   skipBladeAddon,
   markBladeAddonPaid,
   isAddonPaid,
+  parseBladeChoice,
 } = require('./lib/blade-upsell');
 const {
   generateInscriptionInvoicePdf,
@@ -2674,7 +2675,13 @@ function createApp() {
         return res.status(409).json({ ok: false, error: 'upsell_not_available' });
       }
 
-      const addon = ensureAddon(order);
+      const choice = parseBladeChoice({
+        size: req.body?.size,
+        color: req.body?.color,
+        variant_id: req.body?.variant_id,
+      });
+      const addon = ensureAddon(order, choice);
+      const bladeLabel = `Gants Blade ${choice.colorLabel} ${choice.size}`;
       const gym = order.customer_full?.gym || 'minimes';
       const payMethod = String(req.body?.pay_method || 'card').toLowerCase();
       const baseUrl = getCheckoutBaseUrl(req);
@@ -2697,14 +2704,14 @@ function createApp() {
           order,
           product: {
             id: 'mat-blade-gold',
-            display_name: 'Gants Blade Gold Blanc Noir 14oz',
+            display_name: bladeLabel,
             price_cents: BLADE_PRICE_CENTS,
           },
           amountCents: BLADE_PRICE_CENTS,
           baseUrl,
           paymentPlan: 'once',
           gym,
-          description: 'Gants Blade Gold Blanc Noir 14oz',
+          description: bladeLabel,
           metadata: { order_type: 'inscription_addon', addon: 'blade' },
           returnUrl: `${returnBase}&upsell_return=paypal`,
           cancelUrl: `${returnBase}&upsell_cancelled=1`,
@@ -2731,7 +2738,7 @@ function createApp() {
       const payment = await createHostedPayment({
         order,
         amountCents: BLADE_PRICE_CENTS,
-        description: 'Gants Blade Gold Blanc Noir 14oz',
+        description: bladeLabel,
         baseUrl,
         metadata: {
           order_type: 'inscription_addon',

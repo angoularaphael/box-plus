@@ -146,7 +146,7 @@ function renderInscriptionInvoice(doc, order) {
   if (addonPaid && addonCents > 0) {
     rows.push({
       type: 'Mat.',
-      description: `${addon.name || 'Gants Blade Gold Blanc Noir'} (14oz)\nRetrait Minimes, jour même — ${addon.pickup_gym || 'Minimes'}`,
+      description: `${addon.name || 'Gants Blade'} (${[addon.color_label, addon.size].filter(Boolean).join(' ') || '12oz'})\nRetrait Minimes, jour même — ${addon.pickup_gym || 'Minimes'}`,
       unit: formatEuros(addonHt),
       qty: '1',
       vat: '20 %',
@@ -191,7 +191,7 @@ function renderInscriptionInvoice(doc, order) {
   if (addonPaid) {
     conditions.push({
       label: 'Retrait gants',
-      value: 'Minimes — jour même (12h–14h / 17h–21h15, sam. 15h–18h)',
+      value: 'Minimes — jour même (12h–14h / 17h–21h, sam. 15h–18h)',
     });
   }
   drawConditions(doc, conditions);

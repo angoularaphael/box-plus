@@ -8,6 +8,7 @@ const CATALOG_FILE = path.join(ROOT, 'data', 'storefront', 'materiel-catalog.jso
 const {
   validateCartLines,
   validateCustomerForm,
+  allowedPickupGyms,
   buildStripeLineItems,
   createMaterielOrder,
   markMaterielPaid,
@@ -16,18 +17,18 @@ const {
 const { getMaterielProducts, findMaterielProduct } = require('../storefront/lib/merch');
 const { buildMaterielConfirmationHtml } = require('../storefront/lib/mailer');
 
-test('materiel catalog importé depuis prestashop', () => {
+test('catalogue rentrée 2026 — 12 produits destockage', () => {
   assert.ok(fs.existsSync(CATALOG_FILE));
   const catalog = JSON.parse(fs.readFileSync(CATALOG_FILE, 'utf8'));
-  assert.ok(catalog.count >= 40);
-  assert.ok(catalog.products.length >= 40);
+  assert.equal(catalog.source, 'rentree-2026');
+  assert.equal(catalog.products.length, 12);
   assert.ok(catalog.products.every((p) => p.id.startsWith('mat-')));
-  assert.ok(catalog.products.filter((p) => p.image).length >= 40);
+  assert.ok(catalog.products.every((p) => p.image));
 });
 
 test('getMaterielProducts filtre par catégorie', () => {
   const all = getMaterielProducts({ activeOnly: true });
-  assert.ok(all.length >= 40);
+  assert.equal(all.length, 12);
   const gants = getMaterielProducts({ category: 'gants', activeOnly: true });
   assert.ok(gants.length >= 1);
   gants.forEach((p) => assert.equal(p.category, 'gants'));
@@ -97,6 +98,33 @@ test('validateCustomerForm exige coordonnées et retrait', () => {
     }).length,
     0
   );
+});
+
+test('retrait Blade forcé Minimes, incompatible avec The SHELL', () => {
+  const bladeItems = [{ product_id: 'mat-blade-gold' }];
+  assert.deepEqual(allowedPickupGyms(bladeItems), ['Barrière de Paris - Minimes']);
+
+  const form = {
+    first_name: 'Jean',
+    last_name: 'Dupont',
+    email: 'jean@example.com',
+    phone: '0612345678',
+    pickup_gym: 'Ramonville',
+  };
+  assert.equal(validateCustomerForm(form, bladeItems).length, 0);
+  assert.equal(form.pickup_gym, 'Barrière de Paris - Minimes');
+
+  const mixed = validateCustomerForm(
+    {
+      first_name: 'Jean',
+      last_name: 'Dupont',
+      email: 'jean@example.com',
+      phone: '0612345678',
+      pickup_gym: 'Portet-sur-Garonne',
+    },
+    [{ product_id: 'mat-blade-gold' }, { product_id: 'mat-shell-mma' }]
+  );
+  assert.ok(mixed.some((e) => /même salle/i.test(e)));
 });
 
 test('commande matériel mark paid et email html', () => {

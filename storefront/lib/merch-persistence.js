@@ -160,7 +160,14 @@ async function saveMerchAsync(data) {
 
 function loadMaterielCatalogLocal() {
   seedCatalogFile();
-  return readJson(CATALOG_FILE, BUNDLED_CATALOG_DATA);
+  const bundled = BUNDLED_CATALOG_DATA || { products: [] };
+  if (CATALOG_FILE === BUNDLED_CATALOG) return readJson(CATALOG_FILE, bundled);
+  const local = readJson(CATALOG_FILE, bundled);
+  if (bundled.synced_at && (!local.synced_at || bundled.synced_at > local.synced_at)) {
+    writeJson(CATALOG_FILE, bundled);
+    return bundled;
+  }
+  return local;
 }
 
 function saveMaterielCatalog(data) {

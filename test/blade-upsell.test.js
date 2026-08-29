@@ -13,19 +13,25 @@ const { getMaterielProducts, findMaterielProduct } = require('../storefront/lib/
 
 test('gants Blade sont en première position du catalogue matériel', () => {
   const products = getMaterielProducts({ activeOnly: true });
-  assert.ok(products.length >= 40);
+  assert.equal(products.length, 12);
   assert.equal(products[0].id, BLADE_ID);
+  assert.equal(products[1].id, 'mat-pack-enfants');
   assert.equal(products[0].price_cents, BLADE_PRICE_CENTS);
-  assert.equal(products[0].featured_first, true);
+  assert.equal(products[0].combinations.length, 6);
 });
 
 test('findMaterielProduct retrouve Blade par id et par slug', () => {
   const byId = findMaterielProduct(BLADE_ID);
-  const bySlug = findMaterielProduct('gants-boxe-blade-gold-blanc-noir');
+  const bySlug = findMaterielProduct('gants-boxe-blade-noir-blanc');
+  const byLegacy = findMaterielProduct('gants-boxe-blade-gold-blanc-noir');
   assert.equal(byId.id, BLADE_ID);
   assert.equal(bySlug.id, BLADE_ID);
-  assert.equal(byId.size, '14oz');
+  assert.equal(byLegacy.id, BLADE_ID);
+  assert.ok(byId.combinations.some((c) => c.id.includes('10oz')));
+  assert.ok(byId.combinations.some((c) => c.id.includes('12oz')));
+  assert.ok(byId.combinations.some((c) => c.id.includes('14oz')));
   assert.match(byId.pickup_note, /Minimes/);
+  assert.match(byId.pickup_hours, /17h–21h/);
 });
 
 test('Blade n’apparaît que dans destockage / tout', () => {

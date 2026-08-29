@@ -70,7 +70,7 @@
     const cat = category || new URLSearchParams(location.search).get('category') || 'all';
     grid.innerHTML = '<p style="color:var(--bc-muted);text-align:center">Chargement…</p>';
     try {
-      const qs = cat && cat !== 'all' ? `?category=${encodeURIComponent(cat)}&all=1` : '?all=1';
+      const qs = cat && cat !== 'all' ? `?category=${encodeURIComponent(cat)}` : '';
       const res = await fetch(`/api/materiel${qs}`);
       const data = await res.json();
       renderFilters(data.categories || [], cat);

@@ -5,9 +5,15 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { ROOT, ensureDir } = require('../../lib/utils');
-const { findMaterielVariant, loadMaterielCatalog, saveMaterielCatalog } = require('./merch');
+const {
+  findMaterielVariant,
+  findMaterielProduct,
+  loadMaterielCatalog,
+  saveMaterielCatalog,
+} = require('./merch');
 const { sanitizePaymentId } = require('./security');
-const { isBladeProductId, recordBladeSale, MINIMES_PICKUP } = require('./blade-upsell');
+const { isBladeProductId, recordBladeSale } = require('./blade-upsell');
+const { intersectPickupGyms } = require('./gym-pickup');
 const {
   ORDERS_DIR,
   loadOrder,
@@ -104,6 +110,16 @@ function validateCartLines(lines) {
   return { errors, items, total_cents: total };
 }
 
+function allowedPickupGyms(items = []) {
+  const lists = [];
+  for (const item of items) {
+    const product = findMaterielProduct(item.product_id);
+    if (product?.pickup_gyms?.length) lists.push(product.pickup_gyms);
+  }
+  if (!lists.length) return null;
+  return intersectPickupGyms(lists);
+}
+
 function validateCustomerForm(form, items = []) {
   const errors = [];
   if (!form.first_name?.trim()) errors.push('Prénom requis');
@@ -112,11 +128,20 @@ function validateCustomerForm(form, items = []) {
     errors.push('Email invalide');
   }
   if (!form.phone?.trim()) errors.push('Téléphone requis');
-  const bladeOnly = (items || []).some((i) => isBladeProductId(i.product_id));
-  if (bladeOnly) {
-    form.pickup_gym = MINIMES_PICKUP;
+  const gyms = allowedPickupGyms(items);
+  if (gyms && !gyms.length) {
+    errors.push(
+      'Ces articles ne peuvent pas être retirés dans la même salle. Faites deux commandes séparées.'
+    );
+  } else if (gyms && gyms.length === 1) {
+    form.pickup_gym = gyms[0];
   } else if (!form.pickup_gym?.trim()) {
     errors.push('Lieu de retrait requis');
+  } else if (gyms) {
+    const raw = String(form.pickup_gym).trim();
+    if (!gyms.includes(raw)) {
+      errors.push(`Retrait possible uniquement : ${gyms.join(', ')}`);
+    }
   }
   return errors;
 }
@@ -234,6 +259,7 @@ async function listAllMaterielOrdersAsync() {
 module.exports = {
   validateCartLines,
   validateCustomerForm,
+  allowedPickupGyms,
   buildStripeLineItems,
   createMaterielOrder,
   createMaterielOrderAsync,

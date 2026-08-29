@@ -16,11 +16,11 @@ assert.ok(xml.includes(`${SITE_URL}/offre/259`));
 assert.ok(xml.includes(`${SITE_URL}/llms.txt`));
 assert.ok(!/box-plus\.vercel\.app/i.test(xml));
 
-const gants = findProduct('58-871-gants-club-line-competition-metal-boxe.html');
-assert.ok(gants);
-assert.equal(gants.prestashop_id, 58);
-assert.equal(gants.slug, 'gants-club-line-competition-metal-boxe');
-assert.equal(findProduct('gants-club-line-competition-metal-boxe').id, gants.id);
+const blade = findProduct('gants-boxe-blade-noir-blanc');
+assert.ok(blade);
+assert.equal(blade.id, 'mat-blade-gold');
+assert.equal(findProduct('gants-boxe-blade-gold-blanc-noir').id, blade.id);
+assert.ok(xml.includes('/materiel/produit/gants-boxe-blade-noir-blanc'));
 assert.ok(xml.includes('</urlset>'));
 assert.ok(FALLBACK_SITEMAP.includes('<urlset'));
 assert.ok(FALLBACK_SITEMAP.includes(`${SITE_URL}/`));

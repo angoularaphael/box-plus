@@ -18,7 +18,7 @@ const {
   productSupportsBillingChoice,
   productSupportsInstallmentChoice,
 } = require('../../lib/billing-plan');
-const { mergeBladeIntoList, isBladeProductId, BLADE_PRODUCT } = require('./blade-upsell');
+const { mergeBladeIntoList, isBladeProductId, BLADE_PRODUCT, overlayBladeStock } = require('./blade-upsell');
 
 function loadMaterielCatalog() {
   return loadMaterielCatalogLocal();
@@ -44,7 +44,10 @@ function applyMaterielOverrides(product, overrides = {}) {
 
 function getMaterielCategories() {
   const catalog = loadMaterielCatalog();
-  return catalog.categories || [];
+  const used = new Set(
+    (catalog.products || []).filter((p) => p.active !== false).map((p) => p.category)
+  );
+  return (catalog.categories || []).filter((c) => c.slug === 'materiel' || used.has(c.slug));
 }
 
 function getMaterielProducts(options = {}) {
@@ -84,10 +87,10 @@ function getMaterielProducts(options = {}) {
 
 function findMaterielProduct(productId) {
   const key = decodeURIComponent(String(productId || '')).toLowerCase();
-  if (isBladeProductId(productId) || key === BLADE_PRODUCT.slug) {
+  if (isBladeProductId(productId) || key === BLADE_PRODUCT.slug || key === 'gants-boxe-blade-gold-blanc-noir') {
     const merch = loadMerch();
     const patch = merch.materiel_overrides?.[BLADE_PRODUCT.id] || {};
-    return applyMaterielOverrides(BLADE_PRODUCT, patch);
+    return overlayBladeStock(applyMaterielOverrides(BLADE_PRODUCT, patch));
   }
   const catalog = loadMaterielCatalog();
   const merch = loadMerch();

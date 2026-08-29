@@ -10,23 +10,11 @@
   var esc = function (s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
 
   try {
-    var res = await fetch('/api/materiel?all=1');
+    var res = await fetch('/api/materiel');
     var data = await res.json();
     var products = (data.products || []).filter(function (p) { return p.image && p.stock > 0; });
 
-    // curate one product per key category for a varied, representative strip
-    var wantCats = ['gants', 'casque', 'short', 'protege-tibias', 'bandes', 'accessoires'];
-    var picked = [], seen = {};
-    var blade = products.find(function (x) { return x.id === 'mat-blade-gold'; });
-    if (blade) { picked.push(blade); seen[blade.id] = 1; }
-    wantCats.forEach(function (c) {
-      var p = products.find(function (x) { return x.category === c && !seen[x.id]; });
-      if (p) { picked.push(p); seen[p.id] = 1; }
-    });
-    for (var i = 0; i < products.length && picked.length < 4; i++) {
-      if (!seen[products[i].id]) { picked.push(products[i]); seen[products[i].id] = 1; }
-    }
-    picked = picked.slice(0, 4);
+    var picked = products.slice(0, 4);
     if (!picked.length) { el.closest('section').hidden = true; return; }
 
     el.innerHTML = picked.map(function (p) {

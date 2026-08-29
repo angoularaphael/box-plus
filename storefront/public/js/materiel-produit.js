@@ -41,7 +41,7 @@
           <p class="product-ref">${p.reference ? `Réf. ${p.reference}` : ''}</p>
           <div class="materiel-price" id="productPrice">${p.price_label}${p.price_was_label ? ` <s class="materiel-price-was">${p.price_was_label}</s>` : ''}</div>
           <p id="productStock" class="stock-ok"></p>
-          ${hasVariants ? `<label>Variante<select id="variantSelect">${combos.map((c) => `<option value="${c.id}" data-price="${c.price_cents}" data-label="${c.price_label}" data-stock="${c.stock}">${c.label}</option>`).join('')}</select></label>` : ''}
+          ${hasVariants ? `<label>Variante<select id="variantSelect">${combos.map((c) => `<option value="${c.id}" data-price="${c.price_cents}" data-label="${c.price_label}" data-stock="${c.stock}" ${String(c.id) === String(p.default_variant_id) ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label>` : ''}
           <p class="product-pickup"><strong>Salle de retrait :</strong> ${p.pickup_note || 'choisissez votre salle au panier — retrait en club uniquement.'}</p>
           <label>Quantité<input type="number" id="qtyInput" min="1" value="1" max="99" /></label>
           <button type="button" class="btn block" id="addBtn">Ajouter au panier</button>
@@ -60,7 +60,7 @@
       if (!variantSelect) return combos[0];
       const opt = variantSelect.selectedOptions[0];
       return {
-        id: Number(variantSelect.value),
+      id: variantSelect.value,
         price_cents: Number(opt.dataset.price),
         price_label: opt.dataset.label,
         stock: Number(opt.dataset.stock),

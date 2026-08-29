@@ -2330,7 +2330,7 @@
           <strong>Offre :</strong> ${p?.display_name || p?.name || '—'}
           ${
             state.order?.addons?.blade?.status === 'paid'
-              ? `<br /><strong>Gants Blade 14oz :</strong> 17,90 € — retrait Minimes le jour même`
+              ? `<br /><strong>Gants Blade ${esc(state.order.addons.blade.color_label || '')} ${esc(state.order.addons.blade.size || '')} :</strong> 17,90 € — retrait Minimes le jour même`
               : ''
           }
         </div>
@@ -2355,20 +2355,33 @@
 
   function renderUpsell() {
     const u = state.order?.upsell?.product || {};
+    const sizes = u.sizes && u.sizes.length ? u.sizes : ['10oz', '12oz', '14oz'];
+    const colors = u.colors && u.colors.length
+      ? u.colors
+      : [
+          { id: 'noir-blanc', label: 'Noir / Blanc' },
+          { id: 'blanc-or', label: 'Blanc / Or' },
+        ];
+    const defSize = u.default_size || '12oz';
+    const defColor = u.default_color || 'noir-blanc';
     const img = u.image
-      ? `<img src="${u.image}" alt="" class="blade-upsell__img" />`
+      ? `<img src="${u.image}" alt="" class="blade-upsell__img" id="bladeUpsellImg" />`
       : '';
     stepContent.innerHTML = `
       <div class="blade-upsell">
         <p class="eyebrow" style="color:var(--bc-gold);margin-bottom:8px">Destockage rentrée</p>
-        <h1>Gants Blade 14oz à 17,90&nbsp;€</h1>
-        <p class="sub">Au lieu de 40&nbsp;€ — une paire pour bien démarrer. Paiement carte ou PayPal, sans quitter votre inscription.</p>
+        <h1>Gants Blade 10 / 12 / 14oz à 17,90&nbsp;€</h1>
+        <p class="sub">Au lieu de 40&nbsp;€ — Noir/Blanc ou Blanc/Or. Paiement carte ou PayPal, sans quitter votre inscription.</p>
         <article class="blade-upsell__card">
           ${img}
           <div>
-            <h2>${esc(u.name || 'Gants de boxe Blade Gold Blanc Noir')}</h2>
-            <p class="blade-upsell__price"><strong>17,90&nbsp;€</strong> <s>40,00&nbsp;€</s> · taille 14oz</p>
-            <p class="blade-upsell__pickup"><strong>Retrait :</strong> Boxing Center Toulouse Minimes uniquement, le jour même de la commande.<br />Lun–ven 12h–14h et 17h–21h15 · samedi 15h–18h.</p>
+            <h2>${esc(u.name || 'Gants de boxe Blade Noir et Blanc')}</h2>
+            <p class="blade-upsell__price"><strong>17,90&nbsp;€</strong> <s>40,00&nbsp;€</s></p>
+            <p class="blade-upsell__pickup"><strong>Retrait :</strong> Boxing Center Toulouse Minimes uniquement, le jour même de la commande.<br />Lun–ven 12h–14h et 17h–21h · samedi 15h–18h.</p>
+            <label for="bladeColor">Couleur</label>
+            <select id="bladeColor">${colors.map((c) => `<option value="${esc(c.id)}" ${c.id === defColor ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>
+            <label for="bladeSize">Taille</label>
+            <select id="bladeSize">${sizes.map((s) => `<option value="${esc(s)}" ${s === defSize ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
           </div>
         </article>
         <div class="blade-upsell__actions">
@@ -2378,13 +2391,33 @@
         </div>
       </div>`;
 
+    function selectedChoice() {
+      return {
+        color: document.getElementById('bladeColor')?.value || defColor,
+        size: document.getElementById('bladeSize')?.value || defSize,
+      };
+    }
+
+    document.getElementById('bladeColor')?.addEventListener('change', () => {
+      const color = colors.find((c) => c.id === selectedChoice().color);
+      const imgEl = document.getElementById('bladeUpsellImg');
+      if (imgEl && color?.image) imgEl.src = color.image;
+    });
+
     async function checkoutBlade(payMethod) {
       setMsg('Ouverture du paiement…');
+      const choice = selectedChoice();
       try {
         const res = await fetch(`/api/orders/${state.orderId}/upsell/checkout`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: state.token, bc_token: state.token, pay_method: payMethod }),
+          body: JSON.stringify({
+            token: state.token,
+            bc_token: state.token,
+            pay_method: payMethod,
+            size: choice.size,
+            color: choice.color,
+          }),
         });
         const data = await res.json().catch(() => ({}));
         if (data.mode === 'demo' || data.already_paid) {

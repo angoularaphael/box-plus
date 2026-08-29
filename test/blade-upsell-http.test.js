@@ -28,6 +28,8 @@ process.env.CAWL_API_KEY_ID = '';
 process.env.CAWL_API_SECRET = '';
 process.env.STRIPE_SECRET_KEY = '';
 process.env.BOXPLUS_ORDERS_DIR = path.join(os.tmpdir(), `boxplus-upsell-${Date.now()}`);
+process.env.BOXPLUS_MERCH_FILE = path.join(os.tmpdir(), `boxplus-merch-${Date.now()}.json`);
+process.env.BOXPLUS_MATERIEL_CATALOG_FILE = path.join(os.tmpdir(), `boxplus-catalog-${Date.now()}.json`);
 process.env.BOXPLUS_ORDERS_REMOTE = '0';
 const emptyTestEnv = path.join(os.tmpdir(), `boxplus-upsell-env-${Date.now()}`);
 fs.writeFileSync(emptyTestEnv, '');
@@ -174,6 +176,8 @@ test('tunnel inscription : écran Blade, Passer, puis dossier', async (t) => {
   assert.match(heading, /gants blade/i);
   assert.ok(await page.locator('#bladePayCard').isVisible());
   assert.ok(await page.locator('#bladePayPaypal').isVisible());
+  assert.ok(await page.locator('#bladeColor').isVisible());
+  assert.ok(await page.locator('#bladeSize').isVisible());
   assert.match(await page.locator('#bladePayCard').innerText(), /17,90/);
 
   await page.click('#bladeSkip');

@@ -19,23 +19,55 @@
     { value: 'États-Unis', label: 'États-Unis' },
   ];
 
-  pickupSelect.innerHTML =
-    '<option value="">Choisir une salle</option>' +
-    GYMS.map((g) => `<option value="${g.value}">${g.label}</option>`).join('');
+  let catalogProducts = [];
+
+  async function loadCatalog() {
+    try {
+      const res = await fetch('/api/materiel');
+      const data = await res.json();
+      catalogProducts = data.products || [];
+    } catch {
+      catalogProducts = [];
+    }
+  }
+
+  function gymsForCart(lines) {
+    const lists = lines
+      .map((l) => catalogProducts.find((p) => p.id === l.product_id))
+      .filter(Boolean)
+      .map((p) => p.pickup_gyms)
+      .filter((g) => Array.isArray(g) && g.length);
+    if (!lists.length) return GYMS.map((g) => g.value);
+    return lists.reduce((acc, list) => acc.filter((g) => list.includes(g)));
+  }
+
+  function fillPickup(lines) {
+    const gyms = gymsForCart(lines);
+    const sameDay = lines.some((l) => {
+      const p = catalogProducts.find((x) => x.id === l.product_id);
+      return p && p.pickup_same_day;
+    });
+    if (!gyms.length) {
+      pickupSelect.innerHTML =
+        '<option value="">Impossible — articles incompatibles pour un même retrait</option>';
+      pickupSelect.disabled = true;
+      return;
+    }
+    if (gyms.length === 1) {
+      const hint = sameDay ? ' (jour même)' : ' (sous 48h)';
+      pickupSelect.innerHTML = `<option value="${gyms[0]}" selected>${gyms[0]}${hint}</option>`;
+      pickupSelect.disabled = true;
+      return;
+    }
+    pickupSelect.disabled = false;
+    pickupSelect.innerHTML =
+      '<option value="">Choisir une salle</option>' +
+      gyms.map((g) => `<option value="${g}">${g}${sameDay ? '' : ' — sous 48h'}</option>`).join('');
+  }
 
   function render() {
     const lines = window.BCCart.read();
-    const bladeOnly = lines.some((l) => l.product_id === 'mat-blade-gold');
-    if (bladeOnly) {
-      pickupSelect.innerHTML =
-        '<option value="Barrière de Paris - Minimes" selected>Barrière de Paris - Minimes (jour même)</option>';
-      pickupSelect.disabled = true;
-    } else {
-      pickupSelect.disabled = false;
-      pickupSelect.innerHTML =
-        '<option value="">Choisir une salle</option>' +
-        GYMS.map((g) => `<option value="${g.value}">${g.label}</option>`).join('');
-    }
+    fillPickup(lines);
     if (!lines.length) {
       emptyEl.hidden = false;
       contentEl.hidden = true;
@@ -96,8 +128,8 @@
       last_name: fd.get('last_name'),
       email: fd.get('email'),
       phone: fd.get('phone'),
-      pickup_gym: pickupSelect.disabled
-        ? 'Barrière de Paris - Minimes'
+      pickup_gym: pickupSelect.disabled && pickupSelect.value
+        ? pickupSelect.value
         : fd.get('pickup_gym'),
     };
     const lines = window.BCCart.read().map((l) => ({
@@ -147,5 +179,5 @@
   });
 
   window.addEventListener('bccart:change', render);
-  render();
+  loadCatalog().then(render);
 })();
