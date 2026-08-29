@@ -69,7 +69,7 @@ const IMG = {
   sparring3: '/img/materiel/rentree/sparring/sparring-03.jpg',
   ergo: '/img/materiel/rentree/ergo/ergo-01.jpg',
   ergo2: '/img/materiel/rentree/ergo/ergo-02.jpg',
-  shell: '/img/materiel/rentree/shell/shell-01.jpg',
+  shell: '/img/materiel/rentree/shell/shell-officiel.jpg',
   shell2: '/img/materiel/rentree/shell/shell-02.jpg',
   one: '/img/materiel/rentree/one/one-official.jpg',
   oneShot: '/img/materiel/rentree/one/one-jr.png',

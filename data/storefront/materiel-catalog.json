@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-08-29T15:50:00.000Z",
+  "synced_at": "2026-08-29T16:00:00.000Z",
   "source": "rentree-2026",
   "count": 12,
   "categories": [
@@ -330,9 +330,9 @@
       ],
       "pickup_delay": "48h",
       "pickup_note": "Retrait : Ramonville, États-Unis ou Portet. Disponible dans la salle Boxing Center de votre choix sous 48h.",
-      "image": "/img/materiel/rentree/shell/shell-01.jpg",
+      "image": "/img/materiel/rentree/shell/shell-officiel.jpg",
       "images": [
-        "/img/materiel/rentree/shell/shell-01.jpg",
+        "/img/materiel/rentree/shell/shell-officiel.jpg",
         "/img/materiel/rentree/shell/shell-02.jpg"
       ],
       "description_short": "Gants MMA sparring The Shell. Tailles S à XL. 19,90 € au lieu de 40 €. Retrait Ramonville, États-Unis ou Portet sous 48h.",
@@ -348,7 +348,7 @@
           "price_cents": 1990,
           "price_label": "19,90 €",
           "stock": 5,
-          "image": "/img/materiel/rentree/shell/shell-01.jpg"
+          "image": "/img/materiel/rentree/shell/shell-officiel.jpg"
         },
         {
           "id": "shell-m",
@@ -360,7 +360,7 @@
           "price_cents": 1990,
           "price_label": "19,90 €",
           "stock": 5,
-          "image": "/img/materiel/rentree/shell/shell-01.jpg"
+          "image": "/img/materiel/rentree/shell/shell-officiel.jpg"
         },
         {
           "id": "shell-l",
@@ -372,7 +372,7 @@
           "price_cents": 1990,
           "price_label": "19,90 €",
           "stock": 5,
-          "image": "/img/materiel/rentree/shell/shell-01.jpg"
+          "image": "/img/materiel/rentree/shell/shell-officiel.jpg"
         },
         {
           "id": "shell-xl",
@@ -384,7 +384,7 @@
           "price_cents": 1990,
           "price_label": "19,90 €",
           "stock": 5,
-          "image": "/img/materiel/rentree/shell/shell-01.jpg"
+          "image": "/img/materiel/rentree/shell/shell-officiel.jpg"
         }
       ],
       "display_name": "Gants MMA « The SHELL »",
