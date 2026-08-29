@@ -190,12 +190,8 @@ function gymEssaiFollowupText(order) {
     .join('\n');
 }
 
-function offer29Url() {
-  return `${getStoreUrl()}/offre/29`;
-}
-
-function offer259Url() {
-  return `${getStoreUrl()}/offre/259`;
+function offersHubUrl() {
+  return `${getStoreUrl()}/offres-speciales`;
 }
 
 function customerNudges(order = {}) {
@@ -208,6 +204,18 @@ function firstNameOf(order = {}) {
   ).trim();
 }
 
+function displayFirstName(order = {}) {
+  const raw = firstNameOf(order);
+  if (!raw) return '';
+  return raw
+    .split(/([\s'-]+)/)
+    .map((part, i) => {
+      if (i % 2 === 1 || !part) return part;
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
+    .join('');
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replace(/&/g, '&amp;')
@@ -216,64 +224,67 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
+const OFFER_CAMPAIGN_BODY = `🚨 **DERNIÈRES PLACES POUR PROFITER DE L’OFFRE BOXING CENTER** 🥊
+
+**Il reste encore quelques places disponibles.**
+
+🔥 **29 € / 4 semaines**
+→ Sans engagement
+→ Sans préavis en cas de résiliation
+→ Accès aux **5 salles**, toutes les disciplines et tous les cours
+
+💥 **259 € / 12 mois**
+→ Au lieu de 400 €
+→ Possibilité de paiement **4 fois sans frais**
+→ Accès aux **5 salles**, toutes les disciplines et tous les cours
+
+⏳ **Profite de ton offre avant qu’il ne soit trop tard.**
+
+**Tout se passe ici :**
+__HUB_URL__
+
+🥊 **29€ sans engagement, 259€ pour 12 mois**`;
+
 function customerNudgeCopy(order, day = 1) {
-  const hello = firstNameOf(order) ? `Bonjour ${firstNameOf(order)},` : 'Bonjour,';
-  const url29 = offer29Url();
-  const url259 = offer259Url();
-  const bodies = {
-    1: {
-      subject: 'Votre séance d’essai Boxing Center — rejoignez le club',
-      text:
-        `${hello}\n\n` +
-        `Merci d’avoir testé la boxe chez Boxing Center. Pour continuer, deux formules :\n\n` +
-        `• 29 € / 4 semaines, sans engagement :\n${url29}\n\n` +
-        `• 259 € la saison (12 mois) :\n${url259}\n\n` +
-        `Cours illimités, 5 salles. On vous attend sur le plateau.\n\n` +
-        `Sportivement,\nL’équipe Boxing Center`,
-    },
-    2: {
-      subject: '4 semaines de boxe à 29 €, sans engagement',
-      text:
-        `${hello}\n\n` +
-        `Vous avez déjà mis les gants. Le plus simple pour enchaîner : 29 € les 4 semaines, sans engagement, toutes disciplines, les 5 salles.\n\n` +
-        `Je m’inscris — 29 € :\n${url29}\n\n` +
-        `Ou la saison à 259 € :\n${url259}\n\n` +
-        `Sportivement,\nL’équipe Boxing Center`,
-    },
-    3: {
-      subject: 'Dernier jour : 29 € ou 259 € chez Boxing Center',
-      text:
-        `${hello}\n\n` +
-        `Dernier rappel après votre séance d’essai. Pour rester au club :\n\n` +
-        `• Sans engagement — 29 € / 4 semaines :\n${url29}\n\n` +
-        `• Saison — 259 € :\n${url259}\n\n` +
-        `Inscription en ligne, en une minute.\n\n` +
-        `Sportivement,\nL’équipe Boxing Center`,
-    },
-  };
-  const pack = bodies[day] || bodies[1];
+  const name = displayFirstName(order);
+  const hubUrl = offersHubUrl();
+  const body = OFFER_CAMPAIGN_BODY.replace('__HUB_URL__', hubUrl);
+  const text = name ? `${name},\n\n${body}` : body;
+  const subject = name
+    ? `${name}, dernières places pour l’offre Boxing Center`
+    : 'Dernières places pour l’offre Boxing Center';
+  const hello = name ? `${escapeHtml(name)},` : '';
   const html = `<!DOCTYPE html>
 <html lang="fr">
 <body style="font-family:Arial,Helvetica,sans-serif;color:#0C1829;max-width:600px;margin:0 auto;padding:24px;background:#f4f5f7">
   <div style="background:#0C1829;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0">
     <p style="margin:0;letter-spacing:0.12em;font-size:12px;color:#C8902F;text-transform:uppercase">Boxing Center</p>
-    <h1 style="margin:8px 0 0;font-size:22px;line-height:1.3">${escapeHtml(pack.subject)}</h1>
+    <h1 style="margin:8px 0 0;font-size:22px;line-height:1.3">Dernières places pour l’offre</h1>
   </div>
   <div style="background:#fff;padding:24px;border-radius:0 0 12px 12px">
-    <p>${escapeHtml(hello)}</p>
-    <p>Après votre séance d’essai à 10&nbsp;€, rejoignez le club :</p>
-    <p style="text-align:center;margin:24px 0 12px">
-      <a href="${escapeHtml(url29)}" style="display:inline-block;background:#E8001C;color:#fff;text-decoration:none;font-weight:700;padding:14px 24px;border-radius:8px">Je m’inscris — 29 €</a>
+    ${hello ? `<p style="font-size:18px;font-weight:700;margin:0 0 16px">${hello}</p>` : ''}
+    <p style="margin:0 0 8px;font-size:18px;font-weight:800">🚨 Dernières places pour profiter de l’offre Boxing Center 🥊</p>
+    <p style="margin:0 0 20px"><strong>Il reste encore quelques places disponibles.</strong></p>
+    <div style="border:1px solid #eee;border-radius:12px;padding:16px 18px;margin:0 0 12px">
+      <p style="margin:0 0 8px;font-size:18px;font-weight:800">🔥 29 € / 4 semaines</p>
+      <p style="margin:0">→ Sans engagement<br/>→ Sans préavis en cas de résiliation<br/>→ Accès aux <strong>5 salles</strong>, toutes les disciplines et tous les cours</p>
+    </div>
+    <div style="border:1px solid #eee;border-radius:12px;padding:16px 18px;margin:0 0 20px">
+      <p style="margin:0 0 8px;font-size:18px;font-weight:800">💥 259 € / 12 mois</p>
+      <p style="margin:0">→ Au lieu de 400 €<br/>→ Possibilité de paiement <strong>4 fois sans frais</strong><br/>→ Accès aux <strong>5 salles</strong>, toutes les disciplines et tous les cours</p>
+    </div>
+    <p>⏳ <strong>Profite de ton offre avant qu’il ne soit trop tard.</strong></p>
+    <p style="text-align:center;margin:28px 0 8px">
+      <a href="${escapeHtml(hubUrl)}" style="display:inline-block;background:#E8001C;color:#fff;text-decoration:none;font-weight:700;padding:14px 24px;border-radius:8px">Voir les offres</a>
     </p>
-    <p style="text-align:center;margin:0 0 20px">
-      <a href="${escapeHtml(url259)}" style="color:#E8001C;font-weight:700">Ou la saison à 259 €</a>
+    <p style="text-align:center;font-size:13px;color:#64748b;margin:0 0 8px">
+      <a href="${escapeHtml(hubUrl)}" style="color:#E8001C">${escapeHtml(hubUrl)}</a>
     </p>
-    <p style="color:#334155;font-size:14px">Cours illimités, accès aux 5 salles. Inscription en ligne.</p>
-    <p style="margin:28px 0 0">Sportivement,<br/><strong>L’équipe Boxing Center</strong></p>
+    <p style="text-align:center;font-weight:800;margin:16px 0 0">🥊 29€ sans engagement, 259€ pour 12 mois</p>
   </div>
 </body>
 </html>`;
-  return { day, subject: pack.subject, text: pack.text, html, url29, url259 };
+  return { day, subject, text, html, hubUrl, name };
 }
 
 function classifyCustomerNudge(order, { now = Date.now(), membershipKeys } = {}) {
