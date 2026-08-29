@@ -309,7 +309,7 @@ async function sendCustomerNudge(
       out.email = await send({
         to: emailTo,
         subject: copy.subject,
-        html: copy.html,
+        html: copy.html || undefined,
         text: copy.emailText || copy.text,
         headers: copy.headers,
         attachments: copy.attachments,

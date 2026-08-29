@@ -22,17 +22,18 @@ test('relance essai client passe par Resend, pas Brevo', () => {
   assert.doesNotMatch(src, /sendEmailViaBrevo/);
 });
 
-test('mail campagne : List-Unsubscribe et objet sans urgence', () => {
+test('mail campagne : texte perso, pas de HTML pub', () => {
   const { buildOfferCampaignEmail } = require('../storefront/lib/campaign-email');
   const mail = buildOfferCampaignEmail({
     name: 'Guillaume',
     hubUrl: 'https://boutique.boxingcenter.fr/offres-speciales',
     email: 'boxingcenter31@gmail.com',
   });
-  assert.match(mail.subject, /il reste quelques places/);
-  assert.match(mail.headers['List-Unsubscribe-Post'], /One-Click/);
-  assert.match(mail.html, /Se désabonner/);
-  assert.doesNotMatch(mail.html, /🚨|DERNIÈRES PLACES|trop tard|Voir les offres|emails promotionnels/);
+  assert.match(mail.subject, /c’est Guillaume/);
+  assert.equal(mail.html, undefined);
+  assert.match(mail.emailText, /29 euros/);
+  assert.match(mail.emailText, /259 euros/);
+  assert.doesNotMatch(mail.emailText, /🚨|DERNIÈRES PLACES|Voir les offres/);
 });
 
 test('isConfigured suit RESEND_API_KEY', () => {

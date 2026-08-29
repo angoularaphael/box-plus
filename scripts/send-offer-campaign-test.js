@@ -41,7 +41,7 @@ process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || 'resend';
 process.env.EMAIL_UNSUBSCRIBE_BASE =
   process.env.EMAIL_UNSUBSCRIBE_BASE || 'https://manager.boxingcenter.fr';
 process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
-process.env.RESEND_SENDER_NAME = process.env.RESEND_SENDER_NAME || 'Boxing Center Toulouse';
+process.env.RESEND_SENDER_NAME = process.env.RESEND_SENDER_NAME || 'Guillaume';
 
 const { customerNudgeCopy } = require('../storefront/lib/essai-followup');
 const { sendWhatsAppMessage, toWhatsAppPhone } = require('../storefront/lib/whatsapp-bot');
@@ -75,7 +75,7 @@ async function main() {
   out.email = await sendEmailViaResend({
     to: TARGET.email,
     subject: copy.subject,
-    html: copy.html,
+    html: copy.html || undefined,
     text: copy.emailText || copy.text,
     headers: copy.headers,
     attachments: copy.attachments,
