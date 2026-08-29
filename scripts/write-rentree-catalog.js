@@ -73,7 +73,7 @@ const IMG = {
   shell2: '/img/materiel/rentree/shell/shell-02.jpg',
   one: '/img/materiel/rentree/one/one-official.jpg',
   oneShot: '/img/materiel/rentree/one/one-jr.png',
-  ensemble: '/img/materiel/rentree/ensemble/ensemble-01.png',
+  ensemble: '/img/materiel/rentree/ensemble/ensemble-officiel.jpg',
   ensemble2: '/img/materiel/rentree/ensemble/ensemble-02.png',
   ensembleNoir: '/img/materiel/rentree/ensemble/ensemble-noir.jpg',
   ensembleMetal: '/img/materiel/rentree/ensemble/ensemble-metal-01.jpg',

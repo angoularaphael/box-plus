@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-08-29T13:52:31.758Z",
+  "synced_at": "2026-08-29T15:50:00.000Z",
   "source": "rentree-2026",
   "count": 12,
   "categories": [
@@ -484,9 +484,9 @@
       ],
       "pickup_delay": "48h",
       "pickup_note": "Retrait : Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
-      "image": "/img/materiel/rentree/ensemble/ensemble-01.png",
+      "image": "/img/materiel/rentree/ensemble/ensemble-officiel.jpg",
       "images": [
-        "/img/materiel/rentree/ensemble/ensemble-01.png",
+        "/img/materiel/rentree/ensemble/ensemble-officiel.jpg",
         "/img/materiel/rentree/ensemble/ensemble-02.png",
         "/img/materiel/rentree/ensemble/ensemble-noir.jpg",
         "/img/materiel/rentree/ensemble/ensemble-metal-01.jpg"
@@ -504,7 +504,7 @@
           "price_cents": 2490,
           "price_label": "24,90 €",
           "stock": 5,
-          "image": "/img/materiel/rentree/ensemble/ensemble-01.png"
+          "image": "/img/materiel/rentree/ensemble/ensemble-officiel.jpg"
         },
         {
           "id": "ensemble-8-10",
@@ -516,7 +516,7 @@
           "price_cents": 2490,
           "price_label": "24,90 €",
           "stock": 5,
-          "image": "/img/materiel/rentree/ensemble/ensemble-01.png"
+          "image": "/img/materiel/rentree/ensemble/ensemble-officiel.jpg"
         },
         {
           "id": "ensemble-10-12",
@@ -528,7 +528,7 @@
           "price_cents": 2490,
           "price_label": "24,90 €",
           "stock": 5,
-          "image": "/img/materiel/rentree/ensemble/ensemble-01.png"
+          "image": "/img/materiel/rentree/ensemble/ensemble-officiel.jpg"
         }
       ],
       "display_name": "Ensemble enfants short et débardeur",
