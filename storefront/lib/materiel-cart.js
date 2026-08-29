@@ -13,6 +13,7 @@ const {
 } = require('./merch');
 const { sanitizePaymentId } = require('./security');
 const { isBladeProductId, recordBladeSale } = require('./blade-upsell');
+const { notifyMaterielSale } = require('./gym-materiel-managers');
 const { intersectPickupGyms } = require('./gym-pickup');
 const {
   ORDERS_DIR,
@@ -226,6 +227,7 @@ async function markMaterielPaidAsync(orderId, paymentMeta = {}) {
     if ((order.items || []).some((i) => isBladeProductId(i.product_id))) {
       recordBladeSale(order, { source: 'materiel' }).catch(() => {});
     }
+    notifyMaterielSale(order, { source: 'materiel' }).catch(() => {});
   } else {
     order.payment = { ...order.payment, ...paymentMeta };
   }

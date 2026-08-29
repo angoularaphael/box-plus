@@ -273,7 +273,6 @@ async function recordBladeSale(order, { source = 'upsell' } = {}) {
   merch.blade_rentree = state;
   await saveMerchAsync(merch);
 
-  const saleNotify = await notifyRemus(saleWhatsAppText(order, source));
   let alertNotify = { sent: false, skipped: true };
   if (hitAlert) {
     alertNotify = await notifyRemus(alertWhatsAppText(state.sold));
@@ -284,7 +283,7 @@ async function recordBladeSale(order, { source = 'upsell' } = {}) {
     alert: hitAlert,
     source,
   });
-  return { sold: state.sold, alert: hitAlert, saleNotify, alertNotify };
+  return { sold: state.sold, alert: hitAlert, alertNotify };
 }
 
 function overlayBladeStock(product) {
@@ -356,6 +355,8 @@ async function markBladeAddonPaid(order, paymentMeta = {}) {
   await saveOrderAsync(order);
   decrementBladeCatalogStock(parseBladeChoice(addon).variantId);
   await recordBladeSale(order, { source: paymentMeta.source || 'upsell' });
+  const { notifyMaterielSale } = require('./gym-materiel-managers');
+  await notifyMaterielSale(order, { source: paymentMeta.source || 'upsell' });
   return { order, already: false };
 }
 
