@@ -41,16 +41,17 @@ process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || 'resend';
 process.env.EMAIL_UNSUBSCRIBE_BASE =
   process.env.EMAIL_UNSUBSCRIBE_BASE || 'https://manager.boxingcenter.fr';
 process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
-process.env.RESEND_SENDER_NAME = process.env.RESEND_SENDER_NAME || 'Boxing Center';
+process.env.RESEND_SENDER_NAME = process.env.RESEND_SENDER_NAME || 'Boxing Center Toulouse';
 
 const { customerNudgeCopy } = require('../storefront/lib/essai-followup');
 const { sendWhatsAppMessage, toWhatsAppPhone } = require('../storefront/lib/whatsapp-bot');
 const { sendEmailViaResend, isConfigured, senderEmail } = require('../storefront/lib/resend-send');
 
+const emailArg = process.argv.find((a) => a.includes('@'));
 const TARGET = {
-  first_name: 'Guillaume',
+  first_name: process.env.TEST_FIRST_NAME || (emailArg ? '' : 'Guillaume'),
   last_name: 'Cessac',
-  email: 'boxingcenter31@gmail.com',
+  email: emailArg || 'boxingcenter31@gmail.com',
   phone: '0684698028',
 };
 

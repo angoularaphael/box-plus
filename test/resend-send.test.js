@@ -29,10 +29,10 @@ test('mail campagne : List-Unsubscribe et objet sans urgence', () => {
     hubUrl: 'https://boutique.boxingcenter.fr/offres-speciales',
     email: 'boxingcenter31@gmail.com',
   });
-  assert.match(mail.subject, /offres Boxing Center — 29 € ou 259 €/);
+  assert.match(mail.subject, /il reste quelques places/);
   assert.match(mail.headers['List-Unsubscribe-Post'], /One-Click/);
   assert.match(mail.html, /Se désabonner/);
-  assert.doesNotMatch(mail.html, /🚨|DERNIÈRES PLACES|trop tard/);
+  assert.doesNotMatch(mail.html, /🚨|DERNIÈRES PLACES|trop tard|Voir les offres|emails promotionnels/);
 });
 
 test('isConfigured suit RESEND_API_KEY', () => {
