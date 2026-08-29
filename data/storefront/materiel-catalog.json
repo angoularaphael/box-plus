@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-08-29T12:31:05.309Z",
+  "synced_at": "2026-08-29T12:54:31.665Z",
   "source": "rentree-2026",
   "count": 12,
   "categories": [
@@ -188,13 +188,12 @@
       "pickup_same_day": true,
       "pickup_hours": "12h–14h et 17h–21h15",
       "pickup_note": "Retrait uniquement à Minimes ou Portet-sur-Garonne, le jour même. 12h–14h et 17h–21h15.",
-      "image": "/img/materiel/rentree/pack/pack-keychain.png",
+      "image": "/img/materiel/rentree/pack/pack-enfant.jpg",
       "images": [
+        "/img/materiel/rentree/pack/pack-enfant.jpg",
         "/img/materiel/rentree/pack/pack-keychain.png",
         "/img/materiel/rentree/one/one-official.jpg",
-        "/img/materiel/rentree/one/one-jr.png",
-        "/img/materiel/rentree/mitaines/mitaine-01.jpg",
-        "/img/materiel/rentree/mitaines/mitaine-02.png"
+        "/img/materiel/rentree/mitaines/mitaine-01.jpg"
       ],
       "description_short": "Pack enfants : gants + mitaines + porte-clés sac de frappe Metal. Tailles 4/7 ans ou 8/15 ans. 25 € au lieu de 35 €. Retrait Minimes ou Portet le jour même.",
       "description": "Pack enfants Boxing Center : une paire de gants, des mitaines sous-gants et un porte-clés sac de frappe Metal.\n\nTailles : 4 à 7 ans, ou 8 à 15 ans.\n\nRetrait uniquement à Minimes ou Portet-sur-Garonne, le jour même. 12h–14h et 17h–21h15.",
@@ -209,7 +208,7 @@
           "price_cents": 2500,
           "price_label": "25,00 €",
           "stock": 15,
-          "image": "/img/materiel/rentree/pack/pack-keychain.png"
+          "image": "/img/materiel/rentree/pack/pack-enfant.jpg"
         },
         {
           "id": "pack-8-15",
@@ -221,7 +220,7 @@
           "price_cents": 2500,
           "price_label": "25,00 €",
           "stock": 15,
-          "image": "/img/materiel/rentree/pack/pack-keychain.png"
+          "image": "/img/materiel/rentree/pack/pack-enfant.jpg"
         }
       ],
       "display_name": "Pack enfants",

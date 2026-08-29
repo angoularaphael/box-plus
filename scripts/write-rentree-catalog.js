@@ -60,7 +60,8 @@ function product(p) {
 const IMG = {
   blade: '/img/materiel/rentree/blade/blade-nb-01.jpg',
   bladeOr: '/img/materiel/rentree/blade/blade-or-01.jpg',
-  pack: '/img/materiel/rentree/pack/pack-keychain.png',
+  pack: '/img/materiel/rentree/pack/pack-enfant.jpg',
+  packKeychain: '/img/materiel/rentree/pack/pack-keychain.png',
   mitaine: '/img/materiel/rentree/mitaines/mitaine-01.jpg',
   mitaine2: '/img/materiel/rentree/mitaines/mitaine-02.png',
   sparring: '/img/materiel/rentree/sparring/sparring-01.jpg',
@@ -154,7 +155,7 @@ const products = [
     pickup_hours: '12h–14h et 17h–21h15',
     pickup_note: NOTE_PACK,
     image: IMG.pack,
-    images: [IMG.pack, IMG.one, IMG.oneShot, IMG.mitaine, IMG.mitaine2],
+    images: [IMG.pack, IMG.packKeychain, IMG.one, IMG.mitaine],
     description_short:
       'Pack enfants : gants + mitaines + porte-clés sac de frappe Metal. Tailles 4/7 ans ou 8/15 ans. 25 € au lieu de 35 €. Retrait Minimes ou Portet le jour même.',
     description:

@@ -226,6 +226,14 @@ async function main() {
     console.log('copied 4m wraps photo → bandes-250-01.jpg');
   }
 
+  const desktopPack = path.join(process.env.USERPROFILE || '', 'Desktop', 'pack enfant.jpeg');
+  if (fs.existsSync(desktopPack)) {
+    const destDir = path.join(DEST, 'pack');
+    fs.mkdirSync(destDir, { recursive: true });
+    fs.copyFileSync(desktopPack, path.join(destDir, 'pack-enfant.jpg'));
+    console.log('copied Desktop pack enfant.jpeg → pack/pack-enfant.jpg');
+  }
+
   const shots = fs.existsSync(ASSETS) ? fs.readdirSync(ASSETS).filter((f) => f.endsWith('.png')) : [];
   const userShots = [
     ['image-e7c8cb56', 'pack', 'pack-keychain.png'],
