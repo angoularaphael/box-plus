@@ -324,11 +324,11 @@ async function sendCustomerNudge(
   if (emailTo) {
     try {
       const send = sendEmail || (async (payload) => {
-        const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
-        if (!isConfigured()) return { sent: false, reason: 'brevo_not_configured' };
-        const result = await sendEmailViaBrevo(payload);
-        if (!result) return { sent: false, reason: 'brevo_not_configured' };
-        return { sent: true, via: result.via || 'brevo' };
+        const { sendEmailViaResend, isConfigured } = require('./resend-send');
+        if (!isConfigured()) return { sent: false, reason: 'resend_not_configured' };
+        const result = await sendEmailViaResend(payload);
+        if (!result) return { sent: false, reason: 'resend_not_configured' };
+        return { sent: true, via: result.via || 'resend' };
       });
       out.email = await send({
         to: emailTo,
@@ -338,7 +338,7 @@ async function sendCustomerNudge(
       });
     } catch (err) {
       out.email = { sent: false, error: err.message };
-      logWarn('Email relance essai 10 €', { order_id: order.order_id, error: err.message });
+      logWarn('Email Relance offre 29/259 (Resend)', { order_id: order.order_id, error: err.message });
     }
   } else {
     out.email = { sent: false, reason: 'no_email' };
