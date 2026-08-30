@@ -5,7 +5,7 @@
  * Mail = Resend (no-reply@boxingcenter.fr). WhatsApp = bot boutique.
  *
  *   node scripts/send-offer-campaign-test.js           # mail seulement
- *   node scripts/send-offer-campaign-test.js --wa      # mail + WhatsApp
+ *   node scripts/send-offer-campaign-test.js --marque linuxcam05@gmail.com
  */
 const fs = require('fs');
 const path = require('path');
@@ -41,7 +41,6 @@ process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || 'resend';
 process.env.EMAIL_UNSUBSCRIBE_BASE =
   process.env.EMAIL_UNSUBSCRIBE_BASE || 'https://manager.boxingcenter.fr';
 process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
-process.env.RESEND_SENDER_NAME = 'David';
 process.env.RESEND_REPLY_TO = 'boxingcentertls@gmail.com';
 
 const { customerNudgeCopy } = require('../storefront/lib/essai-followup');
@@ -57,6 +56,9 @@ const TARGET = {
 };
 
 const WITH_WA = process.argv.includes('--wa');
+const WITH_BRAND = process.argv.includes('--marque') || process.argv.includes('--brand');
+const FROM_NAME = WITH_BRAND ? 'David de Boxing Center' : 'David';
+process.env.RESEND_SENDER_NAME = FROM_NAME;
 
 async function main() {
   const copy = customerNudgeCopy({ customer_short: TARGET }, 1);
@@ -64,7 +66,7 @@ async function main() {
     name: copy.name,
     subject: copy.subject,
     hubUrl: copy.hubUrl,
-    fromName: copy.fromName,
+    fromName: FROM_NAME,
     from: senderEmail(),
     whatsapp: WITH_WA ? null : { skipped: true },
     email: null,
@@ -81,7 +83,7 @@ async function main() {
     text: copy.emailText || copy.text,
     headers: copy.headers,
     attachments: copy.attachments,
-    fromName: copy.fromName,
+    fromName: FROM_NAME,
     replyTo: copy.replyTo || 'boxingcentertls@gmail.com',
   });
 
