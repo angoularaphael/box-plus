@@ -249,7 +249,7 @@ const products = [
     price_cents: 1990,
     price_was_cents: 4000,
     category: 'gants',
-    category_label: 'Gants de boxe',
+    category_label: 'Gants de MMA',
     category_id: 17,
     sort_order: 5,
     pickup_gyms: G_SHELL,

@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-08-30T09:59:00.000Z",
+  "synced_at": "2026-08-30T10:43:00.000Z",
   "source": "rentree-2026",
   "count": 12,
   "categories": [
@@ -320,7 +320,7 @@
       "price_cents": 1990,
       "price_was_cents": 4000,
       "category": "gants",
-      "category_label": "Gants de boxe",
+      "category_label": "Gants de MMA",
       "category_id": 17,
       "sort_order": 5,
       "pickup_gyms": [
