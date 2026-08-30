@@ -56,8 +56,7 @@ const TARGET = {
 };
 
 const WITH_WA = process.argv.includes('--wa');
-const WITH_BRAND = process.argv.includes('--marque') || process.argv.includes('--brand');
-const FROM_NAME = WITH_BRAND ? 'David de Boxing Center' : 'David';
+const FROM_NAME = 'David de Boxing Center';
 process.env.RESEND_SENDER_NAME = FROM_NAME;
 
 async function main() {
