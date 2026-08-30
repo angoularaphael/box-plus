@@ -871,6 +871,18 @@
       if (t) { enrichirTableau(t); surveillerVide(t, s); paginer(t); }
     });
 
+    /* Catalogue, ventes matériel, stats : ces tableaux sont (re)créés par
+       admin.js. Sans observateur, ils restent à dix colonnes sur téléphone. */
+    const enrichirTous = () => {
+      $$("table.admin-table, table.pan-table").forEach((t) => enrichirTableau(t));
+    };
+    let enrichTimer = 0;
+    new MutationObserver(() => {
+      clearTimeout(enrichTimer);
+      enrichTimer = setTimeout(enrichirTous, 50);
+    }).observe(panneau, { childList: true, subtree: true });
+    enrichirTous();
+
     /* La route d'arrivée : on respecte le fragment s'il en porte un
        (les anciens liens /admin/#contracts doivent continuer de marcher). */
     const frag = (location.hash || "").replace("#", "");

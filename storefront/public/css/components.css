@@ -1404,7 +1404,7 @@ body:has(#adminPanel:not([hidden])) {
 
 .admin-featured-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
   gap: 12px;
 }
 
@@ -2753,7 +2753,7 @@ video.bg-video.is-playing {
 /* ── Édition inline matériel ── */
 .mat-edit-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr));
   gap: 10px;
 }
 .mat-edit-form label { font-size: 12px; color: var(--bc-muted); display: block; margin-bottom: 4px; }
@@ -2792,8 +2792,8 @@ video.bg-video.is-playing {
      Le patron perdait le NOM de ses adhérents sur son propre téléphone,
      c'est-à-dire l'information pour laquelle il ouvrait la page.
      On ne masque plus que la colonne visée, dans le seul tableau visé. */
-  #materielTable th:nth-child(2),
-  #materielTable td:nth-child(2) {
+  #materielTable:not(.pan-table--cartes) th:nth-child(2),
+  #materielTable:not(.pan-table--cartes) td:nth-child(2) {
     display: none;
   }
   .stats-kpi-grid {
@@ -2808,6 +2808,17 @@ video.bg-video.is-playing {
   }
   .admin-search {
     width: 100% !important;
+    min-width: 0;
+  }
+  .admin-date-filter {
+    width: 100%;
+    white-space: normal;
+  }
+  .admin-date-filter .admin-search {
+    width: 100%;
+  }
+  .admin-input-inline {
+    min-width: 0;
   }
 }
 
