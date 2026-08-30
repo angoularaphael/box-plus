@@ -112,19 +112,31 @@ test('validateCustomerForm exige coordonnées et retrait', () => {
   );
 });
 
-test('retrait Blade forcé Minimes, incompatible avec The SHELL', () => {
+test('retrait Blade Minimes ou Saint-Cyprien, incompatible avec The SHELL', () => {
   const bladeItems = [{ product_id: 'mat-blade-gold' }];
-  assert.deepEqual(allowedPickupGyms(bladeItems), ['Barrière de Paris - Minimes']);
+  const gyms = allowedPickupGyms(bladeItems);
+  assert.equal(gyms.length, 2);
+  assert.ok(gyms.includes('Barrière de Paris - Minimes'));
+  assert.ok(gyms.includes('Toulouse St-Cyprien'));
 
-  const form = {
+  const bad = {
     first_name: 'Jean',
     last_name: 'Dupont',
     email: 'jean@example.com',
     phone: '0612345678',
     pickup_gym: 'Ramonville',
   };
-  assert.equal(validateCustomerForm(form, bladeItems).length, 0);
-  assert.equal(form.pickup_gym, 'Barrière de Paris - Minimes');
+  assert.ok(validateCustomerForm(bad, bladeItems).some((e) => /uniquement/i.test(e)));
+
+  const ok = {
+    first_name: 'Jean',
+    last_name: 'Dupont',
+    email: 'jean@example.com',
+    phone: '0612345678',
+    pickup_gym: 'Toulouse St-Cyprien',
+  };
+  assert.equal(validateCustomerForm(ok, bladeItems).length, 0);
+  assert.equal(ok.pickup_gym, 'Toulouse St-Cyprien');
 
   const mixed = validateCustomerForm(
     {

@@ -19,6 +19,7 @@ const {
   PICKUP_HOURS,
   PICKUP_NOTE,
   MINIMES_PICKUP,
+  ST_CYPRIEN_PICKUP,
   adultAboEligible,
   shouldOfferUpsell,
 } = require('../storefront/lib/blade-upsell');
@@ -39,14 +40,17 @@ test('cahier §prix : 17,90 € au lieu de 40 €', () => {
   assert.equal(BLADE_PRODUCT.price_was_label, '40,00 €');
 });
 
-test('cahier §retrait : Minimes, jour même, horaires lun–ven 12h–14h et 17h–21h, samedi 15h–18h', () => {
+test('cahier §retrait : Minimes ou Saint-Cyprien, jour même, horaires lun–ven 12h–14h et 17h–21h, samedi 15h–18h', () => {
   assert.equal(MINIMES_PICKUP, 'Barrière de Paris - Minimes');
-  assert.equal(BLADE_PRODUCT.pickup_locked, MINIMES_PICKUP);
+  assert.equal(ST_CYPRIEN_PICKUP, 'Toulouse St-Cyprien');
+  assert.deepEqual(BLADE_PRODUCT.pickup_gyms, [MINIMES_PICKUP, ST_CYPRIEN_PICKUP]);
+  assert.equal(BLADE_PRODUCT.pickup_locked, null);
   assert.equal(BLADE_PRODUCT.pickup_same_day, true);
   assert.match(PICKUP_HOURS, /12h–14h/);
   assert.match(PICKUP_HOURS, /17h–21h/);
   assert.match(PICKUP_HOURS, /samedi 15h–18h/i);
   assert.match(PICKUP_NOTE, /Minimes/);
+  assert.match(PICKUP_NOTE, /Saint-Cyprien/);
   assert.match(PICKUP_NOTE, /jour même/);
 });
 

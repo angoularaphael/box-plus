@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-08-30T10:43:00.000Z",
+  "synced_at": "2026-08-30T11:01:00.000Z",
   "source": "rentree-2026",
   "count": 12,
   "categories": [
@@ -55,19 +55,19 @@
       "destockage": true,
       "default_variant_id": "blade-noir-blanc-12oz",
       "pickup_gyms": [
-        "Barrière de Paris - Minimes"
+        "Barrière de Paris - Minimes",
+        "Toulouse St-Cyprien"
       ],
-      "pickup_locked": "Barrière de Paris - Minimes",
       "pickup_same_day": true,
       "pickup_hours": "Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h.",
-      "pickup_note": "Retrait uniquement à Boxing Center Toulouse Minimes. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Possibilité de retrait dès le jour même.",
+      "pickup_note": "Retrait à Boxing Center Toulouse Minimes ou Saint-Cyprien. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Possibilité de retrait dès le jour même.",
       "image": "/img/materiel/rentree/blade/blade-nb-01.jpg",
       "images": [
         "/img/materiel/rentree/blade/blade-nb-01.jpg",
         "/img/materiel/rentree/blade/blade-nb-02.jpg"
       ],
-      "description_short": "Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Possibilité de retrait dès le jour même à Minimes.",
-      "description": "Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir et Blanc. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\nRetrait uniquement à Boxing Center Toulouse Minimes. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Possibilité de retrait dès le jour même.",
+      "description_short": "Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Possibilité de retrait dès le jour même à Minimes ou Saint-Cyprien.",
+      "description": "Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir et Blanc. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\nRetrait à Boxing Center Toulouse Minimes ou Saint-Cyprien. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Possibilité de retrait dès le jour même.",
       "combinations": [
         {
           "id": "blade-noir-blanc-10oz",
@@ -75,7 +75,7 @@
           "attributes": {
             "Couleur": "Noir / Blanc",
             "Taille": "10oz",
-            "Lieu retrait produits": "Barrière de Paris - Minimes"
+            "Lieu retrait produits": "Minimes ou Saint-Cyprien"
           },
           "reference": "MBGAN205N10",
           "price_cents": 1790,
@@ -93,7 +93,7 @@
           "attributes": {
             "Couleur": "Noir / Blanc",
             "Taille": "12oz",
-            "Lieu retrait produits": "Barrière de Paris - Minimes"
+            "Lieu retrait produits": "Minimes ou Saint-Cyprien"
           },
           "reference": "MBGAN205N12",
           "price_cents": 1790,
@@ -111,7 +111,7 @@
           "attributes": {
             "Couleur": "Noir / Blanc",
             "Taille": "14oz",
-            "Lieu retrait produits": "Barrière de Paris - Minimes"
+            "Lieu retrait produits": "Minimes ou Saint-Cyprien"
           },
           "reference": "MBGAN205N14",
           "price_cents": 1790,

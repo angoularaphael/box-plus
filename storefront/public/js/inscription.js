@@ -2330,7 +2330,7 @@
           <strong>Offre :</strong> ${p?.display_name || p?.name || '—'}
           ${
             state.order?.addons?.blade?.status === 'paid'
-              ? `<br /><strong>Gants Blade ${esc(state.order.addons.blade.color_label || '')} ${esc(state.order.addons.blade.size || '')} :</strong> 17,90 € — possibilité de retrait dès le jour même à Minimes`
+              ? `<br /><strong>Gants Blade ${esc(state.order.addons.blade.color_label || '')} ${esc(state.order.addons.blade.size || '')} :</strong> 17,90 € — possibilité de retrait dès le jour même à ${esc(/cyprien/i.test(state.order.addons.blade.pickup_gym || '') ? 'Saint-Cyprien' : 'Minimes')}`
               : ''
           }
         </div>
@@ -2361,6 +2361,13 @@
       : [{ id: 'noir-blanc', label: 'Noir / Blanc' }];
     const defSize = u.default_size || '12oz';
     const defColor = u.default_color || colors[0]?.id || 'noir-blanc';
+    const pickupGyms = u.pickup_gyms && u.pickup_gyms.length
+      ? u.pickup_gyms
+      : ['Barrière de Paris - Minimes', 'Toulouse St-Cyprien'];
+    const gymSlug = state.order?.customer_full?.gym || '';
+    const defPickup = gymSlug === 'st-cyprien'
+      ? (pickupGyms.find((g) => /cyprien/i.test(g)) || pickupGyms[1] || pickupGyms[0])
+      : (pickupGyms.find((g) => /minimes/i.test(g)) || pickupGyms[0]);
     const showColor = colors.length > 1;
     const img = u.image
       ? `<img src="${u.image}" alt="" class="blade-upsell__img" id="bladeUpsellImg" />`
@@ -2375,11 +2382,13 @@
           <div>
             <h2>${esc(u.name || 'Gants de boxe Blade Noir et Blanc')}</h2>
             <p class="blade-upsell__price"><strong>17,90&nbsp;€</strong> <s>40,00&nbsp;€</s></p>
-            <p class="blade-upsell__pickup"><strong>Retrait :</strong> Boxing Center Toulouse Minimes uniquement. Possibilité de retrait dès le jour même.<br />Lun–ven 12h–14h et 17h–21h · samedi 15h–18h.</p>
+            <p class="blade-upsell__pickup"><strong>Retrait :</strong> Boxing Center Toulouse Minimes ou Saint-Cyprien. Possibilité de retrait dès le jour même.<br />Lun–ven 12h–14h et 17h–21h · samedi 15h–18h.</p>
             ${showColor ? `<label for="bladeColor">Couleur</label>
             <select id="bladeColor">${colors.map((c) => `<option value="${esc(c.id)}" ${c.id === defColor ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>` : ''}
             <label for="bladeSize">Taille</label>
             <select id="bladeSize">${sizes.map((s) => `<option value="${esc(s)}" ${s === defSize ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
+            <label for="bladePickup">Salle de retrait</label>
+            <select id="bladePickup">${pickupGyms.map((g) => `<option value="${esc(g)}" ${g === defPickup ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>
           </div>
         </article>
         <div class="blade-upsell__actions">
@@ -2393,6 +2402,7 @@
       return {
         color: document.getElementById('bladeColor')?.value || defColor,
         size: document.getElementById('bladeSize')?.value || defSize,
+        pickup_gym: document.getElementById('bladePickup')?.value || defPickup,
       };
     }
 
@@ -2415,6 +2425,7 @@
             pay_method: payMethod,
             size: choice.size,
             color: choice.color,
+            pickup_gym: choice.pickup_gym,
           }),
         });
         const data = await res.json().catch(() => ({}));

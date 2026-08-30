@@ -12,8 +12,10 @@ const BLADE_WAS_CENTS = 4000;
 const ALERT_AT = 10;
 const REMUS_PHONE = '0767919166';
 const MINIMES_PICKUP = 'Barrière de Paris - Minimes';
+const ST_CYPRIEN_PICKUP = 'Toulouse St-Cyprien';
+const BLADE_PICKUP_GYMS = [MINIMES_PICKUP, ST_CYPRIEN_PICKUP];
 const PICKUP_HOURS = 'Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h.';
-const PICKUP_NOTE = `Retrait uniquement à Boxing Center Toulouse Minimes. ${PICKUP_HOURS} Possibilité de retrait dès le jour même.`;
+const PICKUP_NOTE = `Retrait à Boxing Center Toulouse Minimes ou Saint-Cyprien. ${PICKUP_HOURS} Possibilité de retrait dès le jour même.`;
 
 const BLADE_SIZES = ['10oz', '12oz', '14oz'];
 const BLADE_COLORS = [
@@ -36,7 +38,7 @@ function bladeCombinations() {
     attributes: {
       Couleur: color.label,
       Taille: size,
-      'Lieu retrait produits': MINIMES_PICKUP,
+      'Lieu retrait produits': 'Minimes ou Saint-Cyprien',
     },
     reference: `MBGAN205N${size.replace('oz', '')}`,
     price_cents: BLADE_PRICE_CENTS,
@@ -62,7 +64,7 @@ const BLADE_PRODUCT = {
   category_label: 'Déstockage',
   category_id: 26,
   description_short:
-    'Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Possibilité de retrait dès le jour même à Minimes.',
+    'Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Possibilité de retrait dès le jour même à Minimes ou Saint-Cyprien.',
   description:
     'Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir et Blanc. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\n' +
     PICKUP_NOTE,
@@ -72,8 +74,8 @@ const BLADE_PRODUCT = {
     '/img/materiel/rentree/blade/blade-nb-02.jpg',
   ],
   combinations: bladeCombinations(),
-  pickup_gyms: [MINIMES_PICKUP],
-  pickup_locked: MINIMES_PICKUP,
+  pickup_gyms: BLADE_PICKUP_GYMS,
+  pickup_locked: null,
   pickup_same_day: true,
   pickup_hours: PICKUP_HOURS,
   pickup_note: PICKUP_NOTE,
@@ -91,6 +93,19 @@ const BLADE_PRODUCT = {
   requires_payment: true,
   sale_type: 'materiel',
 };
+
+function normalizeBladePickupGym(raw, order) {
+  const s = String(raw || '').trim().toLowerCase();
+  if (/st-?cyprien|saint[-\s]?cyprien/.test(s)) return ST_CYPRIEN_PICKUP;
+  if (/minimes/.test(s)) return MINIMES_PICKUP;
+  const gym = String(order?.customer_full?.gym || order?.gym || '').toLowerCase();
+  if (gym === 'st-cyprien') return ST_CYPRIEN_PICKUP;
+  return MINIMES_PICKUP;
+}
+
+function bladePickupShort(gym) {
+  return /cyprien/i.test(String(gym || '')) ? 'Saint-Cyprien' : 'Minimes';
+}
 
 function isBladeProductId(id) {
   const key = String(id || '').toLowerCase();
@@ -162,7 +177,7 @@ function publicProduct() {
     image: BLADE_PRODUCT.image,
     pickup_note: PICKUP_NOTE,
     pickup_hours: PICKUP_HOURS,
-    pickup_gym: MINIMES_PICKUP,
+    pickup_gyms: BLADE_PICKUP_GYMS,
   };
 }
 
@@ -188,6 +203,7 @@ function ensureAddon(order, choice = {}) {
     color: choice.color || order.addons.blade?.color,
     variant_id: choice.variant_id || order.addons.blade?.variant_id,
   });
+  const pickupGym = normalizeBladePickupGym(choice.pickup_gym, order);
   if (!order.addons.blade) {
     order.addons.blade = {
       product_id: BLADE_ID,
@@ -197,14 +213,15 @@ function ensureAddon(order, choice = {}) {
       color_label: parsed.colorLabel,
       variant_id: parsed.variantId,
       price_cents: BLADE_PRICE_CENTS,
-      pickup_gym: MINIMES_PICKUP,
+      pickup_gym: pickupGym,
       status: 'pending',
     };
-  } else if (choice.size || choice.color || choice.variant_id) {
+  } else if (choice.size || choice.color || choice.variant_id || choice.pickup_gym) {
     order.addons.blade.size = parsed.size;
     order.addons.blade.color = parsed.color;
     order.addons.blade.color_label = parsed.colorLabel;
     order.addons.blade.variant_id = parsed.variantId;
+    if (choice.pickup_gym) order.addons.blade.pickup_gym = pickupGym;
   }
   return order.addons.blade;
 }
@@ -241,7 +258,7 @@ function saleWhatsAppText(order, source) {
     `Nom : ${c.last_name || '—'}`,
     `Tél : ${c.phone || '—'}`,
     `Produit : Gants Blade ${choice.colorLabel} ${choice.size} — 17,90 €`,
-    `Retrait : Minimes, possibilité de retrait dès le jour même (${PICKUP_HOURS})`,
+    `Retrait : ${bladePickupShort(order.addons?.blade?.pickup_gym)}, possibilité de retrait dès le jour même (${PICKUP_HOURS})`,
     `Réf. : ${ref}${source ? ` (${source})` : ''}`,
   ].join('\n');
 }
@@ -377,6 +394,8 @@ module.exports = {
   BLADE_SIZES,
   BLADE_COLORS,
   MINIMES_PICKUP,
+  ST_CYPRIEN_PICKUP,
+  BLADE_PICKUP_GYMS,
   PICKUP_HOURS,
   PICKUP_NOTE,
   ALERT_AT,

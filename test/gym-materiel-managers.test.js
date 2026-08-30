@@ -92,8 +92,8 @@ test('The SHELL à Ramonville → Pascal ; à États-Unis → Sébastien', () =>
   assert.equal(resolveManagerForPickup('États-Unis').phone, '0760941608');
 });
 
-test('upsell Blade → toujours Remus / Minimes, pas la salle d’inscription', () => {
-  const order = {
+test('upsell Blade à Minimes → Remus ; à Saint-Cyprien → DaDi', () => {
+  const minimes = {
     order_id: 'BC-abo',
     gym: 'portet',
     customer_full: { first_name: 'Paul', last_name: 'Durand', phone: '0600000000', gym: 'portet' },
@@ -108,13 +108,27 @@ test('upsell Blade → toujours Remus / Minimes, pas la salle d’inscription', 
       },
     },
   };
-  assert.equal(pickupGymFromOrder(order, 'upsell'), 'Barrière de Paris - Minimes');
-  assert.equal(resolveManagerForPickup(pickupGymFromOrder(order, 'upsell')).name, 'Remus');
-  const text = saleWhatsAppText(order, 'upsell');
-  assert.match(text, /Blade/);
-  assert.match(text, /Minimes/);
-  assert.doesNotMatch(text, /Portet/);
-  assert.match(text, /jour même/);
+  assert.equal(pickupGymFromOrder(minimes, 'upsell'), 'Barrière de Paris - Minimes');
+  assert.equal(resolveManagerForPickup(pickupGymFromOrder(minimes, 'upsell')).name, 'Remus');
+  const textMinimes = saleWhatsAppText(minimes, 'upsell');
+  assert.match(textMinimes, /Blade/);
+  assert.match(textMinimes, /Minimes/);
+  assert.doesNotMatch(textMinimes, /Portet/);
+  assert.match(textMinimes, /jour même/);
+
+  const cyprien = {
+    ...minimes,
+    gym: 'st-cyprien',
+    customer_full: { ...minimes.customer_full, gym: 'st-cyprien' },
+    addons: {
+      blade: { ...minimes.addons.blade, pickup_gym: 'Toulouse St-Cyprien' },
+    },
+  };
+  assert.equal(pickupGymFromOrder(cyprien, 'upsell'), 'Toulouse St-Cyprien');
+  assert.equal(resolveManagerForPickup(pickupGymFromOrder(cyprien, 'upsell')).name, 'DaDi');
+  const textCyprien = saleWhatsAppText(cyprien, 'upsell');
+  assert.match(textCyprien, /St-Cyprien|Saint-Cyprien|Cyprien/);
+  assert.doesNotMatch(textCyprien, /Minimes/);
 });
 
 test('live (production) envoie bien au manager — la démo seule est ignorée', () => {

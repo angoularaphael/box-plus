@@ -12,11 +12,12 @@ const ETATS_UNIS = 'États-Unis';
 const G3 = [MINIMES, PORTET, ST_CYPRIEN];
 const G_SHELL = [RAMONVILLE, ETATS_UNIS, PORTET];
 const G_PACK = [MINIMES, PORTET];
+const G_BLADE = [MINIMES, ST_CYPRIEN];
 
 const NOTE_48H =
   'Disponible dans la salle Boxing Center de votre choix sous 48h.';
 const NOTE_BLADE =
-  'Retrait uniquement à Boxing Center Toulouse Minimes. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Possibilité de retrait dès le jour même.';
+  'Retrait à Boxing Center Toulouse Minimes ou Saint-Cyprien. Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h. Possibilité de retrait dès le jour même.';
 const NOTE_PACK =
   'Retrait uniquement à Minimes ou Portet-sur-Garonne, possibilité de retrait dès le jour même. 12h–14h et 17h–21h15.';
 
@@ -106,15 +107,14 @@ const products = [
     featured_first: true,
     destockage: true,
     default_variant_id: 'blade-noir-blanc-12oz',
-    pickup_gyms: [MINIMES],
-    pickup_locked: MINIMES,
+    pickup_gyms: G_BLADE,
     pickup_same_day: true,
     pickup_hours: 'Lundi–vendredi 12h–14h et 17h–21h ; samedi 15h–18h.',
     pickup_note: NOTE_BLADE,
     image: IMG.blade,
     images: [IMG.blade, '/img/materiel/rentree/blade/blade-nb-02.jpg'],
     description_short:
-      'Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Possibilité de retrait dès le jour même à Minimes.',
+      'Gants Blade destockage rentrée 2026 — coloris Noir et Blanc. Tailles 10, 12 et 14oz. 17,90 € au lieu de 40 €. Possibilité de retrait dès le jour même à Minimes ou Saint-Cyprien.',
     description:
       'Gants de boxe Blade (Metal Boxe) en destockage rentrée 2026. Coloris Noir et Blanc. PU haute qualité, mousse EVA, velcro large, aération WindTec. Tailles 10oz, 12oz et 14oz.\n\n' +
       NOTE_BLADE,
@@ -122,7 +122,7 @@ const products = [
       combo({
         id: `blade-noir-blanc-${size}`,
         label: size,
-        attrs: { Couleur: 'Noir / Blanc', Taille: size, 'Lieu retrait produits': MINIMES },
+        attrs: { Couleur: 'Noir / Blanc', Taille: size, 'Lieu retrait produits': 'Minimes ou Saint-Cyprien' },
         ref: `MBGAN205N${size.replace('oz', '')}`,
         cents: 1790,
         stock: 10,

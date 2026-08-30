@@ -2797,7 +2797,7 @@ function createApp() {
         color: req.body?.color,
         variant_id: req.body?.variant_id,
       });
-      const addon = ensureAddon(order, choice);
+      const addon = ensureAddon(order, { ...choice, pickup_gym: req.body?.pickup_gym });
       const bladeLabel = `Gants Blade ${choice.colorLabel} ${choice.size}`;
       const gym = order.customer_full?.gym || 'minimes';
       const payMethod = String(req.body?.pay_method || 'card').toLowerCase();
