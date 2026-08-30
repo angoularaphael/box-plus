@@ -149,11 +149,11 @@ test('relance client J+0 / J+1 / J+2 puis stop à J+3', () => {
   assert.match(copy.text, /29 € \/ 4 semaines/);
   assert.match(copy.text, /259 € \/ 12 mois/);
   assert.match(copy.text, /\/offres-speciales/);
-  assert.match(copy.subject, /^Camille, offres Boxing Center/);
-  assert.ok(copy.html);
-  assert.match(copy.emailText, /Voir les offres/);
-  assert.ok(copy.headers);
-  assert.ok(copy.headers['List-Unsubscribe']);
+  assert.match(copy.subject, /^Camille, c’est David/);
+  assert.equal(copy.html, undefined);
+  assert.match(copy.emailText, /Salut Camille/);
+  assert.match(copy.emailText, /C’est David/);
+  assert.equal(copy.headers, undefined);
   assert.doesNotMatch(copy.text, /\/offre\/29/);
   assert.doesNotMatch(copy.text, /\/offre\/259/);
   const leo = customerNudgeCopy(
@@ -300,10 +300,10 @@ test('dispatch : relance client avant J+3, 1 WhatsApp max', async () => {
   assert.equal(sent[0].phone, '0612345678');
   assert.match(sent[0].message, /^Camille,/);
   assert.match(sent[0].message, /\/offres-speciales/);
-  assert.match(mails[0].subject, /^Camille, offres Boxing Center/);
-  assert.match(mails[0].text, /Bonjour Camille/);
-  assert.match(mails[0].text, /Voir les offres/);
-  assert.ok(mails[0].html);
+  assert.match(mails[0].subject, /^Camille, c’est David/);
+  assert.match(mails[0].text, /Salut Camille/);
+  assert.match(mails[0].text, /C’est David/);
+  assert.equal(mails[0].html, undefined);
   assert.equal(store.get(trial.order_id).essai_customer_nudges.length, 1);
   assert.equal(out.customer_nudges, 1);
   assert.equal(out.sent, 0);

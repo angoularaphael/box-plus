@@ -22,20 +22,22 @@ test('relance essai client passe par Resend, pas Brevo', () => {
   assert.doesNotMatch(src, /sendEmailViaBrevo/);
 });
 
-test('mail campagne : HTML promo 29 / 259', () => {
+test('mail campagne : texte David, expéditeur Boxing Center', () => {
   const { buildOfferCampaignEmail } = require('../storefront/lib/campaign-email');
   const mail = buildOfferCampaignEmail({
-    name: 'Guillaume',
+    name: 'Camille',
     hubUrl: 'https://boutique.boxingcenter.fr/offres-speciales',
     email: 'boxingcenter31@gmail.com',
   });
-  assert.match(mail.subject, /offres Boxing Center/);
-  assert.match(mail.emailText, /Voir les offres/);
-  assert.match(mail.emailText, /29 € \/ 4 semaines/);
-  assert.match(mail.emailText, /259 € \/ 12 mois/);
-  assert.ok(mail.html);
-  assert.match(mail.html, /Voir les offres/);
+  assert.match(mail.subject, /c’est David/);
+  assert.match(mail.emailText, /C’est David/);
+  assert.match(mail.emailText, /David de Boxing Center/);
   assert.equal(mail.fromName, 'Boxing Center');
+  assert.equal(mail.html, undefined);
+  assert.match(mail.emailText, /29 euros les 4 semaines/);
+  assert.match(mail.emailText, /259 euros les 12 mois/);
+  assert.match(mail.emailText, /offres-speciales/);
+  assert.doesNotMatch(mail.emailText, /Guillaume|Voir les offres|🚨/);
 });
 
 test('isConfigured suit RESEND_API_KEY', () => {
