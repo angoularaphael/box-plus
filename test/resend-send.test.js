@@ -22,7 +22,7 @@ test('relance essai client passe par Resend, pas Brevo', () => {
   assert.doesNotMatch(src, /sendEmailViaBrevo/);
 });
 
-test('mail campagne : texte David, expéditeur Boxing Center', () => {
+test('mail campagne : texte David, comme Guillaume en Principal', () => {
   const { buildOfferCampaignEmail } = require('../storefront/lib/campaign-email');
   const mail = buildOfferCampaignEmail({
     name: 'Camille',
@@ -32,7 +32,7 @@ test('mail campagne : texte David, expéditeur Boxing Center', () => {
   assert.match(mail.subject, /c’est David/);
   assert.match(mail.emailText, /C’est David/);
   assert.match(mail.emailText, /David de Boxing Center/);
-  assert.equal(mail.fromName, 'Boxing Center');
+  assert.equal(mail.fromName, 'David de Boxing Center');
   assert.equal(mail.html, undefined);
   assert.match(mail.emailText, /29 euros les 4 semaines/);
   assert.match(mail.emailText, /259 euros les 12 mois/);

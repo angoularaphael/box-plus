@@ -1,6 +1,6 @@
 'use strict';
 
-const CAMPAIGN_FROM_NAME = 'Boxing Center';
+const CAMPAIGN_FROM_NAME = 'David de Boxing Center';
 const CAMPAIGN_SIGN_OFF = 'David de Boxing Center';
 
 function offerLink(hubUrl) {
