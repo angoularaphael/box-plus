@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-08-29T16:57:00.000Z",
+  "synced_at": "2026-08-30T09:59:00.000Z",
   "source": "rentree-2026",
   "count": 12,
   "categories": [
@@ -16,12 +16,12 @@
     {
       "id": 17,
       "slug": "gants",
-      "label": "Gants de boxe ou MMA"
+      "label": "Gants de boxe"
     },
     {
       "id": 22,
       "slug": "short",
-      "label": "Short de Boxe ou MMA"
+      "label": "Short de Boxe"
     },
     {
       "id": 20,
@@ -213,7 +213,7 @@
       "price_cents": 3490,
       "price_was_cents": 7000,
       "category": "gants",
-      "category_label": "Gants de boxe ou MMA",
+      "category_label": "Gants de boxe",
       "category_id": 17,
       "sort_order": 3,
       "pickup_gyms": [
@@ -267,7 +267,7 @@
       "price_cents": 2490,
       "price_was_cents": 5000,
       "category": "gants",
-      "category_label": "Gants de boxe ou MMA",
+      "category_label": "Gants de boxe",
       "category_id": 17,
       "sort_order": 4,
       "pickup_gyms": [
@@ -320,7 +320,7 @@
       "price_cents": 1990,
       "price_was_cents": 4000,
       "category": "gants",
-      "category_label": "Gants de boxe ou MMA",
+      "category_label": "Gants de boxe",
       "category_id": 17,
       "sort_order": 5,
       "pickup_gyms": [
@@ -409,7 +409,7 @@
       "price_cents": 1990,
       "price_was_cents": 4000,
       "category": "gants",
-      "category_label": "Gants de boxe ou MMA",
+      "category_label": "Gants de boxe",
       "category_id": 17,
       "sort_order": 6,
       "pickup_gyms": [
@@ -474,7 +474,7 @@
       "price_cents": 2490,
       "price_was_cents": 3000,
       "category": "short",
-      "category_label": "Short de Boxe ou MMA",
+      "category_label": "Short de Boxe",
       "category_id": 22,
       "sort_order": 7,
       "pickup_gyms": [

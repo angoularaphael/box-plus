@@ -13,12 +13,12 @@ const OUT_IMAGES = path.join(ROOT, 'storefront', 'public', 'img', 'materiel');
 
 const CATEGORY_MAP = {
   16: { slug: 'materiel', label: 'Matériel de boxe' },
-  17: { slug: 'gants', label: 'Gants de boxe ou MMA' },
+  17: { slug: 'gants', label: 'Gants de boxe' },
   18: { slug: 'protege-tibias', label: 'Protège tibias-pieds' },
   19: { slug: 'sous-gants', label: 'Sous-gants' },
   20: { slug: 'bandes', label: 'Bandes de boxe' },
   21: { slug: 'casque', label: 'Casque' },
-  22: { slug: 'short', label: 'Short de Boxe ou MMA' },
+  22: { slug: 'short', label: 'Short de Boxe' },
   23: { slug: 'accessoires', label: 'Accessoires' },
   24: { slug: 'protege-dents', label: 'Protège dents' },
   25: { slug: 'entrainement', label: "Matériel d'entraînement" },
