@@ -30,9 +30,10 @@ test('mail campagne : texte David, comme Guillaume en Principal', () => {
     email: 'boxingcenter31@gmail.com',
   });
   assert.match(mail.subject, /c’est David/);
-  assert.match(mail.emailText, /C’est David, de Boxing Center/);
-  assert.match(mail.emailText, /\nDavid$/);
-  assert.equal(mail.fromName, 'David de Boxing Center');
+  assert.match(mail.emailText, /C’est David\./);
+  assert.match(mail.emailText, /David de Boxing Center/);
+  assert.equal(mail.fromName, 'David');
+  assert.doesNotMatch(mail.emailText, /C’est David, de Boxing Center/);
   assert.doesNotMatch(mail.subject, /Boxing Center|offres|€/);
   assert.equal(mail.html, undefined);
   assert.match(mail.emailText, /29 euros les 4 semaines/);

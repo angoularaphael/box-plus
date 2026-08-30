@@ -56,7 +56,7 @@ const TARGET = {
 };
 
 const WITH_WA = process.argv.includes('--wa');
-const FROM_NAME = 'David de Boxing Center';
+const FROM_NAME = 'David';
 process.env.RESEND_SENDER_NAME = FROM_NAME;
 
 async function main() {

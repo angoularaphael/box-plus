@@ -1,7 +1,7 @@
 'use strict';
 
-const CAMPAIGN_FROM_NAME = 'David de Boxing Center';
-const CAMPAIGN_SIGN_OFF = 'David';
+const CAMPAIGN_FROM_NAME = 'David';
+const CAMPAIGN_SIGN_OFF = 'David de Boxing Center';
 
 function offerLink(hubUrl) {
   return String(hubUrl || 'https://boutique.boxingcenter.fr/offres-speciales');
@@ -14,7 +14,7 @@ function buildOfferCampaignEmail({ name, hubUrl }) {
   const emailText = [
     greeting,
     '',
-    'C’est David, de Boxing Center. Il reste encore quelques places pour les deux formules en cours.',
+    'C’est David. Il reste encore quelques places pour les deux formules en cours.',
     '',
     '29 euros les 4 semaines : sans engagement, sans préavis si tu pars, accès aux 5 salles, toutes les disciplines, tous les cours.',
     '',
