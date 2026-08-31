@@ -4,9 +4,11 @@
  * Rattrape les 259 € payés sans contrat Deciplus :
  * - Sacha Cauli (St-Cyprien, fiche 21506)
  * - Mateo Saunier (Ramonville, fiche 14440)
+ * - Benjamin Anton (États-Unis, fiche 18705)
  *
  *   node scripts/fix-259-cauli-saunier.js
  *   node scripts/fix-259-cauli-saunier.js --check
+ *   node scripts/fix-259-cauli-saunier.js --only=anton
  */
 require('dotenv').config();
 process.env.BOXPLUS_ORDERS_REMOTE = '1';
@@ -27,6 +29,7 @@ const { isPendingOrFutureContract } = require('../bot/cancel-sale');
 const { applyBotSaleStatus } = require('../storefront/lib/order-lifecycle');
 
 const CHECK = process.argv.includes('--check');
+const ONLY = (process.argv.find((a) => a.startsWith('--only=')) || '').slice(7).toLowerCase();
 const OUT = path.join(__dirname, '..', 'data', `fix-259-cauli-saunier-${Date.now()}.json`);
 
 const TARGETS = [
@@ -41,6 +44,12 @@ const TARGETS = [
     order_id: 'BC-1788104202421-f5a3c4',
     member_id: '14440',
     gym: 'ramonville',
+  },
+  {
+    match: /anton/i,
+    order_id: 'BC-1788172989669-9e0963',
+    member_id: '18705',
+    gym: 'etats-unis',
   },
 ];
 
@@ -71,10 +80,14 @@ async function loadTargets() {
     if (error) throw error;
     const r = (data || [])[0];
     const p = r?.payload || {};
+    const name = rowName(p) || spec.match.toString();
+    if (ONLY && !`${name} ${r?.order_id || ''} ${spec.order_id}`.toLowerCase().includes(ONLY)) {
+      continue;
+    }
     found.push({
       ...spec,
       created_at: r?.created_at || null,
-      name: rowName(p) || spec.match.toString(),
+      name,
       email: p.customer_short?.email || p.customer_full?.email || '',
       phone: p.customer_short?.phone || p.customer_full?.phone || '',
       birthdate: p.customer_short?.birthdate || p.customer_full?.birthdate || '',
@@ -233,7 +246,12 @@ async function main() {
 
   const report = { at: new Date().toISOString(), check: CHECK, results: [] };
   await runWithSession('fix-259-cauli-saunier', async (page) => {
-    await login(page, { siteLabel: 'Minimes' });
+    try {
+      await login(page, { siteLabel: 'Minimes' });
+    } catch (err) {
+      console.warn('Login retry after zone picker', err.message);
+      await login(page, { siteLabel: 'Minimes' });
+    }
     const catalog = await fetchDeciplusCatalog(page);
     for (const target of targets) {
       try {

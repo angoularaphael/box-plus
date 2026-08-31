@@ -234,10 +234,15 @@ async function clickSellOnSite(page) {
 
   const sellBtn = page.getByRole('button', { name: /Vendre sur ce site/i }).first();
   const sellLink = page.locator('a:has-text("Vendre sur ce site")').first();
-  if ((await sellBtn.count()) > 0 && (await sellBtn.isVisible().catch(() => false))) {
-    await sellBtn.click({ force: true });
-  } else if ((await sellLink.count()) > 0 && (await sellLink.isVisible().catch(() => false))) {
-    await sellLink.click({ force: true });
+  const clickSell = async (loc) => {
+    await loc.click({ force: true }).catch(async () => {
+      await loc.evaluate((el) => el.click());
+    });
+  };
+  if ((await sellBtn.count()) > 0) {
+    await clickSell(sellBtn);
+  } else if ((await sellLink.count()) > 0) {
+    await clickSell(sellLink);
   } else {
     const origin = deciplusOrigin();
     await page.goto(`${origin}/nextgen/`, { waitUntil: 'domcontentloaded' }).catch(() => {});
