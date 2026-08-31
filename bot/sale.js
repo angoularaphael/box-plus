@@ -2488,6 +2488,22 @@ async function fillNf525InvoiceAddressIfNeeded(page, gymConfig = {}) {
   return Boolean(filled?.ok);
 }
 
+async function clickCarteBancaire(page, work) {
+  let ok = await clickFirst(work, sel('payment_finalize.carte_bancaire'), {
+    force: true,
+  }).catch(() => false);
+  if (!ok) {
+    ok = await clickVenteFooterAction(page, /Carte Bancaire/i, { exact: true });
+  }
+  return ok;
+}
+
+async function venteStillNeedsCapture(page) {
+  const snap = await venteUiSnapshot(page).catch(() => []);
+  const text = snap.map((s) => String(s.text || '')).join(' ');
+  return /encaisser la prestation/i.test(text) && /Carte Bancaire/i.test(text);
+}
+
 async function finalizePayment(page, productConfig, gymConfig = {}) {
   const mode = productConfig.payment_mode || 'virement';
   const badge = isBadgeSale(productConfig);
@@ -2503,22 +2519,23 @@ async function finalizePayment(page, productConfig, gymConfig = {}) {
     await fillNf525InvoiceAddressIfNeeded(page, gymConfig).catch((err) => {
       logWarn('Adresse NF525 ignorée avant CB', { error: err.message });
     });
-    let cardRecorded = await clickFirst(work, sel('payment_finalize.carte_bancaire'), {
-      force: true,
-    }).catch(() => false);
-    if (!cardRecorded) {
-      cardRecorded = await clickVenteFooterAction(page, /Carte Bancaire/i, {
-        exact: true,
-      });
-    }
+    const cardRecorded = await clickCarteBancaire(page, work);
     if (!cardRecorded) {
       throw new Error('Vente comptant — mode de paiement « Carte Bancaire » introuvable');
     }
     logInfo('Vente comptant — règlement CB enregistré');
     await randomDelay(800, 1200);
-    await fillNf525InvoiceAddressIfNeeded(page, gymConfig).catch((err) => {
+    const nf525AfterCb = await fillNf525InvoiceAddressIfNeeded(page, gymConfig).catch((err) => {
       logWarn('Adresse NF525 ignorée après CB', { error: err.message });
+      return false;
     });
+    // Le popup NF525 s’ouvre souvent APRÈS le 1er clic CB (adresse client vide).
+    // Sans reclic, Deciplus reste sur « encaisser la prestation » et le contrat n’est pas posé.
+    if (nf525AfterCb || (await venteStillNeedsCapture(page))) {
+      logInfo('Vente comptant — nouvel encaissement CB après NF525');
+      await clickCarteBancaire(page, work);
+      await randomDelay(800, 1200);
+    }
 
     let clotured = await clickVenteFooterAction(page, /Cl[ôo]turer(\s+la\s+note)?/i);
     if (!clotured) {
@@ -2542,7 +2559,9 @@ async function finalizePayment(page, productConfig, gymConfig = {}) {
     // stricte du contrat exécutée juste après décide alors du succès réel.
     if (!done) {
       const nf525 = await fillNf525InvoiceAddressIfNeeded(page, gymConfig).catch(() => false);
-      if (nf525) {
+      if (nf525 || (await venteStillNeedsCapture(page))) {
+        await clickCarteBancaire(page, work);
+        await randomDelay(600, 1000);
         clotured = await clickVenteFooterAction(page, /Cl[ôo]turer(\s+la\s+note)?/i);
         if (clotured) {
           done = await clickTerminerVente(page);
