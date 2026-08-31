@@ -207,7 +207,7 @@ test('le produit s’affiche même sans order_type (payload slim)', () => {
   assert.equal(row.manager_name, 'Tapia');
 });
 
-test('si WhatsApp échoue, le manager reçoit un email', async () => {
+test('si WhatsApp échoue, le club reçoit un email', async () => {
   const order = {
     order_id: 'MAT-mail',
     order_type: 'materiel',
@@ -225,10 +225,48 @@ test('si WhatsApp échoue, le manager reçoit un email', async () => {
   assert.equal(out.sent, true);
   assert.equal(out.via, 'email');
   assert.equal(out.whatsapp.sent, false);
+  assert.equal(out.email.sent, true);
+  assert.equal(out.email.to, 'boxingcenter31@gmail.com');
 });
 
-test('le secours WhatsApp part toujours à boxingcenter31@gmail.com', () => {
-  const { WA_FALLBACK_EMAIL } = require('../storefront/lib/gym-materiel-managers');
+test('même si WhatsApp part, boxingcenter31@gmail.com est toujours copié', async () => {
+  const emails = [];
+  const gyms = ['Minimes', 'Portet-sur-Garonne', 'Toulouse St-Cyprien', 'Ramonville', 'États-Unis'];
+  for (const gym of gyms) {
+    const out = await notifyMaterielSale(
+      {
+        order_id: `MAT-${gym}`,
+        order_type: 'materiel',
+        pickup_gym: gym,
+        payment: { method: 'payplug', status: 'paid' },
+        customer: { first_name: 'Léa', last_name: 'Martin', phone: '0611223344' },
+        items: [{ name: 'Gants', qty: 1, line_total_cents: 1370 }],
+      },
+      {
+        sendWa: async () => ({ sent: true }),
+        sendEmail: async (_manager, _message, order) => {
+          emails.push({ gym: order.pickup_gym, to: 'boxingcenter31@gmail.com' });
+          return { sent: true, to: 'boxingcenter31@gmail.com' };
+        },
+      }
+    );
+    assert.equal(out.sent, true);
+    assert.equal(out.email.sent, true);
+    assert.ok(out.via === 'email' || out.via === 'whatsapp+email');
+  }
+  assert.equal(emails.length, 5);
+  assert.deepEqual(
+    emails.map((e) => e.to),
+    Array(5).fill('boxingcenter31@gmail.com')
+  );
+});
+
+test('chaque vente matériel part à boxingcenter31@gmail.com, toutes salles', () => {
+  const { WA_FALLBACK_EMAIL, clubMaterielEmail, CLUB_MATERIEL_EMAIL } = require('../storefront/lib/gym-materiel-managers');
+  assert.equal(CLUB_MATERIEL_EMAIL, 'boxingcenter31@gmail.com');
   assert.equal(WA_FALLBACK_EMAIL, 'boxingcenter31@gmail.com');
-  assert.equal(managerEmail({ slug: 'portet' }), 'boxingcenter31@gmail.com');
+  assert.equal(clubMaterielEmail(), 'boxingcenter31@gmail.com');
+  for (const slug of Object.keys(GYM_MATERIEL_MANAGERS)) {
+    assert.equal(managerEmail({ slug }), 'boxingcenter31@gmail.com');
+  }
 });

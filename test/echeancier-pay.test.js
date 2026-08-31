@@ -2,7 +2,7 @@
 
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { isPortetOrder, portetDossierCc } = require('../storefront/lib/mailer');
+const { isPortetOrder, portetDossierCc, materielClubCc } = require('../storefront/lib/mailer');
 const { decodePayload, OFFER_LABELS } = require('../storefront/lib/echeancier-pay');
 const { isOpsOrder } = require('../lib/bot-forward');
 
@@ -19,6 +19,24 @@ describe('Portet dossier CC', () => {
   it('pas de copie pour Minimes', () => {
     assert.equal(isPortetOrder({ customer_full: { gym: 'minimes' } }), false);
     assert.deepEqual(portetDossierCc({ customer_full: { gym: 'minimes' } }), []);
+  });
+});
+
+describe('CC club matériel', () => {
+  it('copie boxingcenter31 pour toutes les salles', () => {
+    for (const gym of ['minimes', 'portet', 'st-cyprien', 'ramonville', 'etats-unis']) {
+      assert.deepEqual(
+        materielClubCc({ customer: { email: 'client@example.com' }, pickup_gym: gym }),
+        ['boxingcenter31@gmail.com']
+      );
+    }
+  });
+
+  it('ne se copie pas si le client est déjà boxingcenter31', () => {
+    assert.deepEqual(
+      materielClubCc({ customer: { email: 'boxingcenter31@gmail.com' } }),
+      []
+    );
   });
 });
 

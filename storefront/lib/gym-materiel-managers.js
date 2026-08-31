@@ -168,29 +168,36 @@ function shouldSkipWhatsApp(order, env = process.env) {
   return method === 'demo';
 }
 
-const WA_FALLBACK_EMAIL = 'boxingcenter31@gmail.com';
+const CLUB_MATERIEL_EMAIL = 'boxingcenter31@gmail.com';
+const WA_FALLBACK_EMAIL = CLUB_MATERIEL_EMAIL;
+
+function clubMaterielEmail() {
+  return String(process.env.MATERIEL_CLUB_EMAIL || CLUB_MATERIEL_EMAIL).trim() || CLUB_MATERIEL_EMAIL;
+}
 
 function managerEmail(manager) {
   if (manager?.email) return String(manager.email).trim();
-  return WA_FALLBACK_EMAIL;
+  return clubMaterielEmail();
+}
+
+function escapeMailHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;');
 }
 
 async function sendManagerSaleEmail(manager, message, order) {
-  const to = WA_FALLBACK_EMAIL;
+  const to = clubMaterielEmail();
   const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
   if (!isConfigured()) return { sent: false, reason: 'brevo_not_configured', to };
   const ref = order?.order_id || '';
-  const who = manager?.name || manager?.label || manager?.slug || 'manager';
+  const gymLabel = manager?.label || manager?.name || manager?.slug || 'salle';
   const result = await sendEmailViaBrevo({
     to,
-    subject: `WhatsApp non parti — vente ${who} — ${ref}`.trim(),
+    subject: `Vente matériel — ${gymLabel} — ${ref}`.trim(),
     text: message,
-    html: `<p style="font-family:Arial,sans-serif;color:#b45309"><strong>WhatsApp non envoyé</strong> — copie pour ${String(who)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')}.</p>
-<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;font-size:15px">${String(message || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')}</pre>`,
+    html: `<p style="font-family:Arial,sans-serif">Nouvelle vente matériel — ${escapeMailHtml(gymLabel)}.</p>
+<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;font-size:15px">${escapeMailHtml(message)}</pre>`,
   });
   return { sent: Boolean(result), to };
 }
@@ -248,23 +255,22 @@ async function notifyManager(manager, message, order, hooks = {}) {
   }
 
   let email = { sent: false };
-  if (!whatsapp.sent) {
-    try {
-      email = await sendEmail(manager, message, order);
-    } catch (err) {
-      email = { sent: false, error: err.message };
-      logWarn('Email manager matériel', {
-        manager: manager.name,
-        gym: manager.slug,
-        error: err.message,
-      });
-    }
+  try {
+    email = await sendEmail(manager, message, order);
+  } catch (err) {
+    email = { sent: false, error: err.message };
+    logWarn('Email club matériel', {
+      manager: manager.name,
+      gym: manager.slug,
+      to: clubMaterielEmail(),
+      error: err.message,
+    });
   }
 
   const sent = Boolean(whatsapp.sent || email.sent);
   return {
     sent,
-    via: whatsapp.sent ? 'whatsapp' : email.sent ? 'email' : null,
+    via: whatsapp.sent && email.sent ? 'whatsapp+email' : whatsapp.sent ? 'whatsapp' : email.sent ? 'email' : null,
     whatsapp,
     email,
     error: sent ? null : email.error || whatsapp.error || 'not_sent',
@@ -281,11 +287,27 @@ async function notifyMaterielSale(order, { source = 'materiel', force = false, .
   }
   const gymRaw = pickupGymFromOrder(order, source);
   const manager = resolveManagerForPickup(gymRaw);
+  const message = saleWhatsAppText(order, source);
   if (!manager) {
     logWarn('WhatsApp manager matériel : salle sans responsable', { gym: gymRaw, order_id: order?.order_id });
-    return { sent: false, error: 'unknown_gym', gym: gymRaw };
+    const fallback = {
+      name: gymRaw || 'salle inconnue',
+      label: gymRaw || 'salle inconnue',
+      slug: pickupGymSlug(gymRaw) || 'unknown',
+    };
+    const result = await notifyManager(fallback, message, order, hooks);
+    logInfo('Vente matériel notifiée', {
+      order_id: order?.order_id,
+      gym: gymRaw,
+      manager: null,
+      source,
+      sent: result.sent,
+      via: result.via || null,
+      skipped: result.skipped || null,
+      error: result.error || 'unknown_gym',
+    });
+    return { ...result, error: result.sent ? null : result.error || 'unknown_gym', gym: gymRaw, message };
   }
-  const message = saleWhatsAppText(order, source);
   const result = await notifyManager(manager, message, order, hooks);
   logInfo('Vente matériel notifiée', {
     order_id: order?.order_id,
@@ -367,6 +389,8 @@ module.exports = {
   notifyMaterielSale,
   sendManagerSaleEmail,
   managerEmail,
+  clubMaterielEmail,
+  CLUB_MATERIEL_EMAIL,
   WA_FALLBACK_EMAIL,
   materielSaleSummary,
   listMaterielSales,

@@ -176,6 +176,14 @@ function portetDossierCc(order) {
   return [cc];
 }
 
+function materielClubCc(order) {
+  const { clubMaterielEmail } = require('./gym-materiel-managers');
+  const cc = clubMaterielEmail();
+  const to = String(order?.customer?.email || '').trim().toLowerCase();
+  if (!cc || cc.toLowerCase() === to) return [];
+  return [cc];
+}
+
 function isAventureMail(order = {}) {
   return Boolean(
     order.aventure ||
@@ -337,17 +345,19 @@ async function sendMaterielConfirmationEmail(order) {
   }
 
   try {
+    const cc = materielClubCc(order);
     const result = await sendEmailViaBrevo({
       to,
       subject: `Commande matériel Boxing Center — ${order.order_id}`,
       html,
       replyTo: defaultReplyTo(),
       attachments,
+      cc,
     });
     if (!result) {
       return { sent: false, reason: 'brevo_not_configured' };
     }
-    logInfo('Email matériel envoyé', { to, order_id: order.order_id, via: result.via });
+    logInfo('Email matériel envoyé', { to, cc, order_id: order.order_id, via: result.via });
     return { sent: true, via: result.via };
   } catch (err) {
     logWarn('Email matériel échoué', { order_id: order.order_id, error: err.message });
@@ -471,4 +481,5 @@ module.exports = {
   getMailFrom,
   isPortetOrder,
   portetDossierCc,
+  materielClubCc,
 };
