@@ -31,7 +31,7 @@ const AUTH_DIR = process.env.WA_AUTH_DIR
   : path.join(__dirname, 'auth_info_baileys');
 const MAX_RECONNECT_ATTEMPTS = 8;
 const QR_REUSE_MS = 18000;
-const BUILD = 'wa-send-5';
+const BUILD = 'wa-send-6';
 const BATCH_SIZE = Math.max(1, parseInt(process.env.WA_BATCH_SIZE || '10', 10) || 10);
 const SEND_GAP_MS = Math.max(0, parseInt(process.env.WA_SEND_GAP_MS || '8000', 10) || 8000);
 const BATCH_REST_MS = Math.max(
@@ -309,8 +309,16 @@ function scheduleReconnect(delayMs, { clearAuth = false, countAttempt = true } =
   cancelReconnect();
   if (countAttempt) {
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      isLinking = false;
-      qrError = 'Trop de tentatives. Clique Afficher le QR dans le backoffice boutique.';
+      reconnectAttempts = 0;
+      isLinking = true;
+      qrError = null;
+      console.warn('[boutique-bot] trop de tentatives — nouvelle série dans 45s');
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        connectToWhatsApp({ force: true, clearAuth: false }).catch((err) => {
+          console.error('[boutique-bot] reconnexion:', err.message);
+        });
+      }, 45_000);
       return;
     }
     reconnectAttempts += 1;
@@ -729,9 +737,6 @@ app.post('/api/send-message', async (req, res) => {
     });
   }
   try {
-    if (typeof sock.presenceSubscribe === 'function') {
-      await sock.presenceSubscribe(resolved.jid).catch(() => {});
-    }
     const sent = await Promise.race([
       sock.sendMessage(resolved.jid, { text: String(message) }),
       sleep(20000).then(() => {
@@ -740,24 +745,15 @@ app.post('/api/send-message', async (req, res) => {
     ]);
     const msgId = sent?.key?.id || null;
     recordOutboundSend();
-    const ack = msgId ? await waitForMessageAck(msgId, 10000) : { ack: null, timeout: true, waitMs: 0 };
-    const failed = ack.ack === 0;
-    const delivered = Number(ack.ack) >= 3;
-    res.status(failed ? 502 : 200).json({
-      ok: !failed,
-      success: !failed,
+    res.status(200).json({
+      ok: true,
+      success: true,
       phone: resolved.digits,
       jid: resolved.jid,
       pnJid: resolved.pnJid,
       lid: resolved.lid,
       exists: resolved.exists,
       id: msgId,
-      ack: ack.ack,
-      ackName: ack.ackName || null,
-      stub: ack.stub || null,
-      delivered,
-      ackTimeout: Boolean(ack.timeout),
-      ackWaitMs: ack.waitMs || 0,
       outbound: outboundSnapshot(),
     });
   } catch (err) {
