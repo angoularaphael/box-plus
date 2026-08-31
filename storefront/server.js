@@ -2263,6 +2263,28 @@ function createApp() {
       const parts = [];
       if (out.email?.sent) parts.push(`e-mail ${out.email.to}`);
       if (out.sms?.sent) parts.push(`SMS ${out.sms.to}`);
+      if (wantSms && !out.sms?.sent) {
+        const emailBit = out.email?.sent ? `E-mail envoyé à ${out.email.to}. ` : '';
+        return res.status(502).json({
+          ok: false,
+          error: 'sms_failed',
+          message: `${emailBit}SMS non parti : ${out.sms?.error || 'passerelle SMS inaccessible'}`,
+          email: out.email,
+          sms: out.sms,
+          ...info,
+        });
+      }
+      if (wantEmail && !out.email?.sent) {
+        const smsBit = out.sms?.sent ? `SMS envoyé au ${out.sms.to}. ` : '';
+        return res.status(502).json({
+          ok: false,
+          error: 'email_failed',
+          message: `${smsBit}E-mail non parti : ${out.email?.error || 'envoi e-mail impossible'}`,
+          email: out.email,
+          sms: out.sms,
+          ...info,
+        });
+      }
       if (!parts.length) {
         return res.status(400).json({
           ok: false,
@@ -2323,10 +2345,10 @@ function createApp() {
         const out = await sendResumeNotify(order, { kind, email: true, sms: true });
         results.push({
           order_id: id,
-          ok: Boolean(out.sent),
+          ok: Boolean(out.ok),
           email: out.email?.to || null,
           sms: out.sms?.to || null,
-          error: out.email?.error || out.sms?.error || null,
+          error: out.ok ? null : out.sms?.error || out.email?.error || null,
         });
       } catch (err) {
         results.push({ order_id: id, ok: false, error: err.message });

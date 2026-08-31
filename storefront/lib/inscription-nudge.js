@@ -404,8 +404,26 @@ async function sendResumeNotify(order, { kind = 'resume', email = true, sms = tr
   }
   const mailOk = !email || Boolean(out.email?.sent);
   const smsOk = !sms || Boolean(out.sms?.sent);
+  if (out.email?.sent || out.sms?.sent) {
+    try {
+      const { saveOrderAsync } = require('./order-lifecycle');
+      const now = new Date().toISOString();
+      order.funnel = {
+        ...(order.funnel || {}),
+        last_nudge_at: now,
+        ...(out.email?.sent ? { resume_email_sent_at: now } : {}),
+        ...(out.sms?.sent
+          ? { resume_sms_sent_at: now, resume_whatsapp_sent_at: now }
+          : { resume_sms_error: out.sms?.error || 'sms_failed' }),
+      };
+      await saveOrderAsync(order);
+    } catch {
+      /* tracking only */
+    }
+  }
   return {
     sent: mailOk || smsOk,
+    ok: mailOk && smsOk,
     email: out.email,
     sms: out.sms,
   };

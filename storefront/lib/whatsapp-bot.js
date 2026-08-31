@@ -2,6 +2,9 @@
 
 const DEFAULT_SMS_GATEWAY_URL = 'http://prem-eu2.bot-hosting.net:21724';
 
+let cachedToken = null;
+let cachedTokenAt = 0;
+
 function smsGatewayUrl() {
   const raw = process.env.SMS_GATEWAY_URL || DEFAULT_SMS_GATEWAY_URL;
   let url = String(raw || '')
@@ -16,17 +19,32 @@ function smsSecret() {
   return String(process.env.SMS_GATEWAY_SECRET || process.env.OUTBOUND_API_SECRET || '').trim();
 }
 
-function smsHeaders() {
+function smsAdminEmail() {
+  return String(
+    process.env.SMS_GATEWAY_EMAIL || process.env.ADMIN_EMAIL || 'angoularaphael05@gmail.com'
+  ).trim();
+}
+
+function smsAdminPassword() {
+  return String(process.env.SMS_GATEWAY_PASSWORD || process.env.ADMIN_PASSWORD || 'Fareno12').trim();
+}
+
+function smsHeaders(extra = {}) {
   const headers = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   };
+  for (const [key, value] of Object.entries(extra || {})) {
+    if (value) headers[key] = value;
+  }
   const secret = smsSecret();
-  if (secret) headers['x-api-secret'] = secret;
+  if (secret && !headers['x-api-secret'] && !headers.Authorization) {
+    headers['x-api-secret'] = secret;
+  }
   return headers;
 }
 
-async function smsFetch(path, { method = 'GET', body, timeoutMs = 18000 } = {}) {
+async function smsFetch(path, { method = 'GET', body, timeoutMs = 18000, headers: extra } = {}) {
   const base = smsGatewayUrl();
   if (!base) throw new Error('SMS_GATEWAY_URL manquant');
   const controller = new AbortController();
@@ -34,7 +52,7 @@ async function smsFetch(path, { method = 'GET', body, timeoutMs = 18000 } = {}) 
   try {
     const res = await fetch(`${base}${path}`, {
       method,
-      headers: smsHeaders(),
+      headers: smsHeaders(extra),
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
       cache: 'no-store',
@@ -65,6 +83,93 @@ function toE164(raw) {
   const digits = toWhatsAppPhone(raw);
   if (!digits) return null;
   return digits.startsWith('+') ? digits : `+${digits}`;
+}
+
+function toGsmSafe(text) {
+  return String(text || '')
+    .replace(/€/g, 'euros')
+    .replace(/[‘’‚‛‹›]/g, "'")
+    .replace(/[“”„«»]/g, '"')
+    .replace(/[—–]/g, '-')
+    .replace(/œ/g, 'oe')
+    .replace(/Œ/g, 'OE')
+    .replace(/ê/g, 'e')
+    .replace(/Ê/g, 'E')
+    .replace(/î/g, 'i')
+    .replace(/Î/g, 'I')
+    .replace(/ô/g, 'o')
+    .replace(/Ô/g, 'O')
+    .replace(/â/g, 'a')
+    .replace(/Â/g, 'A')
+    .replace(/\*/g, '')
+    .replace(/~/g, '-')
+    .replace(/[🚀🔥💥⏳🥊🚨]/g, '')
+    .replace(/ +/g, ' ')
+    .replace(/ +\n/g, '\n')
+    .trim();
+}
+
+async function smsGatewayToken(timeoutMs = 18000) {
+  if (cachedToken && Date.now() - cachedTokenAt < 50 * 60 * 1000) return cachedToken;
+  const email = smsAdminEmail();
+  const password = smsAdminPassword();
+  if (!email || !password) {
+    throw new Error('SMS_GATEWAY_EMAIL / SMS_GATEWAY_PASSWORD manquants (repli campagne)');
+  }
+  const data = await smsFetch('/api/auth/login', {
+    method: 'POST',
+    body: { email, password },
+    timeoutMs,
+  });
+  if (!data?.token) throw new Error('Login SMS gateway sans token');
+  cachedToken = data.token;
+  cachedTokenAt = Date.now();
+  return cachedToken;
+}
+
+async function sendViaCampaignQueue(telephone, message, { timeoutMs = 25000, source = 'boutique' } = {}) {
+  const text = toGsmSafe(message);
+  if (!text) throw new Error('Message vide');
+  const token = await smsGatewayToken(timeoutMs);
+  const auth = { Authorization: `Bearer ${token}` };
+  const campaign = await smsFetch('/api/campaigns', {
+    method: 'POST',
+    timeoutMs,
+    headers: auth,
+    body: {
+      name: `Boutique SMS ${source} ${Date.now()}`.slice(0, 80),
+      message: text,
+    },
+  });
+  if (!campaign?.id) throw new Error('Création campagne SMS échouée');
+  const digits = String(telephone || '').replace(/\D/g, '');
+  await smsFetch(`/api/campaigns/${campaign.id}/contacts`, {
+    method: 'POST',
+    timeoutMs,
+    headers: auth,
+    body: { prenom: 'Client', nom: source || '-', telephone: digits },
+  });
+  const start = await smsFetch(`/api/campaigns/${campaign.id}/start`, {
+    method: 'POST',
+    timeoutMs,
+    headers: auth,
+  });
+  if (!start?.queued) {
+    throw new Error(start?.error || 'SMS non mis en file (campagne)');
+  }
+  return {
+    sent: true,
+    queued: true,
+    via: 'sms-campaign',
+    campaignId: campaign.id,
+    telephone,
+    queuedCount: start.queued,
+  };
+}
+
+function shouldFallbackToCampaign(err) {
+  const msg = String(err?.message || '');
+  return !/envois sms en pause/i.test(msg);
 }
 
 async function getWhatsAppStatus() {
@@ -129,17 +234,22 @@ async function logoutWhatsAppBot() {
   return { ok: true, channel: 'sms', skipped: true };
 }
 
-async function sendWhatsAppMessage(phone, message, { timeoutMs = 15000 } = {}) {
+async function sendWhatsAppMessage(phone, message, { timeoutMs = 20000, source = 'boutique' } = {}) {
   const to = toE164(phone);
   if (!to) throw new Error('Numéro invalide');
   const { isAllWhatsAppPaused } = require('./whatsapp-outbound');
   if (isAllWhatsAppPaused()) throw new Error('Envois SMS en pause');
-  const result = await smsFetch('/api/messages/send', {
-    method: 'POST',
-    body: { telephone: to, message, source: 'boutique' },
-    timeoutMs,
-  });
-  return { sent: true, via: 'sms', ...result };
+  try {
+    const result = await smsFetch('/api/messages/send', {
+      method: 'POST',
+      body: { telephone: to, message, source },
+      timeoutMs,
+    });
+    return { sent: true, via: 'sms', ...result };
+  } catch (err) {
+    if (!shouldFallbackToCampaign(err)) throw err;
+    return sendViaCampaignQueue(to, message, { timeoutMs: Math.max(timeoutMs, 25000), source });
+  }
 }
 
 async function clearWhatsAppOutboundQueue() {
