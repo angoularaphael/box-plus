@@ -1,13 +1,9 @@
 'use strict';
 
-const DEFAULT_WHATSAPP_BOT_URL = 'http://us3.bot-hosting.net:21819';
-const DEFAULT_WHATSAPP_BOT_SECRET = 'bxp-boutique-wa-k8n4Qp2mL7xR';
+const DEFAULT_SMS_GATEWAY_URL = 'http://prem-eu2.bot-hosting.net:21724';
 
-function whatsappBotUrl() {
-  const raw =
-    process.env.WHATSAPP_BOT_URL ||
-    process.env.WHATSAPP_REFERRAL_BOT_URL ||
-    DEFAULT_WHATSAPP_BOT_URL;
+function smsGatewayUrl() {
+  const raw = process.env.SMS_GATEWAY_URL || DEFAULT_SMS_GATEWAY_URL;
   let url = String(raw || '')
     .trim()
     .replace(/\/$/, '');
@@ -16,29 +12,29 @@ function whatsappBotUrl() {
   return url;
 }
 
-function botSecret() {
-  return String(process.env.WHATSAPP_BOT_SECRET || DEFAULT_WHATSAPP_BOT_SECRET || '').trim();
+function smsSecret() {
+  return String(process.env.SMS_GATEWAY_SECRET || process.env.OUTBOUND_API_SECRET || '').trim();
 }
 
-function botHeaders() {
+function smsHeaders() {
   const headers = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   };
-  const secret = botSecret();
+  const secret = smsSecret();
   if (secret) headers['x-api-secret'] = secret;
   return headers;
 }
 
-async function botFetch(path, { method = 'GET', body, timeoutMs = 18000 } = {}) {
-  const base = whatsappBotUrl();
-  if (!base) throw new Error('WHATSAPP_BOT_URL manquant');
+async function smsFetch(path, { method = 'GET', body, timeoutMs = 18000 } = {}) {
+  const base = smsGatewayUrl();
+  if (!base) throw new Error('SMS_GATEWAY_URL manquant');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${base}${path}`, {
       method,
-      headers: botHeaders(),
+      headers: smsHeaders(),
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
       cache: 'no-store',
@@ -65,37 +61,42 @@ function toWhatsAppPhone(raw) {
   return digits.length >= 10 ? digits : null;
 }
 
-async function getWhatsAppStatus({ includeQr = false } = {}) {
-  const url = whatsappBotUrl();
-  const { isPromoWhatsAppPaused, isAllWhatsAppPaused, promoPauseReason, restrictedUntilMs, BATCH_SIZE } =
-    require('./whatsapp-outbound');
+function toE164(raw) {
+  const digits = toWhatsAppPhone(raw);
+  if (!digits) return null;
+  return digits.startsWith('+') ? digits : `+${digits}`;
+}
+
+async function getWhatsAppStatus() {
+  const { isAllWhatsAppPaused, isPromoWhatsAppPaused, promoPauseReason, BATCH_SIZE } = require('./whatsapp-outbound');
   const outbound = {
     promoPaused: isPromoWhatsAppPaused(),
     allPaused: isAllWhatsAppPaused(),
     reason: promoPauseReason(),
-    until: new Date(restrictedUntilMs()).toISOString(),
+    channel: 'sms',
     batchSize: BATCH_SIZE,
   };
+  const url = smsGatewayUrl();
   if (!url) {
-    return { configured: false, connected: false, error: 'WHATSAPP_BOT_URL manquant', outbound };
+    return { configured: false, connected: false, error: 'SMS_GATEWAY_URL manquant', outbound, channel: 'sms' };
   }
   try {
-    const data = await botFetch(includeQr ? '/api/status?qr=1' : '/api/status', {
-      timeoutMs: includeQr ? 12000 : 8000,
-    });
+    const data = await smsFetch('/api/health', { timeoutMs: 8000 });
+    const ok = Boolean(data.ok);
     return {
       configured: true,
       reachable: true,
       host: new URL(url).host,
-      connected: Boolean(data.connected),
-      connecting: Boolean(data.connecting),
-      hasQr: Boolean(data.qr || data.hasQr),
-      qr: data.qr || null,
-      pairingCode: data.pairingCode || null,
-      qrError: data.qrError || null,
-      build: data.build || null,
-      me: data.me || null,
-      outbound: { ...outbound, ...(data.outbound || {}) },
+      connected: ok,
+      connecting: false,
+      hasQr: false,
+      qr: null,
+      pairingCode: null,
+      qrError: null,
+      build: 'sms-gateway',
+      me: ok ? { id: 'sms-gateway', name: 'SMS Gateway' } : null,
+      outbound,
+      channel: 'sms',
     };
   } catch (err) {
     return {
@@ -109,52 +110,47 @@ async function getWhatsAppStatus({ includeQr = false } = {}) {
         }
       })(),
       connected: false,
-      error: err.message || 'Bot inaccessible',
+      error: err.message || 'SMS gateway inaccessible',
       outbound,
+      channel: 'sms',
     };
   }
 }
 
-async function startWhatsAppBot(body = {}) {
-  const pairing = String(body?.method || '').toLowerCase() === 'pair';
-  return botFetch('/api/start', {
-    method: 'POST',
-    body: { method: 'qr', ...body },
-    timeoutMs: pairing ? 25000 : 18000,
-  });
+async function startWhatsAppBot() {
+  return getWhatsAppStatus();
 }
 
 async function stopWhatsAppBot() {
-  return botFetch('/api/stop', { method: 'POST', timeoutMs: 8000 });
+  return { ok: true, channel: 'sms', skipped: true };
 }
 
 async function logoutWhatsAppBot() {
-  return botFetch('/api/logout', { method: 'POST', timeoutMs: 10000 });
+  return { ok: true, channel: 'sms', skipped: true };
 }
 
-async function sendWhatsAppMessage(phone, message, { kind = 'transactional', timeoutMs = 6000 } = {}) {
-  const to = toWhatsAppPhone(phone);
-  if (!to) throw new Error('Numéro WhatsApp invalide');
-  const { isAllWhatsAppPaused, isPromoWhatsAppPaused } = require('./whatsapp-outbound');
-  if (isAllWhatsAppPaused()) throw new Error('WhatsApp boutique en pause');
-  if (kind === 'promo' && isPromoWhatsAppPaused()) {
-    throw new Error('WhatsApp promo en pause (compte restreint)');
-  }
-  return botFetch('/api/send-message', {
+async function sendWhatsAppMessage(phone, message, { timeoutMs = 15000 } = {}) {
+  const to = toE164(phone);
+  if (!to) throw new Error('Numéro invalide');
+  const { isAllWhatsAppPaused } = require('./whatsapp-outbound');
+  if (isAllWhatsAppPaused()) throw new Error('Envois SMS en pause');
+  const result = await smsFetch('/api/messages/send', {
     method: 'POST',
-    body: { phone: to, message, kind },
+    body: { telephone: to, message, source: 'boutique' },
     timeoutMs,
   });
+  return { sent: true, via: 'sms', ...result };
 }
 
 async function clearWhatsAppOutboundQueue() {
-  return botFetch('/api/queue/clear', { method: 'POST', timeoutMs: 8000 });
+  return { ok: true, channel: 'sms', skipped: true };
 }
 
 module.exports = {
-  DEFAULT_WHATSAPP_BOT_URL,
-  DEFAULT_WHATSAPP_BOT_SECRET,
-  whatsappBotUrl,
+  DEFAULT_WHATSAPP_BOT_URL: DEFAULT_SMS_GATEWAY_URL,
+  DEFAULT_WHATSAPP_BOT_SECRET: '',
+  DEFAULT_SMS_GATEWAY_URL,
+  whatsappBotUrl: smsGatewayUrl,
   toWhatsAppPhone,
   getWhatsAppStatus,
   startWhatsAppBot,

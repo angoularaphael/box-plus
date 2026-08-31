@@ -25,15 +25,12 @@ function restrictedUntilMs(env = process.env) {
 }
 
 function isAllWhatsAppPaused(env = process.env) {
-  return truthyFlag(env.WHATSAPP_OUTBOUND_PAUSED);
+  return truthyFlag(env.WHATSAPP_OUTBOUND_PAUSED) || truthyFlag(env.SMS_OUTBOUND_PAUSED);
 }
 
-function isPromoWhatsAppPaused(env = process.env, now = Date.now()) {
+function isPromoWhatsAppPaused(env = process.env) {
   if (isAllWhatsAppPaused(env)) return true;
-  if (falsyFlag(env.WHATSAPP_PROMO_PAUSED)) return false;
-  if (truthyFlag(env.WHATSAPP_PROMO_PAUSED)) return true;
-  const until = restrictedUntilMs(env);
-  return until > 0 && now < until;
+  return truthyFlag(env.WHATSAPP_PROMO_PAUSED) || truthyFlag(env.SMS_OUTBOUND_PAUSED);
 }
 
 function promoPauseReason(env = process.env, now = Date.now()) {
