@@ -2159,22 +2159,22 @@ function createApp() {
         const message =
           sent.error === 'no_phone'
             ? 'Pas de numéro de téléphone sur ce dossier'
-            : sent.error || 'WhatsApp non envoyé';
-        return res.status(400).json({ ok: false, error: sent.error || 'whatsapp_failed', message });
+            : sent.error || 'SMS non envoyé';
+        return res.status(400).json({ ok: false, error: sent.error || 'sms_failed', message });
       }
       const info = describeResume(order, { kind });
-      logInfo('WhatsApp reprise admin', { order_id: order.order_id, to: sent.to, kind });
+      logInfo('SMS reprise admin', { order_id: order.order_id, to: sent.to, kind });
       res.json({
         ok: true,
         sent: true,
         to: sent.to,
         kind,
-        message: `WhatsApp envoyé au ${sent.to}`,
+        message: `SMS envoyé au ${sent.to}`,
         ...info,
       });
     } catch (err) {
-      logError('Envoi WhatsApp de reprise', { order_id: order.order_id, error: err.message });
-      res.status(500).json({ ok: false, error: err.message, message: 'Envoi WhatsApp échoué — vérifiez que le bot est connecté' });
+      logError('Envoi SMS de reprise', { order_id: order.order_id, error: err.message });
+      res.status(500).json({ ok: false, error: err.message, message: 'Envoi SMS échoué — vérifiez le SMS Gateway' });
     }
   });
 
@@ -2190,19 +2190,11 @@ function createApp() {
     if (!ids.length) {
       return res.status(400).json({ ok: false, error: 'empty', message: 'Aucune personne sélectionnée' });
     }
-    if (ids.length > 10) {
+    if (ids.length > 40) {
       return res.status(400).json({
         ok: false,
         error: 'too_many',
-        message: '10 destinataires maximum par diffusion WhatsApp',
-      });
-    }
-    const { isPromoWhatsAppPaused } = require('./lib/whatsapp-outbound');
-    if (isPromoWhatsAppPaused()) {
-      return res.status(423).json({
-        ok: false,
-        error: 'promo_paused',
-        message: 'WhatsApp promo en pause : le compte boutique est restreint. Relance par e-mail seulement.',
+        message: '40 destinataires maximum par diffusion SMS',
       });
     }
     const { sendResumeWhatsApp, canPayOrder } = require('./lib/inscription-nudge');
@@ -2227,17 +2219,130 @@ function createApp() {
         results.push({ order_id: id, ok: false, error: err.message });
       }
       if (i < ids.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 400));
       }
     }
     const sent = results.filter((r) => r.ok).length;
-    logInfo('Diffusion WhatsApp de reprise', { sent, total: ids.length });
+    logInfo('Diffusion SMS de reprise', { sent, total: ids.length });
     res.json({
       ok: sent > 0,
       sent,
       total: ids.length,
       results,
-      message: `${sent} WhatsApp envoyé(s) sur ${ids.length}`,
+      message: `${sent} SMS envoyé(s) sur ${ids.length}`,
+    });
+  });
+
+  app.post('/api/admin/orders/:id/send-resume-notify', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const order = await loadOrderAsync(String(req.params.id || '').trim());
+    if (!order) {
+      return res.status(404).json({ ok: false, error: 'not_found', message: 'Référence introuvable' });
+    }
+    const { describeResume, canPayOrder, sendResumeNotify } = require('./lib/inscription-nudge');
+    if (order.action || !order.access_token) {
+      return res.status(400).json({
+        ok: false,
+        error: 'not_inscription',
+        message: 'Cette référence n’est pas une inscription boutique',
+      });
+    }
+    const kind = String(req.body?.kind || req.query.kind || '').toLowerCase() === 'pay' ? 'pay' : 'resume';
+    if (kind === 'pay' && !canPayOrder(order)) {
+      return res.status(400).json({
+        ok: false,
+        error: 'cannot_pay',
+        message: 'Impossible d’envoyer un lien de paiement',
+      });
+    }
+    const wantEmail = req.body?.email !== false;
+    const wantSms = req.body?.sms !== false;
+    try {
+      const out = await sendResumeNotify(order, { kind, email: wantEmail, sms: wantSms });
+      const info = describeResume(order, { kind });
+      const parts = [];
+      if (out.email?.sent) parts.push(`e-mail ${out.email.to}`);
+      if (out.sms?.sent) parts.push(`SMS ${out.sms.to}`);
+      if (!parts.length) {
+        return res.status(400).json({
+          ok: false,
+          error: out.email?.error || out.sms?.error || 'not_sent',
+          message: out.email?.error === 'no_email' && out.sms?.error === 'no_phone'
+            ? 'Pas d’e-mail ni de téléphone'
+            : 'Envoi impossible',
+          email: out.email,
+          sms: out.sms,
+        });
+      }
+      logInfo('Reprise mail+SMS admin', { order_id: order.order_id, kind, parts });
+      res.json({
+        ok: true,
+        sent: true,
+        kind,
+        email: out.email,
+        sms: out.sms,
+        message: `Envoyé : ${parts.join(' et ')}`,
+        ...info,
+      });
+    } catch (err) {
+      logError('Envoi reprise mail+SMS', { order_id: order.order_id, error: err.message });
+      res.status(500).json({ ok: false, error: err.message, message: 'Envoi échoué' });
+    }
+  });
+
+  app.post('/api/admin/orders/send-resume-notify-batch', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const ids = [
+      ...new Set(
+        (Array.isArray(req.body?.order_ids) ? req.body.order_ids : [])
+          .map((id) => String(id || '').trim())
+          .filter(Boolean)
+      ),
+    ];
+    if (!ids.length) {
+      return res.status(400).json({ ok: false, error: 'empty', message: 'Aucune personne sélectionnée' });
+    }
+    if (ids.length > 40) {
+      return res.status(400).json({
+        ok: false,
+        error: 'too_many',
+        message: '40 destinataires maximum par diffusion',
+      });
+    }
+    const { sendResumeNotify, canPayOrder } = require('./lib/inscription-nudge');
+    const results = [];
+    for (let i = 0; i < ids.length; i += 1) {
+      const id = ids[i];
+      const order = await loadOrderAsync(id);
+      if (!order || order.action || !order.access_token) {
+        results.push({ order_id: id, ok: false, error: 'not_inscription' });
+        continue;
+      }
+      try {
+        const kind = canPayOrder(order) ? 'pay' : 'resume';
+        const out = await sendResumeNotify(order, { kind, email: true, sms: true });
+        results.push({
+          order_id: id,
+          ok: Boolean(out.sent),
+          email: out.email?.to || null,
+          sms: out.sms?.to || null,
+          error: out.email?.error || out.sms?.error || null,
+        });
+      } catch (err) {
+        results.push({ order_id: id, ok: false, error: err.message });
+      }
+      if (i < ids.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
+    }
+    const sent = results.filter((r) => r.ok).length;
+    logInfo('Diffusion mail+SMS de reprise', { sent, total: ids.length });
+    res.json({
+      ok: sent > 0,
+      sent,
+      total: ids.length,
+      results,
+      message: `${sent} relance(s) e-mail + SMS sur ${ids.length}`,
     });
   });
 

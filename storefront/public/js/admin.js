@@ -123,7 +123,12 @@
         }
         ${
           data.phone
-            ? `<button type="button" class="btn sm secondary" id="resumeWaBtn">Envoyer par WhatsApp</button>`
+            ? `<button type="button" class="btn sm secondary" id="resumeSmsBtn">Envoyer par SMS</button>`
+            : ''
+        }
+        ${
+          (data.email && data.email !== '—') || data.phone
+            ? `<button type="button" class="btn sm" id="resumeBothBtn">Envoyer mail + SMS</button>`
             : ''
         }
       </div>`;
@@ -136,7 +141,8 @@
       if (btn) btn.textContent = ok ? 'Copié' : 'Sélectionnez le lien';
     });
     document.getElementById('resumeSendBtn')?.addEventListener('click', () => sendResumeEmail(data));
-    document.getElementById('resumeWaBtn')?.addEventListener('click', () => sendResumeWhatsApp(data));
+    document.getElementById('resumeSmsBtn')?.addEventListener('click', () => sendResumeSms(data));
+    document.getElementById('resumeBothBtn')?.addEventListener('click', () => sendResumeBoth(data));
   }
 
   async function sendResumeEmail(data) {
@@ -170,8 +176,8 @@
     }
   }
 
-  async function sendResumeWhatsApp(data) {
-    const btn = document.getElementById('resumeWaBtn');
+  async function sendResumeSms(data) {
+    const btn = document.getElementById('resumeSmsBtn');
     const msg = document.getElementById('ordersMsg');
     if (btn) btn.disabled = true;
     try {
@@ -183,14 +189,14 @@
       });
       const out = await res.json().catch(() => ({}));
       if (!res.ok || !out.ok) {
-        throw new Error(out.message || out.error || 'Envoi WhatsApp impossible');
+        throw new Error(out.message || out.error || 'Envoi SMS impossible');
       }
       if (btn) btn.textContent = 'Envoyé';
       if (msg) {
-        msg.textContent = out.message || `WhatsApp envoyé au ${out.to}`;
+        msg.textContent = out.message || `SMS envoyé au ${out.to}`;
         msg.className = 'form-msg ok';
       }
-      if (typeof window.panToast === 'function') window.panToast(out.message || 'WhatsApp envoyé', 'ok');
+      if (typeof window.panToast === 'function') window.panToast(out.message || 'SMS envoyé', 'ok');
     } catch (err) {
       if (btn) btn.disabled = false;
       if (msg) {
@@ -199,6 +205,41 @@
       }
       if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
     }
+  }
+
+  async function sendResumeBoth(data) {
+    const btn = document.getElementById('resumeBothBtn');
+    const msg = document.getElementById('ordersMsg');
+    if (btn) btn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(data.order_id)}/send-resume-notify`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true),
+        body: JSON.stringify({ kind: data.kind || 'resume', email: true, sms: true }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok || !out.ok) {
+        throw new Error(out.message || out.error || 'Envoi impossible');
+      }
+      if (btn) btn.textContent = 'Envoyé';
+      if (msg) {
+        msg.textContent = out.message || 'E-mail et SMS envoyés';
+        msg.className = 'form-msg ok';
+      }
+      if (typeof window.panToast === 'function') window.panToast(out.message || 'E-mail et SMS envoyés', 'ok');
+    } catch (err) {
+      if (btn) btn.disabled = false;
+      if (msg) {
+        msg.textContent = err.message;
+        msg.className = 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
+    }
+  }
+
+  async function sendResumeWhatsApp(data) {
+    return sendResumeSms(data);
   }
 
   async function generateResumeLink(orderId, btn, kind = 'resume') {
@@ -261,7 +302,8 @@
   async function sendDiffusion(channel = 'email') {
     const ids = selectedOrderIds();
     const msg = document.getElementById('ordersMsg');
-    const viaWa = channel === 'whatsapp';
+    const viaSms = channel === 'sms' || channel === 'whatsapp';
+    const viaBoth = channel === 'both';
     if (!ids.length) {
       if (msg) {
         msg.textContent = 'Cochez les personnes à relancer.';
@@ -270,8 +312,8 @@
       if (typeof window.panToast === 'function') window.panToast('Cochez les personnes à relancer', 'err');
       return;
     }
-    if (viaWa && ids.length > 10) {
-      const text = `Maximum 10 WhatsApp par page. Décochez ${ids.length - 10} personne(s).`;
+    if (ids.length > 40) {
+      const text = `Maximum 40 destinataires. Décochez ${ids.length - 40} personne(s).`;
       if (msg) {
         msg.textContent = text;
         msg.className = 'form-msg err';
@@ -280,34 +322,35 @@
       return;
     }
     const failed = document.getElementById('ordersFilter')?.value === 'failed';
-    const confirmText = viaWa
-      ? `Envoyer le WhatsApp de reprise à ${ids.length} personne(s) ?`
-      : failed
-        ? `Envoyer le mail de paiement (carte refusée) à ${ids.length} personne(s) ?`
-        : `Envoyer le mail de reprise à ${ids.length} personne(s) ?`;
+    const confirmText = viaBoth
+      ? `Envoyer e-mail + SMS de reprise à ${ids.length} personne(s) ?`
+      : viaSms
+        ? `Envoyer le SMS de reprise à ${ids.length} personne(s) ?`
+        : failed
+          ? `Envoyer le mail de paiement (carte refusée) à ${ids.length} personne(s) ?`
+          : `Envoyer le mail de reprise à ${ids.length} personne(s) ?`;
     if (!confirm(confirmText)) return;
-    const btn = document.getElementById(viaWa ? 'diffusionWaBtn' : 'diffusionBtn');
+    const btnId = viaBoth ? 'diffusionBothBtn' : viaSms ? 'diffusionSmsBtn' : 'diffusionBtn';
+    const btn = document.getElementById(btnId) || document.getElementById('diffusionWaBtn');
     if (btn) btn.disabled = true;
     try {
-      const res = await fetch(
-        viaWa
+      const path = viaBoth
+        ? '/api/admin/orders/send-resume-notify-batch'
+        : viaSms
           ? '/api/admin/orders/send-resume-whatsapp-batch'
-          : '/api/admin/orders/send-resume-email-batch',
-        {
-          method: 'POST',
-          credentials: 'include',
-          headers: headers(true),
-          body: JSON.stringify({ order_ids: ids }),
-        }
-      );
+          : '/api/admin/orders/send-resume-email-batch';
+      const res = await fetch(path, {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true),
+        body: JSON.stringify({ order_ids: ids, email: true, sms: true }),
+      });
       const out = await res.json().catch(() => ({}));
       if (!res.ok && !out.sent) {
         throw new Error(out.message || out.error || 'Diffusion impossible');
       }
       if (msg) {
-        msg.textContent =
-          out.message ||
-          (viaWa ? `${out.sent || 0} WhatsApp envoyé(s)` : `${out.sent || 0} e-mail(s) envoyé(s)`);
+        msg.textContent = out.message || `${out.sent || 0} envoi(s)`;
         msg.className = out.sent ? 'form-msg ok' : 'form-msg err';
       }
       if (typeof window.panToast === 'function') {
@@ -2111,7 +2154,9 @@
     generateResumeLink(id, document.getElementById('payLinkBtn'), 'pay');
   });
   document.getElementById('diffusionBtn')?.addEventListener('click', () => sendDiffusion('email'));
-  document.getElementById('diffusionWaBtn')?.addEventListener('click', () => sendDiffusion('whatsapp'));
+  document.getElementById('diffusionSmsBtn')?.addEventListener('click', () => sendDiffusion('sms'));
+  document.getElementById('diffusionBothBtn')?.addEventListener('click', () => sendDiffusion('both'));
+  document.getElementById('diffusionWaBtn')?.addEventListener('click', () => sendDiffusion('sms'));
   document.getElementById('ordersSelectAll')?.addEventListener('change', (e) => {
     const on = Boolean(e.target.checked);
     document.querySelectorAll('.order-pick:not(:disabled)').forEach((cb) => {

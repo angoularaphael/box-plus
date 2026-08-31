@@ -378,16 +378,37 @@ function resumeWhatsAppText(order, { kind } = {}) {
 }
 
 async function sendResumeWhatsApp(order, { kind = 'resume' } = {}) {
-  const { isPromoWhatsAppPaused } = require('./whatsapp-outbound');
-  if (isPromoWhatsAppPaused()) {
-    return { sent: false, error: 'promo_paused', message: 'WhatsApp promo en pause (compte restreint)' };
-  }
   const { toWhatsAppPhone, sendWhatsAppMessage } = require('./whatsapp-bot');
   const raw = customerPhone(order);
   const dest = toWhatsAppPhone(raw);
   if (!dest) return { sent: false, error: 'no_phone' };
   await sendWhatsAppMessage(raw, resumeWhatsAppText(order, { kind }), { kind: 'promo' });
-  return { sent: true, to: dest };
+  return { sent: true, to: dest, via: 'sms' };
+}
+
+async function sendResumeNotify(order, { kind = 'resume', email = true, sms = true } = {}) {
+  const out = { email: null, sms: null };
+  if (email) {
+    try {
+      out.email = await sendResumeEmail(order, { kind });
+    } catch (err) {
+      out.email = { sent: false, error: err.message };
+    }
+  }
+  if (sms) {
+    try {
+      out.sms = await sendResumeWhatsApp(order, { kind });
+    } catch (err) {
+      out.sms = { sent: false, error: err.message };
+    }
+  }
+  const mailOk = !email || Boolean(out.email?.sent);
+  const smsOk = !sms || Boolean(out.sms?.sent);
+  return {
+    sent: mailOk || smsOk,
+    email: out.email,
+    sms: out.sms,
+  };
 }
 
 function summarizeNudge(order) {
@@ -611,6 +632,7 @@ module.exports = {
   resumeWhatsAppText,
   sendResumeEmail,
   sendResumeWhatsApp,
+  sendResumeNotify,
   nudgeEmailSubject,
   nudgeEmailHtml,
   nudgeWhatsAppText,
