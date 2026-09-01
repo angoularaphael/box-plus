@@ -713,7 +713,9 @@
                   ? ' <span class="badge pending" title="Migration Deciplus faite par le coach, hors bot">Migré à la main</span>'
                   : ''
               }`
-            : '<span class="badge pending">Boutique</span>'
+            : o.source === 'custom_offer' || o.origine === 'Offre perso'
+              ? '<span class="badge pending" title="Lien d’offre personnalisée">Offre perso</span>'
+              : '<span class="badge pending">Boutique</span>'
         }</td>
         <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>
         <td>${escapeHtml(o.product)}</td>
@@ -2139,6 +2141,74 @@
   });
 
   document.getElementById('refreshOrdersBtn').onclick = loadOrders;
+  document.getElementById('customOfferForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const msg = document.getElementById('customOfferMsg');
+    const box = document.getElementById('customOfferResult');
+    const btn = form.querySelector('button[type="submit"]');
+    if (msg) {
+      msg.textContent = '';
+      msg.className = 'form-msg';
+    }
+    if (box) {
+      box.hidden = true;
+      box.innerHTML = '';
+    }
+    const fd = new FormData(form);
+    const body = {
+      price_euros: fd.get('price_euros'),
+      mode: fd.get('mode'),
+      label: fd.get('label'),
+      gym: fd.get('gym'),
+      first_name: fd.get('first_name'),
+      last_name: fd.get('last_name'),
+      email: fd.get('email'),
+      phone: fd.get('phone'),
+    };
+    if (btn) btn.disabled = true;
+    try {
+      const res = await fetch('/api/admin/custom-offers', {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true),
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Impossible de créer l’offre');
+      if (box) {
+        box.hidden = false;
+        box.innerHTML = `
+          <p><strong>${escapeHtml(data.product?.display_name || 'Offre personnalisée')}</strong>
+            — ${escapeHtml(data.price_label || '')}
+            · ${data.mode === 'comptant' ? 'Comptant' : 'Abonnement 4 semaines'}</p>
+          <p class="admin-section-desc">Envoie ce lien. La personne voit l’offre, paie, puis complète le dossier.</p>
+          <p><code id="customOfferUrl">${escapeHtml(data.landing_url)}</code></p>
+          <button type="button" class="btn sm" id="customOfferCopy">Copier le lien</button>
+        `;
+        document.getElementById('customOfferCopy')?.addEventListener('click', async () => {
+          const ok = await copyText(data.landing_url);
+          if (typeof window.panToast === 'function') {
+            window.panToast(ok ? 'Lien copié' : 'Copie manuelle', ok ? undefined : 'err');
+          }
+        });
+      }
+      if (msg) {
+        msg.textContent = `Lien créé (${data.order_id})`;
+        msg.className = 'form-msg ok';
+      }
+      form.reset();
+      if (typeof window.panToast === 'function') window.panToast('Lien d’offre personnalisée prêt');
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message;
+        msg.className = 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
   document.getElementById('ordersSearch').oninput = renderOrders;
   ensureRefusedFilterOption();
   document.getElementById('ordersFilter').onchange = renderOrders;

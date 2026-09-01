@@ -467,6 +467,7 @@ const HTML_REDIRECTS = {
   '/offres-speciales.html': '/offres-speciales',
   '/offre-259.html': '/offre/259',
   '/offre-29.html': '/offre/29',
+  '/offre-perso.html': '/offre-perso',
 };
 
 /** Chemins PrestaShop fréquents → pages BOXPLUS (cutover boutique.boxingcenter.fr). */

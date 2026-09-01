@@ -63,6 +63,9 @@ function pickSnapshot(snapshot) {
     requires_payment: s.requires_payment,
     requires_iban: s.requires_iban,
     sale_type: s.sale_type || null,
+    tab: s.tab || null,
+    subsection: s.subsection || null,
+    duration_label: s.duration_label || null,
   };
 }
 

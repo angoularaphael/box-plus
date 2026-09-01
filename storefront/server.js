@@ -1958,6 +1958,32 @@ function createApp() {
     }
   });
 
+  app.post('/api/admin/custom-offers', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { prepareCustomOffer, landingUrl } = require('./lib/custom-offer');
+      const { describeResume } = require('./lib/inscription-nudge');
+      const prepared = prepareCustomOffer(req.body || {});
+      const order = await createDraftAsync(prepared);
+      const base = getCheckoutBaseUrl(req) || getStoreUrl();
+      const land = landingUrl(order, base);
+      const resume = describeResume(order);
+      res.json({
+        ok: true,
+        order_id: order.order_id,
+        landing_url: land,
+        inscription_url: resume.url,
+        product: order.product_snapshot,
+        mode: prepared.product.subsection === 'comptant' ? 'comptant' : 'abonnement',
+        price_label: order.product_snapshot?.price_label || null,
+      });
+    } catch (err) {
+      const status = err.status || 400;
+      logError('Offre perso admin', { error: err.message });
+      res.status(status).json({ ok: false, error: err.message });
+    }
+  });
+
   app.get('/api/admin/orders', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const raw = await listAllOrdersAsync();
@@ -5918,6 +5944,7 @@ function createApp() {
     '/mon-inscription': 'mon-inscription.html',
     '/gerer-abonnement': 'gerer-abonnement.html',
     '/regulariser': 'regulariser.html',
+    '/offre-perso': 'offre-perso.html',
     '/checkout.html': 'checkout.html',
     '/admin': 'admin/index.html',
     '/admin/': 'admin/index.html',

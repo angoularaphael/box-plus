@@ -77,6 +77,7 @@ function productSnapshot(product) {
     deciplus_id: product.deciplus_id || null,
     tab: product.tab || null,
     subsection: product.subsection || null,
+    duration_label: product.duration_label || null,
   };
 }
 
@@ -499,7 +500,9 @@ function toAdminSummary(order) {
       order.skip_dossier ||
       String(order.source || '').toLowerCase() === 'balma_retour'
         ? 'Aventure Balma'
-        : 'Boutique',
+        : String(order.source || '') === 'custom_offer'
+          ? 'Offre perso'
+          : 'Boutique',
     created_at: order.created_at,
     updated_at: order.updated_at,
     can_resume:
