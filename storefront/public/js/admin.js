@@ -368,7 +368,10 @@
   }
 
   function showTab(name) {
-    ['tabOffers', 'tabMateriel', 'tabContracts', 'tabCoachings', 'tabStats', 'tabWhatsapp'].forEach((id) => {
+    ['tabOffers', 'tabMateriel', 'tabContracts', 'tabCustomOffers', 'tabCoachings', 'tabStats', 'tabWhatsapp'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.hidden = id !== `tab${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+    });
       const el = document.getElementById(id);
       if (el) el.hidden = id !== `tab${name.charAt(0).toUpperCase()}${name.slice(1)}`;
     });
@@ -394,6 +397,8 @@
 
   if (location.hash === '#contracts' || location.pathname.endsWith('/contrats')) {
     showTab('contracts');
+  } else if (location.hash === '#customOffers' || location.hash === '#offres-perso') {
+    showTab('customOffers');
   } else if (location.hash === '#materiel') {
     showTab('materiel');
   } else if (location.hash === '#stats') {

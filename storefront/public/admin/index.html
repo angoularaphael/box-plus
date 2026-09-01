@@ -27,6 +27,7 @@
         <button type="button" class="admin-tab active" data-tab="offers">Offres</button>
         <button type="button" class="admin-tab" data-tab="materiel">Matériel</button>
         <button type="button" class="admin-tab" data-tab="contracts">Contrats & inscriptions</button>
+        <button type="button" class="admin-tab" data-tab="customOffers">Offres personnalisées</button>
         <button type="button" class="admin-tab" data-tab="coachings">Réservations coaching</button>
         <button type="button" class="admin-tab" data-tab="stats">Stats</button>
         <button type="button" class="admin-tab" data-tab="whatsapp">WhatsApp</button>
@@ -381,11 +382,13 @@
         </div>
       </section>
 
-      <section id="tabContracts" hidden>
+      </section>
+
+      <section id="tabCustomOffers" hidden>
         <div class="admin-section">
           <div class="admin-section-head">
             <div>
-              <h2 class="admin-section-title">Offre personnalisée</h2>
+              <h2 class="admin-section-title">Offres personnalisées boutique</h2>
               <p class="admin-section-desc">Prix + comptant ou abonnement. Un lien unique : la personne voit l’offre, paie, puis complète son dossier.</p>
             </div>
           </div>
@@ -440,15 +443,9 @@
           <div id="customOfferResult" class="resume-link-box" hidden></div>
           <p class="form-msg" id="customOfferMsg"></p>
         </div>
+      </section>
 
-        <div class="admin-section">
-          <div class="admin-section-head">
-            <div>
-              <h2 class="admin-section-title">Contrats & inscriptions</h2>
-              <p class="admin-section-desc">Inscriptions en cours et finalisées — téléchargez le contrat PDF de chaque adhérent.</p>
-            </div>
-          </div>
-        <div class="admin-toolbar">
+      <section id="tabContracts" hidden>
           <input type="search" id="ordersSearch" placeholder="Rechercher nom, email, référence…" class="admin-search" />
           <select id="ordersFilter" class="admin-search">
             <option value="all">Toutes</option>
@@ -622,9 +619,9 @@
   </div>
 
   <script src="../js/contract-open.js?v=8"></script>
-  <script src="/js/admin.js?v=27"></script
+  <script src="/js/admin.js?v=28"></script>
   <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
        reecrit pas une ligne (un autre developpeur y travaille). -->
-  <script src="/js/admin-shell.js?v=18"></script>
+  <script src="/js/admin-shell.js?v=19"></script>
 </body>
 </html>
