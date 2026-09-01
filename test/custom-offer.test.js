@@ -16,6 +16,7 @@ test('parsePriceCents accepte euros et virgule', () => {
 
 test('normalizeMode mappe abonnement / prélèvement', () => {
   assert.equal(normalizeMode('comptant'), 'comptant');
+  assert.equal(normalizeMode('comptant_4x'), 'comptant_4x');
   assert.equal(normalizeMode('abonnement'), 'abonnement');
   assert.equal(normalizeMode('prelevement'), 'abonnement');
   assert.equal(normalizeMode(''), null);
@@ -25,9 +26,32 @@ test('buildCustomOfferProduct comptant sans IBAN', () => {
   const p = buildCustomOfferProduct({ price_euros: 80, mode: 'comptant', label: 'Offre Youssef' });
   assert.equal(p.subsection, 'comptant');
   assert.equal(p.requires_iban, false);
+  assert.equal(p.supports_installment_choice, false);
   assert.equal(p.price_cents, 8000);
   assert.equal(p.display_name, 'Offre Youssef');
   assert.match(p.id, /^custom-[a-f0-9]+$/);
+});
+
+test('buildCustomOfferProduct comptant 1× ou 4×', () => {
+  const p = buildCustomOfferProduct({ price_euros: 259, mode: 'comptant_4x' });
+  assert.equal(p.subsection, 'comptant');
+  assert.equal(p.requires_iban, false);
+  assert.equal(p.supports_installment_choice, true);
+  assert.equal(p.installments_note, 'En une fois ou en 4× sans frais');
+  assert.equal(p.badge, '1× ou 4×');
+  assert.equal(p.price_cents, 25900);
+});
+
+test('buildCustomOfferProduct allow_4x sur comptant', () => {
+  const p = buildCustomOfferProduct({ price_euros: 80, mode: 'comptant', allow_4x: true });
+  assert.equal(p.supports_installment_choice, true);
+});
+
+test('abonnement ignore le 4×', () => {
+  const p = buildCustomOfferProduct({ price_euros: 35, mode: 'abonnement', allow_4x: true });
+  assert.equal(p.subsection, 'prelevement');
+  assert.equal(p.requires_iban, true);
+  assert.equal(p.supports_installment_choice, false);
 });
 
 test('buildCustomOfferProduct abonnement avec IBAN', () => {

@@ -1975,6 +1975,7 @@ function createApp() {
         inscription_url: resume.url,
         product: order.product_snapshot,
         mode: prepared.product.subsection === 'comptant' ? 'comptant' : 'abonnement',
+        allow_4x: prepared.product.supports_installment_choice === true,
         price_label: order.product_snapshot?.price_label || null,
       });
     } catch (err) {

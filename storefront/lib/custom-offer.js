@@ -32,11 +32,22 @@ function parsePriceCents(input = {}) {
 
 function normalizeMode(value) {
   const mode = String(value || '').toLowerCase().trim();
+  if (mode === 'comptant_4x' || mode === 'comptant-4x' || mode === '4x' || mode === 'fourx') {
+    return 'comptant_4x';
+  }
   if (mode === 'comptant') return 'comptant';
   if (mode === 'abonnement' || mode === 'prelevement' || mode === 'prélèvement' || mode === 'rib') {
     return 'abonnement';
   }
   return null;
+}
+
+function parseAllow4x(input = {}, mode = '') {
+  if (mode === 'abonnement') return false;
+  if (mode === 'comptant_4x') return true;
+  const raw = input.allow_4x ?? input.four_x ?? input.installments;
+  if (raw === true || raw === 1 || raw === '1' || raw === 'true' || raw === 'oui' || raw === 'on') return true;
+  return false;
 }
 
 function normalizeGym(value) {
@@ -66,39 +77,52 @@ function buildCustomOfferProduct(input = {}) {
   }
   const mode = normalizeMode(input.mode || input.payment_mode);
   if (!mode) {
-    const err = new Error('Choisis comptant ou abonnement');
+    const err = new Error('Choisis comptant, 1× ou 4×, ou abonnement');
     err.status = 400;
     throw err;
   }
+  const allow4x = parseAllow4x(input, mode);
+  const comptant = mode === 'comptant' || mode === 'comptant_4x';
   const priceLabel = formatPriceLabel(cents);
   const customName = String(input.label || input.name || '').trim();
   const id = `custom-${crypto.randomBytes(4).toString('hex')}`;
-  const comptant = mode === 'comptant';
   const name =
     customName ||
-    (comptant ? `Offre personnalisée ${priceLabel} comptant` : `Offre personnalisée ${priceLabel} / 4 semaines`);
+    (!comptant
+      ? `Offre personnalisée ${priceLabel} / 4 semaines`
+      : allow4x
+        ? `Offre personnalisée ${priceLabel} (1× ou 4×)`
+        : `Offre personnalisée ${priceLabel} comptant`);
+  const quartLabel = formatPriceLabel(Math.round(cents / 4));
   return {
     id,
     name,
     display_name: name,
-    description: comptant
-      ? 'Offre négociée avec Boxing Center. Paiement comptant, puis dossier d’inscription.'
-      : 'Offre négociée avec Boxing Center. 1ʳᵉ échéance CB, puis prélèvement toutes les 4 semaines, sans engagement.',
+    description: !comptant
+      ? 'Offre négociée avec Boxing Center. 1ʳᵉ échéance CB, puis prélèvement toutes les 4 semaines, sans engagement.'
+      : allow4x
+        ? `Offre négociée avec Boxing Center. Paiement ${priceLabel} en une fois ou en 4× sans frais (${quartLabel} par échéance), puis dossier d’inscription.`
+        : 'Offre négociée avec Boxing Center. Paiement comptant, puis dossier d’inscription.',
     price_cents: cents,
     price_label: priceLabel,
     stripe_price_label: priceLabel,
     requires_iban: !comptant,
     requires_payment: true,
     supports_billing_choice: false,
-    supports_installment_choice: false,
+    supports_installment_choice: Boolean(comptant && allow4x),
+    installments_note: comptant && allow4x ? 'En une fois ou en 4× sans frais' : null,
     tab: 'abonnements',
     subsection: comptant ? 'comptant' : 'prelevement',
-    duration_label: comptant ? 'Comptant' : 'Toutes les 4 semaines',
-    badge: comptant ? 'Comptant' : 'Sans engagement',
+    duration_label: comptant ? (allow4x ? '1× ou 4× sans frais' : 'Comptant') : 'Toutes les 4 semaines',
+    badge: !comptant ? 'Sans engagement' : allow4x ? '1× ou 4×' : 'Comptant',
     benefits: [
       'Accès aux 5 salles Boxing Center',
       'Cours illimités toutes disciplines',
-      comptant ? `Paiement unique ${priceLabel}` : `${priceLabel} toutes les 4 semaines, sans engagement`,
+      !comptant
+        ? `${priceLabel} toutes les 4 semaines, sans engagement`
+        : allow4x
+          ? `${priceLabel} en 1×, ou 4× sans frais (${quartLabel} × 4)`
+          : `Paiement unique ${priceLabel}`,
     ],
     sale_type: 'custom',
   };
@@ -130,6 +154,7 @@ module.exports = {
   normalizeMode,
   normalizeGym,
   normalizeCustomerShort,
+  parseAllow4x,
   buildCustomOfferProduct,
   prepareCustomOffer,
   landingUrl,

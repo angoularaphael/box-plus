@@ -2183,7 +2183,13 @@
         box.innerHTML = `
           <p><strong>${escapeHtml(data.product?.display_name || 'Offre personnalisée')}</strong>
             — ${escapeHtml(data.price_label || '')}
-            · ${data.mode === 'comptant' ? 'Comptant' : 'Abonnement 4 semaines'}</p>
+            · ${
+              data.product?.supports_installment_choice
+                ? 'Comptant — 1× ou 4× sans frais'
+                : data.mode === 'comptant'
+                  ? 'Comptant'
+                  : 'Abonnement 4 semaines'
+            }</p>
           <p class="admin-section-desc">Envoie ce lien. La personne voit l’offre, paie, puis complète le dossier.</p>
           <p><code id="customOfferUrl">${escapeHtml(data.landing_url)}</code></p>
           <button type="button" class="btn sm" id="customOfferCopy">Copier le lien</button>

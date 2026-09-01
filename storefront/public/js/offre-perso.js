@@ -30,19 +30,26 @@
       const order = data.order;
       const product = order.product_snapshot || {};
       const comptant = product.subsection === 'comptant' || product.requires_iban === false;
+      const fourX =
+        product.supports_installment_choice === true ||
+        /1\s*[x×]\s*ou\s*4\s*[x×]/i.test(String(product.badge || product.duration_label || ''));
       const name = product.display_name || product.name || 'Votre offre Boxing Center';
       const price = product.price_label || '';
       if (title) title.textContent = name;
       if (lead) {
-        lead.textContent = comptant
-          ? 'Paiement unique, puis vous complétez votre dossier d’inscription.'
-          : '1ʳᵉ échéance aujourd’hui, puis prélèvement toutes les 4 semaines, sans engagement. Ensuite le dossier.';
+        lead.textContent = !comptant
+          ? '1ʳᵉ échéance aujourd’hui, puis prélèvement toutes les 4 semaines, sans engagement. Ensuite le dossier.'
+          : fourX
+            ? 'Payez en une fois ou en 4× sans frais, puis vous complétez votre dossier d’inscription.'
+            : 'Paiement unique, puis vous complétez votre dossier d’inscription.';
       }
       if (priceEl) priceEl.textContent = price;
       if (modeEl) {
-        modeEl.textContent = comptant
-          ? 'Comptant — un seul paiement'
-          : 'Abonnement — 4 semaines, sans engagement';
+        modeEl.textContent = !comptant
+          ? 'Abonnement — 4 semaines, sans engagement'
+          : fourX
+            ? 'Comptant — 1× ou 4× sans frais'
+            : 'Comptant — un seul paiement';
       }
       const benefits = Array.isArray(product.benefits) ? product.benefits : [];
       if (benefitsEl) {

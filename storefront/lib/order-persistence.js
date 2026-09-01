@@ -66,6 +66,9 @@ function pickSnapshot(snapshot) {
     tab: s.tab || null,
     subsection: s.subsection || null,
     duration_label: s.duration_label || null,
+    supports_installment_choice: s.supports_installment_choice === true,
+    installments_note: s.installments_note || null,
+    badge: s.badge || null,
   };
 }
 
