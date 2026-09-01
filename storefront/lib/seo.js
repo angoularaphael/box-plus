@@ -18,6 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 const { jsonLdCreator, AUTEURS } = require('./auteurs');
+const { LANDINGS, renderLanding, landingJsonLd } = require('./seo-landings');
 
 const SITE_URL = (() => {
   const env = (process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -888,6 +889,9 @@ function sitemapXml(publicDir) {
     const v = videoFor(route, publicDir);
     urls.push(`  <url><loc>${SITE_URL}${route === '/' ? '/' : route}</loc><lastmod>${lastmod}</lastmod><changefreq>${cfg.changefreq}</changefreq><priority>${cfg.priority}</priority>${v ? videoSitemapBlock(v) : ''}</url>`);
   }
+  for (const route of Object.keys(LANDINGS)) {
+    urls.push(`  <url><loc>${SITE_URL}${route}</loc><lastmod>${today}</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>`);
+  }
   let catalogMod = today;
   try {
     catalogMod = new Date(fs.statSync(require.resolve('../../data/storefront/materiel-catalog.json')).mtimeMs).toISOString().slice(0, 10);
@@ -1009,6 +1013,20 @@ function registerSeo(app, publicDir) {
     });
     res.type('text/html; charset=utf-8').send(inject(html, tags));
   });
+
+  // Transactional discipline pages: each targets one clear search intent
+  // with useful, visible content instead of an ineffective keyword list.
+  for (const [route, page] of Object.entries(LANDINGS)) {
+    app.get(route, (_req, res) => {
+      const html = renderLanding(route);
+      const tags = headTags(route, {
+        ogImage: page.image,
+        ogImageAlt: `Cours de ${page.name} à Toulouse — Boxing Center`,
+        jsonLd: landingJsonLd(route, SITE_URL),
+      });
+      res.type('text/html; charset=utf-8').send(inject(html, tags));
+    });
+  }
 
   // Crawlable no-JS fallback for the catalog page: AI crawlers (GPTBot,
   // ClaudeBot, PerplexityBot…) don't execute JS, so the JS-rendered grid is
