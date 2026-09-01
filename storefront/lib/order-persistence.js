@@ -69,6 +69,7 @@ function pickSnapshot(snapshot) {
     supports_installment_choice: s.supports_installment_choice === true,
     installments_note: s.installments_note || null,
     badge: s.badge || null,
+    party_size: Number(s.party_size) >= 1 ? Math.min(4, Math.round(Number(s.party_size))) : null,
   };
 }
 
@@ -120,6 +121,10 @@ function buildOrderSummary(order) {
       gym: customer.gym || null,
     },
     gym: order.gym || full.gym || customer.gym || null,
+    party_size: Number(order.party_size || order.product_snapshot?.party_size) >= 1
+      ? Math.min(4, Math.round(Number(order.party_size || order.product_snapshot?.party_size)))
+      : null,
+    companions: Array.isArray(order.companions) ? order.companions : [],
     activity: order.activity || null,
     activity_label: order.activity_label || null,
     booking_date: order.booking_date || null,

@@ -465,6 +465,45 @@ async function sendNewMemberAdminEmail() {
   return { sent: false, reason: 'disabled' };
 }
 
+async function sendCustomOfferClubEmail(order) {
+  const {
+    isCustomOfferOrder,
+    buildCustomOfferClubRecap,
+    clubCustomOfferEmail,
+  } = require('./custom-offer');
+  if (!isCustomOfferOrder(order)) return { sent: false, skipped: true };
+  if (order.club_recap_sent_at) return { sent: true, already: true, to: clubCustomOfferEmail() };
+  const recap = buildCustomOfferClubRecap(order);
+  const replyTo = order.customer_short?.email || defaultReplyTo();
+  if (!isConfigured()) {
+    logInfo('Email offre perso club (mode log)', {
+      to: recap.to,
+      order_id: order.order_id,
+      subject: recap.subject,
+    });
+    return { sent: false, reason: 'brevo_not_configured', to: recap.to, preview: recap.html };
+  }
+  try {
+    const result = await sendEmailViaBrevo({
+      to: recap.to,
+      subject: recap.subject,
+      html: recap.html,
+      text: recap.text,
+      replyTo,
+    });
+    if (!result) return { sent: false, reason: 'brevo_not_configured', to: recap.to };
+    logInfo('Email offre perso club envoyé', {
+      to: recap.to,
+      order_id: order.order_id,
+      via: result.via,
+    });
+    return { sent: true, via: result.via, to: recap.to };
+  } catch (err) {
+    logWarn('Email offre perso club échoué', { order_id: order.order_id, error: err.message });
+    return { sent: false, reason: 'brevo_error', error: err.message, to: recap.to };
+  }
+}
+
 module.exports = {
   sendConfirmationEmail,
   buildConfirmationHtml,
@@ -475,6 +514,7 @@ module.exports = {
   sendTestEmail,
   sendUnpaidSubscriptionEmail,
   sendNewMemberAdminEmail,
+  sendCustomOfferClubEmail,
   buildConfirmationHtml,
   buildMaterielConfirmationHtml,
   buildInscriptionAttachments,

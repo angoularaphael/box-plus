@@ -71,10 +71,71 @@ test('prepareCustomOffer + landingUrl', () => {
   });
   assert.equal(prepared.source, 'custom_offer');
   assert.equal(prepared.gym, 'minimes');
+  assert.equal(prepared.party_size, 1);
   assert.equal(prepared.customer_short.first_name, 'Léa');
   const url = landingUrl(
     { order_id: 'BC-1', access_token: 'abc' },
     'https://boutique.boxingcenter.fr'
   );
   assert.equal(url, 'https://boutique.boxingcenter.fr/offre-perso?order=BC-1&token=abc');
+});
+
+test('parsePartySize borne 1–4', () => {
+  const { parsePartySize, peopleLabel } = require('../storefront/lib/custom-offer');
+  assert.equal(parsePartySize({}), 1);
+  assert.equal(parsePartySize({ party_size: 3 }), 3);
+  assert.equal(parsePartySize({ party_size: 9 }), 4);
+  assert.equal(peopleLabel(2), '2 personnes');
+});
+
+test('offre perso 3 personnes + companions', () => {
+  const {
+    buildCustomOfferProduct,
+    parseCompanions,
+    validateCompanions,
+    buildCustomOfferClubRecap,
+    clubCustomOfferEmail,
+  } = require('../storefront/lib/custom-offer');
+  const p = buildCustomOfferProduct({ price_euros: 120, mode: 'comptant_4x', party_size: 3 });
+  assert.equal(p.party_size, 3);
+  assert.match(p.description, /3 personnes/);
+  const companions = parseCompanions(
+    [
+      { first_name: 'Marie', last_name: 'Martin', email: 'marie@test.fr', birthdate: '1990-01-02' },
+      { first_name: 'Paul', last_name: 'Martin', phone: '0611223344', birthdate: '1992-03-04', gender: 'M' },
+    ],
+    3
+  );
+  assert.equal(companions.length, 2);
+  assert.deepEqual(validateCompanions(companions, 3, p), []);
+  assert.ok(validateCompanions([{ first_name: 'X' }], 3, p).length > 0);
+  const recap = buildCustomOfferClubRecap({
+    order_id: 'BC-TEST',
+    source: 'custom_offer',
+    party_size: 3,
+    product_snapshot: p,
+    customer_short: {
+      first_name: 'Léa',
+      last_name: 'Durand',
+      email: 'lea@test.fr',
+      phone: '0601020304',
+      birthdate: '1988-05-06',
+    },
+    customer_full: {
+      gender: 'F',
+      gym: 'minimes',
+      address: '12 rue Test',
+      postal_code: '31000',
+      city: 'Toulouse',
+    },
+    payment: { status: 'paid', payment_plan: '4x' },
+    companions,
+  });
+  assert.equal(recap.to, 'boxingcenter31@gmail.com');
+  assert.equal(clubCustomOfferEmail(), 'boxingcenter31@gmail.com');
+  assert.match(recap.subject, /3 personnes/);
+  assert.match(recap.text, /Marie Martin/);
+  assert.match(recap.text, /Paul Martin/);
+  assert.match(recap.html, /Personne 1 \(payeur\)/);
+  assert.match(recap.html, /12 rue Test/);
 });

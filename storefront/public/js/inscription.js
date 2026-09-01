@@ -438,6 +438,39 @@
     );
   }
 
+  function isCustomOfferFlow() {
+    return (
+      String(state.order?.source || '').toLowerCase() === 'custom_offer' ||
+      state.product?.sale_type === 'custom' ||
+      state.order?.product_snapshot?.sale_type === 'custom' ||
+      String(state.productId || state.order?.product_id || '').startsWith('custom-')
+    );
+  }
+
+  function partySize() {
+    const n = Number(
+      state.order?.party_size ||
+        state.product?.party_size ||
+        state.order?.product_snapshot?.party_size ||
+        1
+    );
+    if (!Number.isFinite(n) || n < 1) return 1;
+    return Math.min(4, Math.round(n));
+  }
+
+  function filledVal(value) {
+    return String(value || '').trim() !== '';
+  }
+
+  function inputOrReadonly(name, label, type, value, extraClass = '') {
+    const v = String(value || '');
+    const lock = isCustomOfferFlow() && filledVal(v);
+    return `<div class="${extraClass}"><label for="${name}">${label}${lock ? '' : ' *'}</label>
+      <input id="${name}" name="${name}" type="${type}" ${lock ? 'readonly' : 'required'} value="${esc(v)}" autocomplete="${
+        name === 'email' ? 'email' : name === 'phone' ? 'tel' : 'off'
+      }" /></div>`;
+  }
+
   function formatFrDate(d) {
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   }
@@ -1681,11 +1714,16 @@
     const birthMax = new Date().toISOString().slice(0, 10);
     stepContent.innerHTML = `
       <h1>Vos coordonnées</h1>
+      ${
+        isCustomOfferFlow()
+          ? `<p class="form-hint">Les infos déjà connues sont préremplies. Complétez seulement ce qui manque.</p>`
+          : ''
+      }
       <form id="shortForm" class="form-grid">
-        <div><label for="first_name">Prénom *</label><input id="first_name" name="first_name" required value="${esc(short.first_name || '')}" /></div>
-        <div><label for="last_name">Nom *</label><input id="last_name" name="last_name" required value="${esc(short.last_name || '')}" /></div>
-        <div class="full"><label for="email">Email *</label><input id="email" name="email" type="email" required value="${esc(short.email || '')}" /></div>
-        <div class="full"><label for="phone">Téléphone mobile *</label><input id="phone" name="phone" type="tel" required inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78" value="${esc(short.phone || '')}" /></div>
+        ${inputOrReadonly('first_name', 'Prénom', 'text', short.first_name)}
+        ${inputOrReadonly('last_name', 'Nom', 'text', short.last_name)}
+        ${inputOrReadonly('email', 'Email', 'email', short.email, 'full')}
+        ${inputOrReadonly('phone', 'Téléphone mobile', 'tel', short.phone, 'full')}
         <div class="full"><label for="birthdate">Date de naissance *</label>
           <input id="birthdate" name="birthdate" type="date" required
             min="1900-01-01" max="${birthMax}"
@@ -1899,6 +1937,47 @@
     const short = state.order?.customer_short || state.shortDraft || {};
     const birthMax = new Date().toISOString().slice(0, 10);
     const photoOk = state.photoUploaded || Boolean(state.order?.documents?.photo) || Boolean(state.order?.documents?.photo_base64) || Boolean(state.order?.documents?.photo_url) || Boolean(state.order?.documents?.has_photo);
+    const size = partySize();
+    const extraPeople = isCustomOfferFlow() ? Math.max(0, size - 1) : 0;
+    const savedCompanions = Array.isArray(state.order?.companions) ? state.order.companions : [];
+    let missingIdentityHtml = '';
+    if (isCustomOfferFlow()) {
+      const bits = [];
+      if (!filledVal(short.first_name)) bits.push(inputOrReadonly('first_name', 'Prénom', 'text', short.first_name));
+      if (!filledVal(short.last_name)) bits.push(inputOrReadonly('last_name', 'Nom', 'text', short.last_name));
+      if (!filledVal(short.email)) bits.push(inputOrReadonly('email', 'Email', 'email', short.email, 'full'));
+      if (!filledVal(short.phone)) bits.push(inputOrReadonly('phone', 'Téléphone mobile', 'tel', short.phone, 'full'));
+      if (bits.length) {
+        missingIdentityHtml = `<div class="full"><p class="form-hint">Infos encore manquantes pour la personne 1 (payeur)</p></div>${bits.join('')}`;
+      }
+    }
+    let companionsHtml = '';
+    if (extraPeople > 0) {
+      companionsHtml = `<div class="full notice-important" style="margin:16px 0 8px">
+        <strong>Cette offre est pour ${size} personnes</strong>
+        <p>Complétez les infos de chaque personne. L’adresse du payeur sera réutilisée pour le club.</p>
+      </div>`;
+      for (let i = 0; i < extraPeople; i++) {
+        const p = savedCompanions[i] || {};
+        companionsHtml += `<fieldset class="full" style="border:1px solid #dbe3ea;border-radius:12px;padding:14px;margin:8px 0">
+          <legend style="font-weight:700">Personne ${i + 2}</legend>
+          <div class="form-grid">
+            <div><label for="c${i}_first">Prénom *</label><input id="c${i}_first" name="companion_${i}_first_name" required value="${esc(p.first_name || '')}" /></div>
+            <div><label for="c${i}_last">Nom *</label><input id="c${i}_last" name="companion_${i}_last_name" required value="${esc(p.last_name || '')}" /></div>
+            <div><label for="c${i}_gender">Sexe</label>
+              <select id="c${i}_gender" name="companion_${i}_gender">
+                <option value="">—</option>
+                <option value="M" ${p.gender === 'M' ? 'selected' : ''}>Homme</option>
+                <option value="F" ${p.gender === 'F' ? 'selected' : ''}>Femme</option>
+              </select></div>
+            <div><label for="c${i}_birth">Date de naissance *</label>
+              <input id="c${i}_birth" name="companion_${i}_birthdate" type="date" required min="1900-01-01" max="${birthMax}" value="${esc(p.birthdate || '')}" /></div>
+            <div class="full"><label for="c${i}_email">Email</label><input id="c${i}_email" name="companion_${i}_email" type="email" value="${esc(p.email || '')}" /></div>
+            <div class="full"><label for="c${i}_phone">Téléphone</label><input id="c${i}_phone" name="companion_${i}_phone" type="tel" inputmode="tel" placeholder="06 12 34 56 78" value="${esc(p.phone || '')}" /></div>
+          </div>
+        </fieldset>`;
+      }
+    }
     stepContent.innerHTML = `
       ${roundClockHtml()}
       <h1>Votre dossier</h1>
@@ -1908,6 +1987,15 @@
         <strong>Fiche Boxing Center Minimes</strong>
         <p>Pas de téléphone ni d’e-mail sur cette fiche : on recopie tes infos Balma et on ajoute « Balma » à ton prénom. Même si le paiement n’est pas passé, complète ce dossier pour que le club puisse te recontacter.</p>
       </div>`
+          : isCustomOfferFlow()
+            ? `<div class="notice-important" style="margin:0 0 20px">
+        <strong>${size > 1 ? `Offre pour ${size} personnes` : 'Offre personnalisée'}</strong>
+        <p>${
+          size > 1
+            ? 'Indiquez les infos manquantes pour chaque personne. À la confirmation, Boxing Center reçoit le récapitulatif.'
+            : 'Complétez uniquement les infos encore manquantes. À la confirmation, Boxing Center reçoit le récapitulatif.'
+        }</p>
+      </div>`
           : `<div class="notice-important" style="margin:0 0 20px">
         <strong>Anciens et nouveaux adhérents</strong>
         <p>Allez jusqu’au bout des étapes : ce dossier, puis la signature. Tant que ce n’est pas terminé, votre abonnement ne prend pas effet — que vous soyez déjà membre ou que vous rejoigniez Boxing Center.</p>
@@ -1916,6 +2004,7 @@
       <form id="fullForm" class="form-grid">
         <input type="hidden" name="token" value="${state.token}" />
         ${state.sessionId ? `<input type="hidden" name="session_id" value="${state.sessionId}" />` : ''}
+        ${missingIdentityHtml}
         <div><label for="gender">Sexe *</label>
           <select id="gender" name="gender" required>
             <option value="">—</option>
@@ -1949,6 +2038,7 @@
           <button type="button" class="btn secondary" id="webcamCaptureBtn" hidden style="margin-top:8px">Capturer</button>
           <button type="button" class="btn secondary" id="webcamStopBtn" hidden style="margin-top:8px">Arrêter la caméra</button>
         </div>
+        ${companionsHtml}
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
         <div class="full">${backButton(
           productRequiresIban(state.order)
@@ -2070,6 +2160,41 @@
       await stopWebcam();
       const fd = new FormData(e.target);
       const body = Object.fromEntries(fd.entries());
+      if (extraPeople > 0) {
+        const companions = [];
+        for (let i = 0; i < extraPeople; i++) {
+          const person = {
+            first_name: String(body[`companion_${i}_first_name`] || '').trim(),
+            last_name: String(body[`companion_${i}_last_name`] || '').trim(),
+            gender: String(body[`companion_${i}_gender`] || '').trim(),
+            birthdate: String(body[`companion_${i}_birthdate`] || '').trim(),
+            email: String(body[`companion_${i}_email`] || '').trim(),
+            phone: String(body[`companion_${i}_phone`] || '').trim(),
+          };
+          delete body[`companion_${i}_first_name`];
+          delete body[`companion_${i}_last_name`];
+          delete body[`companion_${i}_gender`];
+          delete body[`companion_${i}_birthdate`];
+          delete body[`companion_${i}_email`];
+          delete body[`companion_${i}_phone`];
+          if (!person.email && !person.phone) {
+            setMsg(`Personne ${i + 2} : indiquez un email ou un téléphone.`, 'err');
+            return;
+          }
+          const birthErrC = validateBirthdateClient(person.birthdate);
+          if (birthErrC) {
+            setMsg(`Personne ${i + 2} : ${birthErrC}`, 'err');
+            return;
+          }
+          const ageErrC = adultOfferAgeError(person.birthdate, state.product || state.order?.product_snapshot);
+          if (ageErrC) {
+            setMsg(`Personne ${i + 2} : ${ageErrC}`, 'err');
+            return;
+          }
+          companions.push(person);
+        }
+        body.companions = companions;
+      }
       const birthErr = validateBirthdateClient(body.birthdate);
       if (birthErr) {
         setMsg(birthErr, 'err');

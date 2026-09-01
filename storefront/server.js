@@ -191,6 +191,7 @@ const {
   sendGdprEraseRequest,
   sendUnpaidSubscriptionEmail,
   sendNewMemberAdminEmail,
+  sendCustomOfferClubEmail,
 } = require('./lib/mailer');
 const {
   STEPS,
@@ -824,6 +825,20 @@ async function fulfillStripeSession(sessionId, stripeSession = null, lifecycleMo
   removePendingOrder(sessionId);
   logInfo('Paiement Stripe → BOXPLUS', { order_id: payload.order_id, queued: result.queued });
   return { ok: true, order_id: payload.order_id, queued: result.queued, result };
+}
+
+async function notifyCustomOfferClub(order) {
+  if (!order) return { sent: false, skipped: true };
+  const result = await sendCustomOfferClubEmail(order);
+  if (result.sent && !result.already && !result.skipped) {
+    order.club_recap_sent_at = new Date().toISOString();
+    try {
+      await saveOrderAsync(order);
+    } catch (err) {
+      logWarn('club_recap_sent_at non enregistré', { order_id: order.order_id, error: err.message });
+    }
+  }
+  return result;
 }
 
 function createApp() {
@@ -1976,6 +1991,7 @@ function createApp() {
         product: order.product_snapshot,
         mode: prepared.product.subsection === 'comptant' ? 'comptant' : 'abonnement',
         allow_4x: prepared.product.supports_installment_choice === true,
+        party_size: prepared.product.party_size || 1,
         price_label: order.product_snapshot?.price_label || null,
       });
     } catch (err) {
@@ -3216,6 +3232,25 @@ function createApp() {
       const errors = validateFullForm(full, product);
       if (errors.length) return res.status(400).json({ ok: false, errors });
 
+      const {
+        isCustomOfferOrder,
+        parseCompanions,
+        validateCompanions,
+        partySizeOf,
+      } = require('./lib/custom-offer');
+      const companionsRaw = full.companions;
+      delete full.companions;
+      delete full.token;
+      delete full.session_id;
+      let companions = Array.isArray(order.companions) ? order.companions : [];
+      let partySize = partySizeOf(order);
+      if (isCustomOfferOrder(order)) {
+        partySize = partySizeOf({ ...order, product_snapshot: product });
+        companions = parseCompanions(companionsRaw, partySize);
+        const companionErrors = validateCompanions(companions, partySize, product);
+        if (companionErrors.length) return res.status(400).json({ ok: false, errors: companionErrors });
+      }
+
       if (
         !aventureOrder &&
         !order.documents?.photo &&
@@ -3233,13 +3268,20 @@ function createApp() {
       if (order.documents?.photo_base64) full.photo_base64 = order.documents.photo_base64;
       if (order.documents?.photo_url) full.photo_url = order.documents.photo_url;
 
-      if (full.birthdate) {
-        await updateShortProfile(order.order_id, {
-          ...(order.customer_short || {}),
-          birthdate: full.birthdate,
-        });
+      const shortPatch = { ...(order.customer_short || {}) };
+      for (const key of ['first_name', 'last_name', 'email', 'phone', 'birthdate']) {
+        if (full[key]) shortPatch[key] = String(full[key]).trim();
+      }
+      if (shortPatch.first_name || shortPatch.last_name || shortPatch.email || shortPatch.phone || shortPatch.birthdate) {
+        await updateShortProfile(order.order_id, shortPatch);
       }
       await updateFullProfile(order.order_id, full);
+      if (isCustomOfferOrder(order)) {
+        const saved = (await loadOrderAsync(order.order_id)) || order;
+        saved.companions = companions;
+        saved.party_size = partySize;
+        await saveOrderAsync(saved);
+      }
       if (aventureOrder) {
         try {
           const { notifyAventureDispatch } = require('./lib/aventure-dispatch');
@@ -3305,6 +3347,7 @@ function createApp() {
                 : 'Email non envoyé');
           }
         }
+        await notifyCustomOfferClub(order);
 
         await syncInscriptionClient(order);
         return res.json({
@@ -3436,6 +3479,7 @@ function createApp() {
 
       const emailResult = await sendConfirmationEmail(signed);
       if (emailResult.sent) await markEmailSent(signed.order_id);
+      await notifyCustomOfferClub(signed);
 
       const clientResult = await syncInscriptionClient(signed);
 

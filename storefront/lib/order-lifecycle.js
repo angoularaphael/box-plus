@@ -78,15 +78,18 @@ function productSnapshot(product) {
     tab: product.tab || null,
     subsection: product.subsection || null,
     duration_label: product.duration_label || null,
+    party_size: Number(product.party_size) >= 1 ? Math.min(4, Math.round(Number(product.party_size))) : null,
   };
 }
 
-function createDraft({ product_id, product, customer_short, gym, referral_friend, source }) {
+function createDraft({ product_id, product, customer_short, gym, referral_friend, source, party_size }) {
   initDirs();
   const order_id = generateOrderId();
   const access_token = generateAccessToken();
   const isBalma = String(source || '').toLowerCase() === 'balma_retour';
   const gymForced = gym || (isBalma ? 'minimes' : null);
+  const sizeNum = Math.round(Number(party_size || product?.party_size));
+  const partySize = Number.isFinite(sizeNum) && sizeNum >= 1 ? Math.min(4, sizeNum) : null;
   const order = {
     order_id,
     access_token,
@@ -97,6 +100,7 @@ function createDraft({ product_id, product, customer_short, gym, referral_friend
     customer_full: gymForced ? { gym: gymForced } : null,
     referral_friend: referral_friend || null,
     source: source || null,
+    ...(partySize ? { party_size: partySize, companions: [] } : {}),
     payment: { status: 'pending' },
     signature: null,
     documents: {},
@@ -108,8 +112,8 @@ function createDraft({ product_id, product, customer_short, gym, referral_friend
   return order;
 }
 
-async function createDraftAsync({ product_id, product, customer_short, gym, referral_friend, source }) {
-  const order = createDraft({ product_id, product, customer_short, gym, referral_friend, source });
+async function createDraftAsync({ product_id, product, customer_short, gym, referral_friend, source, party_size }) {
+  const order = createDraft({ product_id, product, customer_short, gym, referral_friend, source, party_size });
   await persistence.saveOrderAsync(order);
   return order;
 }

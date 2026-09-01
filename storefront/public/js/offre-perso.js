@@ -33,23 +33,29 @@
       const fourX =
         product.supports_installment_choice === true ||
         /1\s*[x×]\s*ou\s*4\s*[x×]/i.test(String(product.badge || product.duration_label || ''));
+      const people = Number(product.party_size || order.party_size || 1);
+      const peopleLabel = people > 1 ? `Offre pour ${people} personnes` : '';
       const name = product.display_name || product.name || 'Votre offre Boxing Center';
       const price = product.price_label || '';
       if (title) title.textContent = name;
       if (lead) {
         lead.textContent = !comptant
-          ? '1ʳᵉ échéance aujourd’hui, puis prélèvement toutes les 4 semaines, sans engagement. Ensuite le dossier.'
+          ? '1ʳᵉ échéance aujourd’hui, puis prélèvement toutes les 4 semaines, sans engagement. Ensuite le dossier (infos manquantes uniquement).'
           : fourX
-            ? 'Payez en une fois ou en 4× sans frais, puis vous complétez votre dossier d’inscription.'
-            : 'Paiement unique, puis vous complétez votre dossier d’inscription.';
+            ? 'Payez en une fois ou en 4× sans frais, puis vous complétez uniquement les infos encore manquantes.'
+            : 'Paiement unique, puis vous complétez uniquement les infos encore manquantes.';
       }
       if (priceEl) priceEl.textContent = price;
       if (modeEl) {
-        modeEl.textContent = !comptant
-          ? 'Abonnement — 4 semaines, sans engagement'
-          : fourX
-            ? 'Comptant — 1× ou 4× sans frais'
-            : 'Comptant — un seul paiement';
+        const modeBits = [
+          !comptant
+            ? 'Abonnement — 4 semaines, sans engagement'
+            : fourX
+              ? 'Comptant — 1× ou 4× sans frais'
+              : 'Comptant — un seul paiement',
+          peopleLabel,
+        ].filter(Boolean);
+        modeEl.textContent = modeBits.join(' · ');
       }
       const benefits = Array.isArray(product.benefits) ? product.benefits : [];
       if (benefitsEl) {

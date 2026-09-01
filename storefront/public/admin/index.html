@@ -387,7 +387,7 @@
           <div class="admin-section-head">
             <div>
               <h2 class="admin-section-title">Offres personnalisées boutique</h2>
-              <p class="admin-section-desc">Prix + comptant (1× ou 1×/4×) ou abonnement. Un lien unique : la personne voit l’offre, paie, puis complète son dossier.</p>
+              <p class="admin-section-desc">Prix, paiement, et nombre de personnes (1 à 4). Un lien unique : ils paient, puis complètent uniquement les infos encore manquantes. À la confirmation, le club reçoit le récap.</p>
             </div>
           </div>
           <form id="customOfferForm" class="admin-add-offer-form">
@@ -402,6 +402,15 @@
                   <option value="comptant">Comptant (une fois)</option>
                   <option value="comptant_4x">Comptant (1× ou 4× sans frais)</option>
                   <option value="abonnement">Abonnement (4 semaines + IBAN)</option>
+                </select>
+              </div>
+              <div>
+                <label for="co_people">Nombre de personnes *</label>
+                <select id="co_people" name="party_size" required>
+                  <option value="1">1 personne</option>
+                  <option value="2">2 personnes</option>
+                  <option value="3">3 personnes</option>
+                  <option value="4">4 personnes</option>
                 </select>
               </div>
               <div>
@@ -624,7 +633,7 @@
   </div>
 
   <script src="../js/contract-open.js?v=8"></script>
-  <script src="/js/admin.js?v=30"></script>
+  <script src="/js/admin.js?v=31"></script>
   <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
        reecrit pas une ligne (un autre developpeur y travaille). -->
   <script src="/js/admin-shell.js?v=20"></script>
