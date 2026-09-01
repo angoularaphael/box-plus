@@ -372,9 +372,6 @@
       const el = document.getElementById(id);
       if (el) el.hidden = id !== `tab${name.charAt(0).toUpperCase()}${name.slice(1)}`;
     });
-      const el = document.getElementById(id);
-      if (el) el.hidden = id !== `tab${name.charAt(0).toUpperCase()}${name.slice(1)}`;
-    });
     document.querySelectorAll('.admin-tab').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.tab === name);
     });
