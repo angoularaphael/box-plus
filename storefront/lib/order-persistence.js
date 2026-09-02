@@ -513,6 +513,30 @@ async function listAllOrders() {
   return listOrdersFromFs().map((order) => stripHeavyFields(order));
 }
 
+/** Liste limitée dans le temps — crons Vercel (évite le 504 en chargeant tout l’historique). */
+async function listOrdersCreatedSince(sinceIso) {
+  const cutoff = Date.parse(sinceIso);
+  if (!Number.isFinite(cutoff)) return listAllOrders();
+  if (useRemoteStore()) {
+    try {
+      const sb = getSupabase();
+      const makeSlim = () =>
+        sb
+          .from('boxplus_orders')
+          .select(SLIM_SELECT)
+          .gte('created_at', sinceIso)
+          .order('created_at', { ascending: false });
+      const rows = await fetchAllPages(makeSlim);
+      return rows.map(reconstructOrderFromListRow).filter(Boolean);
+    } catch (err) {
+      logWarn('Liste commandes depuis date indisponible, repli complet', { error: err.message });
+    }
+  }
+  return listOrdersFromFs()
+    .filter((order) => Date.parse(order.created_at || order.updated_at || 0) >= cutoff)
+    .map((order) => stripHeavyFields(order));
+}
+
 async function findOrderBySubscriptionId(subscriptionId) {
   if (!subscriptionId) return null;
   if (useRemoteStore()) {
@@ -563,6 +587,7 @@ module.exports = {
   saveOrder,
   saveOrderAsync,
   listAllOrders,
+  listOrdersCreatedSince,
   deleteOrder,
   findOrderBySubscriptionId,
   buildOrderSummary,

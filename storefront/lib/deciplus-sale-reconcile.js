@@ -188,6 +188,7 @@ async function reconcileMissingDeciplusSales({
 module.exports = {
   REQUEUE_COOLDOWN_MS,
   MAX_SALE_RETRIES,
+  LOOKBACK_MS,
   PAID_UNSIGNED_GRACE_MS,
   productRequiresDeciplusSale,
   deciplusSaleSettled,

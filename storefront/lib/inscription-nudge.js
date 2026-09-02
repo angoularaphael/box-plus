@@ -1,6 +1,6 @@
 'use strict';
 
-const { STEPS, gymLabel, listAllOrdersAsync, loadOrderAsync, saveOrderAsync } = require('./order-lifecycle');
+const { STEPS, gymLabel, listOrdersCreatedSinceAsync, loadOrderAsync, saveOrderAsync } = require('./order-lifecycle');
 const { getStoreUrl } = require('../../lib/app-urls');
 const { logInfo, logWarn } = require('../../lib/logger');
 
@@ -449,7 +449,8 @@ function summarizeNudge(order) {
 }
 
 async function listDueNudges(now = Date.now()) {
-  const all = await listAllOrdersAsync();
+  const since = new Date(now - 21 * 24 * 60 * 60 * 1000).toISOString();
+  const all = await listOrdersCreatedSinceAsync(since);
   return all.filter((o) => isNudgeDue(o, now)).map(summarizeNudge);
 }
 

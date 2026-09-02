@@ -498,8 +498,11 @@ async function dispatchDueEssaiFollowups({
   sendEmail,
   forwardJob,
 } = {}) {
-  const { listAllOrdersAsync, loadOrderAsync, saveOrderAsync } = require('./order-lifecycle');
-  const listed = (await (listOrders || listAllOrdersAsync)()) || [];
+  const { listOrdersCreatedSinceAsync, loadOrderAsync, saveOrderAsync } = require('./order-lifecycle');
+  const listed =
+    (await (listOrders
+      ? listOrders()
+      : listOrdersCreatedSinceAsync(new Date(ESSAI_SINCE_MS).toISOString()))) || [];
   const keys = membershipKeysFromOrders(listed);
   let lastWaAt = lastFollowupWaAt(listed);
   const results = [];

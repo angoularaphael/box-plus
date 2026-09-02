@@ -418,6 +418,17 @@ async function listAllOrdersAsync() {
   return all.filter(isValidOrder);
 }
 
+async function listOrdersCreatedSinceAsync(sinceIso) {
+  if (typeof persistence.listOrdersCreatedSince === 'function') {
+    const all = await persistence.listOrdersCreatedSince(sinceIso);
+    return all.filter(isValidOrder);
+  }
+  const cutoff = Date.parse(sinceIso);
+  if (!Number.isFinite(cutoff)) return listAllOrdersAsync();
+  const all = await listAllOrdersAsync();
+  return all.filter((order) => Date.parse(order.created_at || order.updated_at || 0) >= cutoff);
+}
+
 function actionProductLabel(order) {
   if (order.action === 'cancel') return order.product_name || 'Résiliation abonnement';
   if (order.action === 'verify_identity') return order.product_name || 'Vérification identité';
@@ -589,6 +600,7 @@ module.exports = {
   generateOrderId,
   listAllOrders,
   listAllOrdersAsync,
+  listOrdersCreatedSinceAsync,
   deleteOrderAsync,
   memberDisplayName,
   toAdminSummary,

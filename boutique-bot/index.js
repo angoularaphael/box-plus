@@ -789,7 +789,7 @@ function startStoreNudgePoll() {
       const res = await fetch(`${store}/api/cron/inscription-nudges`, {
         method: 'GET',
         headers: { 'x-api-secret': secret },
-        signal: AbortSignal.timeout(25000),
+        signal: AbortSignal.timeout(20000),
       });
       if (!res.ok) {
         console.warn('[boutique-bot] relances inscription HTTP', res.status);

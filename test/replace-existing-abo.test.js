@@ -141,11 +141,37 @@ test('Aventure 29 € force le badge auto', () => {
   assert.match(idx, /badgeDone/);
 });
 
+test('29 € déjà démarré + replaceExisting → on résilie puis on revend', () => {
+  const contracts = [
+    {
+      idc: '3',
+      isBadge: false,
+      label: 'OFFRE DUO 29€ CONTRAT N°C2026-042431 vendu le 22/08/2026 330 jours restants',
+    },
+  ];
+  const c = classifyMemberContracts(contracts, offre29, { ...opts, replaceExisting: true });
+  assert.equal(c.needsNewSale, true);
+  assert.deepEqual(
+    c.toCancel.map((x) => x.idc),
+    ['3']
+  );
+  const kept = classifyMemberContracts(contracts, offre29, {
+    ...opts,
+    replaceExisting: true,
+    keepSaleId: '3',
+  });
+  assert.equal(kept.needsNewSale, false);
+  assert.equal(kept.toCancel.length, 0);
+});
+
 test('le bot ventes résilie l’ancien abo avant de vendre le nouveau', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/sale.js'), 'utf8');
   assert.match(src, /classifyMemberContracts/);
   assert.match(src, /change_replace_existing/);
   assert.match(src, /Badge déjà actif/);
+  assert.match(src, /replaceExisting:\s*true/);
+  assert.match(src, /on vend le nouveau quand même/);
+  assert.doesNotMatch(src, /nouvelle vente bloquée pour éviter un doublon/);
 });
 
 test('Aventure Minimes : un 44,99 déjà sur la fiche est bien à résilier', () => {

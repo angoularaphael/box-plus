@@ -561,11 +561,12 @@ setAventurePaidHandler(async (order) => {
 });
 
 async function runDeciplusSaleReconcile() {
-  const { listAllOrdersAsync, loadOrderAsync, saveOrderAsync } = require('./lib/order-lifecycle');
-  const { reconcileMissingDeciplusSales } = require('./lib/deciplus-sale-reconcile');
+  const { listOrdersCreatedSinceAsync, loadOrderAsync, saveOrderAsync } = require('./lib/order-lifecycle');
+  const { reconcileMissingDeciplusSales, LOOKBACK_MS } = require('./lib/deciplus-sale-reconcile');
   const { sendAlert } = require('../lib/logger');
+  const since = new Date(Date.now() - LOOKBACK_MS - 60 * 24 * 60 * 60 * 1000).toISOString();
   return reconcileMissingDeciplusSales({
-    listOrders: listAllOrdersAsync,
+    listOrders: () => listOrdersCreatedSinceAsync(since),
     loadOrder: loadOrderAsync,
     saveOrder: saveOrderAsync,
     dispatchOrder: (order, opts) => dispatchLifecycleOrder(order, opts),
