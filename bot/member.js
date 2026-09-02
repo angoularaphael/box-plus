@@ -11,6 +11,8 @@ const {
   namesMatch,
   emailsMatch,
   isSearchableMemberEmail,
+  memberSearchHitMatches,
+  normalizeBirthCompare: formatNormalizeBirthCompare,
 } = require('../lib/deciplus-member-format');
 
 const SCOPED_RESULT_LINKS =
@@ -345,35 +347,15 @@ async function readSearchHit(page) {
   return { found: false };
 }
 
-/** Vérifie que la fiche ouverte correspond (email, tél, ou nom si la fiche n’a ni l’un ni l’autre). */
+/** Vérifie que la fiche ouverte est la même personne (nom obligatoire si le client en a un). */
 async function searchHitMatchesCustomer(page, customer = {}) {
-  const form = await readMemberIdentityFields(page).catch(() => null);
+  let form = await readMemberIdentityFields(page).catch(() => null);
+  if (!form?.fromMemberForm || !String(form.lastName || form.firstName).trim()) {
+    await page.waitForTimeout(400);
+    form = await readMemberIdentityFields(page).catch(() => null);
+  }
   if (!form?.fromMemberForm) return false;
-  const nameOk =
-    (!customer.last_name || !form.lastName || namesMatch(form.lastName, customer.last_name)) &&
-    (!customer.first_name || !form.firstName || namesMatch(form.firstName, customer.first_name));
-  const wantEmail = String(customer.email || '')
-    .trim()
-    .toLowerCase();
-  const formEmail = String(form.email || '')
-    .trim()
-    .toLowerCase();
-  if (wantEmail && formEmail) {
-    return wantEmail === formEmail && nameOk;
-  }
-  const wantPhone = phoneForDeciplus(customer.phone);
-  const formPhone = phoneForDeciplus(form.phone);
-  if (wantPhone && formPhone) {
-    return wantPhone === formPhone && nameOk;
-  }
-  // Fiche sans email / SMS (ex. TEST TEST Balma) : nom + prénom suffisent
-  if (nameOk && (form.lastName || form.firstName) && (customer.last_name || customer.first_name)) {
-    if (customer.birthdate && form.birth) {
-      return normalizeBirthCompare(form.birth) === normalizeBirthCompare(birthdateToDeciplus(customer.birthdate));
-    }
-    return true;
-  }
-  return false;
+  return memberSearchHitMatches(form, customer);
 }
 
 async function searchMember(page, query) {
@@ -622,27 +604,8 @@ const CHANGE_MATCH_FIELDS = ['last_name', 'first_name', 'birthdate'];
 /** Aventure Balma : nom + prénom + naissance. Email seulement s’il y a plusieurs fiches. */
 const AVENTURE_MATCH_FIELDS = ['last_name', 'first_name', 'birthdate'];
 
-/** Normalise une date Deciplus / ISO vers JJ/MM/AAAA comparable. */
 function normalizeBirthCompare(value) {
-  const raw = String(value || '')
-    .trim()
-    .replace(/\s/g, '')
-    .replace(/-/g, '/');
-  if (!raw) return '';
-  // AAAA/MM/JJ → JJ/MM/AAAA
-  let m = raw.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
-  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
-  // JJ/MM/AA → JJ/MM/20AA (ou 19AA)
-  m = raw.match(/^(\d{2})\/(\d{2})\/(\d{2})$/);
-  if (m) {
-    const yy = Number(m[3]);
-    const century = yy > 30 ? 1900 : 2000;
-    return `${m[1]}/${m[2]}/${century + yy}`;
-  }
-  // JJ/MM/AAAA
-  m = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (m) return `${m[1]}/${m[2]}/${m[3]}`;
-  return raw;
+  return formatNormalizeBirthCompare(value);
 }
 
 /** Compare identité saisie vs fiche — retourne uniquement les champs réellement faux. */

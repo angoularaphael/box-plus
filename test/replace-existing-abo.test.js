@@ -205,3 +205,9 @@ test('échéance badge : gymConfig est un argument (plus de ReferenceError)', ()
   );
   assert.match(src, /enforceBadgeEcheance\(page, memberId, badgeProductConfig, gymConfig\)/);
 });
+
+test('badge impayé : Annuler la vente même si le contrat a déjà commencé', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/cancel-sale.js'), 'utf8');
+  assert.match(src, /allowStarted: Boolean\(contract\.isBadge\)/);
+  assert.match(src, /reason: contract\.isBadge \? 'badge_voided' : 'pending_voided'/);
+});
