@@ -126,15 +126,24 @@ describe('offre 259 € — comptant', () => {
     assert.deepEqual(errors, [], `attendu [], got ${errors.join(', ')}`);
   });
 
-  it('validateOrder refuse toujours IBAN manquant pour un vrai prélèvement 4 sem.', () => {
+  it('validateOrder laisse passer un 29 € déjà payé sans IBAN (1er mois CB)', () => {
     const order = normalizeOrder({
-      order_id: 'BC-PRELEV',
-      product_name: '44,99€/4 semaines',
+      order_id: 'BC-1786785336091-8377dd',
+      product_id: 'dp-104',
+      product_name: 'OFFRE A 29€',
+      gym: 'st-cyprien',
       requires_iban: true,
-      payment: { status: 'paid', amount: 44.99 },
-      customer: { first_name: 'A', last_name: 'B', email: 'a@b.c' },
+      billing_plan: 'rib',
+      payment: { status: 'paid', amount: 29.99, billing_plan: 'rib' },
+      customer: {
+        first_name: 'Marie-Dou',
+        last_name: 'ETOGO',
+        email: 'emn.mariedelphine@hotmail.fr',
+        phone: '0663650275',
+        birthdate: '1996-11-27',
+      },
     });
-    assert.ok(validateOrder(order).some((e) => /IBAN/i.test(e)));
+    assert.deepEqual(validateOrder(order), []);
   });
 
   it('produit enrichi boutique — 259 €, comptant, legacy/id', () => {

@@ -120,11 +120,13 @@ async function loadPaidSubscriptions() {
   const sb = getSupabase();
   const all = [];
   let from = 0;
+  const createdSince = new Date(Date.parse(`${SINCE}T00:00:00.000Z`) - 60 * 24 * 3600 * 1000)
+    .toISOString();
   while (true) {
     const { data, error } = await sb
       .from('boxplus_orders')
       .select('order_id, created_at, payload')
-      .gte('created_at', `${SINCE}T00:00:00.000Z`)
+      .gte('created_at', createdSince)
       .order('created_at', { ascending: true })
       .range(from, from + 999);
     if (error) throw error;
@@ -220,6 +222,9 @@ async function repairOne(page, catalog, row) {
   payload.force_requeue = true;
   payload.force_sale_retry = true;
   const order = normalizeOrder(payload);
+  if (!order.customer.gender && /marie/i.test(String(order.customer.first_name || ''))) {
+    order.customer.gender = 'F';
+  }
 
   console.log('\n===', row.name, row.order_id, '===');
   console.log({
