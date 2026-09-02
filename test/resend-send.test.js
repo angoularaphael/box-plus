@@ -22,6 +22,14 @@ test('relance essai client passe par Resend, pas Brevo', () => {
   assert.doesNotMatch(src, /sendEmailViaBrevo/);
 });
 
+test('relance inscription passe par Resend David, pas Brevo', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../storefront/lib/inscription-nudge.js'), 'utf8');
+  assert.match(src, /resend-send/);
+  assert.match(src, /sendEmailViaResend/);
+  assert.match(src, /buildInscriptionNudgeEmail/);
+  assert.doesNotMatch(src, /sendEmailViaBrevo/);
+});
+
 test('mail campagne : texte David, comme Guillaume en Principal', () => {
   const { buildOfferCampaignEmail } = require('../storefront/lib/campaign-email');
   const mail = buildOfferCampaignEmail({

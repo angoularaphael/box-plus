@@ -344,14 +344,30 @@ async function sendResumeEmail(order, { kind = 'resume', to } = {}) {
   if (/@boxplus-test\.local$/i.test(dest)) {
     return { sent: false, skipped: true, reason: 'test_email' };
   }
-  const { sendEmailViaBrevo } = require('./brevo-send');
-  const result = await sendEmailViaBrevo({
-    to: dest,
-    subject: resumeEmailSubject(order, { kind }),
-    html: resumeEmailHtml(order, { kind }),
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(dest)) {
+    return { sent: false, skipped: true, reason: 'invalid_email' };
+  }
+  const { buildInscriptionNudgeEmail } = require('./campaign-email');
+  const { sendEmailViaResend, isConfigured } = require('./resend-send');
+  if (!isConfigured()) return { sent: false, error: 'resend_not_configured' };
+  const copy = buildInscriptionNudgeEmail({
+    name: firstName(order),
+    url: describeResume(order, { kind }).url,
+    paidDossier: false,
   });
-  if (!result) return { sent: false, error: 'brevo_not_configured' };
-  return { sent: true, via: result.via || 'brevo', to: dest };
+  try {
+    const result = await sendEmailViaResend({
+      to: dest,
+      subject: copy.subject,
+      html: undefined,
+      text: copy.emailText,
+      fromName: copy.fromName,
+    });
+    if (!result) return { sent: false, error: 'resend_not_configured' };
+    return { sent: true, via: result.via || 'resend', to: dest };
+  } catch (err) {
+    return { sent: false, error: err.message || 'email_error' };
+  }
 }
 
 function resumeWhatsAppText(order, { kind } = {}) {
@@ -480,15 +496,30 @@ async function sendNudgeEmail(order) {
   if (!item.email || /@boxplus-test\.local$/i.test(item.email)) {
     return { sent: false, skipped: true, reason: 'no_email_or_test' };
   }
-  const { sendEmailViaBrevo } = require('./brevo-send');
-  const result = await sendEmailViaBrevo({
-    to: item.email,
-    subject: item.email_subject,
-    html: item.email_html,
-    text: item.whatsapp_text,
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(item.email).trim())) {
+    return { sent: false, skipped: true, reason: 'invalid_email' };
+  }
+  const { buildInscriptionNudgeEmail } = require('./campaign-email');
+  const { sendEmailViaResend, isConfigured } = require('./resend-send');
+  if (!isConfigured()) return { sent: false, reason: 'resend_not_configured' };
+  const copy = buildInscriptionNudgeEmail({
+    name: firstName(order),
+    url: item.resume_url || nudgeResumeUrl(order),
+    paidDossier: isPaidIncomplete(order) && resumeStep(order) >= STEPS.IBAN,
   });
-  if (!result) return { sent: false, reason: 'brevo_not_configured' };
-  return { sent: true, via: result.via || 'brevo' };
+  try {
+    const result = await sendEmailViaResend({
+      to: item.email,
+      subject: copy.subject,
+      html: undefined,
+      text: copy.emailText,
+      fromName: copy.fromName,
+    });
+    if (!result) return { sent: false, reason: 'resend_not_configured' };
+    return { sent: true, via: result.via || 'resend' };
+  } catch (err) {
+    return { sent: false, error: err.message || 'email_error' };
+  }
 }
 
 async function sendNudgeWhatsApp(order) {

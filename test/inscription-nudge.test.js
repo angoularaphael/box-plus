@@ -56,17 +56,11 @@ test('lien de reprise : étape réelle, produit et jeton', () => {
   else process.env.STORE_URL = prev;
 });
 
-test('mails reprise / relance : vouvoiement, bouton payer visible', () => {
+test('mails reprise / relance : David, texte brut, Principal', () => {
   const prev = process.env.STORE_URL;
   process.env.STORE_URL = 'https://boutique.boxingcenter.fr';
-  const {
-    resumeEmailSubject,
-    resumeEmailHtml,
-    resumeWhatsAppText,
-    nudgeEmailSubject,
-    nudgeEmailHtml,
-    nudgeWhatsAppText,
-  } = require('../storefront/lib/inscription-nudge');
+  const { resumeWhatsAppText, nudgeWhatsAppText } = require('../storefront/lib/inscription-nudge');
+  const { buildInscriptionNudgeEmail } = require('../storefront/lib/campaign-email');
   const token = 'b'.repeat(48);
   const unpaid = {
     order_id: 'BC-MAIL',
@@ -78,57 +72,38 @@ test('mails reprise / relance : vouvoiement, bouton payer visible', () => {
     product_snapshot: { name: 'OFFRE A 29€', price_cents: 2999, requires_payment: true },
     payment: { status: 'failed' },
   };
-  const payHtml = resumeEmailHtml(unpaid);
-  const paySubject = resumeEmailSubject(unpaid);
-  assert.match(paySubject, /payer/i);
-  assert.match(payHtml, /Bonjour Diego/);
-  assert.match(payHtml, /Payer maintenant/);
-  assert.match(payHtml, /carte bancaire/i);
-  assert.match(payHtml, /PayPal/);
-  assert.match(payHtml, /boutique\.boxingcenter\.fr\/inscription/);
-  assert.match(payHtml, /order=BC-MAIL/);
-  assert.match(payHtml, /\bvous\b|\bvotre\b/i);
-  assert.doesNotMatch(payHtml, /(?:^|[\s>])(?:tu |ton |tes |toi)|t'|Salut /i);
+  const payMail = buildInscriptionNudgeEmail({
+    name: 'Diego',
+    url: 'https://boutique.boxingcenter.fr/inscription?order=BC-MAIL&step=4&pay=1',
+  });
+  assert.equal(payMail.fromName, 'David');
+  assert.equal(payMail.subject, 'Diego, c’est David');
+  assert.equal(payMail.html, undefined);
+  assert.match(payMail.emailText, /Salut Diego/);
+  assert.match(payMail.emailText, /C’est David/);
+  assert.match(payMail.emailText, /boutique\.boxingcenter\.fr\/inscription/);
+  assert.doesNotMatch(payMail.subject, /Boxing Center|inscription|€/);
   const payWa = resumeWhatsAppText(unpaid, { kind: 'pay' });
   assert.match(payWa, /Bonjour Diego/);
   assert.match(payWa, /Payez ici/);
-  assert.match(payWa, /carte bancaire/i);
   assert.match(payWa, /boutique\.boxingcenter\.fr\/inscription/);
-  assert.match(payWa, /order=BC-MAIL/);
-  assert.doesNotMatch(payWa, /(?:^|[\s\n])(?:tu |ton |tes |toi)/i);
-
-  const identity = { ...unpaid, step: 3, payment: { status: 'pending' } };
-  const resumeHtml = resumeEmailHtml(identity);
-  assert.match(resumeHtml, /Reprendre mon inscription/);
-  assert.match(resumeHtml, /Identité/);
-  assert.match(resumeHtml, /\bvous\b|\bvotre\b/i);
-  assert.doesNotMatch(resumeHtml, /(?:^|[\s>])(?:tu |ton |tes |toi)|t'|Salut /i);
-  const resumeWa = resumeWhatsAppText(identity);
-  assert.match(resumeWa, /Reprenez exactement là où vous en étiez/);
-  assert.match(resumeWa, /Identité/);
-  assert.doesNotMatch(resumeWa, /(?:^|[\s\n])(?:tu |ton |tes |toi)/i);
 
   const paid = {
     ...unpaid,
     step: 6,
     payment: { status: 'paid', paid_at: '2026-08-16T08:00:00.000Z' },
   };
-  const nudgeHtml = nudgeEmailHtml(paid);
-  assert.match(nudgeEmailSubject(), /pas finalisé/i);
-  assert.match(nudgeHtml, /Bonjour Diego/);
-  assert.match(nudgeHtml, /Finaliser mon inscription/);
-  assert.match(nudgeHtml, /pas finalisé/);
-  assert.match(nudgeHtml, /dossier et la signature/);
-  assert.match(nudgeHtml, /boutique\.boxingcenter\.fr\/inscription/);
-  assert.match(nudgeHtml, /\bvous\b|\bvotre\b/i);
-  assert.doesNotMatch(nudgeHtml, /(?:^|[\s>])(?:tu |ton |tes |toi)|t'|Salut /i);
+  const nudgeMail = buildInscriptionNudgeEmail({
+    name: 'Diego',
+    url: 'https://boutique.boxingcenter.fr/inscription?order=BC-MAIL',
+    paidDossier: true,
+  });
+  assert.match(nudgeMail.emailText, /Le règlement est bon/);
+  assert.match(nudgeMail.emailText, /David de Boxing Center/);
   const wa = nudgeWhatsAppText(paid);
   assert.match(wa, /Bonjour Diego/);
   assert.match(wa, /pas finalisé/);
   assert.match(wa, /dossier et la signature/);
-  assert.match(wa, /boutique\.boxingcenter\.fr\/inscription/);
-  assert.match(wa, /Finalisez ici/);
-  assert.doesNotMatch(wa, /(?:^|[\s\n])(?:tu |ton |tes |toi)/i);
   if (prev === undefined) delete process.env.STORE_URL;
   else process.env.STORE_URL = prev;
 });

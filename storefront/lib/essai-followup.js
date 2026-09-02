@@ -324,7 +324,11 @@ async function sendCustomerNudge(
     } else {
       try {
         const wa = await waSend(phone, copy.text);
-        out.whatsapp = { sent: true, to: phone, wa };
+        if (wa && (wa.sent === false || wa.skipped)) {
+          out.whatsapp = { sent: false, skipped: true, reason: wa.reason || 'skipped', to: phone };
+        } else {
+          out.whatsapp = { sent: true, to: phone, wa };
+        }
       } catch (err) {
         out.whatsapp = { sent: false, error: err.message, to: phone };
         logWarn('WhatsApp relance essai 10 € client', { order_id: order.order_id, error: err.message });
@@ -520,22 +524,21 @@ async function dispatchDueEssaiFollowups({
 
     const customerDecision = classifyCustomerNudge(slim, { now, membershipKeys: keys });
     if (customerDecision.action === 'nudge_customer') {
-      if (sent + customerNudgesSent >= 1 || now - lastWaAt < WA_GAP_MS) {
-        results.push({
-          order_id: slim.order_id,
-          action: 'wait',
-          reason: 'wa_gap',
-          kind: 'customer',
-        });
-        continue;
-      }
+      const skipWa = sent + customerNudgesSent >= 1 || now - lastWaAt < WA_GAP_MS;
       const order = (await load(slim.order_id)) || slim;
       const live = classifyCustomerNudge(order, { now, membershipKeys: keys });
       if (live.action !== 'nudge_customer') {
         results.push({ order_id: order.order_id, ...live, kind: 'customer' });
       } else {
-        const nudge = await sendCustomerNudge(order, live.day, { sendWa, sendEmail, dryRun });
-        if (nudge.sent || dryRun) {
+        const waFn = skipWa
+          ? async () => ({ sent: false, skipped: true, reason: 'wa_gap' })
+          : sendWa;
+        const nudge = await sendCustomerNudge(order, live.day, {
+          sendWa: waFn,
+          sendEmail,
+          dryRun,
+        });
+        if (nudge.email?.sent || nudge.whatsapp?.sent || dryRun) {
           order.essai_customer_nudges = [
             ...customerNudges(order),
             {
@@ -546,10 +549,16 @@ async function dispatchDueEssaiFollowups({
               whatsapp: Boolean(nudge.whatsapp?.sent),
             },
           ].slice(0, CUSTOMER_NUDGE_DAYS);
-          lastWaAt = now;
-          customerNudgesSent += 1;
           if (nudge.whatsapp?.sent) {
+            lastWaAt = now;
+            customerNudgesSent += 1;
             logInfo('WhatsApp essai 10 € → client', {
+              order_id: order.order_id,
+              day: live.day,
+            });
+          }
+          if (nudge.email?.sent) {
+            logInfo('Email essai 10 € → client (David / Principal)', {
               order_id: order.order_id,
               day: live.day,
             });
@@ -562,7 +571,7 @@ async function dispatchDueEssaiFollowups({
           day: live.day,
           sent: Boolean(nudge.sent || dryRun),
           email: nudge.email,
-          whatsapp: nudge.whatsapp,
+          whatsapp: skipWa ? { sent: false, skipped: true, reason: 'wa_gap' } : nudge.whatsapp,
         });
       }
       continue;
@@ -679,6 +688,7 @@ module.exports = {
   applyEssaiAboCheck,
   sendGymFollowup,
   dispatchDueEssaiFollowups,
+  customerNudges,
   orderEmail,
   orderPhone,
   orderGym,

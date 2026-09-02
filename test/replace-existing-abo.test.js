@@ -171,6 +171,7 @@ test('le bot ventes résilie l’ancien abo avant de vendre le nouveau', () => {
   assert.match(src, /Badge déjà actif/);
   assert.match(src, /replaceExisting:\s*true/);
   assert.match(src, /on vend le nouveau quand même/);
+  assert.match(src, /leftover\.length === 0/);
   assert.doesNotMatch(src, /nouvelle vente bloquée pour éviter un doublon/);
 });
 
