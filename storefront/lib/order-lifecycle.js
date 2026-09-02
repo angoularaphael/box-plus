@@ -429,6 +429,18 @@ async function listOrdersCreatedSinceAsync(sinceIso) {
   return all.filter((order) => Date.parse(order.created_at || order.updated_at || 0) >= cutoff);
 }
 
+async function listPaidOrdersSinceAsync(sinceIso) {
+  if (typeof persistence.listPaidOrdersSince === 'function') {
+    const all = await persistence.listPaidOrdersSince(sinceIso);
+    return all.filter(isValidOrder);
+  }
+  const all = await listOrdersCreatedSinceAsync(sinceIso);
+  return all.filter((order) => {
+    const st = String(order?.payment?.status || '').toLowerCase();
+    return st === 'paid' || st === 'free';
+  });
+}
+
 function actionProductLabel(order) {
   if (order.action === 'cancel') return order.product_name || 'Résiliation abonnement';
   if (order.action === 'verify_identity') return order.product_name || 'Vérification identité';
@@ -601,6 +613,7 @@ module.exports = {
   listAllOrders,
   listAllOrdersAsync,
   listOrdersCreatedSinceAsync,
+  listPaidOrdersSinceAsync,
   deleteOrderAsync,
   memberDisplayName,
   toAdminSummary,

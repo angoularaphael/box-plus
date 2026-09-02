@@ -256,7 +256,7 @@
           <div class="admin-section-head" style="flex-wrap:wrap;gap:10px">
             <div>
               <h2 class="admin-section-title">Statistiques des ventes</h2>
-              <p class="admin-section-desc">Ventes matériel et inscriptions par période, détaillées par salle.</p>
+              <p class="admin-section-desc">Inscriptions, matériel boutique, et gants pris pendant l’achat — avec le stock restant.</p>
             </div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <label style="font-size:13px;color:var(--bc-muted)">Du</label>
@@ -269,6 +269,35 @@
             </div>
           </div>
           <p class="form-msg" id="statsMsg"></p>
+
+          <div id="missingFichesWrap" hidden style="margin:12px 0 8px;padding:14px 16px;border:1px solid #fecaca;background:#fef2f2;border-radius:10px">
+            <div style="display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">
+              <div>
+                <h3 class="admin-catalog-block-title" style="margin:0 0 4px">Fiches Deciplus manquantes</h3>
+                <p class="admin-section-desc" id="missingFichesSummary" style="margin:0">Inscriptions payées sans fiche membre.</p>
+              </div>
+              <button type="button" class="btn sm" id="requeueFichesBtn">Créer les fiches</button>
+            </div>
+            <div style="overflow-x:auto;margin-top:12px">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Adhérent</th>
+                    <th>Salle</th>
+                    <th>Payé le</th>
+                    <th>Signature</th>
+                    <th>Statut bot</th>
+                  </tr>
+                </thead>
+                <tbody id="missingFichesBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="pan-filtres" id="statsKindBar" style="margin:12px 0 4px">
+            <button type="button" class="pan-filtre is-on" data-stats-kind="offres">Les offres</button>
+            <button type="button" class="pan-filtre" data-stats-kind="materiel">Le matériel</button>
+          </div>
 
           <!-- KPI cards -->
           <div class="stats-kpi-grid" id="statsKpis" style="display:none">
@@ -359,6 +388,45 @@
                   </tr>
                 </thead>
                 <tbody id="topSoldBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="materielStockWrap" hidden style="margin-top:24px">
+            <h3 class="admin-catalog-block-title">Matériel et stocks</h3>
+            <p class="admin-section-desc">Ventes boutique et gants pris pendant l’inscription. Le stock restant est celui du catalogue.</p>
+            <div style="overflow-x:auto;margin-top:12px">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Produit</th>
+                    <th style="text-align:right">À l’inscription</th>
+                    <th style="text-align:right">Boutique</th>
+                    <th style="text-align:right">Total vendu</th>
+                    <th style="text-align:right">Stock restant</th>
+                    <th style="text-align:right">CA</th>
+                  </tr>
+                </thead>
+                <tbody id="materielStockBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="inscriptionMaterielWrap" hidden style="margin-top:24px">
+            <h3 class="admin-catalog-block-title">Matériel pris pendant l’inscription</h3>
+            <p class="admin-section-desc">Les personnes qui ont ajouté des gants Blade en payant leur abonnement.</p>
+            <div style="overflow-x:auto;margin-top:12px">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Adhérent</th>
+                    <th>Produit</th>
+                    <th>Retrait</th>
+                    <th>Payé le</th>
+                    <th style="text-align:right">Montant</th>
+                  </tr>
+                </thead>
+                <tbody id="inscriptionMaterielBody"></tbody>
               </table>
             </div>
           </div>

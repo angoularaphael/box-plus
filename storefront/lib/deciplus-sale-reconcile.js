@@ -11,7 +11,7 @@ const REQUEUE_COOLDOWN_MS = Number(process.env.BOXPLUS_SALE_REQUEUE_MS || 10 * 6
 const MAX_SALE_RETRIES = Number(process.env.BOXPLUS_SALE_REQUEUE_MAX || 12);
 const LOOKBACK_MS = Number(process.env.BOXPLUS_SALE_REQUEUE_LOOKBACK_MS || 14 * 24 * 60 * 60 * 1000);
 const PAID_UNSIGNED_GRACE_MS = Number(
-  process.env.BOXPLUS_SALE_UNSIGNED_GRACE_MS || 2 * 60 * 60 * 1000
+  process.env.BOXPLUS_SALE_UNSIGNED_GRACE_MS || 15 * 60 * 1000
 );
 
 function productRequiresDeciplusSale(order = {}) {

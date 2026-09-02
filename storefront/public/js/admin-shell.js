@@ -288,10 +288,14 @@
     const coachings = commandes.filter(
       (o) => o.action === "coaching_booking" || String(o.order_id || "").startsWith("COACH-")
     );
-    const impayes = inscriptions.filter((o) => o.payment_status && o.payment_status !== "paid");
+    const refuse = (st) => st === "past_due" || st === "failed" || st === "refused" || st === "unpaid";
+    const impayes = inscriptions.filter((o) => refuse(o.payment_status) || o.access_blocked);
     const bloques = inscriptions.filter((o) => o.access_blocked);
     const aTransmettre = inscriptions.filter((o) => o.signed && !o.dispatched);
-    const aFaire = [...new Map([...impayes, ...bloques, ...aTransmettre].map((o) => [o.order_id, o])).values()];
+    const sansFiche = inscriptions.filter(
+      (o) => o.payment_status === "paid" && !o.deciplus_member_id && !o.manual_migration
+    );
+    const aFaire = [...new Map([...impayes, ...bloques, ...aTransmettre, ...sansFiche].map((o) => [o.order_id, o])).values()];
 
     const semaine = Date.now() - 7 * 864e5;
     const recentes = inscriptions.filter((o) => new Date(o.created_at).getTime() >= semaine).length;

@@ -115,6 +115,289 @@ function nicerProductName(next, current) {
   return b;
 }
 
+function orderDisplayName(order = {}) {
+  const short = order.customer_short || {};
+  const full = order.customer_full || {};
+  const cust = order.customer || {};
+  const first = short.first_name || full.first_name || cust.first_name || '';
+  const last = short.last_name || full.last_name || cust.last_name || '';
+  const name = `${first} ${last}`.replace(/\s+/g, ' ').trim();
+  return name || short.email || full.email || cust.email || '—';
+}
+
+function paidBladeAddon(order = {}) {
+  const blade = order?.addons?.blade;
+  if (!blade || String(blade.status || '').toLowerCase() !== 'paid') return null;
+  return blade;
+}
+
+function inscriptionMaterielSale(order = {}) {
+  const blade = paidBladeAddon(order);
+  if (!blade) return null;
+  const name = [blade.name || 'Gants Blade', blade.color_label, blade.size].filter(Boolean).join(' ');
+  const revenue = Number(blade.price_cents || 1790) || 0;
+  return {
+    order_id: order.order_id,
+    source: 'inscription',
+    payment: { status: 'paid' },
+    paid_at: blade.paid_at || membershipPaidAt(order),
+    created_at: order.created_at,
+    pickup_gym: blade.pickup_gym || order.pickup_gym,
+    gym: order.gym || order.customer_full?.gym,
+    customer: order.customer_short || order.customer,
+    customer_full: order.customer_full,
+    customer_short: order.customer_short,
+    total_cents: revenue,
+    items: [
+      {
+        product_id: blade.variant_id || blade.product_id || 'mat-blade-gold',
+        name,
+        qty: 1,
+        line_total_cents: revenue,
+      },
+    ],
+  };
+}
+
+function collectInscriptionMaterielOrders(inscriptionOrders = []) {
+  return inscriptionOrders.map(inscriptionMaterielSale).filter(Boolean);
+}
+
+function monthKeyFromIso(dateStr) {
+  const day = parisDayKey(dateStr);
+  return day ? day.slice(0, 7) : null;
+}
+
+function monthInFilter(iso, fromMonth, toMonth) {
+  const month = monthKeyFromIso(iso);
+  if (!month) return false;
+  if (fromMonth && month < fromMonth) return false;
+  if (toMonth && month > toMonth) return false;
+  return true;
+}
+
+function buildMonthlySalesRows({
+  inscriptionOrders = [],
+  materielOrders = [],
+  fromMonth = '',
+  toMonth = '',
+} = {}) {
+  const byMonth = {};
+  function bump(month, patch) {
+    if (!byMonth[month]) {
+      byMonth[month] = {
+        month,
+        materiel_orders: 0,
+        materiel_revenue: 0,
+        inscription_orders: 0,
+        inscription_revenue: 0,
+      };
+    }
+    Object.assign(byMonth[month], {
+      materiel_orders: byMonth[month].materiel_orders + (patch.materiel_orders || 0),
+      materiel_revenue: byMonth[month].materiel_revenue + (patch.materiel_revenue || 0),
+      inscription_orders: byMonth[month].inscription_orders + (patch.inscription_orders || 0),
+      inscription_revenue: byMonth[month].inscription_revenue + (patch.inscription_revenue || 0),
+    });
+  }
+
+  for (const o of inscriptionOrders) {
+    if (!isMembershipSale(o)) continue;
+    const paidAt = membershipPaidAt(o);
+    if (!monthInFilter(paidAt, fromMonth, toMonth)) continue;
+    bump(monthKeyFromIso(paidAt), {
+      inscription_orders: 1,
+      inscription_revenue: membershipRevenueCents(o),
+    });
+  }
+
+  const materielPlusAddons = [...materielOrders, ...collectInscriptionMaterielOrders(inscriptionOrders)];
+  for (const o of materielPlusAddons) {
+    if (o.payment?.status && o.payment.status !== 'paid') continue;
+    const paidAt = o.paid_at || o.created_at;
+    if (!monthInFilter(paidAt, fromMonth, toMonth)) continue;
+    bump(monthKeyFromIso(paidAt), {
+      materiel_orders: 1,
+      materiel_revenue: Number(o.total_cents || 0) || 0,
+    });
+  }
+
+  const rows = Object.keys(byMonth)
+    .sort()
+    .map((m) => byMonth[m]);
+  const totals = rows.reduce(
+    (acc, r) => ({
+      materiel_orders: acc.materiel_orders + r.materiel_orders,
+      materiel_revenue: acc.materiel_revenue + r.materiel_revenue,
+      inscription_orders: acc.inscription_orders + r.inscription_orders,
+      inscription_revenue: acc.inscription_revenue + r.inscription_revenue,
+    }),
+    { materiel_orders: 0, materiel_revenue: 0, inscription_orders: 0, inscription_revenue: 0 }
+  );
+  return { rows, totals };
+}
+
+function catalogMatchKey(product = {}) {
+  return String(product.id || product.product_id || product.slug || product.name || '')
+    .toLowerCase()
+    .trim();
+}
+
+function isBladeLikeId(id) {
+  const key = String(id || '').toLowerCase();
+  return /blade|mat-blade|gants-boxe-blade/.test(key);
+}
+
+function buildMaterielStockRows({
+  catalogProducts = [],
+  inscriptionOrders = [],
+  materielOrders = [],
+  fromMonth = '',
+  toMonth = '',
+} = {}) {
+  const sold = {};
+  function bumpSold(id, name, { qty = 1, revenue = 0, source = 'boutique' } = {}) {
+    const key = catalogMatchKey({ id, name }) || name || 'materiel';
+    if (!sold[key]) {
+      sold[key] = {
+        id: key,
+        name: String(name || id || 'Matériel').trim(),
+        sold_boutique: 0,
+        sold_inscription: 0,
+        revenue: 0,
+      };
+    }
+    if (source === 'inscription') sold[key].sold_inscription += qty;
+    else sold[key].sold_boutique += qty;
+    sold[key].revenue += revenue;
+    if (name && String(name).length > String(sold[key].name).length) sold[key].name = name;
+  }
+
+  for (const o of materielOrders) {
+    if (o.payment?.status && o.payment.status !== 'paid') continue;
+    const paidAt = o.paid_at || o.created_at;
+    if (!monthInFilter(paidAt, fromMonth, toMonth)) continue;
+    const items = Array.isArray(o.items) ? o.items : [];
+    if (!items.length) {
+      bumpSold('materiel', 'Matériel', {
+        qty: 1,
+        revenue: Number(o.total_cents || 0) || 0,
+        source: 'boutique',
+      });
+      continue;
+    }
+    for (const item of items) {
+      bumpSold(item.product_id || item.name, item.name || 'Matériel', {
+        qty: Number(item.qty || 1) || 1,
+        revenue: Number(item.line_total_cents || 0) || 0,
+        source: 'boutique',
+      });
+    }
+  }
+
+  for (const o of inscriptionOrders) {
+    const sale = inscriptionMaterielSale(o);
+    if (!sale) continue;
+    if (!monthInFilter(sale.paid_at, fromMonth, toMonth)) continue;
+    const item = sale.items[0];
+    bumpSold(item.product_id, item.name, {
+      qty: 1,
+      revenue: item.line_total_cents,
+      source: 'inscription',
+    });
+  }
+
+  const catalogRows = (catalogProducts || []).map((p) => {
+    const keys = [p.id, p.slug, p.name, ...(Array.isArray(p.combinations) ? p.combinations.map((c) => c.id) : [])]
+      .map((k) => catalogMatchKey({ id: k }))
+      .filter(Boolean);
+    const matched = Object.values(sold).filter((s) => {
+      if (keys.includes(s.id)) return true;
+      if (isBladeLikeId(p.id) && isBladeLikeId(s.id)) return true;
+      const foldedName = foldProductText(p.display_name || p.name);
+      return foldedName && foldProductText(s.name).includes(foldedName.slice(0, 18));
+    });
+    const sold_boutique = matched.reduce((n, s) => n + s.sold_boutique, 0);
+    const sold_inscription = matched.reduce((n, s) => n + s.sold_inscription, 0);
+    const revenue = matched.reduce((n, s) => n + s.revenue, 0);
+    matched.forEach((s) => {
+      s._cataloged = true;
+    });
+    return {
+      id: p.id,
+      name: p.display_name || p.name || p.id,
+      stock: Number(p.stock || 0) || 0,
+      sold_boutique,
+      sold_inscription,
+      sold_qty: sold_boutique + sold_inscription,
+      revenue,
+      variants: (p.combinations || []).map((c) => ({
+        id: c.id,
+        label: c.label || c.size || '',
+        stock: Number(c.stock || 0) || 0,
+      })),
+    };
+  });
+
+  const orphans = Object.values(sold)
+    .filter((s) => !s._cataloged && s.sold_boutique + s.sold_inscription > 0)
+    .map((s) => ({
+      id: s.id,
+      name: s.name,
+      stock: null,
+      sold_boutique: s.sold_boutique,
+      sold_inscription: s.sold_inscription,
+      sold_qty: s.sold_boutique + s.sold_inscription,
+      revenue: s.revenue,
+      variants: [],
+    }));
+
+  return [...catalogRows, ...orphans]
+    .filter((row) => row.sold_qty > 0 || Number(row.stock) > 0)
+    .sort((a, b) => b.sold_qty - a.sold_qty || String(a.name).localeCompare(String(b.name), 'fr'));
+}
+
+function listInscriptionMaterielSales(inscriptionOrders = [], { fromMonth = '', toMonth = '' } = {}) {
+  return inscriptionOrders
+    .map((o) => {
+      const sale = inscriptionMaterielSale(o);
+      if (!sale) return null;
+      if (!monthInFilter(sale.paid_at, fromMonth, toMonth)) return null;
+      const item = sale.items[0];
+      return {
+        order_id: o.order_id,
+        name: orderDisplayName(o),
+        product: item.name,
+        gym: gymSlugFromOrder(o),
+        pickup: sale.pickup_gym || '',
+        paid_at: sale.paid_at,
+        revenue: item.line_total_cents,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => Date.parse(b.paid_at || 0) - Date.parse(a.paid_at || 0));
+}
+
+function missingFicheRows(inscriptionOrders = []) {
+  const rows = [];
+  for (const o of inscriptionOrders) {
+    if (!isMembershipSale(o)) continue;
+    if (o.manual_migration || o.skip_bot) continue;
+    if (o.deciplus_member_id) continue;
+    rows.push({
+      order_id: o.order_id,
+      name: orderDisplayName(o),
+      gym: gymSlugFromOrder(o),
+      paid_at: membershipPaidAt(o),
+      signed: Boolean(o.signature?.signed_at),
+      ready: orderNeedsDeciplusSale(o),
+      dispatched: Boolean(o.dispatched_at),
+      bot_status: o.bot_status || null,
+    });
+  }
+  return rows.sort((a, b) => Date.parse(b.paid_at || 0) - Date.parse(a.paid_at || 0));
+}
+
 function bumpProduct(map, { id, name, kind, qty = 1, revenue = 0 }) {
   const key = canonicalProductKey({ id, name });
   if (!map[key]) {
@@ -208,6 +491,7 @@ function buildAdminSalesExtras({
   const today = parisTodayKey();
   let today_count = 0;
   let today_revenue = 0;
+  const materielWithAddons = [...materielOrders, ...collectInscriptionMaterielOrders(inscriptionOrders)];
 
   function dayTotal(row) {
     return (row.inscriptions || 0) + (row.materiel || 0);
@@ -269,8 +553,8 @@ function buildAdminSalesExtras({
     });
   }
 
-  for (const o of materielOrders) {
-    if (o.payment?.status !== 'paid') continue;
+  for (const o of materielWithAddons) {
+    if (o.payment?.status && o.payment.status !== 'paid') continue;
     const paidAt = o.paid_at || o.created_at;
     const day = parisDayKey(paidAt);
     const revenue = Number(o.total_cents || 0) || 0;
@@ -337,6 +621,8 @@ function buildAdminSalesExtras({
       return b.revenue - a.revenue || String(a.label).localeCompare(String(b.label), 'fr');
     });
 
+  const missing_fiches = missingFicheRows(inscriptionOrders);
+
   return {
     today: { day: today, count: today_count, revenue: today_revenue },
     lookup_day,
@@ -346,6 +632,8 @@ function buildAdminSalesExtras({
     by_gym,
     aventure,
     missing_deciplus_sale,
+    missing_fiches,
+    missing_fiches_count: missing_fiches.length,
   };
 }
 
@@ -357,4 +645,10 @@ module.exports = {
   isMembershipSale,
   gymSlugFromOrder,
   buildAdminSalesExtras,
+  buildMonthlySalesRows,
+  buildMaterielStockRows,
+  listInscriptionMaterielSales,
+  collectInscriptionMaterielOrders,
+  missingFicheRows,
+  orderDisplayName,
 };

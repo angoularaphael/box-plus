@@ -6,6 +6,9 @@ const fs = require('fs');
 const path = require('path');
 const {
   buildAdminSalesExtras,
+  buildMonthlySalesRows,
+  buildMaterielStockRows,
+  listInscriptionMaterielSales,
   isAventureOrder,
   parisDayKey,
 } = require('../storefront/lib/admin-stats');
@@ -207,6 +210,117 @@ test('plus vendu fusionne la même offre sous des ids différents', () => {
   assert.equal(extras.top_products.filter((p) => /OFFRE PROMO 12/.test(p.name)).length, 1);
 });
 
+test('stats — gants Blade pris pendant l’inscription + stock', () => {
+  const extras = buildAdminSalesExtras({
+    inscriptionOrders: [
+      {
+        order_id: 'BC-BLADE-1',
+        gym: 'minimes',
+        payment: { status: 'paid', paid_at: '2026-09-02T10:00:00.000Z' },
+        customer_short: { first_name: 'Léa', last_name: 'Martin' },
+        product_snapshot: { display_name: 'OFFRE A 29€', price_cents: 2900 },
+        addons: {
+          blade: {
+            status: 'paid',
+            paid_at: '2026-09-02T10:02:00.000Z',
+            name: 'Gants Blade',
+            color_label: 'Noir / Blanc',
+            size: '12oz',
+            variant_id: 'blade-noir-blanc-12oz',
+            price_cents: 1790,
+            pickup_gym: 'Barrière de Paris - Minimes',
+          },
+        },
+      },
+    ],
+    materielOrders: [
+      {
+        payment: { status: 'paid' },
+        paid_at: '2026-09-02T11:00:00.000Z',
+        pickup_gym: 'st-cyprien',
+        total_cents: 4500,
+        items: [{ product_id: 'gants-cuir', name: 'Gants cuir', qty: 1, line_total_cents: 4500 }],
+      },
+    ],
+    fromMonth: '2026-09',
+    toMonth: '2026-09',
+  });
+  const blade = extras.top_products.find((p) => /Blade/i.test(p.name));
+  assert.ok(blade);
+  assert.equal(blade.qty, 1);
+  assert.equal(blade.kind, 'materiel');
+  const byGym = Object.fromEntries(extras.by_gym.map((g) => [g.gym, g]));
+  assert.equal(byGym.minimes.materiel_orders, 1);
+  assert.equal(byGym.minimes.materiel_revenue, 1790);
+
+  const monthly = buildMonthlySalesRows({
+    inscriptionOrders: [
+      {
+        gym: 'minimes',
+        payment: { status: 'paid', paid_at: '2026-09-02T10:00:00.000Z' },
+        product_snapshot: { price_cents: 2900 },
+        addons: { blade: { status: 'paid', paid_at: '2026-09-02T10:02:00.000Z', price_cents: 1790 } },
+      },
+    ],
+    materielOrders: [],
+    fromMonth: '2026-09',
+    toMonth: '2026-09',
+  });
+  assert.equal(monthly.totals.inscription_orders, 1);
+  assert.equal(monthly.totals.materiel_orders, 1);
+  assert.equal(monthly.totals.materiel_revenue, 1790);
+
+  const buyers = listInscriptionMaterielSales(
+    [
+      {
+        order_id: 'BC-BLADE-1',
+        gym: 'minimes',
+        payment: { status: 'paid', paid_at: '2026-09-02T10:00:00.000Z' },
+        customer_short: { first_name: 'Léa', last_name: 'Martin' },
+        addons: {
+          blade: {
+            status: 'paid',
+            paid_at: '2026-09-02T10:02:00.000Z',
+            name: 'Gants Blade',
+            color_label: 'Noir / Blanc',
+            size: '12oz',
+            price_cents: 1790,
+            pickup_gym: 'Minimes',
+          },
+        },
+      },
+    ],
+    { fromMonth: '2026-09', toMonth: '2026-09' }
+  );
+  assert.equal(buyers.length, 1);
+  assert.equal(buyers[0].name, 'Léa Martin');
+
+  const stocks = buildMaterielStockRows({
+    catalogProducts: [{ id: 'mat-blade-gold', name: 'Gants de boxe Blade Noir et Blanc', stock: 22 }],
+    inscriptionOrders: [
+      {
+        payment: { status: 'paid', paid_at: '2026-09-02T10:00:00.000Z' },
+        addons: {
+          blade: {
+            status: 'paid',
+            paid_at: '2026-09-02T10:02:00.000Z',
+            name: 'Gants Blade',
+            variant_id: 'blade-noir-blanc-12oz',
+            price_cents: 1790,
+          },
+        },
+      },
+    ],
+    materielOrders: [],
+    fromMonth: '2026-09',
+    toMonth: '2026-09',
+  });
+  const bladeStock = stocks.find((s) => /blade/i.test(s.id) || /Blade/i.test(s.name));
+  assert.ok(bladeStock);
+  assert.equal(bladeStock.sold_inscription, 1);
+  assert.equal(bladeStock.stock, 22);
+});
+
 test('stats admin — plus vendu à la place de Stripe, ventes du jour', () => {
   const html = fs.readFileSync(
     path.join(__dirname, '..', 'storefront', 'public', 'admin', 'index.html'),
@@ -222,10 +336,26 @@ test('stats admin — plus vendu à la place de Stripe, ventes du jour', () => {
   assert.match(html, /Ventes du jour choisi/);
   assert.match(html, /Chiffre d’affaires par salle/);
   assert.match(html, /id="gymSalesBody"/);
+  assert.match(html, /Matériel et stocks/);
+  assert.match(html, /Matériel pris pendant l’inscription/);
+  assert.match(html, /Fiches Deciplus manquantes/);
   assert.doesNotMatch(html, /Aventure Balma \(payées\)/);
   assert.doesNotMatch(html, /id="aventureStatsWrap"/);
   assert.match(js, /daily_sales/);
   assert.match(js, /top_products/);
   assert.match(js, /by_gym/);
   assert.match(js, /kpiTodaySales/);
+  assert.match(js, /stock_rows/);
+  assert.match(js, /inscription_materiel/);
+});
+
+test('API stats admin ne charge plus tout l’historique', () => {
+  const server = fs.readFileSync(
+    path.join(__dirname, '..', 'storefront', 'server.js'),
+    'utf8'
+  );
+  assert.match(server, /listPaidOrdersSinceAsync/);
+  assert.match(server, /listMaterielOrdersCreatedSinceAsync/);
+  assert.match(server, /\/api\/admin\/requeue-missing-fiches/);
+  assert.match(server, /stock_rows/);
 });

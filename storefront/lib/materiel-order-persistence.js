@@ -232,6 +232,53 @@ async function purgeUnpaidOrdersAsync() {
   return deleted;
 }
 
+async function listOrdersCreatedSinceAsync(sinceIso) {
+  const cutoff = Date.parse(sinceIso);
+  if (!Number.isFinite(cutoff)) return listAllOrdersAsync();
+  if (useRemoteStore()) {
+    try {
+      const sb = getSupabase();
+      const all = [];
+      let from = 0;
+      const page = 1000;
+      while (true) {
+        const { data, error } = await sb
+          .from('boxplus_materiel_orders')
+          .select(MATERIEL_SLIM_SELECT)
+          .gte('created_at', sinceIso)
+          .order('created_at', { ascending: false })
+          .range(from, from + page - 1);
+        if (error) throw error;
+        const batch = data || [];
+        for (const row of batch) {
+          all.push({
+            order_id: row.order_id,
+            updated_at: row.updated_at,
+            created_at: row.created_at || null,
+            payment: row.payment || {},
+            paid_at: row.paid_at || null,
+            total_cents: row.total_cents || 0,
+            email_sent: Boolean(row.email_sent),
+            customer: row.customer || {},
+            items: row.items || [],
+            order_type: row.order_type || 'materiel',
+            pickup_gym: row.pickup_gym || row.customer?.pickup_gym || '',
+            manager_notify: row.manager_notify || null,
+          });
+        }
+        if (batch.length < page) break;
+        from += page;
+      }
+      return all;
+    } catch (err) {
+      logError('Liste commandes matériel depuis date', { error: err.message });
+    }
+  }
+  return (await listAllOrdersAsync()).filter(
+    (order) => Date.parse(order.created_at || order.paid_at || order.updated_at || 0) >= cutoff
+  );
+}
+
 module.exports = {
   ORDERS_DIR,
   useRemoteStore,
@@ -240,6 +287,7 @@ module.exports = {
   saveOrder,
   saveOrderAsync,
   listAllOrdersAsync,
+  listOrdersCreatedSinceAsync,
   deleteOrderAsync,
   purgeUnpaidOrdersAsync,
   isPaidMaterielOrder,

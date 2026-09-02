@@ -268,6 +268,10 @@ function reconstructOrderFromListRow(row) {
     email_sent_at: rowValue(row, 'email_sent_at', 'payload->email_sent_at') || null,
     deciplus_member_id: rowValue(row, 'deciplus_member_id', 'payload->deciplus_member_id') || null,
     deciplus_sale_id: rowValue(row, 'deciplus_sale_id', 'payload->deciplus_sale_id') || null,
+    addons: (() => {
+      const blade = rowValue(row, 'blade_addon', 'payload->addons->blade');
+      return blade ? { blade } : {};
+    })(),
     bot_status: rowValue(row, 'bot_status', 'payload->bot_status') || null,
     bot_error: rowValue(row, 'bot_error', 'payload->bot_error') || null,
     manual_migration: Boolean(rowValue(row, 'manual_migration', 'payload->manual_migration')),
@@ -322,6 +326,7 @@ const SLIM_SELECT = [
   'bot_status:payload->bot_status',
   'bot_error:payload->bot_error',
   'manual_migration:payload->manual_migration',
+  'blade_addon:payload->addons->blade',
 ].join(',\n');
 
 async function fetchAllPages(makeQuery) {
@@ -513,27 +518,64 @@ async function listAllOrders() {
   return listOrdersFromFs().map((order) => stripHeavyFields(order));
 }
 
+async function listOrdersFromRemoteSince(sinceIso, extraQuery) {
+  const sb = getSupabase();
+  const makeSlim = () => {
+    let q = sb
+      .from('boxplus_orders')
+      .select(SLIM_SELECT)
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false });
+    if (typeof extraQuery === 'function') q = extraQuery(q);
+    return q;
+  };
+  const rows = await fetchAllPages(makeSlim);
+  return rows.map(reconstructOrderFromListRow).filter(Boolean);
+}
+
 /** Liste limitée dans le temps — crons Vercel (évite le 504 en chargeant tout l’historique). */
 async function listOrdersCreatedSince(sinceIso) {
   const cutoff = Date.parse(sinceIso);
   if (!Number.isFinite(cutoff)) return listAllOrders();
   if (useRemoteStore()) {
     try {
-      const sb = getSupabase();
-      const makeSlim = () =>
-        sb
-          .from('boxplus_orders')
-          .select(SLIM_SELECT)
-          .gte('created_at', sinceIso)
-          .order('created_at', { ascending: false });
-      const rows = await fetchAllPages(makeSlim);
-      return rows.map(reconstructOrderFromListRow).filter(Boolean);
+      return await listOrdersFromRemoteSince(sinceIso);
     } catch (err) {
       logWarn('Liste commandes depuis date indisponible, repli complet', { error: err.message });
     }
   }
   return listOrdersFromFs()
     .filter((order) => Date.parse(order.created_at || order.updated_at || 0) >= cutoff)
+    .map((order) => stripHeavyFields(order));
+}
+
+function isPaidOrFreeStatus(order) {
+  const st = String(order?.payment?.status || '').toLowerCase();
+  return st === 'paid' || st === 'free';
+}
+
+/** Inscriptions payées depuis une date — stats ventes (évite de charger les brouillons). */
+async function listPaidOrdersSince(sinceIso) {
+  const cutoff = Date.parse(sinceIso);
+  if (!Number.isFinite(cutoff)) {
+    return (await listAllOrders()).filter(isPaidOrFreeStatus);
+  }
+  if (useRemoteStore()) {
+    try {
+      const paid = await listOrdersFromRemoteSince(sinceIso, (q) =>
+        q.or('payload->payment->>status.eq.paid,payload->payment->>status.eq.free')
+      );
+      return paid.filter(isPaidOrFreeStatus);
+    } catch (err) {
+      logWarn('Liste commandes payées filtrée indisponible, repli created-since', {
+        error: err.message,
+      });
+      return (await listOrdersCreatedSince(sinceIso)).filter(isPaidOrFreeStatus);
+    }
+  }
+  return listOrdersFromFs()
+    .filter((order) => Date.parse(order.created_at || order.updated_at || 0) >= cutoff)
+    .filter(isPaidOrFreeStatus)
     .map((order) => stripHeavyFields(order));
 }
 
@@ -588,6 +630,7 @@ module.exports = {
   saveOrderAsync,
   listAllOrders,
   listOrdersCreatedSince,
+  listPaidOrdersSince,
   deleteOrder,
   findOrderBySubscriptionId,
   buildOrderSummary,

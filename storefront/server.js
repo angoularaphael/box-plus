@@ -181,6 +181,7 @@ const {
   loadPendingCheckout,
   removePendingCheckout,
   listAllMaterielOrdersAsync,
+  listMaterielOrdersCreatedSinceAsync,
   purgeUnpaidMaterielOrdersAsync,
   loadOrderAsync: loadMaterielOrderAsync,
   saveOrderAsync: saveMaterielOrderRecordAsync,
@@ -215,6 +216,8 @@ const {
   getUploadDir,
   listAllOrders,
   listAllOrdersAsync,
+  listOrdersCreatedSinceAsync,
+  listPaidOrdersSinceAsync,
   deleteOrderAsync,
   toAdminSummary,
   sortAdminOrders,
@@ -1542,8 +1545,11 @@ function createApp() {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
       const { listMaterielSales } = require('./lib/gym-materiel-managers');
-      const materiel = await listAllMaterielOrdersAsync();
-      const inscriptions = await listAllOrdersAsync();
+      const since = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString();
+      const [materiel, inscriptions] = await Promise.all([
+        listMaterielOrdersCreatedSinceAsync(since),
+        listPaidOrdersSinceAsync(since),
+      ]);
       const paidOnly = String(req.query.all || '') !== '1';
       const orders = listMaterielSales(materiel, inscriptions, { paidOnly });
       res.json({ ok: true, orders, count: orders.length, paid_only: paidOnly });
@@ -1608,94 +1614,102 @@ function createApp() {
     }
   });
 
-  // Stats admin — ventes + funnel + visites
+  // Stats admin — ventes + funnel + visites (borné dans le temps pour éviter le 504)
   app.get('/api/admin/stats', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
       const { summarizeVisits, summarizeFunnelFromOrders, summarizeFunnelEvents } = require('./lib/analytics');
-      const { from, to, day } = req.query; // from/to: YYYY-MM ; day: YYYY-MM-DD
+      const {
+        parisDayKey,
+        buildAdminSalesExtras,
+        buildMonthlySalesRows,
+        buildMaterielStockRows,
+        listInscriptionMaterielSales,
+      } = require('./lib/admin-stats');
+      const { from, to, day } = req.query;
+      const todayMonth = parisDayKey(new Date().toISOString()).slice(0, 7);
+      const fromMonth = String(from || todayMonth).slice(0, 7);
+      const toMonth = String(to || todayMonth).slice(0, 7);
 
-      function monthKey(dateStr) {
-        if (!dateStr) return null;
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return null;
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const fromStart = new Date(`${fromMonth}-01T00:00:00.000Z`);
+      fromStart.setUTCMonth(fromStart.getUTCMonth() - 1);
+      const salesSince = fromStart.toISOString();
+      const dailySince = new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString();
+      const funnelSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const paidSince = [salesSince, dailySince].sort()[0];
+
+      async function withTimeout(promise, ms, fallback) {
+        let timer;
+        try {
+          return await Promise.race([
+            promise,
+            new Promise((_, reject) => {
+              timer = setTimeout(() => reject(new Error('timeout')), ms);
+            }),
+          ]);
+        } catch {
+          return fallback;
+        } finally {
+          clearTimeout(timer);
+        }
       }
 
-      function inRange(key) {
-        if (!key) return false;
-        if (from && key < from) return false;
-        if (to && key > to) return false;
-        return true;
-      }
+      const [inscriptionPaid, funnelOrders, materielOrders, visits, seance, funnelEvents] = await Promise.all([
+        listPaidOrdersSinceAsync(paidSince),
+        listOrdersCreatedSinceAsync(funnelSince),
+        listMaterielOrdersCreatedSinceAsync(paidSince),
+        withTimeout(summarizeVisits(30), 4000, { unique_visitors: 0, pageviews: 0, top_pages: [], total: 0 }),
+        withTimeout(
+          require('./lib/seance-offerte-visits').summarizeSeanceOfferteVisits(14),
+          3000,
+          { days: [], total: 0, flyer: 0, other: 0 }
+        ),
+        withTimeout(summarizeFunnelEvents(30), 3000, null),
+      ]);
 
-      // Materiel orders
-      const materielOrders = (await listAllMaterielOrdersAsync()).filter(
-        (o) => o.payment?.status === 'paid'
-      );
-      const materielByMonth = {};
-      for (const o of materielOrders) {
-        const k = monthKey(o.paid_at || o.created_at);
-        if (!k || !inRange(k)) continue;
-        if (!materielByMonth[k]) materielByMonth[k] = { month: k, orders: 0, revenue: 0 };
-        materielByMonth[k].orders += 1;
-        materielByMonth[k].revenue += o.total_cents || 0;
-      }
-
-      // Inscription orders
-      const allOrders = await listAllOrdersAsync();
-      const inscByMonth = {};
-      for (const o of allOrders) {
-        if (o.payment?.status !== 'paid') continue;
-        const k = monthKey(o.payment?.paid_at || o.updated_at || o.created_at);
-        if (!k || !inRange(k)) continue;
-        if (!inscByMonth[k]) inscByMonth[k] = { month: k, orders: 0, revenue: 0 };
-        inscByMonth[k].orders += 1;
-        inscByMonth[k].revenue += o.product_snapshot?.price_cents || 0;
-      }
-
-      const months = [...new Set([...Object.keys(materielByMonth), ...Object.keys(inscByMonth)])].sort();
-
-      const rows = months.map((m) => ({
-        month: m,
-        materiel_orders: materielByMonth[m]?.orders || 0,
-        materiel_revenue: materielByMonth[m]?.revenue || 0,
-        inscription_orders: inscByMonth[m]?.orders || 0,
-        inscription_revenue: inscByMonth[m]?.revenue || 0,
-      }));
-
-      const totals = rows.reduce(
-        (acc, r) => ({
-          materiel_orders: acc.materiel_orders + r.materiel_orders,
-          materiel_revenue: acc.materiel_revenue + r.materiel_revenue,
-          inscription_orders: acc.inscription_orders + r.inscription_orders,
-          inscription_revenue: acc.inscription_revenue + r.inscription_revenue,
-        }),
-        { materiel_orders: 0, materiel_revenue: 0, inscription_orders: 0, inscription_revenue: 0 }
-      );
-
-      const unpaid = allOrders
-        .filter((o) => o.payment?.status === 'past_due' || o.access_blocked)
-        .map(toAdminSummary);
-
-      const { buildAdminSalesExtras } = require('./lib/admin-stats');
-      const extras = buildAdminSalesExtras({
-        inscriptionOrders: allOrders,
+      const { rows, totals } = buildMonthlySalesRows({
+        inscriptionOrders: inscriptionPaid,
         materielOrders,
-        fromMonth: from || '',
-        toMonth: to || '',
+        fromMonth,
+        toMonth,
+      });
+
+      const extras = buildAdminSalesExtras({
+        inscriptionOrders: inscriptionPaid,
+        materielOrders,
+        fromMonth,
+        toMonth,
         lookupDay: day || '',
+      });
+
+      let catalogProducts = [];
+      try {
+        catalogProducts = require('./lib/merch').getMaterielProducts({ activeOnly: false }) || [];
+      } catch (err) {
+        logWarn('Catalogue matériel stats', { error: err.message });
+      }
+
+      const stock_rows = buildMaterielStockRows({
+        catalogProducts,
+        inscriptionOrders: inscriptionPaid,
+        materielOrders,
+        fromMonth,
+        toMonth,
+      });
+      const inscription_materiel = listInscriptionMaterielSales(inscriptionPaid, {
+        fromMonth,
+        toMonth,
       });
 
       res.json({
         ok: true,
         rows,
         totals,
-        visits: await summarizeVisits(30),
-        seance_offerte: await require('./lib/seance-offerte-visits').summarizeSeanceOfferteVisits(14),
-        funnel: summarizeFunnelFromOrders(allOrders),
-        funnel_events: await summarizeFunnelEvents(30),
-        unpaid,
+        visits,
+        seance_offerte: seance,
+        funnel: summarizeFunnelFromOrders(funnelOrders),
+        funnel_events: funnelEvents,
+        unpaid: [],
         today: extras.today,
         lookup_day: extras.lookup_day,
         best_day: extras.best_day,
@@ -1704,8 +1718,45 @@ function createApp() {
         by_gym: extras.by_gym,
         aventure: extras.aventure,
         missing_deciplus_sale: extras.missing_deciplus_sale || 0,
+        missing_fiches: (extras.missing_fiches || []).slice(0, 60),
+        missing_fiches_count: extras.missing_fiches_count || 0,
+        stock_rows,
+        inscription_materiel,
       });
     } catch (err) {
+      logError('Admin stats', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/requeue-missing-fiches', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { missingFicheRows } = require('./lib/admin-stats');
+      const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+      const paid = await listPaidOrdersSinceAsync(since);
+      const missing = missingFicheRows(paid).filter((row) => row.ready).slice(0, 25);
+      const results = [];
+      for (const row of missing) {
+        const order = await loadOrderAsync(row.order_id);
+        if (!order) continue;
+        try {
+          const dispatch = await dispatchLifecycleOrder(order, { force_requeue: true });
+          results.push({
+            order_id: row.order_id,
+            name: row.name,
+            ok: true,
+            queued: dispatch?.queued,
+            forwarded: dispatch?.forwarded,
+          });
+        } catch (err) {
+          results.push({ order_id: row.order_id, name: row.name, ok: false, error: err.message });
+        }
+      }
+      logInfo('Relance fiches Deciplus admin', { count: results.length });
+      res.json({ ok: true, count: results.length, results });
+    } catch (err) {
+      logError('Relance fiches Deciplus', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });
@@ -2008,15 +2059,10 @@ function createApp() {
     let kept = raw;
     try {
       const { pruneAbandonedInscriptions } = require('./lib/order-prune');
-      const pruned = await pruneAbandonedInscriptions(raw);
+      const pruned = await pruneAbandonedInscriptions(raw, { limit: 25 });
       kept = pruned.kept;
     } catch (err) {
       logWarn('Prune inscriptions admin', { error: err.message });
-    }
-    for (const order of kept) {
-      if (order.signature?.signed_at && !order.gestion_client_id) {
-        await syncInscriptionClient(order);
-      }
     }
     const orders = sortAdminOrders(kept.map(toAdminSummary));
     res.json({ ok: true, orders, count: orders.length });
@@ -2024,7 +2070,8 @@ function createApp() {
 
   app.get('/api/admin/coachings', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
-    const raw = await listAllOrdersAsync();
+    const since = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+    const raw = await listOrdersCreatedSinceAsync(since);
     const orders = raw
       .filter((o) => o.action === 'coaching_booking' || String(o.order_id || '').startsWith('COACH-'))
       .map(toAdminSummary)
@@ -2466,7 +2513,8 @@ function createApp() {
       let order = await loadOrderAsync(req.params.id);
       if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
       const aventure = isBalmaRetourOrder(order) || order.aventure;
-      if (!aventure && !order.signature?.signed_at) {
+      const { orderNeedsDeciplusSale } = require('./lib/deciplus-sale-reconcile');
+      if (!aventure && !order.signature?.signed_at && !orderNeedsDeciplusSale(order)) {
         return res.status(400).json({ ok: false, error: 'not_signed' });
       }
 

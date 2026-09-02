@@ -110,8 +110,8 @@ function ordersToPrune(all = [], now = Date.now()) {
   );
 }
 
-async function pruneAbandonedInscriptions(all = []) {
-  const doomed = ordersToPrune(all);
+async function pruneAbandonedInscriptions(all = [], { limit = 40 } = {}) {
+  const doomed = ordersToPrune(all).slice(0, Math.max(0, Number(limit) || 40));
   let deleted = 0;
   for (const order of doomed) {
     try {

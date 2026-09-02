@@ -171,9 +171,9 @@ test('force_requeue remplace un job PENDING (Aventure already_queued)', () => {
   assert.equal(again.queued, true);
 });
 
-test('payé depuis plus de 2 h sans signature → à rattraper', () => {
+test('payé depuis plus de 15 min sans signature → à rattraper', () => {
   const { paidUnsignedReady, orderNeedsDeciplusSale } = require('../storefront/lib/deciplus-sale-reconcile');
-  const paidAt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+  const paidAt = new Date(Date.now() - 20 * 60 * 1000).toISOString();
   const unsigned = {
     order_id: 'BC-ETHANN',
     step: 7,

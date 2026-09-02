@@ -22,6 +22,7 @@ const {
   saveOrder,
   saveOrderAsync,
   listAllOrdersAsync,
+  listOrdersCreatedSinceAsync,
   purgeUnpaidOrdersAsync,
 } = require('./materiel-order-persistence');
 
@@ -266,6 +267,14 @@ async function listAllMaterielOrdersAsync() {
   return listAllOrdersAsync();
 }
 
+async function listMaterielOrdersCreatedSinceAsync(sinceIso) {
+  const persistence = require('./materiel-order-persistence');
+  if (typeof persistence.listOrdersCreatedSinceAsync === 'function') {
+    return persistence.listOrdersCreatedSinceAsync(sinceIso);
+  }
+  return listAllOrdersAsync();
+}
+
 async function purgeUnpaidMaterielOrdersAsync() {
   return purgeUnpaidOrdersAsync();
 }
@@ -284,6 +293,7 @@ module.exports = {
   removePendingCheckout,
   listAllMaterielOrders,
   listAllMaterielOrdersAsync,
+  listMaterielOrdersCreatedSinceAsync,
   purgeUnpaidMaterielOrdersAsync,
   loadOrder,
   loadOrderAsync,

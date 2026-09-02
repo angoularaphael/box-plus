@@ -1767,8 +1767,7 @@
     const fromEl = document.getElementById('statsFrom');
     const toEl = document.getElementById('statsTo');
     if (fromEl && !fromEl.value) {
-      const start = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-      fromEl.value = ym(start);
+      fromEl.value = ym(now);
     }
     if (toEl && !toEl.value) toEl.value = ym(now);
     loadStats();
@@ -2004,6 +2003,75 @@
         }
         if (wrap) wrap.hidden = false;
       }
+
+      const missingWrap = document.getElementById('missingFichesWrap');
+      const missingBody = document.getElementById('missingFichesBody');
+      const missingSum = document.getElementById('missingFichesSummary');
+      const missing = data.missing_fiches || [];
+      if (missingBody) {
+        missingBody.innerHTML = missing.length
+          ? missing
+              .map((m) => `
+            <tr>
+              <td style="font-weight:600">${escapeHtml(m.name || m.order_id)}</td>
+              <td>${escapeHtml(gymLabel(m.gym) || m.gym || '—')}</td>
+              <td>${m.paid_at ? new Date(m.paid_at).toLocaleString('fr-FR') : '—'}</td>
+              <td>${m.signed ? 'Signé' : 'Non signé'}</td>
+              <td>${escapeHtml(m.bot_status || (m.dispatched ? 'envoyé' : 'pas encore'))}</td>
+            </tr>`
+              )
+              .join('')
+          : '';
+      }
+      if (missingSum) {
+        missingSum.textContent = missing.length
+          ? `${data.missing_fiches_count || missing.length} inscription(s) payée(s) sans fiche Deciplus.`
+          : '';
+      }
+      if (missingWrap) missingWrap.hidden = missing.length === 0;
+
+      const stockWrap = document.getElementById('materielStockWrap');
+      const stockBody = document.getElementById('materielStockBody');
+      if (stockBody) {
+        const stocks = data.stock_rows || [];
+        stockBody.innerHTML = stocks.length
+          ? stocks
+              .map((s) => `
+            <tr>
+              <td style="font-weight:600">${escapeHtml(s.name)}</td>
+              <td style="text-align:right">${s.sold_inscription || 0}</td>
+              <td style="text-align:right">${s.sold_boutique || 0}</td>
+              <td style="text-align:right;font-weight:600">${s.sold_qty || 0}</td>
+              <td style="text-align:right">${s.stock == null ? '—' : s.stock}</td>
+              <td style="text-align:right">${fmtEur(s.revenue || 0)}</td>
+            </tr>`
+              )
+              .join('')
+          : '<tr><td colspan="6" style="text-align:center;color:var(--bc-muted)">Aucune vente matériel sur cette période</td></tr>';
+        if (stockWrap) stockWrap.hidden = false;
+      }
+
+      const inscMatWrap = document.getElementById('inscriptionMaterielWrap');
+      const inscMatBody = document.getElementById('inscriptionMaterielBody');
+      if (inscMatBody) {
+        const buyers = data.inscription_materiel || [];
+        inscMatBody.innerHTML = buyers.length
+          ? buyers
+              .map((b) => `
+            <tr>
+              <td style="font-weight:600">${escapeHtml(b.name)}</td>
+              <td>${escapeHtml(b.product)}</td>
+              <td>${escapeHtml(b.pickup || gymLabel(b.gym) || '—')}</td>
+              <td>${b.paid_at ? new Date(b.paid_at).toLocaleString('fr-FR') : '—'}</td>
+              <td style="text-align:right">${fmtEur(b.revenue || 0)}</td>
+            </tr>`
+              )
+              .join('')
+          : '<tr><td colspan="5" style="text-align:center;color:var(--bc-muted)">Personne n’a pris de matériel pendant l’inscription sur cette période</td></tr>';
+        if (inscMatWrap) inscMatWrap.hidden = false;
+      }
+
+      applyStatsKind();
       statsLoaded = true;
       setStatsMsg('');
     } catch (err) {
@@ -2014,6 +2082,60 @@
   document.getElementById('loadStatsBtn')?.addEventListener('click', () => {
     statsLoaded = false;
     loadStats();
+  });
+
+  function applyStatsKind() {
+    const materielOn = document.querySelector('#statsKindBar .pan-filtre.is-on')?.dataset.statsKind === 'materiel';
+    const offresBlocks = ['funnelWrap', 'visitsWrap', 'fluxWrap'];
+    const materielBlocks = ['materielStockWrap', 'inscriptionMaterielWrap'];
+    offresBlocks.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && !el.hasAttribute('data-empty-keep')) el.style.display = materielOn ? 'none' : '';
+    });
+    materielBlocks.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = materielOn ? '' : 'none';
+    });
+  }
+
+  document.getElementById('statsKindBar')?.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-stats-kind]');
+    if (!btn) return;
+    document.querySelectorAll('#statsKindBar .pan-filtre').forEach((b) => b.classList.toggle('is-on', b === btn));
+    applyStatsKind();
+  });
+
+  document.getElementById('requeueFichesBtn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('requeueFichesBtn');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Relance…';
+    }
+    try {
+      const res = await fetch('/api/admin/requeue-missing-fiches', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || `Erreur ${res.status}`);
+      setStatsMsg(
+        data.count
+          ? `${data.count} fiche(s) relancée(s) vers Deciplus.`
+          : 'Aucune fiche prête à relancer pour le moment.',
+        'ok'
+      );
+      statsLoaded = false;
+      loadStats();
+    } catch (err) {
+      setStatsMsg(err.message || 'Relance impossible', 'err');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Créer les fiches';
+      }
+    }
   });
 
   let waTimer = null;
