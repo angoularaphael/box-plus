@@ -9,6 +9,7 @@
 const { matchGymSlug } = require('../../lib/gym-slugs');
 const { getStoreUrl } = require('../../lib/app-urls');
 const { logInfo, logWarn } = require('../../lib/logger');
+const { isMembershipContract } = require('../../lib/sale-contract-match');
 const { sendWhatsAppMessage } = require('./whatsapp-bot');
 const { buildOfferCampaignEmail } = require('./campaign-email');
 
@@ -147,16 +148,6 @@ function isMembershipOrder(order = {}) {
 function getGymCoachTarget(salle) {
   const slug = matchGymSlug(salle) || String(salle || '').toLowerCase();
   return GYM_COACH_WHATSAPP[slug] || null;
-}
-
-function isMembershipContract(contract) {
-  if (!contract || contract.isBadge) return false;
-  const label = fold(contract.label);
-  if (/essai|coaching|badge/.test(label)) return false;
-  if (/44\s*99/.test(label)) return false;
-  if (/\b259\b|offre promo 12 mois|offre saison/.test(label)) return true;
-  if (/offre\s*(a|duo)?\s*29|29\s*99/.test(label)) return true;
-  return false;
 }
 
 function formatFrDate(isoOrMs) {
