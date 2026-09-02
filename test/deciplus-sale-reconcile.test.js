@@ -156,6 +156,45 @@ test('force_requeue remplace un job already_queued bloqué (ERROR)', () => {
   assert.equal(again.queued, true);
 });
 
+test('force_requeue remplace un job PENDING (Aventure already_queued)', () => {
+  const order = normalizeOrder({
+    order_id: 'PS-AVENTURE-PENDING',
+    product_name: 'OFFRE A 29€',
+    gym: 'minimes',
+    customer: { first_name: 'Mohamed', last_name: 'Chamlal', email: 'a@b.fr', phone: '0600000000' },
+    payment: { amount: 259, status: 'paid' },
+    action: 'balma_switch',
+  });
+  const first = enqueue(order);
+  assert.equal(first.queued, true);
+  const again = enqueue({ ...order, force_requeue: true, force_sale_retry: true });
+  assert.equal(again.queued, true);
+});
+
+test('payé depuis plus de 2 h sans signature → à rattraper', () => {
+  const { paidUnsignedReady, orderNeedsDeciplusSale } = require('../storefront/lib/deciplus-sale-reconcile');
+  const paidAt = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+  const unsigned = {
+    order_id: 'BC-ETHANN',
+    step: 7,
+    signature: null,
+    customer_short: { first_name: 'Ethann', last_name: 'Vérité', birthdate: '2006-02-15' },
+    customer_full: { gym: 'st-cyprien' },
+    payment: { status: 'paid', paid_at: paidAt },
+    product_id: 'dp-104',
+    product_snapshot: { name: 'OFFRE A 29€', price_cents: 2900, sale_type: 'abonnement' },
+  };
+  assert.equal(paidUnsignedReady(unsigned), true);
+  assert.equal(orderNeedsDeciplusSale(unsigned), true);
+  assert.equal(
+    orderNeedsDeciplusSale({
+      ...unsigned,
+      payment: { status: 'paid', paid_at: new Date().toISOString() },
+    }),
+    false
+  );
+});
+
 test('cron boutique relance les ventes Deciplus manquantes', () => {
   const server = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'server.js'), 'utf8');
   assert.match(server, /\/api\/cron\/deciplus-sale-reconcile/);
@@ -163,6 +202,9 @@ test('cron boutique relance les ventes Deciplus manquantes', () => {
   assert.match(server, /force_sale_retry/);
   const vercel = fs.readFileSync(path.join(__dirname, '..', 'vercel.json'), 'utf8');
   assert.match(vercel, /deciplus-sale-reconcile/);
+  const bot = fs.readFileSync(path.join(__dirname, '..', 'bot', 'index.js'), 'utf8');
+  assert.match(bot, /maybeTriggerDeciplusSaleReconcile/);
+  assert.match(bot, /deciplus-sale-reconcile/);
 });
 
 test('dispatch Aventure ne s’arrête plus sur dispatched_at', () => {

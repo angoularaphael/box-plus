@@ -26,6 +26,21 @@ test('259 € n’est pas validé par un abo 44,99 déjà sur la fiche', () => {
   );
 });
 
+test('259 cash n’est pas validé par un contrat 4× Deciplus', () => {
+  const cash = { ...promo259, paiement_comptant: true };
+  assert.equal(
+    saleContractMatches('OFFRE PROMO 12MOIS — 4× sans frais CONTRAT N°C2026-050099', cash),
+    false
+  );
+  assert.equal(
+    saleContractMatches(
+      'OFFRE PROMO 12MOIS CONTRAT N°C2026-042337 vendu le 19/08/2026 365 jours restants',
+      cash
+    ),
+    true
+  );
+});
+
 test('un 259 € archivé ne valide pas une nouvelle vente promo', () => {
   assert.equal(
     saleContractMatches(

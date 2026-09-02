@@ -564,6 +564,15 @@ async function processSaleJob(page, order, jobMeta = {}) {
       badge_action: checkpoint.badge_action || null,
     };
   } else if (productConfig.requires_payment !== false && paid) {
+    if (ibanError) {
+      productConfig.paiement_comptant = true;
+      productConfig.requires_iban = false;
+      productConfig.skip_rib_prompt = true;
+      logWarn('IBAN absent — vente Deciplus en comptant (1er mois déjà payé)', {
+        order_id: order.order_id,
+        member_id: memberId,
+      });
+    }
     saleResult = await recordSale(page, order, productConfig, memberId, gymConfig, {
       badgeProductConfig,
     });
@@ -877,10 +886,34 @@ async function maybeTriggerEssaiFollowup() {
   }
 }
 
+async function maybeTriggerDeciplusSaleReconcile() {
+  // Vercel Hobby n’exécute pas le cron */15 — le bot ventes relance les fiches absentes.
+  const storeBase = (
+    process.env.BOXPLUS_STORE_URL ||
+    process.env.STORE_URL ||
+    ''
+  ).replace(/\/$/, '');
+  const secret = process.env.SYNC_SECRET || process.env.ADMIN_SECRET || '';
+  if (!storeBase || !secret) return;
+  try {
+    const res = await fetch(`${storeBase}/api/cron/deciplus-sale-reconcile`, {
+      method: 'GET',
+      headers: { 'x-sync-secret': secret },
+    });
+    if (!res.ok) {
+      logWarn('Poll ventes Deciplus HTTP', { status: res.status });
+    }
+  } catch (err) {
+    logWarn('Poll ventes Deciplus', { error: err.message });
+  }
+}
+
 let lastNudgePollAt = 0;
 const NUDGE_POLL_MS = Number(process.env.BOT_NUDGE_POLL_MS || 60 * 1000);
 let lastEssaiFollowupPollAt = 0;
 const ESSAI_FOLLOWUP_POLL_MS = Number(process.env.BOT_ESSAI_FOLLOWUP_POLL_MS || 2 * 60 * 1000);
+let lastSaleReconcilePollAt = 0;
+const SALE_RECONCILE_POLL_MS = Number(process.env.BOT_SALE_RECONCILE_POLL_MS || 10 * 60 * 1000);
 
 async function processCheckSaleJob(page, order) {
   const { findActiveContracts } = require('./cancel-sale');
@@ -1405,6 +1438,10 @@ async function runLoop(once = false) {
     if (Date.now() - lastEssaiFollowupPollAt >= ESSAI_FOLLOWUP_POLL_MS) {
       lastEssaiFollowupPollAt = Date.now();
       await maybeTriggerEssaiFollowup();
+    }
+    if (Date.now() - lastSaleReconcilePollAt >= SALE_RECONCILE_POLL_MS) {
+      lastSaleReconcilePollAt = Date.now();
+      await maybeTriggerDeciplusSaleReconcile();
     }
     if (pending.length === 0) {
       if (once) break;

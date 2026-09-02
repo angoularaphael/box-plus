@@ -227,9 +227,15 @@ async function openContractPage(page, contract) {
 async function waitActionPanel(page, timeoutMs = 12000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    const panel = page.getByText(/Action souhaitée/i).first();
-    if ((await panel.count()) > 0 && (await panel.isVisible().catch(() => false))) {
-      return true;
+    for (const ctx of getScopes(page)) {
+      try {
+        const panel = ctx.getByText(/Action souhaitée/i).first();
+        if ((await panel.count()) > 0 && (await panel.isVisible().catch(() => false))) {
+          return true;
+        }
+      } catch {
+        /* frame */
+      }
     }
     await page.waitForTimeout(400);
   }
@@ -237,49 +243,55 @@ async function waitActionPanel(page, timeoutMs = 12000) {
 }
 
 async function clickActionTile(page, names) {
-  const patterns = Array.isArray(names) ? names : [names];
-  for (const name of patterns) {
-    const re = name instanceof RegExp ? name : new RegExp(`^${name}$`, 'i');
-    const tile = page
-      .locator('div.iconify.ari-cursor-pointer, div.ari-flex.niceRow div.item, div.item')
-      .filter({ hasText: re })
-      .first();
-    if ((await tile.count()) > 0 && (await tile.isVisible().catch(() => false))) {
-      await tile.click({ force: true });
-      return String(name);
-    }
-    const byText = page.getByText(re).first();
-    if ((await byText.count()) > 0 && (await byText.isVisible().catch(() => false))) {
-      await byText.click({ force: true });
-      return String(name);
+  const labels = (Array.isArray(names) ? names : [names]).map((name) =>
+    name instanceof RegExp ? name.source.replace(/^\^|\$$/g, '') : String(name)
+  );
+
+  for (const ctx of getScopes(page)) {
+    try {
+      const hit = await ctx.evaluate((needles) => {
+        const nodes = [...document.querySelectorAll('div, span, button, a, li, p')];
+        for (const needle of needles) {
+          const re = new RegExp(`^${needle}$`, 'i');
+          let best = null;
+          let bestArea = Infinity;
+          for (const el of nodes) {
+            const t = String(el.innerText || '').replace(/\s+/g, ' ').trim();
+            if (!re.test(t)) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width < 6 || r.height < 6) continue;
+            const style = window.getComputedStyle(el);
+            if (style.visibility === 'hidden' || style.display === 'none') continue;
+            const area = r.width * r.height;
+            if (area < bestArea) {
+              best = el;
+              bestArea = area;
+            }
+          }
+          if (best) {
+            best.scrollIntoView({ block: 'center', inline: 'center' });
+            best.click();
+            return needle;
+          }
+        }
+        return null;
+      }, labels);
+      if (hit) return hit;
+    } catch {
+      /* frame détachée */
     }
   }
-
-  return page.evaluate((labels) => {
-    const nodes = [...document.querySelectorAll('div.iconify, div.item, div, button, a, span')];
-    for (const label of labels) {
-      const re = new RegExp(`^${label}$`, 'i');
-      for (const el of nodes) {
-        const t = String(el.textContent || '').replace(/\s+/g, ' ').trim();
-        if (re.test(t)) {
-          el.click();
-          return label;
-        }
-      }
-    }
-    return null;
-  }, patterns.map((p) => (p instanceof RegExp ? p.source.replace(/^\^|\$$/g, '') : String(p))));
+  return null;
 }
 
 async function isResilierFormVisible(page) {
-  const re = /Résilier le contrat|Date de résiliation effective|Motif de résiliation|Appliquer et Quitter/i;
+  const re = /Date de r[eé]siliation effective/i;
   for (const ctx of getScopes(page)) {
     try {
       const title = ctx.getByText(re).first();
       if ((await title.count()) > 0 && (await title.isVisible().catch(() => false))) {
         return true;
       }
-      // Champ date typique du panneau résiliation
       const dateField = ctx
         .locator(
           'xpath=//*[contains(normalize-space(.),"Date de résiliation")]/following::input[1]'
@@ -312,24 +324,36 @@ async function waitResilierForm(page, timeoutMs = 28000) {
   return false;
 }
 
+async function resiliationWorkPage(page) {
+  for (const frame of page.frames() || []) {
+    try {
+      const n = await frame.getByText(/Date de r[eé]siliation effective/i).count();
+      if (n > 0) return frame;
+    } catch {
+      /* frame detached */
+    }
+  }
+  return page;
+}
+
 async function setResiliationDate(page, dateStr) {
+  const ctx = await resiliationWorkPage(page);
   // Fermer un éventuel calendrier déjà ouvert
   await page.keyboard.press('Escape').catch(() => {});
   await randomDelay(200, 400);
 
-  const labeled = page
+  const labeled = ctx
     .locator(
       'xpath=//*[contains(normalize-space(.),"Date de résiliation effective")]/following::input[1]'
     )
     .first();
-  const editors = page.locator(
+  const editors = ctx.locator(
     '.el-date-editor input, input[placeholder*="date" i], .ari-datepicker input, input.el-input__inner'
   );
 
   let input = labeled;
   if ((await input.count()) === 0 || !(await input.isVisible().catch(() => false))) {
-    // Champ orange près du libellé
-    input = page
+    input = ctx
       .locator('div')
       .filter({ hasText: /^Date de résiliation effective/i })
       .locator('input, .el-date-editor')
@@ -360,7 +384,7 @@ async function setResiliationDate(page, dateStr) {
   await randomDelay(300, 500);
 
   // Repli calendrier : aujourd’hui d’abord, sinon jour du mois
-  const todayCell = page
+  const todayCell = ctx
     .locator(
       '.el-date-table td.available.today, .el-date-table td.today, ' +
         '.el-picker-panel td.available.current, td.today span'
@@ -371,7 +395,7 @@ async function setResiliationDate(page, dateStr) {
     await randomDelay(300, 500);
   } else {
     const day = String(Number(dateStr.split('/')[0]));
-    const calDay = page
+    const calDay = ctx
       .locator(
         `.el-date-table td.available:not(.prev-month):not(.next-month) >> text="${day}", ` +
           `.el-picker-panel td.available >> text="${day}", ` +
@@ -402,7 +426,7 @@ async function setResiliationDate(page, dateStr) {
     return Boolean(na && nb && na === nb);
   };
   if (!sameDate(current, dateStr)) {
-    await page
+    await ctx
       .evaluate(
         ({ selectorHint, value }) => {
           const candidates = [
@@ -550,39 +574,65 @@ async function selectResiliationMotif(page) {
 async function clickAppliquerEtQuitter(page) {
   const start = Date.now();
   while (Date.now() - start < 20000) {
-    const btn = page
-      .locator(
-        'button.ari-button-filled:has-text("Appliquer et Quitter"), button:has-text("Appliquer et Quitter"), button:has-text("Appliquer")'
-      )
-      .filter({ hasText: /Appliquer/i })
-      .first();
-    if ((await btn.count()) > 0 && (await btn.isVisible().catch(() => false))) {
-      const disabled = await btn.isDisabled().catch(() => false);
-      const ariaDisabled = (await btn.getAttribute('aria-disabled').catch(() => '')) === 'true';
-      const cls = (await btn.getAttribute('class').catch(() => '')) || '';
-      if (!disabled && !ariaDisabled && !/is-disabled|disabled/i.test(cls)) {
+    for (const ctx of getScopes(page)) {
+      try {
+        const btn = ctx.locator('button').filter({ hasText: /^Appliquer et Quitter$/i }).first();
+        if ((await btn.count()) === 0 || !(await btn.isVisible().catch(() => false))) continue;
+        const disabled = await btn.isDisabled().catch(() => false);
+        const ariaDisabled = (await btn.getAttribute('aria-disabled').catch(() => '')) === 'true';
+        const cls = (await btn.getAttribute('class').catch(() => '')) || '';
+        if (disabled || ariaDisabled || /is-disabled|disabled/i.test(cls)) continue;
         await btn.scrollIntoViewIfNeeded().catch(() => {});
         await btn.click({ force: true, noWaitAfter: true }).catch(() => btn.click({ force: true }));
         logInfo('Clic Appliquer et Quitter');
         return true;
+      } catch {
+        /* frame */
       }
     }
     await page.waitForTimeout(400);
   }
 
-  // Dernier recours : clic JS même si état ambigu
   const forced = await page.evaluate(() => {
-    const hit = [...document.querySelectorAll('button')].find((b) =>
-      /Appliquer(\s+et\s+Quitter)?/i.test(String(b.textContent || '').trim())
-    );
+    const hit = [...document.querySelectorAll('button')].find((b) => {
+      const t = String(b.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!/^Appliquer et Quitter$/i.test(t)) return false;
+      return (
+        !b.disabled &&
+        b.getAttribute('aria-disabled') !== 'true' &&
+        !/is-disabled|disabled/i.test(String(b.className || ''))
+      );
+    });
     if (!hit) return false;
-    hit.removeAttribute('disabled');
-    hit.classList.remove('is-disabled', 'disabled');
     hit.click();
     return true;
   });
-  if (forced) logInfo('Clic Appliquer et Quitter (force JS)');
-  return forced;
+  if (forced) logInfo('Clic Appliquer et Quitter (evaluate)');
+  return Boolean(forced);
+}
+
+async function confirmAnnulationModal(page) {
+  const start = Date.now();
+  while (Date.now() - start < 12000) {
+    for (const ctx of getScopes(page)) {
+      try {
+        const dialog = ctx.getByText(/Etes-vous certain de vouloir annuler le contrat/i).first();
+        const confirm = ctx.locator('button').filter({ hasText: /^Confirmer$/i }).last();
+        if ((await confirm.count()) > 0 && (await confirm.isVisible().catch(() => false))) {
+          await confirm.click({ force: true });
+          logInfo('Annulation — modale Confirmer');
+          await randomDelay(700, 1100);
+          return true;
+        }
+        void dialog;
+      } catch {
+        /* frame */
+      }
+    }
+    await page.waitForTimeout(300);
+  }
+  logWarn('Modale Confirmer d’annulation introuvable');
+  return false;
 }
 
 async function ensureResiliationEmailChecked(page) {
@@ -747,6 +797,173 @@ async function clickResilierEtEnvoyerMail(page, { timeoutMs = 15000 } = {}) {
   return false;
 }
 
+async function fillLabeledDate(page, labelRe, dateStr) {
+  for (const ctx of getScopes(page)) {
+    try {
+      if (/annulation/i.test(labelRe.source)) {
+        const labeled = ctx
+          .locator(
+            'xpath=//*[contains(normalize-space(.),"Date d") and contains(.,"annulation")]/following::input[1]'
+          )
+          .first();
+        if ((await labeled.count()) > 0 && (await labeled.isVisible().catch(() => false))) {
+          await labeled.click({ force: true }).catch(() => {});
+          await labeled.fill('').catch(() => {});
+          await labeled.type(dateStr, { delay: 25 });
+          await labeled.press('Enter').catch(() => {});
+          return true;
+        }
+      }
+      const ok = await ctx.evaluate(
+        ({ labelSrc, value }) => {
+          const re = new RegExp(labelSrc, 'i');
+          const inputs = [
+            ...document.querySelectorAll(
+              '.el-date-editor input, input.el-input__inner, input[placeholder*="date" i], input[type="text"]'
+            ),
+          ];
+          let target = null;
+          for (const el of inputs) {
+            const block = el.closest('.el-form-item, form, .el-dialog, div');
+            const text = String(block?.textContent || '');
+            if (re.test(text)) {
+              target = el;
+              break;
+            }
+          }
+          if (!target) return false;
+          const proto = Object.getPrototypeOf(target);
+          const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+          if (desc?.set) desc.set.call(target, value);
+          else target.value = value;
+          target.dispatchEvent(new Event('input', { bubbles: true }));
+          target.dispatchEvent(new Event('change', { bubbles: true }));
+          target.dispatchEvent(new Event('blur', { bubbles: true }));
+          return true;
+        },
+        { labelSrc: labelRe.source, value: dateStr }
+      );
+      if (ok) return true;
+    } catch {
+      /* frame */
+    }
+  }
+  return false;
+}
+
+async function clickAnnulationRefundMode(page) {
+  for (const ctx of getScopes(page)) {
+    try {
+      const named = ctx.locator('.payment-mode-name').filter({ hasText: /^Virement$/i }).last();
+      if ((await named.count()) > 0 && (await named.isVisible().catch(() => false))) {
+        await named.click({ force: true });
+        return 'Virement';
+      }
+    } catch {
+      /* frame */
+    }
+    try {
+      const hit = await ctx.evaluate(() => {
+        const row = [...document.querySelectorAll('div, tr, section, form')].find(
+          (n) => /-259/.test(String(n.innerText || '')) && /Mode de paiement/i.test(String(n.innerText || ''))
+        );
+        const root = row || document.body;
+        const modes = [...root.querySelectorAll('div, span, button, li, a')].filter((n) => {
+          const t = String(n.innerText || '').replace(/\s+/g, ' ').trim();
+          return /^(Espèces|Carte Bancaire|Ch[eè]que|Virement)$/i.test(t);
+        });
+        const pick =
+          modes.find((n) => /^Virement$/i.test(String(n.innerText || '').trim())) ||
+          modes.find((n) => /Carte Bancaire/i.test(String(n.innerText || ''))) ||
+          modes[0];
+        if (!pick) return { ok: false, count: modes.length };
+        pick.click();
+        return { ok: true, mode: String(pick.innerText || '').trim() };
+      });
+      if (hit?.ok) return hit.mode;
+    } catch {
+      /* frame */
+    }
+  }
+  return null;
+}
+
+async function waitAppliquerEnabled(page, timeoutMs = 12000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    for (const ctx of getScopes(page)) {
+      try {
+        const enabled = await ctx.evaluate(() => {
+          const btns = [...document.querySelectorAll('button')].filter((b) =>
+            /^Appliquer et Quitter$/i.test(String(b.innerText || '').replace(/\s+/g, ' ').trim())
+          );
+          return btns.some(
+            (b) =>
+              !b.disabled &&
+              b.getAttribute('aria-disabled') !== 'true' &&
+              !/is-disabled|disabled/i.test(String(b.className || ''))
+          );
+        });
+        if (enabled) return true;
+      } catch {
+        /* frame */
+      }
+    }
+    await page.waitForTimeout(350);
+  }
+  return false;
+}
+
+async function voidPendingSaleIfPossible(page, contract) {
+  if (!isPendingOrFutureContract(contract?.label)) return false;
+  const mode = await clickActionTile(page, [/^Annuler la vente$/i]);
+  if (!mode) {
+    logWarn('Tuile Annuler la vente introuvable', { idc: contract?.idc || null });
+    return false;
+  }
+  logInfo('Clic Annuler la vente', { idc: contract?.idc || null });
+  await randomDelay(900, 1400);
+
+  const dateStr = formatFrDate(new Date());
+  const dateOk = await fillLabeledDate(page, /Date d['’]?annulation/i, dateStr);
+  if (!dateOk) {
+    logWarn('Date d’annulation introuvable', { idc: contract?.idc || null });
+  }
+  const refundMode = await clickAnnulationRefundMode(page);
+  logInfo('Annulation contrat — date et mode', {
+    idc: contract?.idc || null,
+    date: dateOk,
+    refund_mode: refundMode,
+  });
+  const applyReady = await waitAppliquerEnabled(page);
+  if (!applyReady) {
+    logWarn('Annuler la vente — Appliquer reste désactivé', {
+      idc: contract?.idc || null,
+      refund_mode: refundMode,
+    });
+    return false;
+  }
+  await randomDelay(400, 700);
+
+  const stillModify = page.getByText(/Modification manuelle/i).first();
+  const modifyVisible =
+    (await stillModify.count()) > 0 && (await stillModify.isVisible().catch(() => false));
+  if (!modifyVisible) {
+    const applied = await clickAppliquerEtQuitter(page).catch(() => false);
+    if (applied) {
+      const confirmed = await confirmAnnulationModal(page);
+      logInfo('Contrat en attente — vente annulée (Appliquer et Quitter)', {
+        idc: contract?.idc || null,
+        confirmed,
+      });
+      await randomDelay(800, 1200);
+      return confirmed;
+    }
+  }
+  logWarn('Annuler la vente cliqué mais pas de confirmation', { idc: contract?.idc || null });
+  return false;
+}
+
 async function cancelOneContract(page, contract, { cancelDate = null } = {}) {
   const dateStr = formatFrDate(parseCancelDate(cancelDate));
   const opened = await openContractPage(page, contract);
@@ -760,7 +977,12 @@ async function cancelOneContract(page, contract, { cancelDate = null } = {}) {
     return { cancelled: false, reason: 'action_panel_missing', idc: contract.idc };
   }
 
-  // IMPORTANT : Résilier — jamais « Annuler la vente »
+  if (isPendingOrFutureContract(contract.label)) {
+    const voided = await voidPendingSaleIfPossible(page, contract);
+    if (voided) return { cancelled: true, reason: 'pending_voided', idc: contract.idc };
+  }
+
+  // IMPORTANT : Résilier — jamais « Annuler la vente » sur un abo déjà commencé
   const mode = await clickActionTile(page, [/^Résilier$/i, /^Résiliation$/i]);
   if (!mode) {
     logWarn('Tuile Résilier introuvable', { idc: contract.idc, url: page.url() });
@@ -769,10 +991,11 @@ async function cancelOneContract(page, contract, { cancelDate = null } = {}) {
   await randomDelay(1000, 1600);
 
   if (!(await waitResilierForm(page))) {
-    // Dernier recours : double clic forcé + screenshot diagnostique
     await clickActionTile(page, [/^Résilier$/i]).catch(() => {});
     await page.waitForTimeout(1500);
     if (!(await waitResilierForm(page, 8000))) {
+      const voided = await voidPendingSaleIfPossible(page, contract);
+      if (voided) return { cancelled: true, reason: 'pending_voided', idc: contract.idc };
       logWarn('Formulaire Résilier le contrat introuvable', {
         idc: contract.idc,
         url: page.url(),
@@ -783,6 +1006,8 @@ async function cancelOneContract(page, contract, { cancelDate = null } = {}) {
 
   const dateOk = await setResiliationDate(page, dateStr);
   if (!dateOk) {
+    const voided = await voidPendingSaleIfPossible(page, contract);
+    if (voided) return { cancelled: true, reason: 'pending_voided', idc: contract.idc };
     return { cancelled: false, reason: 'resiliation_date_missing', idc: contract.idc };
   }
 
@@ -939,7 +1164,9 @@ async function cancelAllMemberSales(page, memberId, { maxSales = 15, cancelDate 
     if (
       result.reason === 'action_panel_missing' ||
       result.reason === 'resilier_missing' ||
-      result.reason === 'contract_nav_failed'
+      result.reason === 'contract_nav_failed' ||
+      result.reason === 'resiliation_date_missing' ||
+      result.reason === 'resilier_form_missing'
     ) {
       logWarn('Contrat sauté — tentative suivante', {
         idc: contracts[0].idc,

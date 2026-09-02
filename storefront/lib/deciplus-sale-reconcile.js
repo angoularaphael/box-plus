@@ -10,6 +10,9 @@ const { STEPS } = require('./order-lifecycle');
 const REQUEUE_COOLDOWN_MS = Number(process.env.BOXPLUS_SALE_REQUEUE_MS || 10 * 60 * 1000);
 const MAX_SALE_RETRIES = Number(process.env.BOXPLUS_SALE_REQUEUE_MAX || 12);
 const LOOKBACK_MS = Number(process.env.BOXPLUS_SALE_REQUEUE_LOOKBACK_MS || 14 * 24 * 60 * 60 * 1000);
+const PAID_UNSIGNED_GRACE_MS = Number(
+  process.env.BOXPLUS_SALE_UNSIGNED_GRACE_MS || 2 * 60 * 60 * 1000
+);
 
 function productRequiresDeciplusSale(order = {}) {
   const snap = order.product_snapshot || {};
@@ -34,6 +37,17 @@ function isBoutiqueSaleOrder(order = {}) {
   return String(order.payment?.status || '').toLowerCase() === 'paid';
 }
 
+function identityReady(order = {}) {
+  const short = order.customer_short || {};
+  const full = order.customer_full || {};
+  const cust = order.customer || {};
+  const first = full.first_name || short.first_name || cust.first_name;
+  const last = full.last_name || short.last_name || cust.last_name;
+  const birth = full.birthdate || short.birthdate || cust.birthdate;
+  const gym = full.gym || order.gym || cust.gym;
+  return Boolean(first && last && birth && gym);
+}
+
 function aventureDossierReady(order = {}) {
   if (order.ready_for_dispatch || order.signature?.signed_at) return true;
   if (Number(order.step || 0) < STEPS.SIGNATURE) return false;
@@ -46,12 +60,22 @@ function aventureDossierReady(order = {}) {
   return Boolean(first && last && birth);
 }
 
-function orderNeedsDeciplusSale(order = {}) {
+function paidUnsignedReady(order = {}, now = Date.now()) {
+  if (order.signature?.signed_at || order.ready_for_dispatch) return false;
+  if (!identityReady(order)) return false;
+  const paid = Date.parse(order.payment?.paid_at || order.created_at || 0);
+  if (!Number.isFinite(paid)) return false;
+  return now - paid >= PAID_UNSIGNED_GRACE_MS;
+}
+
+function orderNeedsDeciplusSale(order = {}, now = Date.now()) {
   if (!isBoutiqueSaleOrder(order)) return false;
   if (deciplusSaleSettled(order)) return false;
   if (!productRequiresDeciplusSale(order)) return false;
   if (isAventureOrder(order)) return aventureDossierReady(order);
-  return Boolean(order.signature?.signed_at || order.ready_for_dispatch);
+  return Boolean(
+    order.signature?.signed_at || order.ready_for_dispatch || paidUnsignedReady(order, now)
+  );
 }
 
 function lastDispatchAt(order = {}) {
@@ -164,10 +188,13 @@ async function reconcileMissingDeciplusSales({
 module.exports = {
   REQUEUE_COOLDOWN_MS,
   MAX_SALE_RETRIES,
+  PAID_UNSIGNED_GRACE_MS,
   productRequiresDeciplusSale,
   deciplusSaleSettled,
   isBoutiqueSaleOrder,
+  identityReady,
   aventureDossierReady,
+  paidUnsignedReady,
   orderNeedsDeciplusSale,
   recentlyAttemptedDispatch,
   shouldRedispatchMissingSale,

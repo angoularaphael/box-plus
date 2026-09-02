@@ -164,6 +164,30 @@ test('Aventure Minimes : un 44,99 déjà sur la fiche est bien à résilier', ()
   assert.match(src, /skipCancel:\s*false/);
 });
 
+test('une séance d’essai n’est pas résiliée pour poser un 259', () => {
+  const contracts = [
+    {
+      idc: '42567',
+      isBadge: false,
+      label: "SEANCE D'ESSAI CONTRAT N°C2026-042567 vendu le 26/08/2026",
+    },
+    {
+      idc: '43028',
+      isBadge: false,
+      label: 'Contrat n°C2026-043028 vendu le 02/09/2026 28/08/2033 27/08/2034 En attente',
+    },
+  ];
+  const promo = {
+    name: 'OFFRE PROMO 12MOIS',
+    paiement_comptant: true,
+  };
+  const c = classifyMemberContracts(contracts, promo, opts);
+  assert.deepEqual(
+    c.toCancel.map((x) => x.idc),
+    ['43028']
+  );
+});
+
 test('badge différé : Terminer absent n’abandonne pas le Badge', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/sale.js'), 'utf8');
   const start = src.indexOf('async function finalizeBadgePayment');

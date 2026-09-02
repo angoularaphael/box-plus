@@ -259,6 +259,21 @@ function run() {
     assert.ok(!/essai/i.test(String(pick.text)), `${id} ne clique pas essai`);
   }
 
+  const aboGrid = [
+    'OFFRE PROMO 12MOIS 259,00€',
+    'OFFRE PROMO 12MOIS — 4× sans frais 259,00€',
+    'OFFRE PROMO 12MOIS 1 ACTIF, 3 EN ATTENTE 64,75€',
+    '259€ EN 4X PRELEVEMENT 259,00€',
+    'Offre 259€ / 4 fois 259,00€',
+  ];
+  const cash259 = pickBestCatalogTile(aboGrid, {
+    deciplus_product_name: 'OFFRE PROMO 12 MOIS',
+    amount: 259,
+    paiement_comptant: true,
+  });
+  assert.match(String(cash259.text), /OFFRE PROMO 12MOIS 259/i);
+  assert.ok(!/4×|4x|4 fois/i.test(String(cash259.text)), 'comptant ne prend pas la tuile 4×');
+
   console.log('ok — essai/coaching Achat Carte (pas Badge), grille Cartes prépayées');
 }
 

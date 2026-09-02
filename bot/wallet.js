@@ -64,9 +64,25 @@ async function clickFirst(ctx, selectors, opts = {}) {
   for (const s of list) {
     const el = ctx.locator(s).first();
     if ((await el.count()) > 0 && (await el.isVisible().catch(() => false))) {
-      await el.click({ ...opts, timeout: 15000 });
-      await randomDelay();
-      return true;
+      const clickOpts = { timeout: 15000, ...opts };
+      try {
+        await el.click(clickOpts);
+        await randomDelay();
+        return true;
+      } catch (err) {
+        if (clickOpts.force) {
+          logWarn('Clic Deciplus échoué', { selector: s.slice(0, 80), error: err.message });
+          continue;
+        }
+        const forced = await el
+          .click({ ...clickOpts, force: true, timeout: 8000 })
+          .then(() => true)
+          .catch(() => false);
+        if (forced) {
+          await randomDelay();
+          return true;
+        }
+      }
     }
   }
   return false;
@@ -806,6 +822,7 @@ module.exports = {
   openRibForm,
   getRibFrame,
   ribAddressFields,
+  ensureMemberPostalAddress,
   clickFirst,
   fillFirst,
   sel,
