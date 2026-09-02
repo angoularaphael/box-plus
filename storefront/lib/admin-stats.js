@@ -1,7 +1,7 @@
 'use strict';
 
 const { matchGymSlug, BOXING_CENTER_GYM_SLUGS } = require('../../lib/gym-slugs');
-const { orderNeedsDeciplusSale } = require('./deciplus-sale-reconcile');
+const { orderNeedsDeciplusSale, deciplusSaleSettled } = require('./deciplus-sale-reconcile');
 
 const PARIS_TZ = 'Europe/Paris';
 
@@ -234,6 +234,8 @@ function buildMonthlySalesRows({
     }),
     { materiel_orders: 0, materiel_revenue: 0, inscription_orders: 0, inscription_revenue: 0 }
   );
+  totals.revenue = totals.materiel_revenue + totals.inscription_revenue;
+  totals.orders = totals.materiel_orders + totals.inscription_orders;
   return { rows, totals };
 }
 
@@ -378,21 +380,47 @@ function listInscriptionMaterielSales(inscriptionOrders = [], { fromMonth = '', 
     .sort((a, b) => Date.parse(b.paid_at || 0) - Date.parse(a.paid_at || 0));
 }
 
-function missingFicheRows(inscriptionOrders = []) {
+function hasDeciplusFiche(order = {}) {
+  if (order.deciplus_member_id || order.deciplus_sale_id) return true;
+  return deciplusSaleSettled(order);
+}
+
+function dispatchInProgress(order = {}, now = Date.now()) {
+  const at = Date.parse(order.dispatched_at || '');
+  return Number.isFinite(at) && now - at < 20 * 60 * 1000;
+}
+
+function missingFicheReason(order = {}, { inProgress = false } = {}) {
+  if (inProgress) return 'en_cours';
+  if (order.bot_error) return 'bot_error';
+  if (order.dispatched_at) return 'envoye_sans_retour';
+  return 'jamais_envoye';
+}
+
+function missingFicheRows(
+  inscriptionOrders = [],
+  { fromMonth = '', toMonth = '', now = Date.now() } = {}
+) {
   const rows = [];
   for (const o of inscriptionOrders) {
     if (!isMembershipSale(o)) continue;
     if (o.manual_migration || o.skip_bot) continue;
-    if (o.deciplus_member_id) continue;
+    if (hasDeciplusFiche(o)) continue;
+    const paidAt = membershipPaidAt(o);
+    if ((fromMonth || toMonth) && !monthInFilter(paidAt, fromMonth, toMonth)) continue;
+    const inProgress = dispatchInProgress(o, now);
     rows.push({
       order_id: o.order_id,
       name: orderDisplayName(o),
       gym: gymSlugFromOrder(o),
-      paid_at: membershipPaidAt(o),
+      paid_at: paidAt,
       signed: Boolean(o.signature?.signed_at),
-      ready: orderNeedsDeciplusSale(o),
+      ready: !inProgress && orderNeedsDeciplusSale(o, now),
       dispatched: Boolean(o.dispatched_at),
+      in_progress: inProgress,
       bot_status: o.bot_status || null,
+      bot_error: o.bot_error ? String(o.bot_error).slice(0, 140) : null,
+      reason: missingFicheReason(o, { inProgress }),
     });
   }
   return rows.sort((a, b) => Date.parse(b.paid_at || 0) - Date.parse(a.paid_at || 0));
@@ -621,7 +649,10 @@ function buildAdminSalesExtras({
       return b.revenue - a.revenue || String(a.label).localeCompare(String(b.label), 'fr');
     });
 
-  const missing_fiches = missingFicheRows(inscriptionOrders);
+  const missing_fiches = missingFicheRows(inscriptionOrders, {
+    fromMonth,
+    toMonth,
+  });
 
   return {
     today: { day: today, count: today_count, revenue: today_revenue },
@@ -633,7 +664,7 @@ function buildAdminSalesExtras({
     aventure,
     missing_deciplus_sale,
     missing_fiches,
-    missing_fiches_count: missing_fiches.length,
+    missing_fiches_count: missing_fiches.filter((row) => !row.in_progress).length,
   };
 }
 
@@ -650,5 +681,7 @@ module.exports = {
   listInscriptionMaterielSales,
   collectInscriptionMaterielOrders,
   missingFicheRows,
+  hasDeciplusFiche,
+  dispatchInProgress,
   orderDisplayName,
 };

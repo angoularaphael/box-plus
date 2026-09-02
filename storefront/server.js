@@ -1718,7 +1718,7 @@ function createApp() {
         by_gym: extras.by_gym,
         aventure: extras.aventure,
         missing_deciplus_sale: extras.missing_deciplus_sale || 0,
-        missing_fiches: (extras.missing_fiches || []).slice(0, 60),
+        missing_fiches: (extras.missing_fiches || []).slice(0, 80),
         missing_fiches_count: extras.missing_fiches_count || 0,
         stock_rows,
         inscription_materiel,
@@ -1732,16 +1732,24 @@ function createApp() {
   app.post('/api/admin/requeue-missing-fiches', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
-      const { missingFicheRows } = require('./lib/admin-stats');
-      const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+      const { missingFicheRows, dispatchInProgress } = require('./lib/admin-stats');
+      const { orderNeedsDeciplusSale } = require('./lib/deciplus-sale-reconcile');
+      const since = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString();
       const paid = await listPaidOrdersSinceAsync(since);
-      const missing = missingFicheRows(paid).filter((row) => row.ready).slice(0, 25);
+      const missing = missingFicheRows(paid).filter((row) => !row.in_progress);
+      const batch = missing.slice(0, 6);
       const results = [];
-      for (const row of missing) {
+      for (const row of batch) {
         const order = await loadOrderAsync(row.order_id);
         if (!order) continue;
+        if (dispatchInProgress(order) || (order.deciplus_member_id && order.deciplus_sale_id)) continue;
+        if (!orderNeedsDeciplusSale(order) && !order.signature?.signed_at && !order.aventure) continue;
+        order.sale_reconcile_attempts = 0;
         try {
-          const dispatch = await dispatchLifecycleOrder(order, { force_requeue: true });
+          const dispatch = await Promise.race([
+            dispatchLifecycleOrder(order, { force_requeue: true }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout_bot')), 8000)),
+          ]);
           results.push({
             order_id: row.order_id,
             name: row.name,
@@ -1753,8 +1761,14 @@ function createApp() {
           results.push({ order_id: row.order_id, name: row.name, ok: false, error: err.message });
         }
       }
-      logInfo('Relance fiches Deciplus admin', { count: results.length });
-      res.json({ ok: true, count: results.length, results });
+      const remaining = Math.max(0, missing.length - results.filter((r) => r.ok).length);
+      logInfo('Relance fiches Deciplus admin', { sent: results.length, remaining });
+      res.json({
+        ok: true,
+        count: results.filter((r) => r.ok).length,
+        remaining,
+        results,
+      });
     } catch (err) {
       logError('Relance fiches Deciplus', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });

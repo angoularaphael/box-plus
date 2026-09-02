@@ -274,7 +274,7 @@
             <div style="display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">
               <div>
                 <h3 class="admin-catalog-block-title" style="margin:0 0 4px">Fiches Deciplus manquantes</h3>
-                <p class="admin-section-desc" id="missingFichesSummary" style="margin:0">Inscriptions payées sans fiche membre.</p>
+                <p class="admin-section-desc" id="missingFichesSummary" style="margin:0">Le bot a souvent déjà envoyé le dossier : Deciplus n’a pas renvoyé l’ID. On relance 6 fiches à la fois pour ne pas bloquer la page.</p>
               </div>
               <button type="button" class="btn sm" id="requeueFichesBtn">Créer les fiches</button>
             </div>
@@ -301,6 +301,7 @@
 
           <!-- KPI cards -->
           <div class="stats-kpi-grid" id="statsKpis" style="display:none">
+            <div class="stats-kpi stats-kpi--total"><span class="stats-kpi-label">CA total boutique</span><span class="stats-kpi-value" id="kpiTotalRev">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">CA Matériel</span><span class="stats-kpi-value" id="kpiMaterielRev">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">Commandes matériel</span><span class="stats-kpi-value" id="kpiMaterielOrders">—</span></div>
             <div class="stats-kpi"><span class="stats-kpi-label">CA Abonnements</span><span class="stats-kpi-value" id="kpiInscRev">—</span></div>
@@ -328,6 +329,16 @@
                   </tr>
                 </thead>
                 <tbody id="gymSalesBody"></tbody>
+                <tfoot>
+                  <tr>
+                    <th>Total boutique</th>
+                    <th style="text-align:right" id="gymTotalInsc">—</th>
+                    <th style="text-align:right" id="gymTotalInscRev">—</th>
+                    <th style="text-align:right" id="gymTotalMat">—</th>
+                    <th style="text-align:right" id="gymTotalMatRev">—</th>
+                    <th style="text-align:right" id="gymTotalRev">—</th>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>

@@ -2749,6 +2749,18 @@ video.bg-video.is-playing {
   color: var(--bc-navy);
   line-height: 1;
 }
+.stats-kpi--total {
+  background: #0f2744;
+  border-color: #0f2744;
+  grid-column: span 2;
+}
+.stats-kpi--total .stats-kpi-label,
+.stats-kpi--total .stats-kpi-value {
+  color: #fff;
+}
+.stats-kpi--total .stats-kpi-value {
+  font-size: 28px;
+}
 
 /* ── Édition inline matériel ── */
 .mat-edit-grid {

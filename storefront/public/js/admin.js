@@ -1810,6 +1810,13 @@
         document.getElementById('kpiMaterielOrders').textContent = data.totals.materiel_orders;
         document.getElementById('kpiInscRev').textContent = fmtEur(data.totals.inscription_revenue);
         document.getElementById('kpiInscOrders').textContent = data.totals.inscription_orders;
+        const totalRev = document.getElementById('kpiTotalRev');
+        if (totalRev) {
+          totalRev.textContent = fmtEur(
+            data.totals.revenue ??
+              (data.totals.materiel_revenue || 0) + (data.totals.inscription_revenue || 0)
+          );
+        }
         const todayEl = document.getElementById('kpiTodaySales');
         if (todayEl) todayEl.textContent = String(data.today?.count ?? 0);
         const bestEl = document.getElementById('kpiBestDay');
@@ -1850,6 +1857,18 @@
               .join('')
           : '<tr><td colspan="6" style="text-align:center;color:var(--bc-muted)">Aucune vente sur cette période</td></tr>';
         if (gymWrap) gymWrap.hidden = false;
+        const setTxt = (id, v) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = v;
+        };
+        setTxt('gymTotalInsc', String(data.totals.inscription_orders || 0));
+        setTxt('gymTotalInscRev', fmtEur(data.totals.inscription_revenue || 0));
+        setTxt('gymTotalMat', String(data.totals.materiel_orders || 0));
+        setTxt('gymTotalMatRev', fmtEur(data.totals.materiel_revenue || 0));
+        setTxt(
+          'gymTotalRev',
+          fmtEur(data.totals.revenue ?? (data.totals.materiel_revenue || 0) + (data.totals.inscription_revenue || 0))
+        );
       }
 
       const funnelWrap = document.getElementById('funnelWrap');
@@ -2008,6 +2027,12 @@
       const missingBody = document.getElementById('missingFichesBody');
       const missingSum = document.getElementById('missingFichesSummary');
       const missing = data.missing_fiches || [];
+      const reasonLabel = {
+        en_cours: 'En cours (2 min)',
+        envoye_sans_retour: 'Envoyé, pas d’ID Deciplus',
+        bot_error: 'Erreur bot',
+        jamais_envoye: 'Pas encore envoyé',
+      };
       if (missingBody) {
         missingBody.innerHTML = missing.length
           ? missing
@@ -2017,7 +2042,7 @@
               <td>${escapeHtml(gymLabel(m.gym) || m.gym || '—')}</td>
               <td>${m.paid_at ? new Date(m.paid_at).toLocaleString('fr-FR') : '—'}</td>
               <td>${m.signed ? 'Signé' : 'Non signé'}</td>
-              <td>${escapeHtml(m.bot_status || (m.dispatched ? 'envoyé' : 'pas encore'))}</td>
+              <td>${escapeHtml(reasonLabel[m.reason] || m.bot_status || (m.dispatched ? 'envoyé' : 'pas encore'))}</td>
             </tr>`
               )
               .join('')
@@ -2025,7 +2050,7 @@
       }
       if (missingSum) {
         missingSum.textContent = missing.length
-          ? `${data.missing_fiches_count || missing.length} inscription(s) payée(s) sans fiche Deciplus.`
+          ? `${data.missing_fiches_count || missing.length} payée(s) sans fiche. Le bouton relance 6 dossiers à la fois — recliquer jusqu’à ce que la liste descende.`
           : '';
       }
       if (missingWrap) missingWrap.hidden = missing.length === 0;
@@ -2122,8 +2147,8 @@
       if (!res.ok || !data.ok) throw new Error(data.error || `Erreur ${res.status}`);
       setStatsMsg(
         data.count
-          ? `${data.count} fiche(s) relancée(s) vers Deciplus.`
-          : 'Aucune fiche prête à relancer pour le moment.',
+          ? `${data.count} dossier(s) envoyés au bot${data.remaining ? ` · ${data.remaining} encore à relancer — recliquer` : ''}.`
+          : 'Aucune fiche prête à relancer pour le moment (ou déjà en cours).',
         'ok'
       );
       statsLoaded = false;

@@ -9,6 +9,7 @@ const {
   buildMonthlySalesRows,
   buildMaterielStockRows,
   listInscriptionMaterielSales,
+  missingFicheRows,
   isAventureOrder,
   parisDayKey,
 } = require('../storefront/lib/admin-stats');
@@ -269,6 +270,7 @@ test('stats — gants Blade pris pendant l’inscription + stock', () => {
   assert.equal(monthly.totals.inscription_orders, 1);
   assert.equal(monthly.totals.materiel_orders, 1);
   assert.equal(monthly.totals.materiel_revenue, 1790);
+  assert.equal(monthly.totals.revenue, 2900 + 1790);
 
   const buyers = listInscriptionMaterielSales(
     [
@@ -321,6 +323,41 @@ test('stats — gants Blade pris pendant l’inscription + stock', () => {
   assert.equal(bladeStock.stock, 22);
 });
 
+test('fiches manquantes — ignore une vente déjà créée, marque un envoi récent', () => {
+  const now = Date.parse('2026-09-03T00:00:00.000Z');
+  const rows = missingFicheRows(
+    [
+      {
+        payment: { status: 'paid', paid_at: '2026-09-02T10:00:00.000Z' },
+        customer_short: { first_name: 'Léa', last_name: 'Martin', birthdate: '1990-01-01' },
+        customer_full: { gym: 'minimes' },
+        signature: { signed_at: '2026-09-02T10:05:00.000Z' },
+        product_snapshot: { sale_type: 'abonnement' },
+      },
+      {
+        payment: { status: 'paid', paid_at: '2026-09-02T11:00:00.000Z' },
+        deciplus_sale_id: '43135',
+        deciplus_member_id: '19046',
+        customer_short: { first_name: 'Océane', last_name: 'Testan' },
+        signature: { signed_at: '2026-09-02T11:05:00.000Z' },
+      },
+      {
+        payment: { status: 'paid', paid_at: '2026-09-02T12:00:00.000Z' },
+        dispatched_at: '2026-09-02T23:50:00.000Z',
+        customer_short: { first_name: 'Célian', last_name: 'Mahieu', birthdate: '2000-01-01' },
+        customer_full: { gym: 'minimes' },
+        signature: { signed_at: '2026-09-02T12:05:00.000Z' },
+        product_snapshot: { sale_type: 'abonnement' },
+      },
+    ],
+    { fromMonth: '2026-09', toMonth: '2026-09', now }
+  );
+  assert.equal(rows.length, 2);
+  assert.equal(rows.find((r) => r.name === 'Léa Martin').reason, 'jamais_envoye');
+  assert.equal(rows.find((r) => r.name === 'Célian Mahieu').in_progress, true);
+  assert.equal(rows.find((r) => r.name === 'Célian Mahieu').ready, false);
+});
+
 test('stats admin — plus vendu à la place de Stripe, ventes du jour', () => {
   const html = fs.readFileSync(
     path.join(__dirname, '..', 'storefront', 'public', 'admin', 'index.html'),
@@ -336,6 +373,8 @@ test('stats admin — plus vendu à la place de Stripe, ventes du jour', () => {
   assert.match(html, /Ventes du jour choisi/);
   assert.match(html, /Chiffre d’affaires par salle/);
   assert.match(html, /id="gymSalesBody"/);
+  assert.match(html, /CA total boutique/);
+  assert.match(html, /id="kpiTotalRev"/);
   assert.match(html, /Matériel et stocks/);
   assert.match(html, /Matériel pris pendant l’inscription/);
   assert.match(html, /Fiches Deciplus manquantes/);
