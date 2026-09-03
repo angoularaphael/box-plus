@@ -92,6 +92,8 @@ test('etats-unis — fiche neuve à Minimes, existante cherchée sur États-Unis
   const { gymConfigFromZoneId, isEtatsUnisDeciplusSite } = require('../lib/deciplus-sites');
   assert.equal(gymConfigFromZoneId('7').deciplus_label, 'Etats-Unis');
   assert.equal(gymConfigFromZoneId('2').deciplus_label, 'Minimes');
+  assert.equal(gymConfigFromZoneId('1').deciplus_label, 'Balma');
+  assert.equal(gymConfigFromZoneId('1').key, 'balma');
   assert.equal(isEtatsUnisDeciplusSite({ deciplus_zone_id: '7' }), true);
   assert.equal(isEtatsUnisDeciplusSite({ deciplus_label: 'Minimes', deciplus_zone_id: '2' }), false);
   const minimesSearch = uniqueDeciplusSearchConfigs('minimes').map((s) => s.deciplus_label);
@@ -99,6 +101,8 @@ test('etats-unis — fiche neuve à Minimes, existante cherchée sur États-Unis
   const indexSrc = fs.readFileSync(path.join(__dirname, '..', 'bot', 'index.js'), 'utf8');
   assert.match(indexSrc, /Migration États-Unis → Minimes avant vente/);
   assert.match(indexSrc, /let gymConfig = getGymConfig\(order\.gym\)/);
+  assert.doesNotMatch(indexSrc, /Vente alignée sur le club Deciplus de la fiche/);
+  assert.match(indexSrc, /Fiche adhérent sur Balma — aucune inscription Boxing Center automatique/);
   const memberSrc = fs.readFileSync(path.join(__dirname, '..', 'bot', 'member.js'), 'utf8');
   assert.match(memberSrc, /uniqueDeciplusSearchConfigs/);
 });

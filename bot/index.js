@@ -391,7 +391,14 @@ async function processSaleJob(page, order, jobMeta = {}) {
     }
 
     memberId = memberResult.member_id;
-    if (memberResult.gymConfig) gymConfig = memberResult.gymConfig;
+    if (memberResult.gymConfig && memberResult.gymConfig.deciplus_label !== gymConfig.deciplus_label) {
+      logWarn('Fiche existante sur un autre club Deciplus — la commande garde sa salle', {
+        order_id: order.order_id,
+        ordered: gymConfig.deciplus_label,
+        found: memberResult.gymConfig.deciplus_label,
+        member_id: memberId,
+      });
+    }
     if (!memberId) {
       return {
         status: STATUS.MANUAL_REVIEW,
@@ -411,8 +418,17 @@ async function processSaleJob(page, order, jobMeta = {}) {
     mark('member_resume');
   }
 
-  await openMemberCheck(page, memberId, gymConfig).catch(() => {});
-  const memberSite = await detectMemberGymConfig(page, gymConfig);
+  const orderGymConfig = getGymConfig(order.gym);
+  await openMemberCheck(page, memberId, orderGymConfig).catch(() => {});
+  const memberSite = await detectMemberGymConfig(page, orderGymConfig);
+
+  if (isBalmaSaleTarget(memberSite, order)) {
+    return {
+      status: STATUS.MANUAL_REVIEW,
+      error: 'Fiche adhérent sur Balma — aucune inscription Boxing Center automatique',
+      deciplus_member_id: memberId,
+    };
+  }
 
   if (String(order.gym || '').toLowerCase() === 'etats-unis') {
     const saleGym = createGymConfig('etats-unis');
@@ -426,18 +442,20 @@ async function processSaleJob(page, order, jobMeta = {}) {
       });
     }
     gymConfig = saleGym;
-  } else if (
-    memberSite?.deciplus_label &&
-    memberSite.deciplus_label !== gymConfig.deciplus_label
-  ) {
-    logInfo('Vente alignée sur le club Deciplus de la fiche', {
-      order_id: order.order_id,
-      member_id: memberId,
-      from: gymConfig.deciplus_label,
-      to: memberSite.deciplus_label,
-      zone: memberSite.deciplus_zone_id || null,
-    });
-    gymConfig = memberSite;
+  } else {
+    gymConfig = orderGymConfig;
+    if (
+      memberSite?.deciplus_label &&
+      memberSite.deciplus_label !== orderGymConfig.deciplus_label
+    ) {
+      logWarn('Fiche Deciplus sur un autre club que la commande — vente sur la salle commandée', {
+        order_id: order.order_id,
+        member_id: memberId,
+        ordered: orderGymConfig.deciplus_label,
+        fiche: memberSite.deciplus_label,
+        zone: memberSite.deciplus_zone_id || null,
+      });
+    }
   }
 
   let photoResult = null;
