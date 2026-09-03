@@ -169,7 +169,9 @@ async function sendViaCampaignQueue(telephone, message, { timeoutMs = 25000, sou
 
 function shouldFallbackToCampaign(err) {
   const msg = String(err?.message || '');
-  return !/envois sms en pause/i.test(msg);
+  if (/envois sms en pause/i.test(msg)) return false;
+  if (/fetch failed|UND_ERR|ECONNRESET|ETIMEDOUT|timeout|socket/i.test(msg)) return false;
+  return true;
 }
 
 async function getWhatsAppStatus() {
