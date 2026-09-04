@@ -124,6 +124,36 @@ async function main() {
 
     console.log('\nTous les tests HTTP 4× PayPlug prélèvement sont OK.');
 
+    // Baby Boxe (enfants 250 €)
+    const baby = uniqueTestCustomer('pp4x-baby');
+    const babyDraft = await json(base, '/api/orders/draft', {
+      method: 'POST',
+      body: JSON.stringify({
+        product_id: 'baby-boxe',
+        gym: 'minimes',
+        gender: 'M',
+        address: '3 rue Enfant',
+        postal_code: '31000',
+        city: 'Toulouse',
+        ...baby,
+        birthdate: '2022-04-01',
+      }),
+    });
+    assert.equal(babyDraft.res.status, 200, JSON.stringify(babyDraft.data));
+    const babyPay = await json(base, `/api/orders/${babyDraft.data.order_id}/pay`, {
+      method: 'POST',
+      body: JSON.stringify({
+        token: babyDraft.data.access_token,
+        gym: 'minimes',
+        payment_plan: '4x',
+        billing_plan: 'rib',
+        pay_method: 'payplug',
+      }),
+    });
+    assert.equal(babyPay.data.ok, true, JSON.stringify(babyPay.data));
+    assert.equal(babyPay.data.mode, 'payplug_4x_prelevement');
+    console.log('OK pay 4× Baby Boxe — 62,50 € (25 % de 250 €)');
+
     // Boxe éducative (enfants 295 €)
     const kid = uniqueTestCustomer('pp4x-edu');
     const kidDraft = await json(base, '/api/orders/draft', {

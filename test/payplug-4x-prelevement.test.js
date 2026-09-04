@@ -63,8 +63,59 @@ describe('PayPlug 4× prélèvement (25 % CB + RIB)', () => {
     );
     assert.match(
       resolvePayplug4xPrelevementDeciplus({ id: 'baby-boxe', price_cents: 25000 }).deciplus_product_name,
-      /ENFANTS 250.*4x SANS FRAIS/i
+      /BABY BOXE 250.*4X SANS FRAIS/i
     );
+  });
+
+  it('catalogue Deciplus — tuile BABY BOXE 250€ 4X SANS FRAIS', () => {
+    const grid = [
+      'BABY BOXE 250,00€',
+      'BABY BOXE 250€ 4X SANS FRAIS 250,00€',
+      'ENFANTS 295€ 4x SANS FRAIS 295,00€',
+    ];
+    const pick = pickBestCatalogTile(grid, {
+      payplug_4x_prelevement: true,
+      deciplus_product_name: 'BABY BOXE 250€ 4X SANS FRAIS',
+      amount: 250,
+      paiement_comptant: false,
+    });
+    assert.match(String(pick.text), /BABY BOXE 250.*4X SANS FRAIS/i);
+    assert.ok(!/BABY BOXE 250,00/i.test(String(pick.text)), 'pas la tuile comptant');
+  });
+
+  it('buildOrderPayload Baby Boxe 4× PayPlug — quart + IBAN', () => {
+    const payload = buildOrderPayload(
+      { payment_plan: '4x', billing_plan: 'rib', payment_method: 'payplug', ...sample() },
+      {
+        id: 'baby-boxe',
+        name: 'BABY BOXE',
+        supports_installment_choice: true,
+        requires_iban: false,
+        requires_payment: true,
+        price_cents: 25000,
+        subsection: 'enfants',
+      }
+    );
+    assert.equal(payload.requires_iban, true);
+    assert.equal(payload.paiement_comptant, false);
+    assert.equal(payload.payment.amount, 62.5);
+    assert.deepEqual(validateOrder(normalizeOrder(payload)), []);
+  });
+
+  it('buildProductConfig Baby Boxe — tuile BABY BOXE 250€ 4X SANS FRAIS', () => {
+    const cfg = buildProductConfig(
+      {
+        product_id: 'baby-boxe',
+        product_name: 'BABY BOXE',
+        payment: { payment_plan: '4x', billing_plan: 'rib', amount: 62.5, status: 'paid' },
+        payment_plan: '4x',
+        billing_plan: 'rib',
+      },
+      { id: 93, title: 'BABY BOXE', type: 'abo', categoryId: 'abo', price: 250 }
+    );
+    assert.equal(cfg.paiement_comptant, false);
+    assert.equal(cfg.requires_iban, true);
+    assert.match(cfg.deciplus_product_name, /BABY BOXE 250.*4X SANS FRAIS/i);
   });
 
   it('catalogue Deciplus — tuile ENFANTS 295€ 4x SANS FRAIS', () => {

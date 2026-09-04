@@ -74,7 +74,7 @@
     }
     if (product.description) return product.description;
     if (/baby\s*boxe/i.test(n)) {
-      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison. Paiement en 1× ou 4× : 25 % par carte puis RIB pour 3 prélèvements.';
+      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison. Paiement en 1× ou 4× : 62,50 € (25 %) via PayPal ou PayPlug, puis RIB pour 3 prélèvements.';
     }
     if (/educative|éducative/i.test(n)) {
       return 'Boxe éducative pour enfants et ados : technique, respect et confiance en soi, tout au long de la saison. Paiement en 1× ou 4× : 25 % par carte puis RIB pour 3 prélèvements.';
