@@ -54,6 +54,8 @@ function run() {
   );
 
   const prev = process.env.PAYPLUG_ONEY_4X_ENABLED;
+  delete process.env.PAYPLUG_ONEY_4X_ENABLED;
+  assert.equal(isOney4xEnabled(), false, 'Oney désactivé par défaut');
   process.env.PAYPLUG_ONEY_4X_ENABLED = '0';
   assert.equal(isOney4xEnabled(), false);
   process.env.PAYPLUG_ONEY_4X_ENABLED = '1';

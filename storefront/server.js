@@ -3799,11 +3799,10 @@ function createApp() {
         planLabel === '4x' &&
         preferredCheckout !== 'paypal' &&
         preferredCheckout !== 'cawl' &&
-        (billingPlan === 'rib' || !isOney4xEnabled());
+        productSupportsInstallmentChoice(product);
       const installment4xPrelev =
         planLabel === '4x' &&
         productSupportsInstallmentChoice(product) &&
-        !isOney4xEnabled() &&
         preferredCheckout !== 'cawl';
 
       if (isDemoCheckoutAllowed() && !isPayplugEnabled() && !isPaypalEnabled(gym) && !isCawlEnabled()) {
@@ -4405,7 +4404,13 @@ function createApp() {
         preferCawl = false;
         preferPaypal = true;
       }
-      if (paymentPlan === '4x' && !preferPaypal && !preferCawl && !isOney4xEnabled()) {
+      if (
+        paymentPlan === '4x' &&
+        !preferPaypal &&
+        !preferCawl &&
+        !isOney4xEnabled() &&
+        !productSupportsInstallmentChoice(product)
+      ) {
         return res.status(503).json({
           ok: false,
           error: ONEY_4X_UNAVAILABLE_MESSAGE,
@@ -4580,11 +4585,82 @@ function createApp() {
         });
       }
 
-      if (paymentPlan === '4x' && !isOney4xEnabled()) {
+      if (paymentPlan === '4x' && !isOney4xEnabled() && !productSupportsInstallmentChoice(product)) {
         return res.status(503).json({
           ok: false,
           error: ONEY_4X_UNAVAILABLE_MESSAGE,
           code: 'oney_4x_unavailable',
+        });
+      }
+
+      if (paymentPlan === '4x' && productSupportsInstallmentChoice(product) && !preferPaypal && !preferCawl) {
+        const quarterCents = Math.round(Number(product.price_cents || 0) / 4);
+        const syntheticOrder = {
+          order_id: body.verify_order_id || `chg-${Date.now()}`,
+          customer_short: {
+            first_name: body.first_name,
+            last_name: body.last_name,
+            email: body.email,
+            phone: body.phone,
+          },
+          customer_full: {
+            first_name: body.first_name,
+            last_name: body.last_name,
+            email: body.email,
+            phone: body.phone,
+            gym: body.gym || 'minimes',
+            address: body.address,
+            postal_code: body.postal_code,
+            city: body.city,
+            gender: body.gender,
+          },
+        };
+        const payment = await createHostedPayment({
+          order: syntheticOrder,
+          product,
+          baseUrl,
+          amountCents: quarterCents,
+          description: `${product.display_name || product.name || 'Abonnement'} — 1ʳᵉ échéance 4×`,
+          metadata: {
+            order_type: 'membership_change',
+            payment_plan: '4x',
+            billing_plan: 'rib',
+            payplug_4x_prelevement: '1',
+          },
+          customerOverrides: {
+            first_name: body.first_name,
+            last_name: body.last_name,
+            email: body.email,
+            phone: body.phone,
+            address: body.address,
+            postal_code: body.postal_code,
+            city: body.city,
+            gender: body.gender,
+          },
+          returnUrl: `${baseUrl}/gerer-abonnement?change=1&payplug_return=1`,
+          cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled`,
+        });
+        const url = hostedPaymentUrl(payment);
+        if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
+        await saveMembershipChangePending(payment.id, {
+          ...meta,
+          payment_method: 'payplug',
+          payment_plan: '4x',
+          billing_plan: 'rib',
+          payplug_payment_id: payment.id,
+        });
+        return res.json({
+          ok: true,
+          mode: 'payplug_4x_prelevement',
+          url,
+          payment_id: payment.id,
+          product: {
+            id: product.id,
+            name: product.display_name || product.name,
+            price_label: product.price_label || product.marketing_price_label,
+            price_cents: product.price_cents,
+            supports_installment_choice: productSupportsInstallmentChoice(product),
+          },
         });
       }
 
@@ -5572,7 +5648,9 @@ function createApp() {
       portet_paused_message: display.portetPaused ? display.portetPausedMessage || PORTET_PAUSED_MESSAGE : null,
       oney_4x: display.portetViaCawl === true ? false : isOney4xEnabled(),
       payplug_4x_prelevement:
-        display.portetViaCawl !== true && isPayplugEnabled() && !isOney4xEnabled(),
+        display.portetViaCawl !== true &&
+        display.portetPaypal4x !== true &&
+        isPayplugEnabled(),
       oney_4x_message: null,
       preview: display.preview,
       sandbox: Boolean(display.preview),

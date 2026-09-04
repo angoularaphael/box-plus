@@ -405,7 +405,8 @@
     const showPaypalOnce = portetViaCawl ? false : changePayFlags.showPaypal;
     const showPaypalFour = portetViaCawl ? portetPaypal4x : changePayFlags.showPaypal;
     const showPaypal = showPaypalOnce;
-    const payplug4xPrelev = !portetViaCawl && changePayFlags.payplug4xPrelevement === true;
+    const payplug4xPrelev =
+      installment && !portetViaCawl && !portetPaypal4x && changePayFlags.payplug4xPrelevement === true;
     const fourPayplugAvailable = showCard && payplug4xPrelev;
     const portetViaPaypal = !portetViaCawl && changePayFlags.portetViaPaypal === true && showPaypal;
     const cardLogoKind = portetViaPaypal ? 'card-paypal' : 'card';

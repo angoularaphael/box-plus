@@ -1100,7 +1100,8 @@
     const portetPaused = payFlags.portetPaused === true && !payFlags.preview;
     const portetViaCawl = !portetPaused && payFlags.portetViaCawl === true;
     const portetPaypal4x = !portetPaused && payFlags.portetPaypal4x === true;
-    const payplug4xPrelev = !portetViaCawl && payFlags.payplug4xPrelevement === true;
+    const payplug4xPrelev =
+      installmentChoice && !portetViaCawl && !portetPaypal4x && payFlags.payplug4xPrelevement === true;
     const showCard = portetViaCawl || payFlags.showCard;
     const fourPayplugAvailable = showCard && payplug4xPrelev;
     const savedInstallment = state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
@@ -1173,7 +1174,7 @@
           paypalTitle: 'PayPal 4×',
           paypalSmall: `${quart} € (25 %) via PayPal, puis RIB`,
           cardLogo: portetViaCawl ? 'card' : 'payplug',
-        }) + paypalMsgHtml;
+        }) + (payplug4xPrelev ? '' : paypalMsgHtml);
       billingHtml = `
         <div class="full billing-plan-block">
           ${previewNotice}

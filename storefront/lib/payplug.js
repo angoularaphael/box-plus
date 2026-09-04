@@ -15,9 +15,7 @@ const ONEY_4X_UNAVAILABLE_MESSAGE =
  */
 function isOney4xEnabled() {
   const flag = String(process.env.PAYPLUG_ONEY_4X_ENABLED || '').trim().toLowerCase();
-  if (flag === '1' || flag === 'true' || flag === 'yes') return true;
-  if (flag === '0' || flag === 'false' || flag === 'no') return false;
-  return useTestPayments();
+  return flag === '1' || flag === 'true' || flag === 'yes';
 }
 
 function isPayplugEnabled() {
