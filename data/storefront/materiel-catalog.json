@@ -1,5 +1,5 @@
 {
-  "synced_at": "2026-09-04T17:10:00.000Z",
+  "synced_at": "2026-09-04T17:20:00.000Z",
   "source": "rentree-2026",
   "count": 13,
   "categories": [
@@ -568,10 +568,10 @@
       ],
       "pickup_delay": "48h",
       "pickup_note": "Retrait : Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
-      "image": "/img/materiel/rentree/debardeur/debardeur-01.jpg",
+      "image": "/img/materiel/rentree/debardeur/debardeur-cadre-01.jpg",
       "images": [
-        "/img/materiel/rentree/debardeur/debardeur-01.jpg",
-        "/img/materiel/rentree/debardeur/debardeur-02.jpg"
+        "/img/materiel/rentree/debardeur/debardeur-cadre-01.jpg",
+        "/img/materiel/rentree/debardeur/debardeur-cadre-02.jpg"
       ],
       "description_short": "Débardeur d'entraînement Metal Boxe TRAINING TANK. Tailles S à XL. 18,90 € au lieu de 30 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
       "description": "Débardeur d'entraînement Metal Boxe TRAINING TANK. Coupe libre pour le travail aux sacs et à la corde. Tailles S, M, L, XL.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
@@ -586,7 +586,7 @@
           "price_cents": 1890,
           "price_label": "18,90 €",
           "stock": 5,
-          "image": "/img/materiel/rentree/debardeur/debardeur-01.jpg"
+          "image": "/img/materiel/rentree/debardeur/debardeur-cadre-01.jpg"
         },
         {
           "id": "debardeur-m",
@@ -598,7 +598,7 @@
           "price_cents": 1890,
           "price_label": "18,90 €",
           "stock": 5,
-          "image": "/img/materiel/rentree/debardeur/debardeur-01.jpg"
+          "image": "/img/materiel/rentree/debardeur/debardeur-cadre-01.jpg"
         },
         {
           "id": "debardeur-l",
@@ -610,7 +610,7 @@
           "price_cents": 1890,
           "price_label": "18,90 €",
           "stock": 5,
-          "image": "/img/materiel/rentree/debardeur/debardeur-01.jpg"
+          "image": "/img/materiel/rentree/debardeur/debardeur-cadre-01.jpg"
         },
         {
           "id": "debardeur-xl",
@@ -622,7 +622,7 @@
           "price_cents": 1890,
           "price_label": "18,90 €",
           "stock": 5,
-          "image": "/img/materiel/rentree/debardeur/debardeur-01.jpg"
+          "image": "/img/materiel/rentree/debardeur/debardeur-cadre-01.jpg"
         }
       ],
       "display_name": "Débardeur d'entraînement METAL BOXE TRAINING TANK",
