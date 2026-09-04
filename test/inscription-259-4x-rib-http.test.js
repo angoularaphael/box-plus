@@ -121,11 +121,18 @@ test('tunnel inscription navigateur — 259 € 4× PayPlug affiche le RIB puis 
   );
   assert.ok(fourXMethods.includes('payplug'), `PayPlug 4× manquant: ${fourXMethods.join(',')}`);
   assert.ok(fourXMethods.includes('paypal'), `PayPal 4× manquant: ${fourXMethods.join(',')}`);
-  await page.waitForSelector('#payBtn', { timeout: 10000 });
-  const payBtnText = await page.locator('#payBtn').innerText();
-  assert.match(payBtnText, /64,75|25\s*%/i, 'bouton 25 % visible');
-  const schedule = await page.locator('#fourXSchedule').innerText();
-  assert.match(schedule, /RIB|prélèvement/i, 'calendrier 4× mentionne le RIB');
+
+  await page.check('input[name="pay_method_4x"][value="payplug"]');
+  let payBtnText = await page.locator('#payBtn').innerText();
+  assert.match(payBtnText, /64,75|25\s*%.*PayPlug/i, 'bouton PayPlug 25 %');
+  const schedulePayplug = await page.locator('#fourXSchedule').innerText();
+  assert.match(schedulePayplug, /RIB|prélèvement/i, 'calendrier PayPlug mentionne le RIB');
+
+  await page.check('input[name="pay_method_4x"][value="paypal"]');
+  payBtnText = await page.locator('#payBtn').innerText();
+  assert.match(payBtnText, /259|PayPal.*4×/i, 'bouton PayPal montant total 4×');
+  const schedulePaypal = await page.locator('#fourXSchedule').innerText();
+  assert.match(schedulePaypal, /Pay Later|éligible/i, 'calendrier PayPal = 4× sans frais');
 
   await markPaymentPaid(order_id, {
     method: 'payplug',

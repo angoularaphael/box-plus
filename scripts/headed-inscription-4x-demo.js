@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const http = require('http');
+const assert = require('assert');
 
 process.env.STORE_DEMO_ENABLED = 'true';
 process.env.NODE_ENV = 'test';
@@ -88,7 +89,7 @@ async function main() {
 
   console.log('\n=== Inscription 4× — navigateur visible ===');
   console.log('URL locale:', url);
-  console.log('Attendu : 4× PayPlug + PayPal 4× (64,75 € puis RIB)\n');
+  console.log('Attendu : PayPal 4× sans frais (259 €) · PayPlug 4× : 64,75 € + RIB\n');
 
   const browser = await launchBrowser(chromium);
   if (!browser) throw new Error('Chrome / Edge / Chromium introuvable');
@@ -111,8 +112,15 @@ async function main() {
       console.log('OK — PayPal 4× et PayPlug 4× affichés');
     }
 
-    const payBtn = await page.locator('#payBtn').innerText();
-    console.log('Bouton paiement:', payBtn.trim());
+    await page.check('input[name="pay_method_4x"][value="payplug"]');
+    const payplugBtn = await page.locator('#payBtn').innerText();
+    console.log('Bouton PayPlug 4×:', payplugBtn.trim());
+    assert.match(payplugBtn, /64,75|25\s*%/i, 'PayPlug = 25 %');
+
+    await page.check('input[name="pay_method_4x"][value="paypal"]');
+    const paypalBtn = await page.locator('#payBtn').innerText();
+    console.log('Bouton PayPal 4×:', paypalBtn.trim());
+    assert.match(paypalBtn, /259|PayPal.*4×/i, 'PayPal = montant total 4×');
 
     const waitMs = Number(process.env.INSCRIPTION_HEADED_WAIT_MS || 180000);
     console.log(`\nFenêtre ouverte ${Math.round(waitMs / 1000)} s — testez les deux options puis fermez le navigateur.\n`);

@@ -517,13 +517,9 @@
       </div>`;
   }
 
-  /** 4× sans frais : 25 % (PayPal ou PayPlug) puis RIB. */
+  /** 4× PayPlug : 25 % CB puis RIB (vente Deciplus en prélèvement). */
   function is4xPrelevementOrder(order) {
-    const pay = order?.payment || {};
-    return (
-      pay.payment_plan === '4x' &&
-      (pay.billing_plan === 'rib' || pay.billing_plan === 'paypal')
-    );
+    return isPayplug4xPrelevementOrder(order);
   }
 
   /** 4× PayPlug : 25 % CB puis RIB (vente Deciplus en prélèvement). */
@@ -535,7 +531,11 @@
   /** L'offre demande un IBAN (étape visible) — indépendant du fait qu'il soit déjà saisi. */
   function productRequiresIban(order) {
     const p = order?.product_snapshot || state.product;
-    if (is4xPrelevementOrder(order)) return true;
+    const pay = order?.payment || {};
+    if (isPayplug4xPrelevementOrder(order)) return true;
+    if (supportsInstallmentChoice(p) && pay.payment_plan === '4x' && pay.billing_plan !== 'rib') {
+      return false;
+    }
     if (isComptantLikeProduct(p) || p?.requires_iban === false) return false;
     const plan = order?.payment?.billing_plan;
     if (plan === 'rib' || plan === 'paypal' || p?.requires_iban) return true;
@@ -647,7 +647,7 @@
     const amount = priceLabel(product);
     if (supportsInstallmentChoice(product)) {
       const quart = ((Number(product.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
-      return `Montant total : <strong>${amount}</strong> — payez en une fois ou en 4× : <strong>${quart}&nbsp;€</strong> (25&nbsp;%) via PayPal ou PayPlug, puis RIB`;
+      return `Montant total : <strong>${amount}</strong> — 1×, 4× PayPal sans frais, ou 4× PayPlug : <strong>${quart}&nbsp;€</strong> (25&nbsp;%) puis RIB`;
     }
     if (isComptantLikeProduct(product)) {
       return `Paiement de : <strong>${amount}</strong>`;
@@ -1172,9 +1172,11 @@
             ? 'Carte bancaire'
             : `${quart} € (25 %) par carte, puis RIB`,
           paypalTitle: 'PayPal 4×',
-          paypalSmall: `${quart} € (25 %) via PayPal, puis RIB`,
+          paypalSmall: portetPaypal4x
+            ? '4× sans frais via PayPal (Pay Later si éligible)'
+            : '4× sans frais via PayPal (Pay Later si éligible)',
           cardLogo: portetViaCawl ? 'card' : 'payplug',
-        }) + (payplug4xPrelev ? '' : paypalMsgHtml);
+        }) + (showPaypalFour ? paypalMsgHtml : '');
       billingHtml = `
         <div class="full billing-plan-block">
           ${previewNotice}
@@ -1193,7 +1195,7 @@
                 <strong>En 4× sans frais</strong>
                 <small>${
                   payplug4xPrelev
-                    ? `${quart}&nbsp;€ (25&nbsp;%) maintenant via PayPal ou PayPlug, puis RIB pour 3 prélèvements.`
+                    ? `PayPlug : ${quart}&nbsp;€ (25&nbsp;%) par carte puis RIB — ou 4× sans frais via PayPal.`
                     : portetPaypal4x
                       ? 'Via PayPal Portet (Pay Later si éligible).'
                       : 'Via PayPal (Pay Later si éligible).'
@@ -1330,10 +1332,8 @@
         if (schedule) {
           schedule.style.display = plan === '4x' ? '' : 'none';
           const scheduleMode =
-            payplug4xPrelev && (fourMethod === 'paypal' || fourMethod === 'payplug')
-              ? fourMethod === 'paypal'
-                ? 'paypal_prelevement'
-                : 'payplug_prelevement'
+            payplug4xPrelev && fourMethod === 'payplug'
+              ? 'payplug_prelevement'
               : fourMethod === 'paypal'
                 ? 'paypal'
                 : 'card';
@@ -1350,10 +1350,10 @@
           const totalLabel = priceLabel(p);
           payBtn.textContent =
             plan === '4x'
-              ? payplug4xPrelev
-                ? `Payer ${quart} € maintenant (25 % — 4× sans frais)`
-                : fourMethod === 'paypal'
-                  ? `Payer ${totalLabel} via PayPal (4× si éligible)`
+              ? fourMethod === 'paypal'
+                ? `Payer ${totalLabel} via PayPal (4× si éligible)`
+                : payplug4xPrelev
+                  ? `Payer ${quart} € maintenant (25 % — 4× PayPlug)`
                   : `Payer ${quart} € maintenant (4× sans frais)`
               : 'Payer en une fois';
         }

@@ -32,7 +32,7 @@
     if (!product.requires_payment) return 'Gratuit';
     if (hasInstallmentChoice(product)) {
       const quart = ((Number(product.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
-      return `En une fois ou 4× : ${quart} € (25 %) via PayPal ou PayPlug + RIB`;
+      return `En une fois, ou 4× PayPal sans frais, ou 4× PayPlug : ${quart} € (25 %) + RIB`;
     }
     if (/comptant/i.test(product.name || '') || product.subsection === 'comptant') {
       return 'Paiement unique — pas de prélèvement';
@@ -74,16 +74,16 @@
     }
     if (product.description) return product.description;
     if (/baby\s*boxe/i.test(n)) {
-      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison. Paiement en 1× ou 4× : 62,50 € (25 %) via PayPal ou PayPlug, puis RIB pour 3 prélèvements.';
+      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison. 1×, 4× PayPal sans frais, ou 4× PayPlug (62,50 € + RIB).';
     }
     if (/educative|éducative/i.test(n)) {
-      return 'Boxe éducative pour enfants et ados : technique, respect et confiance en soi, tout au long de la saison. Paiement en 1× ou 4× : 25 % par carte puis RIB pour 3 prélèvements.';
+      return 'Boxe éducative pour enfants et ados : technique, respect et confiance en soi, tout au long de la saison. 1×, 4× PayPal sans frais, ou 4× PayPlug (73,75 € + RIB).';
     }
     if (hasInstallmentChoice(product) || /comptant/i.test(n) || product.subsection === 'comptant') {
       const dur = formatDuration(product);
       if (hasInstallmentChoice(product)) {
         const quart = ((Number(product.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
-        return `Réglez en une fois ou en 4× : ${quart} € (25 %) via PayPal ou PayPlug, puis RIB pour les 3 échéances suivantes (${dur}).`;
+        return `Réglez en une fois, en 4× PayPal sans frais, ou en 4× PayPlug : ${quart} € (25 %) par carte puis RIB (${dur}).`;
       }
       return `Réglez une seule fois et entraînez-vous pendant ${dur} : accès illimité aux salles et à toutes les disciplines, sans aucun prélèvement mensuel.`;
     }
@@ -119,7 +119,7 @@
           <li><strong>Aujourd’hui</strong> — ${quart}&nbsp;€ (25&nbsp;%) par carte</li>
           <li><strong>Ensuite</strong> — RIB pour 3 prélèvements automatiques</li>
         </ul>
-        <p class="fourx-schedule__note">PayPal ou PayPlug — puis RIB pour les 3 prélèvements.</p>
+        <p class="fourx-schedule__note">PayPal : 4× sans frais (Pay Later). PayPlug : ${quart}&nbsp;€ (25&nbsp;%) puis RIB.</p>
       </div>`;
   }
 
