@@ -2815,7 +2815,10 @@
 
   async function render() {
     const showUpsell =
-      Boolean(state.order?.upsell?.show) && state.step >= 5 && state.step < 8;
+      Boolean(state.order?.upsell?.show) &&
+      state.step >= 6 &&
+      state.step < 8 &&
+      !orderNeedsIban(state.order);
     updateStepper(state.step);
     if (showUpsell) {
       renderUpsell();
