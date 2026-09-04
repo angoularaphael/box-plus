@@ -16,28 +16,12 @@ process.env.NODE_ENV = 'test';
 process.env.VERCEL = '';
 process.env.PAYPLUG_ONEY_4X_ENABLED = '0';
 process.env.WHATSAPP_BOT_URL = 'http://127.0.0.1:9';
-process.env.PAYPAL_CLIENT_ID = '';
-process.env.PAYPAL_CLIENT_SECRET = '';
-process.env.PAYPAL_PORTET_CLIENT_ID = '';
-process.env.PAYPAL_PORTET_CLIENT_SECRET = '';
-process.env.PAYPAL_TEST_CLIENT_ID = '';
-process.env.PAYPAL_TEST_CLIENT_SECRET = '';
-process.env.CAWL_MERCHANT_ID = '';
-process.env.CAWL_API_KEY_ID = '';
-process.env.CAWL_API_SECRET = '';
-process.env.STRIPE_SECRET_KEY = '';
 process.env.BOXPLUS_ORDERS_DIR = path.join(os.tmpdir(), `boxplus-rib-browser-${Date.now()}`);
 process.env.BOXPLUS_MERCH_FILE = path.join(os.tmpdir(), `boxplus-merch-rib-${Date.now()}.json`);
 process.env.BOXPLUS_MATERIEL_CATALOG_FILE = path.join(os.tmpdir(), `boxplus-catalog-rib-${Date.now()}.json`);
 process.env.BOXPLUS_ORDERS_REMOTE = '0';
 
-const testEnvFile = path.join(os.tmpdir(), `boxplus-rib-browser-env-${Date.now()}`);
-fs.writeFileSync(
-  testEnvFile,
-  'PAYPLUG_SECRET_KEY=sk_test_boxplus_browser_4x_rib\n',
-  'utf8'
-);
-process.env.BOXPLUS_TEST_ENV_FILE = testEnvFile;
+process.env.BOXPLUS_TEST_ENV_FILE = path.join(__dirname, '..', 'env.test');
 require('../storefront/lib/test-env').resetTestFileCache();
 
 const { createApp } = require('../storefront/server');
@@ -64,9 +48,14 @@ async function json(base, url, opts = {}) {
 }
 
 async function launchChromium(chromium) {
+  const headed = String(process.env.INSCRIPTION_BROWSER_HEADED || '').toLowerCase() === '1';
   for (const opts of [{ channel: 'chrome' }, { channel: 'msedge' }, {}]) {
     try {
-      return await chromium.launch({ headless: true, ...opts });
+      return await chromium.launch({
+        headless: !headed,
+        slowMo: headed ? Number(process.env.INSCRIPTION_SLOW_MO || 80) : 0,
+        ...opts,
+      });
     } catch {
       /* next */
     }
@@ -126,6 +115,12 @@ test('tunnel inscription navigateur — 259 € 4× PayPlug affiche le RIB puis 
   await page.goto(payUrl, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForSelector('input[name="payment_plan"][value="4x"]', { timeout: 15000 });
   await page.check('input[name="payment_plan"][value="4x"]');
+  await page.waitForSelector('input[name="pay_method_4x"]', { timeout: 10000 });
+  const fourXMethods = await page.locator('input[name="pay_method_4x"]').evaluateAll((els) =>
+    els.filter((el) => el.offsetParent !== null).map((el) => el.value)
+  );
+  assert.ok(fourXMethods.includes('payplug'), `PayPlug 4× manquant: ${fourXMethods.join(',')}`);
+  assert.ok(fourXMethods.includes('paypal'), `PayPal 4× manquant: ${fourXMethods.join(',')}`);
   await page.waitForSelector('#payBtn', { timeout: 10000 });
   const payBtnText = await page.locator('#payBtn').innerText();
   assert.match(payBtnText, /64,75|25\s*%/i, 'bouton 25 % visible');
