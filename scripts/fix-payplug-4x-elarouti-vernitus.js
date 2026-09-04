@@ -77,7 +77,13 @@ async function loadTargets() {
     const pay = p.payment || {};
     if (String(pay.status) !== 'paid') continue;
     if (String(pay.method || '').toLowerCase() !== 'payplug') continue;
-    const amount = Number(pay.amount);
+    let amount = Number(pay.amount);
+    if (!Number.isFinite(amount) && pay.amount_cents != null) {
+      amount = Number(pay.amount_cents) / 100;
+    }
+    const priceCents = Number(p.product_snapshot?.price_cents || 25900);
+    const quarter = Math.round(priceCents / 4) / 100;
+    if (!Number.isFinite(amount) || amount <= 0) amount = quarter;
     const isQuarter = Number.isFinite(amount) && amount > 50 && amount < 90;
     const is4x =
       isPayplug4xPrelevementOrder(p) ||
@@ -266,24 +272,55 @@ async function main() {
     targets.map((t) => `${t.name} (${t.order_id}, ${t.pay_amount} €)`).join('\n  ')
   );
 
-  const { launchBrowser } = require('../bot/browser');
-  const { fetchDeciplusCatalog } = require('../bot/catalog');
-  const browser = await launchBrowser();
-  const page = await browser.newPage();
-  const catalog = await fetchDeciplusCatalog(page);
-  const results = [];
-  for (const target of targets) {
-    try {
-      results.push(await repairOne(page, catalog, target));
-    } catch (err) {
-      results.push({ name: target.name, order_id: target.order_id, error: err.message });
-      console.error(err);
+  const report = { at: new Date().toISOString(), check: CHECK, results: [] };
+
+  if (CHECK) {
+    for (const target of targets) {
+      report.results.push({
+        name: target.name,
+        order_id: target.order_id,
+        pay_amount: target.pay_amount,
+        member_id: target.member_id,
+        sale_id: target.sale_id,
+        bot_status: target.bot_status,
+        skipped: 'check_only',
+      });
     }
+    fs.mkdirSync(path.dirname(OUT), { recursive: true });
+    fs.writeFileSync(OUT, JSON.stringify(report, null, 2));
+    console.log('\nRapport (check) :', OUT);
+    return;
   }
-  await browser.close().catch(() => {});
+
+  const { login } = require('../bot/auth');
+  const { runWithSession, closeBrowser } = require('../bot/browser-pool');
+  const { fetchDeciplusCatalog } = require('../bot/catalog');
+
+  await runWithSession('fix-payplug-4x-elarouti-vernitus', async (page) => {
+    try {
+      await login(page, { siteLabel: 'Minimes' });
+    } catch (err) {
+      console.warn('Login retry after zone picker', err.message);
+      await login(page, { siteLabel: 'Minimes' });
+    }
+    const catalog = await fetchDeciplusCatalog(page);
+    for (const target of targets) {
+      try {
+        const out = await repairOne(page, catalog, target);
+        report.results.push(out);
+        console.log('OK', target.name, out.sale || out.skipped);
+      } catch (err) {
+        report.results.push({ name: target.name, order_id: target.order_id, error: err.message });
+        console.error('FAIL', target.name, err.message);
+      }
+    }
+  });
+  await closeBrowser().catch(() => {});
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
-  fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), results }, null, 2));
+  fs.writeFileSync(OUT, JSON.stringify(report, null, 2));
   console.log('\nRapport :', OUT);
+  const failed = report.results.filter((r) => r.error);
+  process.exit(failed.length ? 1 : 0);
 }
 
 main().catch((err) => {
