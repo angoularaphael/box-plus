@@ -475,7 +475,7 @@
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   }
 
-  function buildFourXScheduleHtml(quartLabel, mode = 'card') {
+  function buildFourXScheduleHtml(quartLabel, mode = 'card', totalLabel = '') {
     const today = new Date();
     const dates = [0, 30, 60, 90].map((days) => {
       const d = new Date(today);
@@ -500,7 +500,7 @@
           <li><strong>${dates[2]}</strong> — 3ᵉ échéance ${quartLabel}&nbsp;€</li>
           <li><strong>${dates[3]}</strong> — 4ᵉ échéance ${quartLabel}&nbsp;€</li>
         </ul>
-        <p class="fourx-schedule__note">Vente enregistrée sur Deciplus en 4× prélèvement (259&nbsp;€).</p>
+        <p class="fourx-schedule__note">Vente enregistrée sur Deciplus en 4× prélèvement${totalLabel ? ` (${totalLabel})` : ''}.</p>
       </div>`;
     }
     return `
@@ -1328,7 +1328,7 @@
               : fourMethod === 'payplug' && payplug4xPrelev
                 ? 'payplug_prelevement'
                 : 'card';
-          if (plan === '4x') schedule.innerHTML = buildFourXScheduleHtml(quart, scheduleMode);
+          if (plan === '4x') schedule.innerHTML = buildFourXScheduleHtml(quart, scheduleMode, priceLabel(p));
         }
         const needAddress =
           plan === '4x' && (fourMethod === 'cawl' || (fourMethod === 'payplug' && oney4x));

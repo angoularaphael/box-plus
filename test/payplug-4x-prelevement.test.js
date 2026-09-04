@@ -7,6 +7,7 @@ const {
   isPayplug4xPrelevementOrder,
   requiresIbanForPlan,
   PAYPLUG_4X_DECIPLUS_LABEL,
+  resolvePayplug4xPrelevementDeciplus,
 } = require('../lib/billing-plan');
 const { buildProductConfig, pickBestCatalogTile } = require('../lib/catalog-sale');
 const { buildOrderPayload } = require('../storefront/lib/orders');
@@ -51,6 +52,37 @@ describe('PayPlug 4× prélèvement (25 % CB + RIB)', () => {
     assert.deepEqual(validateOrder(normalizeOrder(payload)), []);
   });
 
+  it('résout la tuile Deciplus selon le produit (259 €, enfants)', () => {
+    assert.match(
+      resolvePayplug4xPrelevementDeciplus({ id: 'offre-saison', price_cents: 25900 }).deciplus_product_name,
+      /259.*4X PRELEVEMENT/i
+    );
+    assert.match(
+      resolvePayplug4xPrelevementDeciplus({ id: 'boxe-educative', price_cents: 29500 }).deciplus_product_name,
+      /ENFANTS 295.*4x SANS FRAIS/i
+    );
+    assert.match(
+      resolvePayplug4xPrelevementDeciplus({ id: 'baby-boxe', price_cents: 25000 }).deciplus_product_name,
+      /ENFANTS 250.*4x SANS FRAIS/i
+    );
+  });
+
+  it('catalogue Deciplus — tuile ENFANTS 295€ 4x SANS FRAIS', () => {
+    const grid = [
+      'BOXE EDUCATIVE 295,00€',
+      'ENFANTS 295€ 4x SANS FRAIS 295,00€',
+      '259€ EN 4X PRELEVEMENT 259,00€',
+    ];
+    const pick = pickBestCatalogTile(grid, {
+      payplug_4x_prelevement: true,
+      deciplus_product_name: 'ENFANTS 295€ 4x SANS FRAIS',
+      amount: 295,
+      paiement_comptant: false,
+    });
+    assert.match(String(pick.text), /ENFANTS 295.*4x/i);
+    assert.ok(!/BOXE EDUCATIVE 295,00/i.test(String(pick.text)), 'pas la tuile comptant');
+  });
+
   it('catalogue Deciplus — tuile 259€ EN 4X PRELEVEMENT', () => {
     const grid = [
       'OFFRE PROMO 12MOIS 259,00€',
@@ -66,7 +98,42 @@ describe('PayPlug 4× prélèvement (25 % CB + RIB)', () => {
     assert.match(String(pick.text), /4X PRELEVEMENT/i);
   });
 
-  it('buildProductConfig — vente abo + IBAN, pas comptant', () => {
+  it('buildOrderPayload Boxe éducative 4× PayPlug — quart + IBAN', () => {
+    const payload = buildOrderPayload(
+      { payment_plan: '4x', billing_plan: 'rib', payment_method: 'payplug', ...sample() },
+      {
+        id: 'boxe-educative',
+        name: 'BOXE EDUCATIVE',
+        supports_installment_choice: true,
+        requires_iban: false,
+        requires_payment: true,
+        price_cents: 29500,
+        subsection: 'enfants',
+      }
+    );
+    assert.equal(payload.requires_iban, true);
+    assert.equal(payload.paiement_comptant, false);
+    assert.equal(payload.payment.amount, 73.75);
+    assert.deepEqual(validateOrder(normalizeOrder(payload)), []);
+  });
+
+  it('buildProductConfig Boxe éducative — tuile ENFANTS 295€ 4x', () => {
+    const cfg = buildProductConfig(
+      {
+        product_id: 'boxe-educative',
+        product_name: 'BOXE EDUCATIVE',
+        payment: { payment_plan: '4x', billing_plan: 'rib', amount: 73.75, status: 'paid' },
+        payment_plan: '4x',
+        billing_plan: 'rib',
+      },
+      { id: 45, title: 'BOXE EDUCATIVE', type: 'abo', categoryId: 'abo', price: 295 }
+    );
+    assert.equal(cfg.paiement_comptant, false);
+    assert.equal(cfg.requires_iban, true);
+    assert.match(cfg.deciplus_product_name, /ENFANTS 295.*4x SANS FRAIS/i);
+  });
+
+  it('buildProductConfig — vente abo + IBAN 259 €, pas comptant', () => {
     const cfg = buildProductConfig(
       {
         product_name: 'OFFRE PROMO 12 MOIS',
