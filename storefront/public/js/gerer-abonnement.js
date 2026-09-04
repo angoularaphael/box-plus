@@ -481,8 +481,8 @@
             'En 4× sans frais',
             payplug4xPrelev
               ? quart
-                ? `PayPlug : ${quart} € (25 %) par carte, puis RIB pour 3 prélèvements`
-                : '25 % CB + RIB'
+                ? `${quart} € (25 %) via PayPal ou PayPlug, puis RIB`
+                : '25 % + RIB'
               : portetPaypal4x
                 ? 'Via PayPal Portet (Pay Later si éligible)'
                 : 'Pour le moment via PayPal uniquement.'
@@ -494,7 +494,7 @@
           ${methods('change_pay_method_once', 'payplug', 'paypal', 'Carte bancaire', cardSmall, cardLogoKind, 'Paiement sécurisé')}
         </div>
         <div id="changeFourMethods" class="billing-choice-row" style="display:none">
-          ${methods('change_pay_method_4x', portetViaCawl ? 'cawl' : 'payplug', 'paypal', '4× sans frais PayPlug', portetViaCawl ? 'Carte bancaire' : `${quart} € (25 %) par carte, puis RIB`, portetViaCawl ? 'card' : 'payplug', 'Pay Later si éligible — sinon montant total', { showCard: fourPayplugAvailable, showPaypal: showPaypalFour, preferPaypal: !fourPayplugAvailable && showPaypalFour })}
+          ${methods('change_pay_method_4x', portetViaCawl ? 'cawl' : 'payplug', 'paypal', '4× sans frais PayPlug', portetViaCawl ? 'Carte bancaire' : `${quart} € (25 %) par carte, puis RIB`, portetViaCawl ? 'card' : 'payplug', `${quart} € (25 %) via PayPal, puis RIB`, { showCard: fourPayplugAvailable, showPaypal: showPaypalFour, preferPaypal: !fourPayplugAvailable && showPaypalFour })}
         </div>
         ${
           showCard && portetViaCawl
@@ -543,6 +543,11 @@
             if (payplug4xPrelev && fourMethod === 'payplug') {
               schedule.innerHTML = `<p class="fourx-schedule__title">4× sans frais PayPlug</p><ul>
                 <li><strong>Aujourd’hui</strong> — ${quart}&nbsp;€ (25&nbsp;%) par carte</li>
+                <li><strong>Ensuite</strong> — RIB pour 3 prélèvements</li>
+              </ul>`;
+            } else if (payplug4xPrelev && fourMethod === 'paypal') {
+              schedule.innerHTML = `<p class="fourx-schedule__title">4× sans frais PayPal</p><ul>
+                <li><strong>Aujourd’hui</strong> — ${quart}&nbsp;€ (25&nbsp;%) via PayPal</li>
                 <li><strong>Ensuite</strong> — RIB pour 3 prélèvements</li>
               </ul>`;
             } else {
@@ -668,7 +673,9 @@
           }
         } else if (paymentMethod === 'payplug' && payplug4xPrelev) {
           extra.billing_plan = 'rib';
-        } else if (paymentMethod !== 'payplug') {
+        } else if (paymentMethod === 'paypal' && payplug4xPrelev) {
+          extra.billing_plan = 'paypal';
+        } else if (paymentMethod !== 'payplug' && paymentMethod !== 'paypal') {
           paymentMethod = 'paypal';
         }
       } else {

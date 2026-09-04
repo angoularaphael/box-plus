@@ -3800,6 +3800,11 @@ function createApp() {
         preferredCheckout !== 'paypal' &&
         preferredCheckout !== 'cawl' &&
         (billingPlan === 'rib' || !isOney4xEnabled());
+      const installment4xPrelev =
+        planLabel === '4x' &&
+        productSupportsInstallmentChoice(product) &&
+        !isOney4xEnabled() &&
+        preferredCheckout !== 'cawl';
 
       if (isDemoCheckoutAllowed() && !isPayplugEnabled() && !isPaypalEnabled(gym) && !isCawlEnabled()) {
         order = await markPaymentPaid(order.order_id, {
@@ -3894,7 +3899,7 @@ function createApp() {
         }
       }
 
-      // ——— PayPal natif (1× ou tentative Pay Later si éligible côté PayPal) ———
+      // ——— PayPal natif (1× ou 4× : 25 % + RIB) ———
       if (preferredCheckout === 'paypal') {
         if (!isPaypalEnabled(gym)) {
           return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
@@ -3906,10 +3911,22 @@ function createApp() {
             landing === 'guest' ||
             req.body.paypal_guest_card === true ||
             (Boolean(display.portetViaPaypal) && landing !== 'login' && payMethod !== 'paypal'));
+        if (installment4xPrelev) {
+          order.requires_iban = true;
+          order.payment = {
+            ...(order.payment || {}),
+            billing_plan: 'paypal',
+            payment_plan: '4x',
+            preferred_checkout: 'paypal',
+          };
+          await saveOrderAsync(order);
+        }
         const ppOrder = await createPaypalOrder({
           order,
           product,
-          amountCents: product.price_cents,
+          amountCents: installment4xPrelev
+            ? Math.round(Number(product.price_cents || 0) / 4)
+            : product.price_cents,
           baseUrl,
           paymentPlan: planLabel === '4x' ? '4x' : 'once',
           gym,

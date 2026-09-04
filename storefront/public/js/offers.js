@@ -32,7 +32,7 @@
     if (!product.requires_payment) return 'Gratuit';
     if (hasInstallmentChoice(product)) {
       const quart = ((Number(product.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
-      return `En une fois ou 4× : ${quart} € (25 % CB) + RIB`;
+      return `En une fois ou 4× : ${quart} € (25 %) via PayPal ou PayPlug + RIB`;
     }
     if (/comptant/i.test(product.name || '') || product.subsection === 'comptant') {
       return 'Paiement unique — pas de prélèvement';
@@ -83,7 +83,7 @@
       const dur = formatDuration(product);
       if (hasInstallmentChoice(product)) {
         const quart = ((Number(product.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
-        return `Réglez en une fois ou en 4× : ${quart} € (25 %) par carte puis RIB pour les 3 échéances suivantes (${dur}). Accès illimité, sans prélèvement mensuel.`;
+        return `Réglez en une fois ou en 4× : ${quart} € (25 %) via PayPal ou PayPlug, puis RIB pour les 3 échéances suivantes (${dur}).`;
       }
       return `Réglez une seule fois et entraînez-vous pendant ${dur} : accès illimité aux salles et à toutes les disciplines, sans aucun prélèvement mensuel.`;
     }
@@ -119,7 +119,7 @@
           <li><strong>Aujourd’hui</strong> — ${quart}&nbsp;€ (25&nbsp;%) par carte</li>
           <li><strong>Ensuite</strong> — RIB pour 3 prélèvements automatiques</li>
         </ul>
-        <p class="fourx-schedule__note">PayPal 4× également disponible si éligible.</p>
+        <p class="fourx-schedule__note">PayPal ou PayPlug — puis RIB pour les 3 prélèvements.</p>
       </div>`;
   }
 
