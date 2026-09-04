@@ -31,7 +31,8 @@
   function formatPaymentMode(product) {
     if (!product.requires_payment) return 'Gratuit';
     if (hasInstallmentChoice(product)) {
-      return 'En une fois ou 4× (25 % CB + RIB)';
+      const quart = ((Number(product.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
+      return `En une fois ou 4× : ${quart} € (25 % CB) + RIB`;
     }
     if (/comptant/i.test(product.name || '') || product.subsection === 'comptant') {
       return 'Paiement unique — pas de prélèvement';
@@ -81,7 +82,8 @@
     if (hasInstallmentChoice(product) || /comptant/i.test(n) || product.subsection === 'comptant') {
       const dur = formatDuration(product);
       if (hasInstallmentChoice(product)) {
-        return `Réglez en une fois ou en 4× sans frais : 25 % par carte puis RIB pour les 3 échéances suivantes (${dur}). Accès illimité, sans prélèvement mensuel.`;
+        const quart = ((Number(product.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
+        return `Réglez en une fois ou en 4× : ${quart} € (25 %) par carte puis RIB pour les 3 échéances suivantes (${dur}). Accès illimité, sans prélèvement mensuel.`;
       }
       return `Réglez une seule fois et entraînez-vous pendant ${dur} : accès illimité aux salles et à toutes les disciplines, sans aucun prélèvement mensuel.`;
     }

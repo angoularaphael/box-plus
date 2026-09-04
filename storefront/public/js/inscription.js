@@ -636,7 +636,8 @@
   function firstPaymentCaption(product) {
     const amount = priceLabel(product);
     if (supportsInstallmentChoice(product)) {
-      return `Montant total : <strong>${amount}</strong> — payez en une fois ou en 4× sans frais`;
+      const quart = ((Number(product.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
+      return `Montant total : <strong>${amount}</strong> — payez en une fois ou en 4× : <strong>${quart}&nbsp;€</strong> (25&nbsp;%) par carte puis RIB`;
     }
     if (isComptantLikeProduct(product)) {
       return `Paiement de : <strong>${amount}</strong>`;
@@ -887,7 +888,7 @@
     if (data.code === 'oney_4x_unavailable' || /4× sans frais.*indisponible/i.test(String(data.error || ''))) {
       return (
         data.error ||
-        'Le 4× sans frais par carte (PayPlug) est momentanément indisponible. Vous pouvez payer en 4× via PayPal, ou régler en une fois par carte ou PayPal.'
+        'Le 4× sans frais par carte est momentanément indisponible. Vous pouvez payer en 4× via PayPal, ou régler en une fois par carte ou PayPal.'
       );
     }
     if (data.error === 'payplug_not_configured') {
@@ -1089,10 +1090,9 @@
     const portetPaused = payFlags.portetPaused === true && !payFlags.preview;
     const portetViaCawl = !portetPaused && payFlags.portetViaCawl === true;
     const portetPaypal4x = !portetPaused && payFlags.portetPaypal4x === true;
-    const oney4x = portetViaCawl ? false : payFlags.oney4x === true;
     const payplug4xPrelev = !portetViaCawl && payFlags.payplug4xPrelevement === true;
     const showCard = portetViaCawl || payFlags.showCard;
-    const fourPayplugAvailable = showCard && (oney4x || payplug4xPrelev);
+    const fourPayplugAvailable = showCard && payplug4xPrelev;
     const savedInstallment = state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
     const showPaypalOnce = portetViaCawl ? false : payFlags.showPaypal;
     const showPaypalFour = portetViaCawl ? portetPaypal4x : payFlags.showPaypal;
@@ -1159,9 +1159,7 @@
           cardTitle: portetViaCawl ? '4× sans frais' : '4× sans frais PayPlug',
           cardSmall: portetViaCawl
             ? 'Carte bancaire'
-            : payplug4xPrelev
-              ? `${quart} € (25 %) par carte maintenant, puis RIB pour 3 prélèvements`
-              : 'Carte PayPlug / Oney',
+            : `${quart} € (25 %) par carte maintenant, puis RIB pour 3 prélèvements`,
           paypalTitle: 'PayPal 4×',
           paypalSmall: '4× Pay Later si éligible — sinon paiement du montant total',
           cardLogo: portetViaCawl ? 'card' : 'payplug',
@@ -1184,12 +1182,10 @@
                 <strong>En 4× sans frais</strong>
                 <small>${
                   payplug4xPrelev
-                    ? `PayPlug : ${quart}&nbsp;€ (25&nbsp;%) par carte maintenant, puis RIB pour 3 prélèvements. PayPal : 4× si éligible.`
-                    : oney4x
-                      ? `Carte PayPlug/Oney : ${quart}&nbsp;€ tout de suite, puis 3 échéances. PayPal : 4× si éligible.`
-                      : portetPaypal4x
-                        ? 'Via PayPal Portet (Pay Later si éligible).'
-                        : 'Via PayPal (Pay Later si éligible).'
+                    ? `PayPlug : ${quart}&nbsp;€ (25&nbsp;%) par carte maintenant, puis RIB pour 3 prélèvements.`
+                    : portetPaypal4x
+                      ? 'Via PayPal Portet (Pay Later si éligible).'
+                      : 'Via PayPal (Pay Later si éligible).'
                 }</small>
               </span>
             </label>
@@ -1330,8 +1326,7 @@
                 : 'card';
           if (plan === '4x') schedule.innerHTML = buildFourXScheduleHtml(quart, scheduleMode, priceLabel(p));
         }
-        const needAddress =
-          plan === '4x' && (fourMethod === 'cawl' || (fourMethod === 'payplug' && oney4x));
+        const needAddress = plan === '4x' && fourMethod === 'cawl';
         if (addrBox) {
           addrBox.style.display = needAddress ? '' : 'none';
           addrBox.querySelectorAll('input').forEach((input) => {
@@ -1399,7 +1394,7 @@
               : body.pay_method === 'payplug' && payplug4xPrelev
                 ? 'rib'
                 : null;
-          if (card4x && (portetViaCawl || oney4x)) {
+          if (card4x && portetViaCawl) {
             body.address = document.querySelector('#fourXAddress input[name="address"]')?.value?.trim();
             body.postal_code = document
               .querySelector('#fourXAddress input[name="postal_code"]')
