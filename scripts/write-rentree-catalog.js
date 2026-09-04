@@ -282,7 +282,7 @@ const products = [
     name: 'Gants de boxe enfant « ONE »',
     reference: 'MBGAN002',
     price_cents: 1990,
-    price_was_cents: 4000,
+    price_was_cents: 3000,
     category: 'gants',
     category_label: 'Gants de boxe',
     category_id: 17,
@@ -293,7 +293,7 @@ const products = [
     image: IMG.one,
     images: [IMG.one, IMG.oneShot],
     description_short:
-      'Gants de boxe enfant Metal Boxe « ONE » (MBGAN002). 4/7 ans ou 8/15 ans. 19,90 € au lieu de 40 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
+      'Gants de boxe enfant Metal Boxe « ONE » (MBGAN002). 4/7 ans ou 8/15 ans. 19,90 € au lieu de 30 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.',
     description:
       'Gants de boxe enfant modèle ONE (MBGAN002). PU, mousse injectée, velcro large. Tailles 4/7 ans et 8/15 ans.\n\nRetrait Minimes, Portet ou St-Cyprien. ' +
       NOTE_48H,
