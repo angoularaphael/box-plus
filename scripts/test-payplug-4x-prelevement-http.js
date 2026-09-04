@@ -17,7 +17,8 @@ process.env.BOXPLUS_ORDERS_DIR = path.join(os.tmpdir(), `boxplus-pp4x-http-${Dat
 process.env.BOXPLUS_ORDERS_REMOTE = '0';
 
 const { createApp } = require('../storefront/server');
-const { uniqueTestCustomer } = require('../lib/test-fixtures');
+const { markPaymentPaid } = require('../storefront/lib/order-lifecycle');
+const { uniqueTestCustomer, VALID_TEST_IBAN } = require('../lib/test-fixtures');
 
 function listen(app) {
   return new Promise((resolve) => {
@@ -92,6 +93,34 @@ async function main() {
     assert.equal(order.data.order.requires_iban, true);
     assert.equal(order.data.order.payment?.status, 'pending');
     console.log('OK commande — payment_plan=4x, billing_plan=rib, requires_iban=true');
+
+    // Inscription 259 € : après paiement CB (25 %), l’étape RIB est obligatoire
+    await markPaymentPaid(orderId, {
+      method: 'payplug',
+      payment_plan: '4x',
+      billing_plan: 'rib',
+      amount: 64.75,
+    });
+    const afterPay = await json(base, `/api/orders/${orderId}?token=${encodeURIComponent(token)}`);
+    assert.equal(afterPay.res.status, 200);
+    assert.equal(afterPay.data.order.payment?.status, 'paid');
+    assert.equal(afterPay.data.order.step, 5, 'étape 5 RIB après paiement 4×');
+    assert.equal(afterPay.data.order.requires_iban, true);
+    assert.ok(!afterPay.data.order.payment?.iban, 'IBAN pas encore saisi');
+    console.log('OK après paiement — étape 5 RIB requise');
+
+    const ibanRes = await json(base, `/api/orders/${orderId}/iban`, {
+      method: 'PATCH',
+      body: JSON.stringify({ token, iban: VALID_TEST_IBAN }),
+    });
+    assert.equal(ibanRes.res.status, 200, JSON.stringify(ibanRes.data));
+    assert.equal(ibanRes.data.ok, true);
+    assert.equal(ibanRes.data.step, 6, 'passage au dossier après RIB');
+    const afterIban = await json(base, `/api/orders/${orderId}?token=${encodeURIComponent(token)}`);
+    assert.equal(afterIban.data.order.payment?.has_iban, true);
+    assert.match(afterIban.data.order.payment?.iban_masked || '', /0185$/);
+    assert.equal(afterIban.data.order.step, 6);
+    console.log('OK RIB enregistré — étape 6 dossier');
 
     console.log('\nTous les tests HTTP 4× PayPlug prélèvement sont OK.');
 
