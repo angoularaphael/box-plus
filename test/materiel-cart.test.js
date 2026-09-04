@@ -17,11 +17,11 @@ const {
 const { getMaterielProducts, findMaterielProduct } = require('../storefront/lib/merch');
 const { buildMaterielConfirmationHtml } = require('../storefront/lib/mailer');
 
-test('catalogue rentrée 2026 — 12 produits destockage', () => {
+test('catalogue rentrée 2026 — 13 produits destockage', () => {
   assert.ok(fs.existsSync(CATALOG_FILE));
   const catalog = JSON.parse(fs.readFileSync(CATALOG_FILE, 'utf8'));
   assert.equal(catalog.source, 'rentree-2026');
-  assert.equal(catalog.products.length, 12);
+  assert.equal(catalog.products.length, 13);
   assert.ok(catalog.products.every((p) => p.id.startsWith('mat-')));
   assert.ok(catalog.products.every((p) => p.image));
   assert.ok(catalog.products.every((p) => String(p.image).startsWith('/img/materiel/rentree/')));
@@ -40,7 +40,7 @@ test('bandes MB120BT / MB120T sont le coloris tricolore, stock 50 et 20', () => 
 
 test('getMaterielProducts filtre par catégorie', () => {
   const all = getMaterielProducts({ activeOnly: true });
-  assert.equal(all.length, 12);
+  assert.equal(all.length, 13);
   const gants = getMaterielProducts({ category: 'gants', activeOnly: true });
   assert.ok(gants.length >= 1);
   gants.forEach((p) => assert.equal(p.category, 'gants'));

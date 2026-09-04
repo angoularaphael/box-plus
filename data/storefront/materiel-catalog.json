@@ -1,7 +1,7 @@
 {
-  "synced_at": "2026-08-30T11:01:00.000Z",
+  "synced_at": "2026-09-04T17:10:00.000Z",
   "source": "rentree-2026",
-  "count": 12,
+  "count": 13,
   "categories": [
     {
       "id": 16,
@@ -22,6 +22,11 @@
       "id": 22,
       "slug": "short",
       "label": "Short de Boxe"
+    },
+    {
+      "id": 27,
+      "slug": "debardeur",
+      "label": "Débardeur"
     },
     {
       "id": 20,
@@ -544,6 +549,95 @@
       "requires_payment": true,
       "sale_type": "materiel",
       "default_variant_id": "ensemble-6-8"
+    },
+    {
+      "id": "mat-debardeur-training",
+      "slug": "debardeur-entrainement-metal-boxe-training-tank",
+      "name": "Débardeur d'entraînement METAL BOXE TRAINING TANK",
+      "reference": "MBTANK",
+      "price_cents": 1890,
+      "price_was_cents": 3000,
+      "category": "debardeur",
+      "category_label": "Débardeur",
+      "category_id": 27,
+      "sort_order": 8,
+      "pickup_gyms": [
+        "Barrière de Paris - Minimes",
+        "Portet-sur-Garonne",
+        "Toulouse St-Cyprien"
+      ],
+      "pickup_delay": "48h",
+      "pickup_note": "Retrait : Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
+      "image": "/img/materiel/rentree/debardeur/debardeur-01.jpg",
+      "images": [
+        "/img/materiel/rentree/debardeur/debardeur-01.jpg",
+        "/img/materiel/rentree/debardeur/debardeur-02.jpg"
+      ],
+      "description_short": "Débardeur d'entraînement Metal Boxe TRAINING TANK. Tailles S à XL. 18,90 € au lieu de 30 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
+      "description": "Débardeur d'entraînement Metal Boxe TRAINING TANK. Coupe libre pour le travail aux sacs et à la corde. Tailles S, M, L, XL.\n\nRetrait Minimes, Portet ou St-Cyprien. Disponible dans la salle Boxing Center de votre choix sous 48h.",
+      "combinations": [
+        {
+          "id": "debardeur-s",
+          "label": "S",
+          "attributes": {
+            "Taille": "S"
+          },
+          "reference": "MBTANK-S",
+          "price_cents": 1890,
+          "price_label": "18,90 €",
+          "stock": 5,
+          "image": "/img/materiel/rentree/debardeur/debardeur-01.jpg"
+        },
+        {
+          "id": "debardeur-m",
+          "label": "M",
+          "attributes": {
+            "Taille": "M"
+          },
+          "reference": "MBTANK-M",
+          "price_cents": 1890,
+          "price_label": "18,90 €",
+          "stock": 5,
+          "image": "/img/materiel/rentree/debardeur/debardeur-01.jpg"
+        },
+        {
+          "id": "debardeur-l",
+          "label": "L",
+          "attributes": {
+            "Taille": "L"
+          },
+          "reference": "MBTANK-L",
+          "price_cents": 1890,
+          "price_label": "18,90 €",
+          "stock": 5,
+          "image": "/img/materiel/rentree/debardeur/debardeur-01.jpg"
+        },
+        {
+          "id": "debardeur-xl",
+          "label": "XL",
+          "attributes": {
+            "Taille": "XL"
+          },
+          "reference": "MBTANK-XL",
+          "price_cents": 1890,
+          "price_label": "18,90 €",
+          "stock": 5,
+          "image": "/img/materiel/rentree/debardeur/debardeur-01.jpg"
+        }
+      ],
+      "display_name": "Débardeur d'entraînement METAL BOXE TRAINING TANK",
+      "stock": 20,
+      "price_label": "18,90 €",
+      "price_was_label": "30,00 €",
+      "active": true,
+      "pickup_only": true,
+      "manual": true,
+      "source": "rentree-2026",
+      "tab": "materiel",
+      "requires_iban": false,
+      "requires_payment": true,
+      "sale_type": "materiel",
+      "default_variant_id": "debardeur-m"
     },
     {
       "id": "mat-bandes-4m",

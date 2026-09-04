@@ -78,6 +78,8 @@ const IMG = {
   ensemble2: '/img/materiel/rentree/ensemble/ensemble-02.png',
   ensembleNoir: '/img/materiel/rentree/ensemble/ensemble-noir.jpg',
   ensembleMetal: '/img/materiel/rentree/ensemble/ensemble-metal-01.jpg',
+  debardeur: '/img/materiel/rentree/debardeur/debardeur-01.jpg',
+  debardeur2: '/img/materiel/rentree/debardeur/debardeur-02.jpg',
   bandes4: '/img/materiel/rentree/bandes/bandes-4m-01.jpg',
   bandes42: '/img/materiel/rentree/bandes/bandes-4m-02.png',
   bandes43: '/img/materiel/rentree/bandes/bandes-4m-03.jpg',
@@ -354,6 +356,40 @@ const products = [
     ),
   }),
   product({
+    id: 'mat-debardeur-training',
+    slug: 'debardeur-entrainement-metal-boxe-training-tank',
+    name: "Débardeur d'entraînement METAL BOXE TRAINING TANK",
+    reference: 'MBTANK',
+    price_cents: 1890,
+    price_was_cents: 3000,
+    category: 'debardeur',
+    category_label: 'Débardeur',
+    category_id: 27,
+    sort_order: 8,
+    pickup_gyms: G3,
+    pickup_delay: '48h',
+    pickup_note: `Retrait : Minimes, Portet ou St-Cyprien. ${NOTE_48H}`,
+    image: IMG.debardeur,
+    images: [IMG.debardeur, IMG.debardeur2],
+    description_short:
+      "Débardeur d'entraînement Metal Boxe TRAINING TANK. Tailles S à XL. 18,90 € au lieu de 30 €. Retrait Minimes, Portet ou St-Cyprien sous 48h.",
+    description:
+      "Débardeur d'entraînement Metal Boxe TRAINING TANK. Coupe libre pour le travail aux sacs et à la corde. Tailles S, M, L, XL.\n\nRetrait Minimes, Portet ou St-Cyprien. " +
+      NOTE_48H,
+    default_variant_id: 'debardeur-m',
+    combinations: ['S', 'M', 'L', 'XL'].map((size) =>
+      combo({
+        id: `debardeur-${size.toLowerCase()}`,
+        label: size,
+        attrs: { Taille: size },
+        ref: `MBTANK-${size}`,
+        cents: 1890,
+        stock: 5,
+        image: IMG.debardeur,
+      })
+    ),
+  }),
+  product({
     id: 'mat-bandes-4m',
     slug: 'bandes-4m-mb120bt',
     name: 'Bandes 4m Rouge / Blanc / Bleu',
@@ -527,6 +563,7 @@ const catalog = {
     { id: 26, slug: 'destockage', label: 'Déstockage' },
     { id: 17, slug: 'gants', label: 'Gants de boxe' },
     { id: 22, slug: 'short', label: 'Short de Boxe' },
+    { id: 27, slug: 'debardeur', label: 'Débardeur' },
     { id: 20, slug: 'bandes', label: 'Bandes de boxe' },
     { id: 24, slug: 'protege-dents', label: 'Protège dents' },
     { id: 18, slug: 'protege-tibias', label: 'Protège tibias-pieds' },

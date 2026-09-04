@@ -13,7 +13,7 @@ const { getMaterielProducts, findMaterielProduct } = require('../storefront/lib/
 
 test('gants Blade sont en première position du catalogue matériel', () => {
   const products = getMaterielProducts({ activeOnly: true });
-  assert.equal(products.length, 12);
+  assert.equal(products.length, 13);
   assert.equal(products[0].id, BLADE_ID);
   assert.equal(products[1].id, 'mat-pack-enfants');
   assert.equal(products[0].price_cents, BLADE_PRICE_CENTS);
