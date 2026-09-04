@@ -222,10 +222,11 @@ async function markPaymentPaidAsync(orderId, paymentData) {
       order.funnel?.complete_deadline_at ||
       new Date((Number.isFinite(paidAt) ? paidAt : Date.now()) + nudgeMs).toISOString(),
   };
-  const plan = order.payment?.billing_plan;
   const snap = order.product_snapshot || {};
   const { requiresIbanForPlan } = require('../../lib/billing-plan');
-  const needsIban = !order.payment?.iban && requiresIbanForPlan(snap, plan);
+  const needsIban =
+    !order.payment?.iban &&
+    requiresIbanForPlan(snap, order.payment?.billing_plan, order.payment?.payment_plan);
   order.step = needsIban ? STEPS.IBAN : STEPS.DOSSIER;
   const saved = await saveOrderAsync(order);
   try {

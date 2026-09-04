@@ -475,18 +475,32 @@
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   }
 
-  function buildFourXScheduleHtml(quartLabel, paypal = false) {
+  function buildFourXScheduleHtml(quartLabel, mode = 'card') {
     const today = new Date();
     const dates = [0, 30, 60, 90].map((days) => {
       const d = new Date(today);
       d.setDate(d.getDate() + days);
       return formatFrDate(d);
     });
-    if (paypal) {
+    if (mode === 'paypal') {
       return `
       <div class="fourx-schedule__inner">
         <p class="fourx-schedule__title">PayPal 4× — si vous êtes éligible</p>
         <p class="fourx-schedule__note">PayPal affiche le <strong>montant total</strong>. Le 4× n’apparaît que si votre compte PayPal est éligible (Pay Later). Sinon le paiement se fait en une fois.</p>
+      </div>`;
+    }
+    if (mode === 'payplug_prelevement') {
+      return `
+      <div class="fourx-schedule__inner">
+        <p class="fourx-schedule__title">4× sans frais PayPlug</p>
+        <ul>
+          <li><strong>Aujourd’hui</strong> — <strong>25&nbsp;%</strong> par carte : <strong>${quartLabel}&nbsp;€</strong></li>
+          <li><strong>Ensuite</strong> — saisie de votre RIB pour 3 prélèvements automatiques</li>
+          <li><strong>${dates[1]}</strong> — 2ᵉ échéance ${quartLabel}&nbsp;€</li>
+          <li><strong>${dates[2]}</strong> — 3ᵉ échéance ${quartLabel}&nbsp;€</li>
+          <li><strong>${dates[3]}</strong> — 4ᵉ échéance ${quartLabel}&nbsp;€</li>
+        </ul>
+        <p class="fourx-schedule__note">Vente enregistrée sur Deciplus en 4× prélèvement (259&nbsp;€).</p>
       </div>`;
     }
     return `
@@ -502,9 +516,16 @@
       </div>`;
   }
 
+  /** 4× PayPlug : 25 % CB puis RIB (vente Deciplus en prélèvement). */
+  function isPayplug4xPrelevementOrder(order) {
+    const pay = order?.payment || {};
+    return pay.payment_plan === '4x' && pay.billing_plan === 'rib';
+  }
+
   /** L'offre demande un IBAN (étape visible) — indépendant du fait qu'il soit déjà saisi. */
   function productRequiresIban(order) {
     const p = order?.product_snapshot || state.product;
+    if (isPayplug4xPrelevementOrder(order)) return true;
     if (isComptantLikeProduct(p) || p?.requires_iban === false) return false;
     const plan = order?.payment?.billing_plan;
     if (plan === 'rib' || plan === 'paypal' || p?.requires_iban) return true;
@@ -551,6 +572,7 @@
         showCawl: cfg.show_cawl === true,
         oney4x: cfg.oney_4x === true,
         oney4xMessage: cfg.oney_4x_message || '',
+        payplug4xPrelevement: cfg.payplug_4x_prelevement === true,
         portetViaPaypal: cfg.portet_via_paypal === true,
         portetViaCawl: cfg.portet_via_cawl === true,
         portetPaypal4x: cfg.portet_paypal_4x === true,
@@ -564,6 +586,7 @@
         showPaypal: true,
         showCawl: false,
         oney4x: false,
+        payplug4xPrelevement: false,
         portetViaPaypal: false,
         portetViaCawl: false,
         portetPaypal4x: false,
@@ -1067,17 +1090,10 @@
     const portetViaCawl = !portetPaused && payFlags.portetViaCawl === true;
     const portetPaypal4x = !portetPaused && payFlags.portetPaypal4x === true;
     const oney4x = portetViaCawl ? false : payFlags.oney4x === true;
-    const savedInstallment = state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
-    const oneyNotice =
-      installmentChoice && !oney4x
-        ? `<p class="portet-pay-notice">${esc(
-            portetPaypal4x
-              ? 'Le 4× sans frais Portet se règle via PayPal (Pay Later si éligible). Le paiement en une fois reste par carte CAWL.'
-              : payFlags.oney4xMessage ||
-                'Le 4× sans frais par carte (PayPlug) est momentanément indisponible. Le 4× est disponible via PayPal, dans toutes les salles.'
-          )}</p>`
-        : '';
+    const payplug4xPrelev = !portetViaCawl && payFlags.payplug4xPrelevement === true;
     const showCard = portetViaCawl || payFlags.showCard;
+    const fourPayplugAvailable = showCard && (oney4x || payplug4xPrelev);
+    const savedInstallment = state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
     const showPaypalOnce = portetViaCawl ? false : payFlags.showPaypal;
     const showPaypalFour = portetViaCawl ? portetPaypal4x : payFlags.showPaypal;
     const showPaypal = showPaypalOnce || showPaypalFour;
@@ -1137,11 +1153,15 @@
           name: 'pay_method_4x',
           cardValue: portetViaCawl ? 'cawl' : 'payplug',
           paypalValue: 'paypal',
-          showCard: showCard && oney4x,
+          showCard: fourPayplugAvailable,
           showPaypal: showPaypalFour,
-          preferPaypal: true,
-          cardTitle: '4× sans frais',
-          cardSmall: portetViaCawl ? 'Carte bancaire' : 'Carte PayPlug / Oney',
+          preferPaypal: !fourPayplugAvailable && showPaypalFour,
+          cardTitle: portetViaCawl ? '4× sans frais' : '4× sans frais PayPlug',
+          cardSmall: portetViaCawl
+            ? 'Carte bancaire'
+            : payplug4xPrelev
+              ? `${quart} € (25 %) par carte maintenant, puis RIB pour 3 prélèvements`
+              : 'Carte PayPlug / Oney',
           paypalTitle: 'PayPal 4×',
           paypalSmall: '4× Pay Later si éligible — sinon paiement du montant total',
           cardLogo: portetViaCawl ? 'card' : 'payplug',
@@ -1149,7 +1169,6 @@
       billingHtml = `
         <div class="full billing-plan-block">
           ${previewNotice}
-          ${oneyNotice}
           <p class="sub" style="margin-top:0">Étape 1 — Comment souhaitez-vous régler ?</p>
           <div class="billing-choice-row" role="radiogroup" aria-label="Type de paiement">
             <label class="billing-choice">
@@ -1164,11 +1183,13 @@
               <span class="billing-choice-text">
                 <strong>En 4× sans frais</strong>
                 <small>${
-                  oney4x
-                    ? `Carte PayPlug/Oney : ${quart}&nbsp;€ tout de suite, puis 3 échéances. PayPal : 4× si éligible.`
-                    : portetPaypal4x
-                      ? 'Via PayPal Portet (Pay Later si éligible).'
-                      : 'Pour le moment via PayPal uniquement (PayPlug 4× indisponible).'
+                  payplug4xPrelev
+                    ? `PayPlug : ${quart}&nbsp;€ (25&nbsp;%) par carte maintenant, puis RIB pour 3 prélèvements. PayPal : 4× si éligible.`
+                    : oney4x
+                      ? `Carte PayPlug/Oney : ${quart}&nbsp;€ tout de suite, puis 3 échéances. PayPal : 4× si éligible.`
+                      : portetPaypal4x
+                        ? 'Via PayPal Portet (Pay Later si éligible).'
+                        : 'Via PayPal (Pay Later si éligible).'
                 }</small>
               </span>
             </label>
@@ -1296,15 +1317,21 @@
         const payBtn = document.getElementById('payBtn');
         const fourMethod =
           document.querySelector('input[name="pay_method_4x"]:checked')?.value ||
-          (oney4x && showCard && !showPaypalFour ? (portetViaCawl ? 'cawl' : 'payplug') : 'paypal');
+          (fourPayplugAvailable ? (portetViaCawl ? 'cawl' : 'payplug') : 'paypal');
         if (onceBox) onceBox.style.display = plan === 'once' ? '' : 'none';
         if (fourBox) fourBox.style.display = plan === '4x' ? '' : 'none';
         if (schedule) {
           schedule.style.display = plan === '4x' ? '' : 'none';
-          if (plan === '4x') schedule.innerHTML = buildFourXScheduleHtml(quart, fourMethod === 'paypal');
+          const scheduleMode =
+            fourMethod === 'paypal'
+              ? 'paypal'
+              : fourMethod === 'payplug' && payplug4xPrelev
+                ? 'payplug_prelevement'
+                : 'card';
+          if (plan === '4x') schedule.innerHTML = buildFourXScheduleHtml(quart, scheduleMode);
         }
         const needAddress =
-          plan === '4x' && (fourMethod === 'payplug' || fourMethod === 'cawl') && oney4x;
+          plan === '4x' && (fourMethod === 'cawl' || (fourMethod === 'payplug' && oney4x));
         if (addrBox) {
           addrBox.style.display = needAddress ? '' : 'none';
           addrBox.querySelectorAll('input').forEach((input) => {
@@ -1317,7 +1344,9 @@
             plan === '4x'
               ? fourMethod === 'paypal'
                 ? `Payer ${totalLabel} via PayPal (4× si éligible)`
-                : `Payer ${quart} € maintenant (4× sans frais)`
+                : fourMethod === 'payplug' && payplug4xPrelev
+                  ? `Payer ${quart} € maintenant (25 % — 4× PayPlug)`
+                  : `Payer ${quart} € maintenant (4× sans frais)`
               : 'Payer en une fois';
         }
       };
@@ -1355,16 +1384,21 @@
         if (body.payment_plan === '4x') {
           const fourMethod =
             document.querySelector('input[name="pay_method_4x"]:checked')?.value ||
-            (portetPaypal4x ? 'paypal' : 'cawl');
+            (portetPaypal4x ? 'paypal' : fourPayplugAvailable ? 'payplug' : 'cawl');
           const card4x = fourMethod === 'cawl' || fourMethod === 'payplug';
           body.pay_method = portetPaypal4x
             ? 'paypal'
             : portetViaCawl && card4x
               ? 'cawl'
-              : card4x && oney4x
+              : card4x
                 ? 'payplug'
                 : 'paypal';
-          body.billing_plan = body.pay_method === 'paypal' ? 'paypal' : null;
+          body.billing_plan =
+            body.pay_method === 'paypal'
+              ? 'paypal'
+              : body.pay_method === 'payplug' && payplug4xPrelev
+                ? 'rib'
+                : null;
           if (card4x && (portetViaCawl || oney4x)) {
             body.address = document.querySelector('#fourXAddress input[name="address"]')?.value?.trim();
             body.postal_code = document

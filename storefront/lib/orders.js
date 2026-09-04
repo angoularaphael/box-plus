@@ -13,6 +13,7 @@ const {
   productSupportsInstallmentChoice,
   adultOfferAgeError,
   ageFromBirthdate,
+  isPayplug4xPrelevement,
 } = require('../../lib/billing-plan');
 
 const PENDING_DIR =
@@ -51,15 +52,23 @@ function removePendingOrder(sessionId) {
 }
 
 function buildOrderPayload(input, product) {
-  const billingPlan = normalizeBillingPlan(input.billing_plan, product);
   const paymentPlan = normalizePaymentPlan(input.payment_plan, product);
-  const requiresIban = requiresIbanForPlan(product, billingPlan);
+  let billingPlan = normalizeBillingPlan(input.billing_plan, product);
+  if (isPayplug4xPrelevement(paymentPlan, input.billing_plan)) {
+    billingPlan = 'rib';
+  }
+  const payplug4xPrelev = isPayplug4xPrelevement(paymentPlan, billingPlan);
+  const requiresIban = requiresIbanForPlan(product, billingPlan, paymentPlan);
   const iban = requiresIban && input.iban ? normalizeIban(input.iban) : null;
   const isFree =
     product.requires_payment === false ||
     Number(product.price_cents || 0) <= 0 ||
     product.sale_type === 'none';
-  const amount = isFree ? 0 : Number(product.price_cents || 0) / 100;
+  const amount = isFree
+    ? 0
+    : payplug4xPrelev
+      ? Math.round(Number(product.price_cents || 0) / 4) / 100
+      : Number(product.price_cents || 0) / 100;
   const paymentMethod = isFree
     ? 'free'
     : input.payment_method || (paymentPlan === '4x' ? 'payplug' : 'payplug');
@@ -77,7 +86,7 @@ function buildOrderPayload(input, product) {
     requires_iban: isFree ? false : requiresIban,
     billing_plan: billingPlan,
     payment_plan: paymentPlan,
-    paiement_comptant: Boolean(paymentPlan) || undefined,
+    paiement_comptant: payplug4xPrelev ? false : Boolean(paymentPlan) || undefined,
     gym: input.gym,
     customer: {
       first_name: input.first_name,
@@ -203,7 +212,7 @@ function validatePaymentForm(input, product) {
 function validateIbanForm(input, product = {}) {
   const errors = [];
   const billingPlan = normalizeBillingPlan(input.billing_plan, product);
-  if (requiresIbanForPlan(product, billingPlan)) {
+  if (requiresIbanForPlan(product, billingPlan, input.payment_plan)) {
     if (!input.iban) errors.push('IBAN requis pour le prélèvement');
     else {
       const ibanErr = frenchIbanError(input.iban);

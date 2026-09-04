@@ -530,13 +530,13 @@ async function dispatchLifecycleOrder(order, { force_requeue = false } = {}) {
       payload.gym = payload.gym || policy.create_gym;
       payload.deciplus_member_id = String(order.deciplus_member_id);
     } else {
-      payload.action = 'balma_switch';
-      payload.skip_restore = policy.skip_restore;
-      payload.skip_cancel = policy.skip_cancel;
-      payload.skip_migrate = policy.skip_migrate;
-      payload.create_duplicate = policy.create_duplicate;
-      payload.offer = order.product_id;
-      payload.gym = payload.gym || policy.create_gym;
+    payload.action = 'balma_switch';
+    payload.skip_restore = policy.skip_restore;
+    payload.skip_cancel = policy.skip_cancel;
+    payload.skip_migrate = policy.skip_migrate;
+    payload.create_duplicate = policy.create_duplicate;
+    payload.offer = order.product_id;
+    payload.gym = payload.gym || policy.create_gym;
     }
   }
   const result = await dispatchOrder(payload);
@@ -3795,13 +3795,11 @@ function createApp() {
 
       const baseUrl = getCheckoutBaseUrl(req);
       const planLabel = paymentPlan || (productSupportsInstallmentChoice(product) ? 'once' : 'once');
-      if (planLabel === '4x' && preferredCheckout !== 'paypal' && preferredCheckout !== 'cawl' && !isOney4xEnabled()) {
-        return res.status(503).json({
-          ok: false,
-          error: ONEY_4X_UNAVAILABLE_MESSAGE,
-          code: 'oney_4x_unavailable',
-        });
-      }
+      const payplug4xPrelev =
+        planLabel === '4x' &&
+        preferredCheckout !== 'paypal' &&
+        preferredCheckout !== 'cawl' &&
+        (billingPlan === 'rib' || !isOney4xEnabled());
 
       if (isDemoCheckoutAllowed() && !isPayplugEnabled() && !isPaypalEnabled(gym) && !isCawlEnabled()) {
         order = await markPaymentPaid(order.order_id, {
@@ -3945,7 +3943,18 @@ function createApp() {
         });
       }
 
-      // ——— Carte PayPlug : 4× Oney ou 1× hosted ———
+      if (payplug4xPrelev) {
+        order.requires_iban = true;
+        order.payment = {
+          ...(order.payment || {}),
+          billing_plan: 'rib',
+          payment_plan: '4x',
+          preferred_checkout: 'payplug',
+        };
+        await saveOrderAsync(order);
+      }
+
+      // ——— Carte PayPlug : 4× prélèvement (25 %) ou 4× Oney ou 1× hosted ———
       if (!isPayplugEnabled()) {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
@@ -3963,7 +3972,25 @@ function createApp() {
 
       try {
         let payment;
-        if (planLabel === '4x') {
+        if (payplug4xPrelev) {
+          const quarterCents = Math.round(Number(product.price_cents || 0) / 4);
+          payment = await createHostedPayment({
+            order: {
+              ...order,
+              customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
+            },
+            product,
+            baseUrl,
+            amountCents: quarterCents,
+            description: `${product.display_name || product.name || 'Offre 12 mois'} — 1ʳᵉ échéance 4×`,
+            metadata: {
+              payment_plan: '4x',
+              billing_plan: 'rib',
+              payplug_4x_prelevement: '1',
+            },
+            customerOverrides,
+          });
+        } else if (planLabel === '4x') {
           payment = await createFourTimesPayment({
             order: {
               ...order,
@@ -3994,11 +4021,13 @@ function createApp() {
           ...order.payment,
           method: 'payplug',
           payment_plan: planLabel === '4x' ? '4x' : 'once',
+          billing_plan: payplug4xPrelev ? 'rib' : order.payment?.billing_plan || billingPlan || null,
           preferred_checkout: 'payplug',
           payplug_payment_ids: rememberPreviousPayplugId(order.payment, payment.id),
           payplug_payment_id: payment.id,
           status: 'pending',
         };
+        if (payplug4xPrelev) order.requires_iban = true;
         if (customerOverrides.address) {
           order.customer_full = {
             ...(order.customer_full || {}),
@@ -4016,7 +4045,7 @@ function createApp() {
         }
         return res.json({
           ok: true,
-          mode: planLabel === '4x' ? 'payplug_4x' : 'payplug',
+          mode: payplug4xPrelev ? 'payplug_4x_prelevement' : planLabel === '4x' ? 'payplug_4x' : 'payplug',
           url,
           payment_id: payment.id,
         });
@@ -5525,10 +5554,9 @@ function createApp() {
       portet_paused: display.portetPaused === true,
       portet_paused_message: display.portetPaused ? display.portetPausedMessage || PORTET_PAUSED_MESSAGE : null,
       oney_4x: display.portetViaCawl === true ? false : isOney4xEnabled(),
-      oney_4x_message:
-        display.portetViaCawl === true || isOney4xEnabled()
-          ? null
-          : ONEY_4X_UNAVAILABLE_MESSAGE,
+      payplug_4x_prelevement:
+        display.portetViaCawl !== true && isPayplugEnabled() && !isOney4xEnabled(),
+      oney_4x_message: null,
       preview: display.preview,
       sandbox: Boolean(display.preview),
     });
