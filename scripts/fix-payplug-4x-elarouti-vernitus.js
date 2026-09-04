@@ -35,7 +35,8 @@ const CHECK = process.argv.includes('--check');
 const ONLY = (process.argv.find((a) => a.startsWith('--only=')) || '').slice(7).toLowerCase();
 const OUT = path.join(__dirname, '..', 'data', `fix-payplug-4x-${Date.now()}.json`);
 
-const NAME_PATTERNS = [/elarouti/i, /vernitus/i];
+const NAME_PATTERNS = [/elarouti/i, /vernitus/i, /vernit/i];
+const FORCE_ORDER_IDS = ['BC-1788543262159-4840fa'];
 
 function rowName(p) {
   const cs = p.customer_short || {};
@@ -66,17 +67,19 @@ async function loadTargets() {
     .select('order_id, created_at, payload')
     .gte('created_at', since)
     .order('created_at', { ascending: false })
-    .limit(800);
+    .limit(2000);
   if (error) throw error;
 
+  const seen = new Set();
   const found = [];
-  for (const row of data || []) {
+
+  function pushRow(row) {
+    if (!row || seen.has(row.order_id)) return;
     const p = row.payload || {};
     const name = rowName(p);
-    if (!matchesTarget(name, row.order_id)) continue;
     const pay = p.payment || {};
-    if (String(pay.status) !== 'paid') continue;
-    if (String(pay.method || '').toLowerCase() !== 'payplug') continue;
+    if (String(pay.status) !== 'paid') return;
+    if (String(pay.method || '').toLowerCase() !== 'payplug') return;
     let amount = Number(pay.amount);
     if (!Number.isFinite(amount) && pay.amount_cents != null) {
       amount = Number(pay.amount_cents) / 100;
@@ -90,8 +93,8 @@ async function loadTargets() {
       pay.payment_plan === '4x' ||
       pay.billing_plan === 'rib' ||
       isQuarter;
-    if (!is4x) continue;
-
+    if (!is4x) return;
+    seen.add(row.order_id);
     found.push({
       order_id: row.order_id,
       created_at: row.created_at,
@@ -111,6 +114,24 @@ async function loadTargets() {
       payload: p,
     });
   }
+
+  for (const row of data || []) {
+    const p = row.payload || {};
+    const name = rowName(p);
+    if (!matchesTarget(name, row.order_id) && !FORCE_ORDER_IDS.includes(row.order_id)) continue;
+    pushRow(row);
+  }
+
+  for (const orderId of FORCE_ORDER_IDS) {
+    if (seen.has(orderId)) continue;
+    const { data: forced } = await sb
+      .from('boxplus_orders')
+      .select('order_id, created_at, payload')
+      .eq('order_id', orderId)
+      .limit(1);
+    if (forced?.[0]) pushRow(forced[0]);
+  }
+
   return found;
 }
 
@@ -151,6 +172,58 @@ function productOrder(target, catalog) {
     price: 259,
   };
   return { order, productConfig: buildProductConfig(order, matched) };
+}
+
+async function applyIbanAndNote(page, target, saleOrder, productConfig, memberId, gymConfig) {
+  const { setMemberIban, openMemberCheck, closeGreyboxIfOpen } = require('../bot/wallet');
+  const { annotateMember } = require('../bot/sale');
+  const { isValidFrenchIban } = require('../lib/iban');
+  const out = { iban: null, note: null };
+
+  if (target.iban && isValidFrenchIban(target.iban)) {
+    try {
+      await setMemberIban(page, memberId, target.iban, saleOrder.customer, gymConfig);
+      out.iban = 'ok';
+    } catch (err) {
+      out.iban = err.message;
+    }
+  }
+
+  await closeGreyboxIfOpen(page).catch(() => {});
+  await openMemberCheck(page, memberId, gymConfig).catch(() => {});
+  try {
+    await annotateMember(page, saleOrder, productConfig, memberId);
+    out.note = '4× sans frais PayPlug';
+  } catch (err) {
+    out.note = err.message;
+  }
+  return out;
+}
+
+async function searchDeciplusVernitus(page) {
+  const { searchMemberByName } = require('../bot/member');
+  for (const [last, first] of [
+    ['VERNITUS', 'BOB'],
+    ['VERNITUS', ''],
+    ['VERNIT', 'BOB'],
+  ]) {
+    const hit = await searchMemberByName(page, last, first).catch(() => null);
+    if (hit?.member_id) {
+      return {
+        member_id: String(hit.member_id),
+        name: `${hit.first_name || first} ${hit.last_name || last}`.trim(),
+        gym: 'minimes',
+        payload: null,
+        order_id: null,
+        pay_amount: 64.75,
+        iban: null,
+        bot_status: null,
+        bot_error: null,
+        from_deciplus_search: true,
+      };
+    }
+  }
+  return null;
 }
 
 async function repairOne(page, catalog, target) {
@@ -213,15 +286,24 @@ async function repairOne(page, catalog, target) {
     const idc = classified.matchingStarted.find((c) =>
       /4\s*[x×]|prelevement|pr[eé]l[eè]vement/i.test(String(c.label))
     )?.idc;
-    if (!CHECK && idc) {
-      await applyBotSaleStatus(target.order_id, {
-        deciplus_member_id: memberId,
-        deciplus_sale_id: String(idc),
-        status: 'success',
-        error: null,
-      });
+    let extras = null;
+    if (!CHECK) {
+      extras = await applyIbanAndNote(page, target, saleOrder, productConfig, memberId, gymConfig);
+      if (target.order_id) {
+        await applyBotSaleStatus(target.order_id, {
+          deciplus_member_id: memberId,
+          deciplus_sale_id: String(idc || target.sale_id || ''),
+          status: 'success',
+          error: extras?.iban && extras.iban !== 'ok' ? `RIB: ${extras.iban}` : null,
+        });
+      }
     }
-    return { ...summary, skipped: 'already_4x_prelev', sale_id: idc || null };
+    return {
+      ...summary,
+      skipped: 'already_4x_prelev',
+      sale_id: idc || target.sale_id || null,
+      iban_note: extras,
+    };
   }
 
   if (CHECK) return { ...summary, skipped: 'check_only' };
@@ -230,6 +312,7 @@ async function repairOne(page, catalog, target) {
     badgeProductConfig: null,
     forceNewSale: true,
   });
+  const extras = await applyIbanAndNote(page, target, saleOrder, productConfig, memberId, gymConfig);
   await closeGreyboxIfOpen(page).catch(() => {});
   await openMemberCheck(page, memberId, gymConfig).catch(() => {});
   const after = await findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => []);
@@ -248,12 +331,17 @@ async function repairOne(page, catalog, target) {
     deciplus_member_id: memberId,
     deciplus_sale_id: saleId || undefined,
     status: saleId ? 'success' : 'manual_review',
-    error: saleId ? null : result.error || 'contrat 4× prélèvement toujours absent',
+    error: saleId
+      ? extras?.iban && extras.iban !== 'ok'
+        ? `RIB: ${extras.iban}`
+        : null
+      : result.error || 'contrat 4× prélèvement toujours absent',
   });
 
   return {
     ...summary,
     sale: { action: result.action, sale_id: saleId, error: result.error || null },
+    iban_note: extras,
     after: slimContracts(after),
   };
 }
@@ -263,9 +351,8 @@ async function main() {
   if (fs.existsSync(browsers)) process.env.PLAYWRIGHT_BROWSERS_PATH = browsers;
 
   const targets = await loadTargets();
-  if (!targets.length) {
-    console.log('Aucune commande PayPlug 4× trouvée pour ELAROUTI / VERNITUS.');
-    return;
+  if (!targets.length && !CHECK) {
+    console.log('Aucune commande PayPlug 4× en base pour ELAROUTI / VERNITUS — recherche Deciplus…');
   }
   console.log(
     'Cibles:',
@@ -304,6 +391,17 @@ async function main() {
       await login(page, { siteLabel: 'Minimes' });
     }
     const catalog = await fetchDeciplusCatalog(page);
+
+    if (!targets.some((t) => /vernit/i.test(t.name)) && (!ONLY || ONLY.includes('vern'))) {
+      const dec = await searchDeciplusVernitus(page);
+      if (dec) {
+        console.log('Fiche Deciplus VERNITUS trouvée:', dec.member_id, dec.name);
+        targets.push(dec);
+      } else {
+        console.log('VERNITUS introuvable dans Deciplus (recherche BOB VERNITUS / VERNITUS).');
+      }
+    }
+
     for (const target of targets) {
       try {
         const out = await repairOne(page, catalog, target);

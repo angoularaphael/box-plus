@@ -235,6 +235,14 @@ describe('PayPlug 4× prélèvement (25 % CB + RIB)', () => {
     assert.match(cfg.deciplus_product_name, /4X PRELEVEMENT/i);
   });
 
+  it('note info_compta PayPlug 4× prélèvement', () => {
+    const { buildPaymentChannelInfoComptaNote } = require('../lib/info-compta-note');
+    const note = buildPaymentChannelInfoComptaNote({
+      payment: { payment_plan: '4x', billing_plan: 'rib', method: 'payplug' },
+    });
+    assert.equal(note, '4× sans frais PayPlug');
+  });
+
   it('pas de note info_compta 4× comptant pour le prélèvement', () => {
     const note = buildFourXInfoComptaNote(
       { payment: { payment_plan: '4x', billing_plan: 'rib', amount: 64.75 } },
