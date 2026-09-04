@@ -374,6 +374,7 @@
         showPaypal: cfg.show_paypal !== false,
         oney4x: cfg.oney_4x === true,
         oney4xMessage: cfg.oney_4x_message || '',
+        payplug4xPrelevement: cfg.payplug_4x_prelevement === true,
         portetViaPaypal: cfg.portet_via_paypal === true,
         portetViaCawl: cfg.portet_via_cawl === true,
         portetPaypal4x: cfg.portet_paypal_4x === true,
@@ -386,6 +387,7 @@
         showCard: true,
         showPaypal: true,
         oney4x: false,
+        payplug4xPrelevement: false,
         portetViaPaypal: false,
         portetViaCawl: false,
         portetPaypal4x: false,
@@ -404,6 +406,8 @@
     const showPaypalFour = portetViaCawl ? portetPaypal4x : changePayFlags.showPaypal;
     const showPaypal = showPaypalOnce;
     const oney4x = portetViaCawl ? false : changePayFlags.oney4x === true;
+    const payplug4xPrelev = !portetViaCawl && changePayFlags.payplug4xPrelevement === true;
+    const fourPayplugAvailable = showCard && (oney4x || payplug4xPrelev);
     const portetViaPaypal = !portetViaCawl && changePayFlags.portetViaPaypal === true && showPaypal;
     const cardLogoKind = portetViaPaypal ? 'card-paypal' : 'card';
     const cardSmall = portetViaCawl
@@ -458,7 +462,7 @@
       }
       return;
     }
-    if (installment && !oney4x) {
+    if (installment && !oney4x && !payplug4xPrelev) {
       html += `<p class="portet-pay-notice">${
         portetPaypal4x
           ? 'Le 4× sans frais Portet se règle via PayPal (Pay Later si éligible). Le paiement en une fois reste par carte CAWL.'
@@ -480,6 +484,10 @@
               ? quart
                 ? `Carte : ${quart} € tout de suite · PayPal : 4× si éligible`
                 : '4 échéances'
+              : payplug4xPrelev
+                ? quart
+                  ? `PayPlug : ${quart} € (25 %) par carte, puis RIB pour 3 prélèvements`
+                  : '25 % CB + RIB'
               : portetPaypal4x
                 ? 'Via PayPal Portet (Pay Later si éligible)'
                 : 'Pour le moment via PayPal uniquement (PayPlug 4× indisponible).'
@@ -491,7 +499,7 @@
           ${methods('change_pay_method_once', 'payplug', 'paypal', 'Carte bancaire', cardSmall, cardLogoKind, 'Paiement sécurisé')}
         </div>
         <div id="changeFourMethods" class="billing-choice-row" style="display:none">
-          ${methods('change_pay_method_4x', portetViaCawl ? 'cawl' : 'payplug', 'paypal', '4× sans frais', portetViaCawl ? 'Carte bancaire' : 'Carte PayPlug / Oney', portetViaCawl ? 'card' : 'payplug', 'Pay Later si éligible — sinon montant total', { showCard: showCard && oney4x, showPaypal: showPaypalFour, preferPaypal: true })}
+          ${methods('change_pay_method_4x', portetViaCawl ? 'cawl' : 'payplug', 'paypal', '4× sans frais PayPlug', portetViaCawl ? 'Carte bancaire' : payplug4xPrelev ? `${quart} € (25 %) par carte, puis RIB` : 'Carte PayPlug / Oney', portetViaCawl ? 'card' : 'payplug', 'Pay Later si éligible — sinon montant total', { showCard: fourPayplugAvailable, showPaypal: showPaypalFour, preferPaypal: !fourPayplugAvailable && showPaypalFour })}
         </div>
         ${
           showCard && oney4x
@@ -535,18 +543,27 @@
         if (schedule) {
           schedule.style.display = plan === '4x' ? '' : 'none';
           if (plan === '4x' && quart) {
-            const today = new Date();
-            const dates = [0, 30, 60, 90].map((d) => {
-              const x = new Date(today);
-              x.setDate(x.getDate() + d);
-              return x.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
-            });
-            schedule.innerHTML = `<p class="fourx-schedule__title">Calendrier indicatif 4×</p><ul>
-              <li><strong>Aujourd’hui</strong> — ${quart}&nbsp;€</li>
-              <li><strong>${dates[1]}</strong> — ${quart}&nbsp;€</li>
-              <li><strong>${dates[2]}</strong> — ${quart}&nbsp;€</li>
-              <li><strong>${dates[3]}</strong> — ${quart}&nbsp;€</li>
-            </ul>`;
+            const fourMethod =
+              document.querySelector('input[name="change_pay_method_4x"]:checked')?.value || 'payplug';
+            if (payplug4xPrelev && fourMethod === 'payplug') {
+              schedule.innerHTML = `<p class="fourx-schedule__title">4× sans frais PayPlug</p><ul>
+                <li><strong>Aujourd’hui</strong> — ${quart}&nbsp;€ (25&nbsp;%) par carte</li>
+                <li><strong>Ensuite</strong> — RIB pour 3 prélèvements</li>
+              </ul>`;
+            } else {
+              const today = new Date();
+              const dates = [0, 30, 60, 90].map((d) => {
+                const x = new Date(today);
+                x.setDate(x.getDate() + d);
+                return x.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+              });
+              schedule.innerHTML = `<p class="fourx-schedule__title">Calendrier indicatif 4×</p><ul>
+                <li><strong>Aujourd’hui</strong> — ${quart}&nbsp;€</li>
+                <li><strong>${dates[1]}</strong> — ${quart}&nbsp;€</li>
+                <li><strong>${dates[2]}</strong> — ${quart}&nbsp;€</li>
+                <li><strong>${dates[3]}</strong> — ${quart}&nbsp;€</li>
+              </ul>`;
+            }
           }
         }
         const fourMethod =
@@ -624,6 +641,7 @@
       return;
     }
     const oney4x = changePayFlags.oney4x === true;
+    const payplug4xPrelev = changePayFlags.payplug4xPrelevement === true;
     const installment =
       changeProductSummary?.supports_installment_choice ||
       document.querySelector('input[name="change_payment_plan"]');
@@ -635,7 +653,8 @@
         document.querySelector('input[name="change_payment_plan"]:checked')?.value || 'once';
       if (paymentPlan === '4x') {
         paymentMethod =
-          document.querySelector('input[name="change_pay_method_4x"]:checked')?.value || 'paypal';
+          document.querySelector('input[name="change_pay_method_4x"]:checked')?.value ||
+          (payplug4xPrelev || oney4x ? 'payplug' : 'paypal');
         if (paymentMethod === 'cawl' || (paymentMethod === 'payplug' && oney4x)) {
           extra.address = document.getElementById('chg_address')?.value?.trim() || '';
           extra.postal_code = document.getElementById('chg_postal')?.value?.trim() || '';
@@ -653,7 +672,9 @@
             changeMsg.textContent = 'Adresse complète et code postal à 5 chiffres requis pour le 4× carte.';
             return;
           }
-        } else {
+        } else if (paymentMethod === 'payplug' && payplug4xPrelev) {
+          extra.billing_plan = 'rib';
+        } else if (paymentMethod !== 'payplug') {
           paymentMethod = 'paypal';
         }
       } else {

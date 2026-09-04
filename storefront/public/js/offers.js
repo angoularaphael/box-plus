@@ -31,7 +31,7 @@
   function formatPaymentMode(product) {
     if (!product.requires_payment) return 'Gratuit';
     if (hasInstallmentChoice(product)) {
-      return 'En une fois ou en 4× sans frais';
+      return 'En une fois ou 4× (25 % CB + RIB)';
     }
     if (/comptant/i.test(product.name || '') || product.subsection === 'comptant') {
       return 'Paiement unique — pas de prélèvement';
@@ -73,15 +73,15 @@
     }
     if (product.description) return product.description;
     if (/baby\s*boxe/i.test(n)) {
-      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison. Paiement comptant en 1× ou 4× sans frais.';
+      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison. Paiement en 1× ou 4× : 25 % par carte puis RIB pour 3 prélèvements.';
     }
     if (/educative|éducative/i.test(n)) {
-      return 'Boxe éducative pour enfants et ados : technique, respect et confiance en soi, tout au long de la saison. Paiement comptant en 1× ou 4× sans frais.';
+      return 'Boxe éducative pour enfants et ados : technique, respect et confiance en soi, tout au long de la saison. Paiement en 1× ou 4× : 25 % par carte puis RIB pour 3 prélèvements.';
     }
     if (hasInstallmentChoice(product) || /comptant/i.test(n) || product.subsection === 'comptant') {
       const dur = formatDuration(product);
       if (hasInstallmentChoice(product)) {
-        return `Réglez en une fois ou en 4× sans frais pour ${dur} : accès illimité, sans prélèvement mensuel.`;
+        return `Réglez en une fois ou en 4× sans frais : 25 % par carte puis RIB pour les 3 échéances suivantes (${dur}). Accès illimité, sans prélèvement mensuel.`;
       }
       return `Réglez une seule fois et entraînez-vous pendant ${dur} : accès illimité aux salles et à toutes les disciplines, sans aucun prélèvement mensuel.`;
     }
@@ -110,21 +110,14 @@
     const total = Number(product.price_cents || 0) / 100;
     if (!(total > 0)) return '';
     const quart = (total / 4).toFixed(2).replace('.', ',');
-    const today = new Date();
-    const dates = [0, 30, 60, 90].map((days) => {
-      const d = new Date(today);
-      d.setDate(d.getDate() + days);
-      return formatFrDate(d);
-    });
     return `
       <div class="fourx-schedule fourx-schedule--card">
-        <p class="fourx-schedule__title">Calendrier indicatif 4× sans frais</p>
+        <p class="fourx-schedule__title">4× sans frais PayPlug</p>
         <ul>
-          <li><strong>Aujourd’hui</strong> — ${quart}&nbsp;€</li>
-          <li><strong>${dates[1]}</strong> — ${quart}&nbsp;€</li>
-          <li><strong>${dates[2]}</strong> — ${quart}&nbsp;€</li>
-          <li><strong>${dates[3]}</strong> — ${quart}&nbsp;€</li>
+          <li><strong>Aujourd’hui</strong> — ${quart}&nbsp;€ (25&nbsp;%) par carte</li>
+          <li><strong>Ensuite</strong> — RIB pour 3 prélèvements automatiques</li>
         </ul>
+        <p class="fourx-schedule__note">PayPal 4× également disponible si éligible.</p>
       </div>`;
   }
 
