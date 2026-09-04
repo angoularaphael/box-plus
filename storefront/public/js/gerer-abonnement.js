@@ -482,8 +482,8 @@
             'En 4× sans frais',
             payplug4xPrelev
               ? quart
-                ? `PayPlug : ${quart} € (25 %) par carte puis RIB — ou 4× PayPal`
-                : '25 % PayPlug + RIB'
+                ? `PayPlug : ${quart} € via PayPlug — ou 4× PayPal`
+                : '4× PayPlug via carte'
               : portetPaypal4x
                 ? 'Via PayPal Portet (Pay Later si éligible)'
                 : 'Pour le moment via PayPal uniquement.'
@@ -495,7 +495,7 @@
           ${methods('change_pay_method_once', 'payplug', 'paypal', 'Carte bancaire', cardSmall, cardLogoKind, 'Paiement sécurisé')}
         </div>
         <div id="changeFourMethods" class="billing-choice-row" style="display:none">
-          ${methods('change_pay_method_4x', portetViaCawl ? 'cawl' : 'payplug', 'paypal', '4× sans frais PayPlug', portetViaCawl ? 'Carte bancaire' : `${quart} € (25 %) par carte, puis RIB`, portetViaCawl ? 'card' : 'payplug', '4× sans frais via PayPal (Pay Later si éligible)', { showCard: fourPayplugAvailable, showPaypal: showPaypalFour, preferPaypal: !fourPayplugAvailable && showPaypalFour })}
+          ${methods('change_pay_method_4x', portetViaCawl ? 'cawl' : 'payplug', 'paypal', '4× sans frais PayPlug', portetViaCawl ? 'Carte bancaire' : `${quart} € via PayPlug`, portetViaCawl ? 'card' : 'payplug', '4× sans frais via PayPal (Pay Later si éligible)', { showCard: fourPayplugAvailable, showPaypal: showPaypalFour, preferPaypal: !fourPayplugAvailable && showPaypalFour })}
         </div>
         ${
           showCard && portetViaCawl
@@ -542,9 +542,9 @@
             const fourMethod =
               document.querySelector('input[name="change_pay_method_4x"]:checked')?.value || 'payplug';
             if (payplug4xPrelev && fourMethod === 'payplug') {
-              schedule.innerHTML = `<p class="fourx-schedule__title">4× sans frais PayPlug</p><ul>
-                <li><strong>Aujourd’hui</strong> — ${quart}&nbsp;€ (25&nbsp;%) par carte</li>
-                <li><strong>Ensuite</strong> — RIB pour 3 prélèvements</li>
+              schedule.innerHTML = `<p class="fourx-schedule__title">Pour le 4× sans frais PayPlug aujourd’hui : <strong>${quart}&nbsp;€</strong></p><ul>
+                <li>Aujourd’hui : <strong>${quart}&nbsp;€</strong> CB PayPlug puis saisissez votre RIB pour les prélèvements automatiques.</li>
+                <li>1er paiement par carte puis saisissez votre RIB pour les 3 autres échéances</li>
               </ul>`;
             } else if (payplug4xPrelev && fourMethod === 'paypal') {
               schedule.innerHTML = `<p class="fourx-schedule__title">4× sans frais PayPal</p>

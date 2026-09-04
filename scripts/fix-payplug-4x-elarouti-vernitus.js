@@ -1,0 +1,292 @@
+#!/usr/bin/env node
+'use strict';
+/**
+ * Rattrape les 4× PayPlug enregistrés à tort en comptant 259 € :
+ * - Alexandre ELAROUTI
+ * - BOB VERNITUS
+ *
+ *   node scripts/fix-payplug-4x-elarouti-vernitus.js --check
+ *   node scripts/fix-payplug-4x-elarouti-vernitus.js
+ *   node scripts/fix-payplug-4x-elarouti-vernitus.js --only=elarouti
+ */
+require('dotenv').config();
+process.env.BOXPLUS_ORDERS_REMOTE = '1';
+process.env.DECIPLUS_FAST = process.env.DECIPLUS_FAST || '1';
+process.env.DECIPLUS_HEADLESS = process.env.DECIPLUS_HEADLESS || 'true';
+delete process.env.PLAYWRIGHT_BROWSERS_PATH;
+delete process.env.BOXPLUS_HOSTED;
+delete process.env.BOXPLUS_BOT_URL;
+delete process.env.BOXPLUS_BOT_URL_OPS;
+
+const fs = require('fs');
+const path = require('path');
+const { getSupabase } = require('../storefront/lib/supabase');
+const { getGymConfig } = require('../lib/normalize');
+const { classifyMemberContracts } = require('../lib/replace-existing-abo');
+const {
+  applyBillingPlanToProductConfig,
+  isPayplug4xPrelevementOrder,
+} = require('../lib/billing-plan');
+const { buildProductConfig } = require('../lib/catalog-sale');
+const { isPendingOrFutureContract } = require('../bot/cancel-sale');
+const { applyBotSaleStatus } = require('../storefront/lib/order-lifecycle');
+
+const CHECK = process.argv.includes('--check');
+const ONLY = (process.argv.find((a) => a.startsWith('--only=')) || '').slice(7).toLowerCase();
+const OUT = path.join(__dirname, '..', 'data', `fix-payplug-4x-${Date.now()}.json`);
+
+const NAME_PATTERNS = [/elarouti/i, /vernitus/i];
+
+function rowName(p) {
+  const cs = p.customer_short || {};
+  const cf = p.customer_full || {};
+  return `${cs.first_name || cf.first_name || ''} ${cs.last_name || cf.last_name || ''}`.replace(/\s+/g, ' ').trim();
+}
+
+function slimContracts(list) {
+  return (list || []).map((c) => ({
+    idc: c.idc,
+    badge: Boolean(c.isBadge),
+    pending: isPendingOrFutureContract(c.label),
+    label: String(c.label || '').replace(/\s+/g, ' ').slice(0, 160),
+  }));
+}
+
+function matchesTarget(name, orderId) {
+  const hay = `${name} ${orderId}`.toLowerCase();
+  if (ONLY && !hay.includes(ONLY)) return false;
+  return NAME_PATTERNS.some((re) => re.test(name));
+}
+
+async function loadTargets() {
+  const sb = getSupabase();
+  const since = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await sb
+    .from('boxplus_orders')
+    .select('order_id, created_at, payload')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(800);
+  if (error) throw error;
+
+  const found = [];
+  for (const row of data || []) {
+    const p = row.payload || {};
+    const name = rowName(p);
+    if (!matchesTarget(name, row.order_id)) continue;
+    const pay = p.payment || {};
+    if (String(pay.status) !== 'paid') continue;
+    if (String(pay.method || '').toLowerCase() !== 'payplug') continue;
+    const amount = Number(pay.amount);
+    const isQuarter = Number.isFinite(amount) && amount > 50 && amount < 90;
+    const is4x =
+      isPayplug4xPrelevementOrder(p) ||
+      pay.payment_plan === '4x' ||
+      pay.billing_plan === 'rib' ||
+      isQuarter;
+    if (!is4x) continue;
+
+    found.push({
+      order_id: row.order_id,
+      created_at: row.created_at,
+      name,
+      email: p.customer_short?.email || p.customer_full?.email || '',
+      phone: p.customer_short?.phone || p.customer_full?.phone || '',
+      birthdate: p.customer_short?.birthdate || p.customer_full?.birthdate || '',
+      gym: p.customer_full?.gym || p.gym || 'minimes',
+      member_id: p.deciplus_member_id || null,
+      sale_id: p.deciplus_sale_id || null,
+      bot_status: p.bot_status || null,
+      bot_error: p.bot_error || null,
+      pay_amount: amount,
+      pay_plan: pay.payment_plan,
+      billing_plan: pay.billing_plan,
+      iban: pay.iban || p.customer_full?.iban || null,
+      payload: p,
+    });
+  }
+  return found;
+}
+
+function productOrder(target, catalog) {
+  const p = target.payload || {};
+  const order = {
+    ...p,
+    order_id: target.order_id,
+    product_id: p.product_id || 'dp-100',
+    product_name: p.product_name || 'OFFRE PROMO 12 MOIS',
+    gym: target.gym,
+    payment: {
+      ...(p.payment || {}),
+      status: 'paid',
+      method: 'payplug',
+      payment_plan: '4x',
+      billing_plan: 'rib',
+      amount: target.pay_amount || 64.75,
+    },
+    payment_plan: '4x',
+    billing_plan: 'rib',
+    requires_iban: true,
+    customer: {
+      first_name: p.customer_short?.first_name || p.customer_full?.first_name,
+      last_name: p.customer_short?.last_name || p.customer_full?.last_name,
+      email: target.email,
+      phone: target.phone,
+      birthdate: target.birthdate,
+      iban: target.iban,
+    },
+    source: 'fix-payplug-4x-elarouti-vernitus',
+  };
+  const matched = catalog.find((c) => String(c.id) === String(order.product_id)) || {
+    id: 100,
+    title: order.product_name,
+    type: 'abo',
+    categoryId: 'abo',
+    price: 259,
+  };
+  return { order, productConfig: buildProductConfig(order, matched) };
+}
+
+async function repairOne(page, catalog, target) {
+  const { openMemberCheck, closeGreyboxIfOpen } = require('../bot/wallet');
+  const { findActiveContracts } = require('../bot/cancel-sale');
+  const { recordSale } = require('../bot/sale');
+  const { detectMemberGymConfig } = require('../bot/member');
+
+  const memberId = String(target.member_id || target.payload?.deciplus_member_id || '');
+  if (!memberId) throw new Error(`${target.name} : pas de member_id Deciplus`);
+
+  let gymConfig = getGymConfig(target.gym || 'minimes');
+  await closeGreyboxIfOpen(page).catch(() => {});
+  await openMemberCheck(page, memberId, gymConfig);
+  const site = await detectMemberGymConfig(page, gymConfig).catch(() => null);
+  if (site?.deciplus_label) gymConfig = site;
+
+  const { order: saleOrder, productConfig: built } = productOrder(target, catalog);
+  let productConfig = applyBillingPlanToProductConfig(built, saleOrder);
+  productConfig = {
+    ...productConfig,
+    paiement_comptant: false,
+    requires_iban: true,
+    skip_rib_prompt: false,
+    payplug_4x_prelevement: true,
+    auto_badge: Boolean(target.iban),
+  };
+
+  const before = await findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => []);
+  const classified = classifyMemberContracts(before, productConfig, {
+    isPendingOrFuture: isPendingOrFutureContract,
+    skipCancel: false,
+  });
+
+  const wrongComptant = classified.matchingStarted.filter((c) =>
+    /259/.test(String(c.label)) && !/4\s*[x×]|prelevement|pr[eé]l[eè]vement/i.test(String(c.label))
+  );
+  const has4xPrelev = classified.matchingStarted.some((c) =>
+    /4\s*[x×]|prelevement|pr[eé]l[eè]vement/i.test(String(c.label))
+  );
+
+  const summary = {
+    name: target.name,
+    order_id: target.order_id,
+    member_id: memberId,
+    gym: gymConfig.key || target.gym,
+    pay_amount: target.pay_amount,
+    deciplus_tile: productConfig.deciplus_product_name,
+    bot_status: target.bot_status,
+    bot_error: target.bot_error,
+    before: slimContracts(before),
+    wrong_comptant: slimContracts(wrongComptant),
+    has_4x_prelev: has4xPrelev,
+    needsNewSale: classified.needsNewSale || wrongComptant.length > 0,
+  };
+  console.log('\n===', target.name, '===');
+  console.log(JSON.stringify(summary, null, 2));
+
+  if (has4xPrelev && !wrongComptant.length) {
+    const idc = classified.matchingStarted.find((c) =>
+      /4\s*[x×]|prelevement|pr[eé]l[eè]vement/i.test(String(c.label))
+    )?.idc;
+    if (!CHECK && idc) {
+      await applyBotSaleStatus(target.order_id, {
+        deciplus_member_id: memberId,
+        deciplus_sale_id: String(idc),
+        status: 'success',
+        error: null,
+      });
+    }
+    return { ...summary, skipped: 'already_4x_prelev', sale_id: idc || null };
+  }
+
+  if (CHECK) return { ...summary, skipped: 'check_only' };
+
+  const result = await recordSale(page, saleOrder, productConfig, memberId, gymConfig, {
+    badgeProductConfig: null,
+    forceNewSale: true,
+  });
+  await closeGreyboxIfOpen(page).catch(() => {});
+  await openMemberCheck(page, memberId, gymConfig).catch(() => {});
+  const after = await findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => []);
+  const check = classifyMemberContracts(after, productConfig, {
+    isPendingOrFuture: isPendingOrFutureContract,
+  });
+
+  const saleId =
+    result.sale_id ||
+    check.matchingStarted.find((c) =>
+      /4\s*[x×]|prelevement|pr[eé]l[eè]vement/i.test(String(c.label))
+    )?.idc ||
+    null;
+
+  await applyBotSaleStatus(target.order_id, {
+    deciplus_member_id: memberId,
+    deciplus_sale_id: saleId || undefined,
+    status: saleId ? 'success' : 'manual_review',
+    error: saleId ? null : result.error || 'contrat 4× prélèvement toujours absent',
+  });
+
+  return {
+    ...summary,
+    sale: { action: result.action, sale_id: saleId, error: result.error || null },
+    after: slimContracts(after),
+  };
+}
+
+async function main() {
+  const browsers = path.join(process.env.USERPROFILE || '', 'AppData', 'Local', 'ms-playwright');
+  if (fs.existsSync(browsers)) process.env.PLAYWRIGHT_BROWSERS_PATH = browsers;
+
+  const targets = await loadTargets();
+  if (!targets.length) {
+    console.log('Aucune commande PayPlug 4× trouvée pour ELAROUTI / VERNITUS.');
+    return;
+  }
+  console.log(
+    'Cibles:',
+    targets.map((t) => `${t.name} (${t.order_id}, ${t.pay_amount} €)`).join('\n  ')
+  );
+
+  const { launchBrowser } = require('../bot/browser');
+  const { fetchDeciplusCatalog } = require('../bot/catalog');
+  const browser = await launchBrowser();
+  const page = await browser.newPage();
+  const catalog = await fetchDeciplusCatalog(page);
+  const results = [];
+  for (const target of targets) {
+    try {
+      results.push(await repairOne(page, catalog, target));
+    } catch (err) {
+      results.push({ name: target.name, order_id: target.order_id, error: err.message });
+      console.error(err);
+    }
+  }
+  await browser.close().catch(() => {});
+  fs.mkdirSync(path.dirname(OUT), { recursive: true });
+  fs.writeFileSync(OUT, JSON.stringify({ at: new Date().toISOString(), results }, null, 2));
+  console.log('\nRapport :', OUT);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

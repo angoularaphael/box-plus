@@ -49,7 +49,7 @@ const {
   getGymConfig,
 } = require('../lib/normalize');
 const { fetchDeciplusCatalog, resolveProductConfig, resolveBadgeProductConfig } = require('./catalog');
-const { applyBillingPlanToProductConfig } = require('../lib/billing-plan');
+const { applyBillingPlanToProductConfig, isPayplug4xPrelevementOrder } = require('../lib/billing-plan');
 const { isCartePrestationConfig } = require('../lib/catalog-sale');
 const { logInfo, logError, logWarn, sendAlert } = require('../lib/logger');
 const { sleep } = require('../lib/utils');
@@ -287,6 +287,77 @@ async function processCancelJob(page, order) {
   }
 }
 
+function memberZonesMatch(memberSite, gymConfig) {
+  const memberZone = String(memberSite?.deciplus_zone_id || '').trim();
+  const wantZone = String(gymConfig?.deciplus_zone_id || '').trim();
+  if (memberZone && wantZone) return memberZone === wantZone;
+  const memberLabel = String(memberSite?.deciplus_label || '').trim().toLowerCase();
+  const wantLabel = String(gymConfig?.deciplus_label || '').trim().toLowerCase();
+  return Boolean(memberLabel && wantLabel && memberLabel === wantLabel);
+}
+
+async function alignMemberGymForSale(page, memberId, order, memberSite) {
+  const orderGymConfig = getGymConfig(order.gym);
+  const { isBalmaSaleTarget } = require('../lib/gym-slugs');
+  const { migrateMemberToGym } = require('./migrate-gym');
+  let gymConfig = orderGymConfig;
+
+  if (String(order.gym || '').toLowerCase() === 'etats-unis') {
+    gymConfig = createGymConfig('etats-unis');
+    if (memberSite && isEtatsUnisDeciplusSite(memberSite)) {
+      await migrateMemberToGym(page, memberId, gymConfig);
+      logInfo('Migration États-Unis → Minimes avant vente', {
+        order_id: order.order_id,
+        member_id: memberId,
+        from_zone: memberSite.deciplus_zone_id || null,
+      });
+    } else if (memberSite && isBalmaSaleTarget(memberSite, order)) {
+      await migrateMemberToGym(page, memberId, gymConfig);
+      logInfo('Migration Balma → Minimes avant vente (États-Unis boutique)', {
+        order_id: order.order_id,
+        member_id: memberId,
+      });
+    }
+    return gymConfig;
+  }
+
+  if (memberSite && isBalmaSaleTarget(memberSite, order)) {
+    await migrateMemberToGym(page, memberId, orderGymConfig);
+    logInfo('Migration Balma → salle commandée avant vente', {
+      order_id: order.order_id,
+      member_id: memberId,
+      to: orderGymConfig.deciplus_label,
+      zone_id: orderGymConfig.deciplus_zone_id || null,
+    });
+    return orderGymConfig;
+  }
+
+  if (memberSite && !memberZonesMatch(memberSite, orderGymConfig)) {
+    await migrateMemberToGym(page, memberId, orderGymConfig);
+    logWarn('Fiche Deciplus migrée vers la salle commandée', {
+      order_id: order.order_id,
+      member_id: memberId,
+      ordered: orderGymConfig.deciplus_label,
+      from: memberSite.deciplus_label,
+      from_zone: memberSite.deciplus_zone_id || null,
+      to_zone: orderGymConfig.deciplus_zone_id || null,
+    });
+  } else if (
+    memberSite?.deciplus_label &&
+    memberSite.deciplus_label !== orderGymConfig.deciplus_label
+  ) {
+    logWarn('Fiche Deciplus sur un autre club que la commande — vente sur la salle commandée', {
+      order_id: order.order_id,
+      member_id: memberId,
+      ordered: orderGymConfig.deciplus_label,
+      fiche: memberSite.deciplus_label,
+      zone: memberSite.deciplus_zone_id || null,
+    });
+  }
+
+  return orderGymConfig;
+}
+
 async function processSaleJob(page, order, jobMeta = {}) {
   const t0 = Date.now();
   const mark = (label) => logInfo(`Timing bot · ${label}`, { order_id: order.order_id, ms: Date.now() - t0 });
@@ -375,6 +446,9 @@ async function processSaleJob(page, order, jobMeta = {}) {
   };
 
   if (!memberId) {
+    if (order.reuse_deciplus_member !== true) {
+      order.force_new_member = order.force_new_member !== false;
+    }
     memberResult = await findOrCreateMember(page, order, gymConfig);
     mark('member');
 
@@ -420,42 +494,17 @@ async function processSaleJob(page, order, jobMeta = {}) {
 
   const orderGymConfig = getGymConfig(order.gym);
   await openMemberCheck(page, memberId, orderGymConfig).catch(() => {});
-  const memberSite = await detectMemberGymConfig(page, orderGymConfig);
+  let memberSite = await detectMemberGymConfig(page, orderGymConfig);
+  gymConfig = await alignMemberGymForSale(page, memberId, order, memberSite);
+  await openMemberCheck(page, memberId, gymConfig).catch(() => {});
+  memberSite = await detectMemberGymConfig(page, gymConfig);
 
   if (isBalmaSaleTarget(memberSite, order)) {
     return {
       status: STATUS.MANUAL_REVIEW,
-      error: 'Fiche adhérent sur Balma — aucune inscription Boxing Center automatique',
+      error: 'Fiche adhérent encore sur Balma après migration — reprise manuelle',
       deciplus_member_id: memberId,
     };
-  }
-
-  if (String(order.gym || '').toLowerCase() === 'etats-unis') {
-    const saleGym = createGymConfig('etats-unis');
-    if (memberSite && isEtatsUnisDeciplusSite(memberSite)) {
-      const { migrateMemberToGym } = require('./migrate-gym');
-      await migrateMemberToGym(page, memberId, saleGym);
-      logInfo('Migration États-Unis → Minimes avant vente', {
-        order_id: order.order_id,
-        member_id: memberId,
-        from_zone: memberSite.deciplus_zone_id || null,
-      });
-    }
-    gymConfig = saleGym;
-  } else {
-    gymConfig = orderGymConfig;
-    if (
-      memberSite?.deciplus_label &&
-      memberSite.deciplus_label !== orderGymConfig.deciplus_label
-    ) {
-      logWarn('Fiche Deciplus sur un autre club que la commande — vente sur la salle commandée', {
-        order_id: order.order_id,
-        member_id: memberId,
-        ordered: orderGymConfig.deciplus_label,
-        fiche: memberSite.deciplus_label,
-        zone: memberSite.deciplus_zone_id || null,
-      });
-    }
   }
 
   let photoResult = null;
@@ -587,11 +636,16 @@ async function processSaleJob(page, order, jobMeta = {}) {
       badge_action: checkpoint.badge_action || null,
     };
   } else if (productConfig.requires_payment !== false && paid) {
-    if (ibanError) {
+    if (ibanError && !isPayplug4xPrelevementOrder(order)) {
       productConfig.paiement_comptant = true;
       productConfig.requires_iban = false;
       productConfig.skip_rib_prompt = true;
       logWarn('IBAN absent — vente Deciplus en comptant (1er mois déjà payé)', {
+        order_id: order.order_id,
+        member_id: memberId,
+      });
+    } else if (ibanError && isPayplug4xPrelevementOrder(order)) {
+      logWarn('IBAN absent — vente Deciplus 4× prélèvement (1er quart déjà payé)', {
         order_id: order.order_id,
         member_id: memberId,
       });

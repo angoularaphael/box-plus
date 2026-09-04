@@ -5242,19 +5242,30 @@ function createApp() {
   });
 
   async function markPayplugOrderPaid(order, payment) {
+    const meta = payment.metadata || {};
+    const payplug4xPrelev =
+      meta.payplug_4x_prelevement === '1' ||
+      meta.payplug_4x_prelevement === true ||
+      meta.billing_plan === 'rib' ||
+      order.payment?.billing_plan === 'rib';
     const plan =
-      payment.metadata?.payment_plan ||
+      meta.payment_plan ||
       order.payment?.payment_plan ||
-      'once';
+      (payplug4xPrelev ? '4x' : 'once');
     const hist = rememberPreviousPayplugId(order.payment, payment.id);
     const paid = await markPaymentPaid(order.order_id, {
       method: 'payplug',
-      payment_plan: plan,
-      billing_plan: order.payment?.billing_plan || payment.metadata?.billing_plan || null,
+      payment_plan: payplug4xPrelev || plan === '4x' ? '4x' : plan,
+      billing_plan: payplug4xPrelev ? 'rib' : order.payment?.billing_plan || meta.billing_plan || null,
+      payplug_4x_prelevement: payplug4xPrelev || undefined,
       payplug_payment_ids: hist,
       payplug_payment_id: payment.id,
       status: 'paid',
     });
+    if (payplug4xPrelev && paid) {
+      paid.requires_iban = true;
+      await saveOrderAsync(paid);
+    }
     return paid;
   }
 

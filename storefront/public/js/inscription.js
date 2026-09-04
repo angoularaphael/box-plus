@@ -486,15 +486,14 @@
       const via = mode === 'paypal_prelevement' ? 'PayPal' : 'PayPlug';
       return `
       <div class="fourx-schedule__inner">
-        <p class="fourx-schedule__title">4× sans frais ${via}</p>
+        <p class="fourx-schedule__title">Pour le 4× sans frais ${via} aujourd’hui : <strong>${quartLabel}&nbsp;€</strong></p>
         <ul>
-          <li><strong>Aujourd’hui</strong> — <strong>25&nbsp;%</strong> : <strong>${quartLabel}&nbsp;€</strong></li>
-          <li><strong>Ensuite</strong> — saisie de votre RIB pour 3 prélèvements automatiques</li>
+          <li>Aujourd’hui : <strong>${quartLabel}&nbsp;€</strong> CB ${via} puis saisissez votre RIB pour les prélèvements automatiques.</li>
+          <li>1er paiement par carte puis saisissez votre RIB pour les 3 autres échéances</li>
           <li><strong>${dates[1]}</strong> — 2ᵉ échéance ${quartLabel}&nbsp;€</li>
           <li><strong>${dates[2]}</strong> — 3ᵉ échéance ${quartLabel}&nbsp;€</li>
           <li><strong>${dates[3]}</strong> — 4ᵉ échéance ${quartLabel}&nbsp;€</li>
         </ul>
-        <p class="fourx-schedule__note">Vente enregistrée sur Deciplus en 4× prélèvement${totalLabel ? ` (${totalLabel})` : ''}.</p>
       </div>`;
     }
     if (mode === 'paypal') {
@@ -647,7 +646,7 @@
     const amount = priceLabel(product);
     if (supportsInstallmentChoice(product)) {
       const quart = ((Number(product.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
-      return `Montant total : <strong>${amount}</strong> — 1×, 4× PayPal sans frais, ou 4× PayPlug : <strong>${quart}&nbsp;€</strong> (25&nbsp;%) puis RIB`;
+      return `Montant total : <strong>${amount}</strong> — 1×, 4× PayPal sans frais, ou 4× PayPlug : <strong>${quart}&nbsp;€</strong> via PayPal ou PayPlug`;
     }
     if (isComptantLikeProduct(product)) {
       return `Paiement de : <strong>${amount}</strong>`;
@@ -1170,7 +1169,7 @@
           cardTitle: portetViaCawl ? '4× sans frais' : '4× sans frais PayPlug',
           cardSmall: portetViaCawl
             ? 'Carte bancaire'
-            : `${quart} € (25 %) par carte, puis RIB`,
+            : `${quart} € via PayPlug`,
           paypalTitle: 'PayPal 4×',
           paypalSmall: portetPaypal4x
             ? '4× sans frais via PayPal (Pay Later si éligible)'
@@ -1195,7 +1194,7 @@
                 <strong>En 4× sans frais</strong>
                 <small>${
                   payplug4xPrelev
-                    ? `PayPlug : ${quart}&nbsp;€ (25&nbsp;%) par carte puis RIB — ou 4× sans frais via PayPal.`
+                    ? `PayPlug : ${quart}&nbsp;€ via PayPlug — ou 4× sans frais via PayPal.`
                     : portetPaypal4x
                       ? 'Via PayPal Portet (Pay Later si éligible).'
                       : 'Via PayPal (Pay Later si éligible).'
@@ -1353,7 +1352,7 @@
               ? fourMethod === 'paypal'
                 ? `Payer ${totalLabel} via PayPal (4× si éligible)`
                 : payplug4xPrelev
-                  ? `Payer ${quart} € maintenant (25 % — 4× PayPlug)`
+                  ? `Payer ${quart} € via PayPlug`
                   : `Payer ${quart} € maintenant (4× sans frais)`
               : 'Payer en une fois';
         }

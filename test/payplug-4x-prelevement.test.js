@@ -184,6 +184,41 @@ describe('PayPlug 4× prélèvement (25 % CB + RIB)', () => {
     assert.match(cfg.deciplus_product_name, /ENFANTS 295.*4x SANS FRAIS/i);
   });
 
+  it('détecte 4× PayPlug même sans billing_plan rib (quart payé)', () => {
+    assert.equal(
+      isPayplug4xPrelevementOrder({
+        payment: { payment_plan: '4x', method: 'payplug', amount: 64.75, status: 'paid' },
+        product_snapshot: { price_cents: 25900 },
+      }),
+      true
+    );
+    assert.equal(
+      isPayplug4xPrelevementOrder({
+        payment: {
+          payment_plan: 'once',
+          method: 'payplug',
+          amount: 64.75,
+          metadata: { payplug_4x_prelevement: '1' },
+        },
+      }),
+      true
+    );
+  });
+
+  it('buildProductConfig — quart PayPlug sans billing_plan rib', () => {
+    const cfg = buildProductConfig(
+      {
+        product_name: 'OFFRE PROMO 12 MOIS',
+        payment: { payment_plan: '4x', method: 'payplug', amount: 64.75, status: 'paid' },
+        product_snapshot: { price_cents: 25900 },
+      },
+      { id: 100, title: 'OFFRE PROMO 12 MOIS', type: 'abo', categoryId: 'abo', price: 259 }
+    );
+    assert.equal(cfg.paiement_comptant, false);
+    assert.equal(cfg.payplug_4x_prelevement, true);
+    assert.match(cfg.deciplus_product_name, /4X PRELEVEMENT/i);
+  });
+
   it('buildProductConfig — vente abo + IBAN 259 €, pas comptant', () => {
     const cfg = buildProductConfig(
       {
