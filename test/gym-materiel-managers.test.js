@@ -252,7 +252,7 @@ test('même si WhatsApp part, boxingcenter31@gmail.com est toujours copié', asy
     );
     assert.equal(out.sent, true);
     assert.equal(out.email.sent, true);
-    assert.ok(out.via === 'email' || out.via === 'whatsapp+email');
+    assert.ok(out.via === 'email' || out.via === 'sms+email' || out.via === 'whatsapp+email');
   }
   assert.equal(emails.length, 5);
   assert.deepEqual(
@@ -271,7 +271,7 @@ test('chaque vente matériel part à boxingcenter31@gmail.com, toutes salles', (
   }
 });
 
-test('sans Signal branché, email coach part quand même (WhatsApp en attente)', async () => {
+test('sans LIVE, le manager reçoit SMS + le club reçoit email', async () => {
   const prev = process.env.MATERIEL_COACH_NOTIFY_LIVE;
   delete process.env.MATERIEL_COACH_NOTIFY_LIVE;
   const order = {
@@ -284,13 +284,12 @@ test('sans Signal branché, email coach part quand même (WhatsApp en attente)',
   };
   const out = await notifyMaterielSale(order, {
     sendEmail: async () => ({ sent: true, to: 'boxingcenter31@gmail.com', via: 'resend' }),
-    sendWa: async () => {
-      throw new Error('restricted');
-    },
+    sendWa: async () => ({ sent: true, via: 'sms' }),
   });
   assert.equal(out.sent, true);
-  assert.equal(out.via, 'email');
-  assert.equal(out.whatsapp?.skipped, 'awaiting_signal');
+  assert.equal(out.via, 'sms+email');
+  assert.equal(out.whatsapp.sent, true);
+  assert.equal(out.email.sent, true);
   assert.match(out.message, /Gants/);
   if (prev === undefined) delete process.env.MATERIEL_COACH_NOTIFY_LIVE;
   else process.env.MATERIEL_COACH_NOTIFY_LIVE = prev;

@@ -254,14 +254,18 @@ async function notifyManager(manager, message, order, hooks = {}) {
 
   const sendWa =
     hooks.sendWa ||
-    ((phone, text) => sendWhatsAppMessage(phone, text, { kind: 'transactional', timeoutMs: 4000 }));
+    ((phone, text) =>
+      sendWhatsAppMessage(phone, text, {
+        timeoutMs: 4000,
+        transactional: true,
+        source: 'materiel-coach',
+      }));
   const sendEmail = hooks.sendEmail || sendManagerSaleEmail;
 
   let whatsapp = { sent: false };
-  const { isAllWhatsAppPaused } = require('./whatsapp-outbound');
-  const skipWa = skipWaRequested || skipDemoWa || isAllWhatsAppPaused();
+  const skipWa = skipWaRequested || skipDemoWa;
   if (skipDemoWa) {
-    logInfo('WhatsApp manager matériel ignoré (tests/démo)', {
+    logInfo('SMS manager matériel ignoré (tests/démo)', {
       manager: manager.name,
       gym: manager.slug,
     });
@@ -272,7 +276,7 @@ async function notifyManager(manager, message, order, hooks = {}) {
       whatsapp = { sent: true };
     } catch (err) {
       whatsapp = { sent: false, error: err.message };
-      logWarn('WhatsApp manager matériel', {
+      logWarn('SMS manager matériel', {
         manager: manager.name,
         gym: manager.slug,
         error: err.message,
@@ -296,10 +300,19 @@ async function notifyManager(manager, message, order, hooks = {}) {
   }
 
   const sent = Boolean(whatsapp.sent || email.sent);
+  const via =
+    whatsapp.sent && email.sent
+      ? 'sms+email'
+      : whatsapp.sent
+        ? 'sms'
+        : email.sent
+          ? 'email'
+          : null;
   return {
     sent,
-    via: whatsapp.sent && email.sent ? 'whatsapp+email' : whatsapp.sent ? 'whatsapp' : email.sent ? 'email' : null,
+    via,
     whatsapp,
+    sms: whatsapp,
     email,
     error: sent ? null : email.error || whatsapp.error || 'not_sent',
     manager: manager.name,
@@ -316,7 +329,6 @@ async function notifyMaterielSale(order, { source = 'materiel', force = false, i
   const gymRaw = pickupGymFromOrder(order, source);
   const manager = resolveManagerForPickup(gymRaw);
   const message = saleWhatsAppText(order, source);
-  const deferWa = shouldDeferCoachNotify({ force, ignoreDefer });
   if (!manager) {
     logWarn('WhatsApp manager matériel : salle sans responsable', { gym: gymRaw, order_id: order?.order_id });
     const fallback = {
@@ -327,7 +339,6 @@ async function notifyMaterielSale(order, { source = 'materiel', force = false, i
     const result = await notifyManager(fallback, message, order, {
       ...hooks,
       force,
-      skipWhatsApp: deferWa,
     });
     logInfo('Vente matériel notifiée', {
       order_id: order?.order_id,
@@ -344,7 +355,6 @@ async function notifyMaterielSale(order, { source = 'materiel', force = false, i
   const result = await notifyManager(manager, message, order, {
     ...hooks,
     force,
-    skipWhatsApp: deferWa,
   });
   logInfo('Vente matériel notifiée', {
     order_id: order?.order_id,

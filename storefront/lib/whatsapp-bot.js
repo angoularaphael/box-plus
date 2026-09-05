@@ -236,11 +236,11 @@ async function logoutWhatsAppBot() {
   return { ok: true, channel: 'sms', skipped: true };
 }
 
-async function sendWhatsAppMessage(phone, message, { timeoutMs = 20000, source = 'boutique' } = {}) {
+async function sendWhatsAppMessage(phone, message, { timeoutMs = 20000, source = 'boutique', transactional = false } = {}) {
   const to = toE164(phone);
   if (!to) throw new Error('Numéro invalide');
   const { isAllWhatsAppPaused } = require('./whatsapp-outbound');
-  if (isAllWhatsAppPaused()) throw new Error('Envois SMS en pause');
+  if (!transactional && isAllWhatsAppPaused()) throw new Error('Envois SMS en pause');
   try {
     const result = await smsFetch('/api/messages/send', {
       method: 'POST',
