@@ -385,12 +385,19 @@ function hasDeciplusFiche(order = {}) {
   return deciplusSaleSettled(order);
 }
 
+const DISPATCH_IN_PROGRESS_MS = Number(process.env.BOXPLUS_DISPATCH_IN_PROGRESS_MS || 2 * 60 * 1000);
+
 function dispatchInProgress(order = {}, now = Date.now()) {
   const dr = order.dispatch_result || {};
   if (dr.synced_from_bot) return false;
   if (dr.queued === false && dr.reason) return false;
   const at = Date.parse(order.dispatched_at || '');
-  return Number.isFinite(at) && now - at < 20 * 60 * 1000;
+  if (!Number.isFinite(at)) return false;
+  if (now - at >= DISPATCH_IN_PROGRESS_MS) return false;
+  if (order.deciplus_member_id || order.deciplus_sale_id) return false;
+  const st = String(order.bot_status || '').toLowerCase();
+  if (st === 'success' || st === 'manual_ok' || st === 'manual_coach') return false;
+  return true;
 }
 
 function missingFicheReason(order = {}, { inProgress = false } = {}) {

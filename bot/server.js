@@ -124,6 +124,16 @@ function createBotServer() {
     }
   });
 
+  app.post('/api/queue/requeue-stale', (req, res) => {
+    if (!isAuthorized(req)) {
+      return res.status(401).json({ ok: false, error: 'unauthorized' });
+    }
+    const { requeueInterruptedJobs } = require('../lib/queue');
+    const maxAgeMs = Number(req.body?.max_age_ms || process.env.BOT_STALE_PROCESSING_MS || 3 * 60 * 1000);
+    const count = requeueInterruptedJobs(maxAgeMs, { includeSessionErrors: true });
+    res.json({ ok: true, requeued: count, max_age_ms: maxAgeMs, stats: getQueueStats() });
+  });
+
   return app;
 }
 

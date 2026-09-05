@@ -19,17 +19,31 @@ test('dispatchInProgress ignore un envoi déjà traité sans file', () => {
   );
 });
 
-test('dispatchInProgress reste vrai quand le job est en file', () => {
+test('dispatchInProgress reste vrai quand le job est en file (< 2 min)', () => {
   const now = Date.parse('2026-09-05T09:00:00.000Z');
   assert.equal(
     dispatchInProgress(
       {
-        dispatched_at: '2026-09-05T08:55:37.150Z',
+        dispatched_at: '2026-09-05T08:59:00.000Z',
         dispatch_result: { queued: true, forwarded: true },
       },
       now
     ),
     true
+  );
+});
+
+test('dispatchInProgress expire après 2 min sans retour bot', () => {
+  const now = Date.parse('2026-09-05T09:05:00.000Z');
+  assert.equal(
+    dispatchInProgress(
+      {
+        dispatched_at: '2026-09-05T09:00:00.000Z',
+        dispatch_result: { queued: true, forwarded: true },
+      },
+      now
+    ),
+    false
   );
 });
 

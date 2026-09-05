@@ -1773,7 +1773,11 @@ function createApp() {
       const { syncOrderFromBotProcessed } = require('../lib/bot-sync');
       const since = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString();
       const paid = await listPaidOrdersSinceAsync(since);
-      const missing = missingFicheRows(paid).filter((row) => !row.in_progress);
+      const missing = missingFicheRows(paid).filter((row) => {
+        if (!row.in_progress) return true;
+        const order = paid.find((o) => o.order_id === row.order_id);
+        return order ? !dispatchInProgress(order) : true;
+      });
       const batch = missing.slice(0, 6);
       const results = [];
       for (const row of batch) {
