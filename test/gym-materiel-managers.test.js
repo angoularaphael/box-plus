@@ -271,7 +271,7 @@ test('chaque vente matériel part à boxingcenter31@gmail.com, toutes salles', (
   }
 });
 
-test('sans Signal branché, la vente matériel reste en attente coach', async () => {
+test('sans Signal branché, email coach part quand même (WhatsApp en attente)', async () => {
   const prev = process.env.MATERIEL_COACH_NOTIFY_LIVE;
   delete process.env.MATERIEL_COACH_NOTIFY_LIVE;
   const order = {
@@ -282,10 +282,15 @@ test('sans Signal branché, la vente matériel reste en attente coach', async ()
     customer: { first_name: 'Léa', last_name: 'Martin', phone: '0611223344' },
     items: [{ name: 'Gants', variant_label: '12oz', qty: 1, line_total_cents: 1370 }],
   };
-  const out = await notifyMaterielSale(order);
-  assert.equal(out.sent, false);
-  assert.equal(out.skipped, 'awaiting_signal');
-  assert.equal(out.pending, true);
+  const out = await notifyMaterielSale(order, {
+    sendEmail: async () => ({ sent: true, to: 'boxingcenter31@gmail.com', via: 'resend' }),
+    sendWa: async () => {
+      throw new Error('restricted');
+    },
+  });
+  assert.equal(out.sent, true);
+  assert.equal(out.via, 'email');
+  assert.equal(out.whatsapp?.skipped, 'awaiting_signal');
   assert.match(out.message, /Gants/);
   if (prev === undefined) delete process.env.MATERIEL_COACH_NOTIFY_LIVE;
   else process.env.MATERIEL_COACH_NOTIFY_LIVE = prev;

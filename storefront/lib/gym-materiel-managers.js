@@ -173,9 +173,8 @@ function isMaterielCoachNotifyLive(env = process.env) {
   return v === '1' || v === 'true' || v === 'yes';
 }
 
-function shouldDeferCoachNotify({ force = false, ignoreDefer = false, hooks = {} } = {}) {
+function shouldDeferCoachNotify({ force = false, ignoreDefer = false } = {}) {
   if (force || ignoreDefer) return false;
-  if (hooks.sendWa || hooks.sendEmail) return false;
   return !isMaterielCoachNotifyLive();
 }
 
@@ -199,18 +198,34 @@ function escapeMailHtml(value) {
 
 async function sendManagerSaleEmail(manager, message, order) {
   const to = clubMaterielEmail();
-  const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
-  if (!isConfigured()) return { sent: false, reason: 'brevo_not_configured', to };
   const ref = order?.order_id || '';
   const gymLabel = manager?.label || manager?.name || manager?.slug || 'salle';
-  const result = await sendEmailViaBrevo({
-    to,
-    subject: `Vente matériel — ${gymLabel} — ${ref}`.trim(),
-    text: message,
-    html: `<p style="font-family:Arial,sans-serif">Nouvelle vente matériel — ${escapeMailHtml(gymLabel)}.</p>
-<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;font-size:15px">${escapeMailHtml(message)}</pre>`,
-  });
-  return { sent: Boolean(result), to };
+  const subject = `Vente matériel — ${gymLabel} — ${ref}`.trim();
+  const html = `<p style="font-family:Arial,sans-serif">Nouvelle vente matériel — ${escapeMailHtml(gymLabel)}.</p>
+<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;font-size:15px">${escapeMailHtml(message)}</pre>`;
+
+  const { sendEmailViaResend, isConfigured: resendOk } = require('./resend-send');
+  if (resendOk()) {
+    try {
+      const result = await sendEmailViaResend({
+        to,
+        subject,
+        text: message,
+        html,
+        fromName: 'Boxing Center',
+        replyTo: 'boxingcentertls@gmail.com',
+        tags: [{ name: 'type', value: 'materiel-coach' }],
+      });
+      return { sent: true, to, via: 'resend', messageId: result.messageId };
+    } catch (err) {
+      logWarn('Email club matériel Resend', { to, error: err.message });
+    }
+  }
+
+  const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
+  if (!isConfigured()) return { sent: false, reason: 'email_not_configured', to };
+  const result = await sendEmailViaBrevo({ to, subject, text: message, html });
+  return { sent: Boolean(result), to, via: 'brevo' };
 }
 
 function applyManagerNotify(order, result, source) {
@@ -234,6 +249,7 @@ function applyManagerNotify(order, result, source) {
 async function notifyManager(manager, message, order, hooks = {}) {
   if (!manager?.phone && !managerEmail(manager)) return { sent: false, error: 'no_manager' };
   const force = Boolean(hooks.force);
+  const skipWaRequested = Boolean(hooks.skipWhatsApp);
   const skipDemoWa = !force && shouldSkipWhatsApp(order);
 
   const sendWa =
@@ -243,7 +259,7 @@ async function notifyManager(manager, message, order, hooks = {}) {
 
   let whatsapp = { sent: false };
   const { isAllWhatsAppPaused } = require('./whatsapp-outbound');
-  const skipWa = skipDemoWa || isAllWhatsAppPaused();
+  const skipWa = skipWaRequested || skipDemoWa || isAllWhatsAppPaused();
   if (skipDemoWa) {
     logInfo('WhatsApp manager matériel ignoré (tests/démo)', {
       manager: manager.name,
@@ -263,7 +279,7 @@ async function notifyManager(manager, message, order, hooks = {}) {
       });
     }
   } else if (skipWa) {
-    whatsapp = { sent: false, skipped: 'restricted' };
+    whatsapp = { sent: false, skipped: skipWaRequested ? 'awaiting_signal' : 'restricted' };
   }
 
   let email = { sent: false };
@@ -300,23 +316,7 @@ async function notifyMaterielSale(order, { source = 'materiel', force = false, i
   const gymRaw = pickupGymFromOrder(order, source);
   const manager = resolveManagerForPickup(gymRaw);
   const message = saleWhatsAppText(order, source);
-  if (shouldDeferCoachNotify({ force, ignoreDefer, hooks })) {
-    logInfo('Vente matériel en attente Signal/SMS coach', {
-      order_id: order?.order_id,
-      gym: manager?.slug || gymRaw,
-      manager: manager?.name || null,
-      source,
-    });
-    return {
-      sent: false,
-      pending: true,
-      skipped: 'awaiting_signal',
-      manager: manager?.name || null,
-      gym: manager?.slug || pickupGymSlug(gymRaw) || gymRaw || null,
-      message,
-      source,
-    };
-  }
+  const deferWa = shouldDeferCoachNotify({ force, ignoreDefer });
   if (!manager) {
     logWarn('WhatsApp manager matériel : salle sans responsable', { gym: gymRaw, order_id: order?.order_id });
     const fallback = {
@@ -324,7 +324,11 @@ async function notifyMaterielSale(order, { source = 'materiel', force = false, i
       label: gymRaw || 'salle inconnue',
       slug: pickupGymSlug(gymRaw) || 'unknown',
     };
-    const result = await notifyManager(fallback, message, order, { ...hooks, force });
+    const result = await notifyManager(fallback, message, order, {
+      ...hooks,
+      force,
+      skipWhatsApp: deferWa,
+    });
     logInfo('Vente matériel notifiée', {
       order_id: order?.order_id,
       gym: gymRaw,
@@ -337,7 +341,11 @@ async function notifyMaterielSale(order, { source = 'materiel', force = false, i
     });
     return { ...result, error: result.sent ? null : result.error || 'unknown_gym', gym: gymRaw, message };
   }
-  const result = await notifyManager(manager, message, order, { ...hooks, force });
+  const result = await notifyManager(manager, message, order, {
+    ...hooks,
+    force,
+    skipWhatsApp: deferWa,
+  });
   logInfo('Vente matériel notifiée', {
     order_id: order?.order_id,
     gym: manager.slug,

@@ -87,10 +87,75 @@ function buildOfferCampaignEmail({ name, hubUrl }) {
   };
 }
 
+const ENFANTS_CAMPAIGN_URL = 'https://boutique.boxingcenter.fr/abonnements#enfants';
+
+function enfantsCampaignBodyLines() {
+  return [
+    "Salut c'est David de Boxing Center.",
+    'Les cours enfants ont repris dans nos 5 clubs et il reste encore des places disponibles.',
+    '',
+    'Baby Boxe dès 3 ans, Boxe Éducative enfants/ados pour les 7/11 et 12/16 ans — cours encadrés par des coachs professionnels.',
+    '',
+    'Baby Boxe : samedi 14h15-15h.',
+    'Boxe Éducative (7/11 ans et 12/16 ans) : mercredi et samedi 15h/16h & 16h/17h.',
+    'Vacances scolaires incluses.',
+    '',
+    'Paiement possible en 4× sans frais depuis notre boutique en ligne :',
+    ENFANTS_CAMPAIGN_URL,
+    '',
+    "Séance d'essai offerte pour les enfants.",
+    '',
+    'L’équipe Boxing Center',
+  ];
+}
+
+function buildEnfantsCampaignEmail({ name } = {}) {
+  const who = firstNameOf(name);
+  const greeting = who
+    ? `Salut ${who}, c'est David de Boxing Center.`
+    : "Salut, c'est David de Boxing Center.";
+  const subject = 'Cours enfants — Boxing Center';
+  const body = enfantsCampaignBodyLines().slice(1);
+  const emailText = [greeting, '', ...body].join('\n');
+  return {
+    fromName: CAMPAIGN_FROM_NAME,
+    subject,
+    html: undefined,
+    emailText,
+    headers: undefined,
+    attachments: [],
+    unsubscribeUrl: '',
+    preheader: '',
+  };
+}
+
+function enfantsCampaignSmsText() {
+  return [
+    "Salut c'est David de Boxing Center.",
+    'Les cours enfants ont repris dans nos 5 clubs et il reste encore des places disponibles.',
+    '',
+    'Baby Boxe des 3 ans, Boxe Educative enfants/ados pour les 7/11 et 12/16 ans. Cours encadres par des coachs professionnels.',
+    '',
+    'Baby Boxe : samedi 14h15-15h.',
+    'Boxe Educative (7/11 ans et 12/16 ans) : mercredi et samedi 15h/16h et 16h/17h.',
+    'Vacances scolaires incluses.',
+    '',
+    'Paiement possible en 4x sans frais depuis notre boutique en ligne :',
+    ENFANTS_CAMPAIGN_URL,
+    '',
+    "Seance d'essai offerte pour les enfants.",
+    '',
+    "L'equipe Boxing Center",
+  ].join('\n');
+}
+
 module.exports = {
   CAMPAIGN_FROM_NAME,
   CAMPAIGN_SIGN_OFF,
+  ENFANTS_CAMPAIGN_URL,
   buildOfferCampaignEmail,
+  buildEnfantsCampaignEmail,
+  enfantsCampaignSmsText,
   buildDavidPlainEmail,
   buildInscriptionNudgeEmail,
   buildUnsubscribeUrl: () => '',
