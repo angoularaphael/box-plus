@@ -510,6 +510,16 @@ async function dispatchLifecycleOrder(order, { force_requeue = false } = {}) {
   const hydrated = await hydrateOrderMedia(order);
   const product = findProduct(order.product_id) || order.product_snapshot;
   const payload = applyDeciplusPhoto(buildOrderFromLifecycle(hydrated, product), hydrated);
+  const short = hydrated.customer_short || {};
+  const full = hydrated.customer_full || {};
+  if (payload.customer) {
+    if (!payload.customer.email && (short.email || full.email)) {
+      payload.customer.email = short.email || full.email;
+    }
+    if (!payload.customer.phone && (short.phone || full.phone)) {
+      payload.customer.phone = short.phone || full.phone;
+    }
+  }
   const needsSale = orderNeedsDeciplusSale(order);
   if (force_requeue || needsSale) {
     payload.force_requeue = true;
@@ -540,12 +550,22 @@ async function dispatchLifecycleOrder(order, { force_requeue = false } = {}) {
     }
   }
   const result = await dispatchOrder(payload);
-  order.dispatched_at = new Date().toISOString();
+  if (result.synced_from_bot) {
+    const { loadOrderAsync } = require('./lib/order-lifecycle');
+    const fresh = await loadOrderAsync(order.order_id);
+    if (fresh) Object.assign(order, fresh);
+  }
   order.dispatch_result = {
     queued: result.queued,
     forwarded: result.forwarded,
     reason: result.reason || null,
+    synced_from_bot: Boolean(result.synced_from_bot),
   };
+  if (result.queued !== false && !result.synced_from_bot) {
+    order.dispatched_at = new Date().toISOString();
+  } else if (result.synced_from_bot) {
+    order.dispatched_at = order.dispatched_at || null;
+  }
   const { saveOrderAsync } = require('./lib/order-lifecycle');
   await saveOrderAsync(order);
   logInfo('Commande lifecycle → BOXPLUS', {
@@ -1750,6 +1770,7 @@ function createApp() {
     try {
       const { missingFicheRows, dispatchInProgress } = require('./lib/admin-stats');
       const { orderNeedsDeciplusSale } = require('./lib/deciplus-sale-reconcile');
+      const { syncOrderFromBotProcessed } = require('../lib/bot-sync');
       const since = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString();
       const paid = await listPaidOrdersSinceAsync(since);
       const missing = missingFicheRows(paid).filter((row) => !row.in_progress);
@@ -1759,6 +1780,18 @@ function createApp() {
         const order = await loadOrderAsync(row.order_id);
         if (!order) continue;
         if (dispatchInProgress(order) || (order.deciplus_member_id && order.deciplus_sale_id)) continue;
+        const synced = await syncOrderFromBotProcessed(row.order_id, { order });
+        if (synced.synced) {
+          results.push({
+            order_id: row.order_id,
+            name: row.name,
+            ok: true,
+            synced: true,
+            deciplus_sale_id: synced.deciplus_sale_id,
+            deciplus_member_id: synced.deciplus_member_id,
+          });
+          continue;
+        }
         if (!orderNeedsDeciplusSale(order) && !order.signature?.signed_at && !order.aventure) continue;
         order.sale_reconcile_attempts = 0;
         try {

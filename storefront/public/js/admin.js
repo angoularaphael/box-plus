@@ -2069,7 +2069,8 @@
       const missing = data.missing_fiches || [];
       const reasonLabel = {
         en_cours: 'En cours (2 min)',
-        envoye_sans_retour: 'Envoyé, pas d’ID Deciplus',
+        bot_error: 'Erreur bot',
+        envoye_sans_retour: 'Déjà traité côté bot — sync en cours',
         bot_error: 'Erreur bot',
         jamais_envoye: 'Pas encore envoyé',
       };

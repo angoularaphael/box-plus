@@ -319,7 +319,36 @@ async function dispatchOrder(rawPayload) {
 
   if (process.env.BOXPLUS_BOT_URL || process.env.BOXPLUS_BOT_URL_OPS) {
     const { forwardJobToBot } = require('../../lib/bot-forward');
+    const { syncOrderFromBotProcessed } = require('../../lib/bot-sync');
     const result = await forwardJobToBot(order);
+    if (!result.queued && result.reason === 'already_processed') {
+      const synced = await syncOrderFromBotProcessed(order.order_id, { order });
+      if (synced.synced) {
+        return {
+          queued: false,
+          forwarded: true,
+          synced_from_bot: true,
+          reason: 'already_processed',
+          ...synced,
+        };
+      }
+      if (result.processed?.deciplus_sale_id || result.processed?.deciplus_member_id) {
+        const { applyBotSaleStatus } = require('./order-lifecycle');
+        await applyBotSaleStatus(order.order_id, {
+          status: result.processed.deciplus_sale_id ? 'success' : 'manual_review',
+          deciplus_member_id: result.processed.deciplus_member_id || undefined,
+          deciplus_sale_id: result.processed.deciplus_sale_id || undefined,
+          error: result.processed.error || null,
+        });
+        return {
+          queued: false,
+          forwarded: true,
+          synced_from_bot: true,
+          reason: 'already_processed',
+          order_id: order.order_id,
+        };
+      }
+    }
     return { queued: result.queued !== false, forwarded: true, ...result };
   }
 

@@ -386,13 +386,18 @@ function hasDeciplusFiche(order = {}) {
 }
 
 function dispatchInProgress(order = {}, now = Date.now()) {
+  const dr = order.dispatch_result || {};
+  if (dr.synced_from_bot) return false;
+  if (dr.queued === false && dr.reason) return false;
   const at = Date.parse(order.dispatched_at || '');
   return Number.isFinite(at) && now - at < 20 * 60 * 1000;
 }
 
 function missingFicheReason(order = {}, { inProgress = false } = {}) {
   if (inProgress) return 'en_cours';
-  if (order.bot_error) return 'bot_error';
+  const st = String(order.bot_status || '').toLowerCase();
+  if (order.bot_error || st === 'manual_review' || st === 'error') return 'bot_error';
+  if (order.dispatch_result?.reason === 'already_processed') return 'envoye_sans_retour';
   if (order.dispatched_at) return 'envoye_sans_retour';
   return 'jamais_envoye';
 }
@@ -681,6 +686,7 @@ module.exports = {
   listInscriptionMaterielSales,
   collectInscriptionMaterielOrders,
   missingFicheRows,
+  missingFicheReason,
   hasDeciplusFiche,
   dispatchInProgress,
   orderDisplayName,
