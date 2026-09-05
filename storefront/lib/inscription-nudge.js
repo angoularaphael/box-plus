@@ -210,6 +210,27 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
+const TRANSACTIONAL_FROM_NAME = 'Boxing Center';
+const TRANSACTIONAL_EMAIL_TAGS = [{ name: 'category', value: 'transactional' }];
+const TRANSACTIONAL_EMAIL_HEADERS = {
+  'X-Transactional': 'true',
+};
+
+function htmlToPlainText(html) {
+  return String(html || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/h[1-6]>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function firstName(order) {
   return String(order?.customer_short?.first_name || order?.customer_full?.first_name || '').trim();
 }
@@ -361,21 +382,19 @@ async function sendResumeEmail(order, { kind = 'resume', to } = {}) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(dest)) {
     return { sent: false, skipped: true, reason: 'invalid_email' };
   }
-  const { buildInscriptionNudgeEmail } = require('./campaign-email');
   const { sendEmailViaResend, isConfigured } = require('./resend-send');
   if (!isConfigured()) return { sent: false, error: 'resend_not_configured' };
-  const copy = buildInscriptionNudgeEmail({
-    name: firstName(order),
-    url: describeResume(order, { kind }).url,
-    paidDossier: false,
-  });
+  const subject = resumeEmailSubject(order, { kind });
+  const html = resumeEmailHtml(order, { kind });
   try {
     const result = await sendEmailViaResend({
       to: dest,
-      subject: copy.subject,
-      html: undefined,
-      text: copy.emailText,
-      fromName: copy.fromName,
+      subject,
+      html,
+      text: htmlToPlainText(html),
+      fromName: TRANSACTIONAL_FROM_NAME,
+      tags: TRANSACTIONAL_EMAIL_TAGS,
+      headers: TRANSACTIONAL_EMAIL_HEADERS,
     });
     if (!result) return { sent: false, error: 'resend_not_configured' };
     return { sent: true, via: result.via || 'resend', to: dest };
@@ -412,7 +431,7 @@ async function sendResumeWhatsApp(order, { kind = 'resume' } = {}) {
   const raw = customerPhone(order);
   const dest = toWhatsAppPhone(raw);
   if (!dest) return { sent: false, error: 'no_phone' };
-  await sendWhatsAppMessage(raw, resumeWhatsAppText(order, { kind }), { kind: 'promo' });
+  await sendWhatsAppMessage(raw, resumeWhatsAppText(order, { kind }), { source: 'inscription-reprise' });
   return { sent: true, to: dest, via: 'sms' };
 }
 
@@ -513,21 +532,19 @@ async function sendNudgeEmail(order) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(item.email).trim())) {
     return { sent: false, skipped: true, reason: 'invalid_email' };
   }
-  const { buildInscriptionNudgeEmail } = require('./campaign-email');
   const { sendEmailViaResend, isConfigured } = require('./resend-send');
   if (!isConfigured()) return { sent: false, reason: 'resend_not_configured' };
-  const copy = buildInscriptionNudgeEmail({
-    name: firstName(order),
-    url: item.resume_url || nudgeResumeUrl(order),
-    paidDossier: isPaidIncomplete(order) && resumeStep(order) >= STEPS.IBAN,
-  });
+  const subject = nudgeEmailSubject();
+  const html = nudgeEmailHtml(order);
   try {
     const result = await sendEmailViaResend({
       to: item.email,
-      subject: copy.subject,
-      html: undefined,
-      text: copy.emailText,
-      fromName: copy.fromName,
+      subject,
+      html,
+      text: htmlToPlainText(html),
+      fromName: TRANSACTIONAL_FROM_NAME,
+      tags: TRANSACTIONAL_EMAIL_TAGS,
+      headers: TRANSACTIONAL_EMAIL_HEADERS,
     });
     if (!result) return { sent: false, reason: 'resend_not_configured' };
     return { sent: true, via: result.via || 'resend' };
@@ -543,7 +560,7 @@ async function sendNudgeWhatsApp(order) {
   const { toWhatsAppPhone, sendWhatsAppMessage } = require('./whatsapp-bot');
   const to = toWhatsAppPhone(phone);
   if (!to) return { sent: false, skipped: true, reason: 'no_phone' };
-  await sendWhatsAppMessage(phone, nudgeWhatsAppText(order), { kind: 'promo' });
+  await sendWhatsAppMessage(phone, nudgeWhatsAppText(order), { source: 'inscription-relance' });
   return { sent: true, phone: to };
 }
 

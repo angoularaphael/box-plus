@@ -51,6 +51,11 @@
 
     const initialCombo = combos.find((c) => String(c.id) === String(p.default_variant_id)) || combos[0];
 
+    const pickupDelay = p.pickup_same_day
+      ? 'Possibilité de retrait dès le jour même.'
+      : 'Retrait sous 48h après commande.';
+    const pickupNote = p.pickup_note || 'Choisissez votre salle de retrait au panier — retrait en club uniquement.';
+
     root.innerHTML = `
       <div class="breadcrumb"><a href="${L('/')}">Accueil</a> / <a href="${L('/materiel')}">Matériel</a> / ${p.name}</div>
       <div class="product-detail-grid">
@@ -62,7 +67,7 @@
           <div class="materiel-price" id="productPrice">${p.price_label}${p.price_was_label ? ` <s class="materiel-price-was">${p.price_was_label}</s>` : ''}</div>
           <p id="productStock" class="stock-ok"></p>
           ${hasVariants ? `<label>Variante<select id="variantSelect">${combos.map((c) => `<option value="${c.id}" data-price="${c.price_cents}" data-label="${c.price_label}" data-stock="${c.stock}" data-image="${c.image || p.image || ''}" ${String(c.id) === String(p.default_variant_id) ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label>` : ''}
-          <p class="product-pickup"><strong>Salle de retrait :</strong> ${p.pickup_note || 'choisissez votre salle au panier — retrait en club uniquement.'}</p>
+          <p class="product-pickup"><strong>Retrait :</strong> ${pickupDelay} ${pickupNote}</p>
           <label>Quantité<input type="number" id="qtyInput" min="1" value="1" max="99" /></label>
           <button type="button" class="btn block" id="addBtn">Ajouter au panier</button>
           <a href="${L('/panier')}" class="btn secondary block" style="margin-top:8px">Voir le panier</a>

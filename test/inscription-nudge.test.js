@@ -287,3 +287,41 @@ test('relance 30 min : due si bloqué à une étape, max 3 tentatives', () => {
     '2026-08-13T17:50:00.000Z'
   );
 });
+
+test('mails reprise / relance transactionnels — Boxing Center, HTML, sujet inscription', () => {
+  const prev = process.env.STORE_URL;
+  process.env.STORE_URL = 'https://boutique.boxingcenter.fr';
+  const {
+    resumeEmailSubject,
+    resumeEmailHtml,
+    nudgeEmailSubject,
+    nudgeEmailHtml,
+  } = require('../storefront/lib/inscription-nudge');
+  const unpaid = {
+    order_id: 'BC-TX',
+    access_token: 'c'.repeat(48),
+    product_id: 'dp-104',
+    step: 4,
+    customer_short: { first_name: 'Diego', last_name: 'Cardozo', email: 'd@test.local' },
+    customer_full: { gym: 'st-cyprien' },
+    product_snapshot: { name: 'OFFRE A 29€', price_cents: 2999, requires_payment: true },
+    payment: { status: 'failed' },
+  };
+  const subject = resumeEmailSubject(unpaid, { kind: 'pay' });
+  const html = resumeEmailHtml(unpaid, { kind: 'pay' });
+  assert.match(subject, /Boxing Center/);
+  assert.match(subject, /payer/i);
+  assert.match(html, /Boxing Center/);
+  assert.match(html, /Payer maintenant/);
+  assert.doesNotMatch(subject, /c’est David/i);
+
+  const paid = {
+    ...unpaid,
+    step: 6,
+    payment: { status: 'paid', paid_at: '2026-08-16T08:00:00.000Z' },
+  };
+  assert.match(nudgeEmailSubject(), /finalisé votre inscription Boxing Center/i);
+  assert.match(nudgeEmailHtml(paid), /dossier et la signature/i);
+  if (prev === undefined) delete process.env.STORE_URL;
+  else process.env.STORE_URL = prev;
+});

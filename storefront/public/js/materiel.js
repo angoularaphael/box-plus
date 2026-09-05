@@ -37,30 +37,47 @@
     });
   }
 
+  function defaultCombo(p) {
+    const combos = p.combinations?.length ? p.combinations : [];
+    if (!combos.length) return null;
+    return combos.find((c) => String(c.id) === String(p.default_variant_id)) || combos[0];
+  }
+
+  function hasMultipleVariants(p) {
+    const combos = p.combinations || [];
+    return combos.length > 1;
+  }
+
   function renderProduct(p) {
     const stock = stockInfo(p.stock);
+    const combo = defaultCombo(p);
+    const multi = hasMultipleVariants(p);
     const img = p.image
       ? `<div class="materiel-img"><img src="${A(p.image)}" alt="" class="materiel-img-photo" loading="lazy" /></div>`
       : `<div class="materiel-img-placeholder">${(p.category_label || p.category || 'Produit').slice(0, 12)}</div>`;
-    const disabled = p.stock <= 0 ? 'disabled' : '';
-    const variantId = p.default_variant_id || p.combinations?.[0]?.id || '';
     const featured = p.featured_first ? ' materiel-card--featured' : '';
     const price = p.price_was_label
       ? `<div class="materiel-price"><strong>${p.price_label}</strong> <s class="materiel-price-was">${p.price_was_label}</s></div>`
       : `<div class="materiel-price">${p.price_label}</div>`;
-    const badge = p.featured_first || p.destockage
-      ? `<span class="materiel-badge">Destockage</span>`
-      : '';
+    const badge = p.destockage ? `<span class="materiel-badge">Destockage</span>` : '';
+    const pickupHint = p.pickup_same_day
+      ? '<div class="materiel-pickup" style="font-size:12px;color:var(--bc-muted);margin-top:4px">Retrait possible dès le jour même</div>'
+      : '<div class="materiel-pickup" style="font-size:12px;color:var(--bc-muted);margin-top:4px">Retrait sous 48h en salle</div>';
+    const productUrl = `${L('/materiel/produit')}/${encodeURIComponent(p.slug || p.id)}`;
+    const actionBtn = multi
+      ? `<a href="${productUrl}" class="btn sm block">Choisir taille / variante</a>`
+      : `<button type="button" class="btn sm block add-cart-btn" data-id="${p.id}" data-variant="${combo?.id || ''}" data-name="${p.name.replace(/"/g, '&quot;')}" data-variant-label="${(combo?.label || '').replace(/"/g, '&quot;')}" data-price="${combo?.price_cents || p.price_cents}" data-label="${combo?.price_label || p.price_label}" data-image="${p.image || ''}" ${p.stock <= 0 ? 'disabled' : ''}>Ajouter au panier</button>`;
     return `
       <article class="materiel-card${featured}">
-        <a href="${L('/materiel/produit')}/${encodeURIComponent(p.slug || p.id)}" class="materiel-img-link">${badge}${img}</a>
+        <a href="${productUrl}" class="materiel-img-link">${badge}${img}</a>
         <div class="materiel-body">
           <span class="materiel-cat">${p.category_label || p.category || ''}</span>
-          <h4><a href="${L('/materiel/produit')}/${encodeURIComponent(p.slug || p.id)}">${p.name}</a></h4>
+          <h4><a href="${productUrl}">${p.name}</a></h4>
           ${price}
+          ${pickupHint}
           <div class="${stock.cls}">${stock.label}</div>
           <div class="materiel-actions">
-            <button type="button" class="btn sm block add-cart-btn" data-id="${p.id}" data-variant="${variantId}" data-name="${p.name.replace(/"/g, '&quot;')}" data-price="${p.price_cents}" data-label="${p.price_label}" data-image="${p.image || ''}" ${disabled}>Ajouter au panier</button>
+            ${actionBtn}
           </div>
         </div>
       </article>`;
@@ -87,6 +104,7 @@
             product_id: btn.dataset.id,
             variant_id: btn.dataset.variant || null,
             name: btn.dataset.name,
+            variant_label: btn.dataset.variantLabel || null,
             price_cents: Number(btn.dataset.price),
             price_label: btn.dataset.label,
             image: btn.dataset.image || null,

@@ -1257,6 +1257,9 @@
       return { text: `Email (${n.manager || sale.manager_name || '—'})`, cls: 'badge ok' };
     }
     if (n.sent) return { text: `Envoyé (${n.manager || sale.manager_name || '—'})`, cls: 'badge ok' };
+    if (n.skipped === 'awaiting_signal' || n.pending) {
+      return { text: 'En attente Signal', cls: 'badge warn' };
+    }
     if (n.skipped === 'demo') return { text: 'Ignoré (démo)', cls: 'badge warn' };
     if (n.error) return { text: n.error, cls: 'badge err' };
     if (sale.source === 'upsell' && sale.payment_status === 'paid') {
@@ -1411,6 +1414,43 @@
     materielSalesPage += 1;
     renderMaterielSales();
     document.getElementById('materielSalesTable')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
+
+  document.getElementById('flushMaterielCoachBtn')?.addEventListener('click', async () => {
+    const msg = document.getElementById('materielSalesMsg');
+    const btn = document.getElementById('flushMaterielCoachBtn');
+    if (
+      !window.confirm(
+        'Renvoyer toutes les ventes matériel en attente aux coachs (Signal/SMS) ?\n\nÀ utiliser une fois les téléphones branchés.'
+      )
+    ) {
+      return;
+    }
+    if (btn) btn.disabled = true;
+    try {
+      const res = await fetch('/api/admin/materiel-orders/flush-coach-notify', {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true),
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Envoi impossible');
+      const text = `${data.sent || 0} notification(s) envoyée(s) sur ${data.flushed || 0} vente(s) en attente`;
+      if (msg) {
+        msg.textContent = text;
+        msg.className = 'form-msg ok';
+      }
+      if (typeof window.panToast === 'function') window.panToast(text);
+      await loadMaterielSales(true);
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message || 'Envoi impossible';
+        msg.className = 'form-msg err';
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
   });
 
   document.getElementById('purgeUnpaidMaterielBtn')?.addEventListener('click', async () => {

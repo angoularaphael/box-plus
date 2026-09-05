@@ -168,6 +168,17 @@ function shouldSkipWhatsApp(order, env = process.env) {
   return method === 'demo';
 }
 
+function isMaterielCoachNotifyLive(env = process.env) {
+  const v = String(env.MATERIEL_COACH_NOTIFY_LIVE || env.SIGNAL_MATERIEL_LIVE || '').trim().toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes';
+}
+
+function shouldDeferCoachNotify({ force = false, ignoreDefer = false, hooks = {} } = {}) {
+  if (force || ignoreDefer) return false;
+  if (hooks.sendWa || hooks.sendEmail) return false;
+  return !isMaterielCoachNotifyLive();
+}
+
 const CLUB_MATERIEL_EMAIL = 'boxingcenter31@gmail.com';
 const WA_FALLBACK_EMAIL = CLUB_MATERIEL_EMAIL;
 
@@ -280,7 +291,7 @@ async function notifyManager(manager, message, order, hooks = {}) {
   };
 }
 
-async function notifyMaterielSale(order, { source = 'materiel', force = false, ...hooks } = {}) {
+async function notifyMaterielSale(order, { source = 'materiel', force = false, ignoreDefer = false, ...hooks } = {}) {
   const existing = order?.manager_notify || order?.addons?.blade?.manager_notify;
   if (!force && existing?.sent) {
     return { ...existing, already: true, sent: true };
@@ -288,6 +299,23 @@ async function notifyMaterielSale(order, { source = 'materiel', force = false, .
   const gymRaw = pickupGymFromOrder(order, source);
   const manager = resolveManagerForPickup(gymRaw);
   const message = saleWhatsAppText(order, source);
+  if (shouldDeferCoachNotify({ force, ignoreDefer, hooks })) {
+    logInfo('Vente matériel en attente Signal/SMS coach', {
+      order_id: order?.order_id,
+      gym: manager?.slug || gymRaw,
+      manager: manager?.name || null,
+      source,
+    });
+    return {
+      sent: false,
+      pending: true,
+      skipped: 'awaiting_signal',
+      manager: manager?.name || null,
+      gym: manager?.slug || pickupGymSlug(gymRaw) || gymRaw || null,
+      message,
+      source,
+    };
+  }
   if (!manager) {
     logWarn('WhatsApp manager matériel : salle sans responsable', { gym: gymRaw, order_id: order?.order_id });
     const fallback = {
@@ -377,6 +405,69 @@ function listMaterielSales(materielOrders = [], inscriptionOrders = [], { paidOn
   return rows.filter((row) => row.payment_status === 'paid');
 }
 
+async function flushPendingMaterielCoachNotifies() {
+  const since = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString();
+  const {
+    listMaterielOrdersCreatedSinceAsync,
+    saveOrderAsync: saveMaterielOrderAsync,
+  } = require('./materiel-cart');
+  const {
+    listPaidOrdersSinceAsync,
+    loadOrderAsync: loadInscriptionOrderAsync,
+    saveOrderAsync: saveInscriptionOrderAsync,
+  } = require('./order-lifecycle');
+  const results = [];
+
+  const materielOrders = await listMaterielOrdersCreatedSinceAsync(since);
+  for (const order of materielOrders) {
+    if (order.payment?.status !== 'paid' || order.manager_notify?.sent) continue;
+    const notify = await notifyMaterielSale(order, {
+      source: 'materiel',
+      force: true,
+      ignoreDefer: true,
+    });
+    applyManagerNotify(order, notify, 'materiel');
+    await saveMaterielOrderAsync(order);
+    results.push({
+      order_id: order.order_id,
+      source: 'materiel',
+      sent: Boolean(notify.sent),
+      skipped: notify.skipped || null,
+      error: notify.error || null,
+    });
+  }
+
+  const inscriptions = await listPaidOrdersSinceAsync(since);
+  for (const summary of inscriptions) {
+    if (summary.addons?.blade?.status !== 'paid') continue;
+    if (summary.addons?.blade?.manager_notify?.sent) continue;
+    const order = (await loadInscriptionOrderAsync(summary.order_id)) || summary;
+    if (order.addons?.blade?.manager_notify?.sent) continue;
+    const notify = await notifyMaterielSale(order, {
+      source: 'upsell',
+      force: true,
+      ignoreDefer: true,
+    });
+    applyManagerNotify(order, notify, 'upsell');
+    await saveInscriptionOrderAsync(order);
+    results.push({
+      order_id: order.order_id,
+      source: 'upsell',
+      sent: Boolean(notify.sent),
+      skipped: notify.skipped || null,
+      error: notify.error || null,
+    });
+  }
+
+  const sent = results.filter((row) => row.sent).length;
+  logInfo('Flush notifications coach matériel', {
+    total: results.length,
+    sent,
+    pending: results.length - sent,
+  });
+  return { ok: true, flushed: results.length, sent, results };
+}
+
 module.exports = {
   GYM_MATERIEL_MANAGERS,
   pickupGymSlug,
@@ -384,6 +475,8 @@ module.exports = {
   saleWhatsAppText,
   pickupGymFromOrder,
   shouldSkipWhatsApp,
+  isMaterielCoachNotifyLive,
+  shouldDeferCoachNotify,
   applyManagerNotify,
   notifyManager,
   notifyMaterielSale,
@@ -394,4 +487,5 @@ module.exports = {
   WA_FALLBACK_EMAIL,
   materielSaleSummary,
   listMaterielSales,
+  flushPendingMaterielCoachNotifies,
 };

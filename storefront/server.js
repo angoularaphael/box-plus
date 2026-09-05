@@ -1571,6 +1571,22 @@ function createApp() {
     }
   });
 
+  app.post('/api/admin/materiel-orders/flush-coach-notify', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { flushPendingMaterielCoachNotifies } = require('./lib/gym-materiel-managers');
+      const result = await flushPendingMaterielCoachNotifies();
+      logInfo('Admin flush coach matériel', {
+        flushed: result.flushed,
+        sent: result.sent,
+      });
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      logError('Admin flush coach matériel', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   app.post('/api/admin/materiel-orders/:id/notify-manager', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
@@ -1600,7 +1616,7 @@ function createApp() {
           message: 'Notifier le manager uniquement après paiement.',
         });
       }
-      const notify = await notifyMaterielSale(order, { source, force: true });
+      const notify = await notifyMaterielSale(order, { source, force: true, ignoreDefer: true });
       applyManagerNotify(order, notify, source);
       await persist(order);
       res.json({
