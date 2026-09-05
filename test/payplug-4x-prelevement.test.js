@@ -231,6 +231,7 @@ describe('PayPlug 4× prélèvement (25 % CB + RIB)', () => {
     );
     assert.equal(cfg.paiement_comptant, false);
     assert.equal(cfg.requires_iban, true);
+    assert.equal(cfg.auto_badge, false);
     assert.equal(cfg.payplug_4x_prelevement, true);
     assert.match(cfg.deciplus_product_name, /4X PRELEVEMENT/i);
   });

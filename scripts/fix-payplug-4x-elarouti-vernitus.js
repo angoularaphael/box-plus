@@ -249,7 +249,7 @@ async function repairOne(page, catalog, target) {
     requires_iban: true,
     skip_rib_prompt: false,
     payplug_4x_prelevement: true,
-    auto_badge: Boolean(target.iban),
+    auto_badge: false,
   };
 
   const before = await findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => []);

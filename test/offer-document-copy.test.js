@@ -79,6 +79,28 @@ describe('textes facture / contrat selon l’offre', () => {
     assert.equal(copy.showBadge72h, false);
   });
 
+  it('offre 259 € 4× PayPlug prélèvement — pas comptant, pas de badge', () => {
+    const product = {
+      id: 'dp-100',
+      legacy_id: 'offre-saison',
+      name: 'OFFRE PROMO 12 MOIS',
+      price_cents: 25900,
+      supports_installment_choice: true,
+    };
+    const order = {
+      product_id: 'dp-100',
+      payment: { payment_plan: '4x', billing_plan: 'rib', method: 'payplug', amount: 64.75 },
+      payment_plan: '4x',
+      billing_plan: 'rib',
+    };
+    const copy = offerDocumentCopy(product, order);
+    assert.equal(copy.kind, 'abo-prelevement');
+    assert.equal(copy.typeLabel, 'Abonnement prélèvement');
+    assert.match(copy.description, /prélèvement/i);
+    assert.equal(copy.showBadge72h, false);
+    assert.equal(copy.showSepa, true);
+  });
+
   it('forfait coaching 5 séances', () => {
     const copy = offerDocumentCopy(
       { id: 'coaching-5', name: 'COACHING PRIVE 5 SEANCES', price_cents: 25000 },
