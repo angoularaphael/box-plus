@@ -2141,7 +2141,7 @@ function createApp() {
     if (!order) {
       return res.status(404).json({ ok: false, error: 'not_found', message: 'Référence introuvable' });
     }
-    const { describeResume, canPayOrder, sendResumeEmail } = require('./lib/inscription-nudge');
+    const { describeResume, canPayOrder, sendResumeEmail, resumeEmailFailureMessage } = require('./lib/inscription-nudge');
     if (order.action || !order.access_token) {
       return res.status(400).json({
         ok: false,
@@ -2159,10 +2159,7 @@ function createApp() {
         return res.status(502).json({
           ok: false,
           error: mailed.error || mailed.reason || 'email_not_sent',
-          message:
-            mailed.error === 'no_email'
-              ? 'Pas d’e-mail sur ce dossier'
-              : 'Envoi e-mail impossible (Brevo)',
+          message: resumeEmailFailureMessage(mailed),
         });
       }
       const info = describeResume(order, { kind });

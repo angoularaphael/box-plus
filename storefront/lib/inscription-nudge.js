@@ -338,6 +338,20 @@ function nudgeWhatsAppText(order) {
   );
 }
 
+function resumeEmailFailureMessage(result = {}) {
+  const code = String(result.error || result.reason || '').toLowerCase();
+  if (code === 'no_email') return 'Pas d’e-mail sur ce dossier';
+  if (code === 'invalid_email') return 'Adresse e-mail invalide sur ce dossier';
+  if (code === 'test_email') return 'E-mail de test — envoi ignoré';
+  if (code === 'resend_not_configured') {
+    return 'Envoi e-mail impossible — configurez RESEND_API_KEY sur Vercel (boutique)';
+  }
+  if (result.error && !/brevo/i.test(String(result.error))) {
+    return `Envoi e-mail impossible (Resend) : ${result.error}`;
+  }
+  return 'Envoi e-mail impossible (Resend)';
+}
+
 async function sendResumeEmail(order, { kind = 'resume', to } = {}) {
   const dest = String(to || customerEmail(order) || '').trim();
   if (!dest) return { sent: false, error: 'no_email' };
@@ -680,6 +694,7 @@ module.exports = {
   resumeEmailSubject,
   resumeEmailHtml,
   resumeWhatsAppText,
+  resumeEmailFailureMessage,
   sendResumeEmail,
   sendResumeWhatsApp,
   sendResumeNotify,

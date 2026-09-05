@@ -56,6 +56,16 @@ test('lien de reprise : étape réelle, produit et jeton', () => {
   else process.env.STORE_URL = prev;
 });
 
+test('message erreur mail reprise — Resend, pas Brevo', () => {
+  const { resumeEmailFailureMessage } = require('../storefront/lib/inscription-nudge');
+  assert.equal(resumeEmailFailureMessage({ error: 'no_email' }), 'Pas d’e-mail sur ce dossier');
+  assert.match(
+    resumeEmailFailureMessage({ error: 'resend_not_configured' }),
+    /RESEND_API_KEY/
+  );
+  assert.match(resumeEmailFailureMessage({ error: 'API key invalid' }), /Resend/);
+});
+
 test('mails reprise / relance : David, texte brut, Principal', () => {
   const prev = process.env.STORE_URL;
   process.env.STORE_URL = 'https://boutique.boxingcenter.fr';
