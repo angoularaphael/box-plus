@@ -345,7 +345,9 @@ test('Aventure — doublon Minimes, jamais migrer ni résilier', () => {
   assert.match(src, /setMemberIban/);
   const memberSrc = fs.readFileSync(path.join(__dirname, '..', 'bot', 'member.js'), 'utf8');
   assert.match(memberSrc, /prenom"]:not\(#i_prenom\)/);
-  assert.match(src, /createMinimesMember/);
+  assert.match(src, /findExistingAventureMember/);
+  assert.match(src, /finishAventureWithSale/);
+  assert.match(src, /Date de naissance manquante/);
   assert.match(src, /Impossible d’ouvrir la salle Balma/);
   assert.match(src, /Impossible d’ouvrir la salle Minimes/);
 });
