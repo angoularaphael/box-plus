@@ -233,13 +233,8 @@ function applyManagerNotify(order, result, source) {
 
 async function notifyManager(manager, message, order, hooks = {}) {
   if (!manager?.phone && !managerEmail(manager)) return { sent: false, error: 'no_manager' };
-  if (!hooks.sendWa && !hooks.sendEmail && shouldSkipWhatsApp(order)) {
-    logInfo('WhatsApp manager matériel ignoré (tests/démo)', {
-      manager: manager.name,
-      gym: manager.slug,
-    });
-    return { sent: false, skipped: 'demo', manager: manager.name, gym: manager.slug };
-  }
+  const force = Boolean(hooks.force);
+  const skipDemoWa = !force && shouldSkipWhatsApp(order);
 
   const sendWa =
     hooks.sendWa ||
@@ -248,7 +243,13 @@ async function notifyManager(manager, message, order, hooks = {}) {
 
   let whatsapp = { sent: false };
   const { isAllWhatsAppPaused, isPromoWhatsAppPaused } = require('./whatsapp-outbound');
-  const skipWa = isAllWhatsAppPaused() || isPromoWhatsAppPaused();
+  const skipWa = skipDemoWa || isAllWhatsAppPaused() || isPromoWhatsAppPaused();
+  if (skipDemoWa) {
+    logInfo('WhatsApp manager matériel ignoré (tests/démo)', {
+      manager: manager.name,
+      gym: manager.slug,
+    });
+  }
   if (!skipWa && manager.phone) {
     try {
       await sendWa(manager.phone, message);
@@ -323,7 +324,7 @@ async function notifyMaterielSale(order, { source = 'materiel', force = false, i
       label: gymRaw || 'salle inconnue',
       slug: pickupGymSlug(gymRaw) || 'unknown',
     };
-    const result = await notifyManager(fallback, message, order, hooks);
+    const result = await notifyManager(fallback, message, order, { ...hooks, force });
     logInfo('Vente matériel notifiée', {
       order_id: order?.order_id,
       gym: gymRaw,
@@ -336,7 +337,7 @@ async function notifyMaterielSale(order, { source = 'materiel', force = false, i
     });
     return { ...result, error: result.sent ? null : result.error || 'unknown_gym', gym: gymRaw, message };
   }
-  const result = await notifyManager(manager, message, order, hooks);
+  const result = await notifyManager(manager, message, order, { ...hooks, force });
   logInfo('Vente matériel notifiée', {
     order_id: order?.order_id,
     gym: manager.slug,
