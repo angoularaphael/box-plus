@@ -29,11 +29,11 @@ describe('referral-notify', () => {
       referrerLast: 'Durand',
     });
     assert.match(copy.text, /Félicitations Léa/);
-    assert.match(copy.text, /Hugo Durand/);
+    assert.match(copy.text, /Grâce à Hugo Durand/);
     assert.match(copy.text, /29 €/);
     assert.match(copy.text, /~44 €~/);
     assert.match(copy.text, /\*29 €\*/);
-    assert.match(copy.text, /quelques places/);
+    assert.doesNotMatch(copy.text, /quelques places/i);
     assert.match(copy.text, /offre\/29/);
   });
 

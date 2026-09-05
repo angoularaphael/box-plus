@@ -7,7 +7,7 @@ const { paymentVar, useTestPayments, runPaymentContext } = require('./test-env')
 
 /** Message visiteur tant que PayPlug LIVE n’a pas activé Oney 4× sans frais. */
 const ONEY_4X_UNAVAILABLE_MESSAGE =
-  'Le 4× sans frais par carte (PayPlug) est momentanément indisponible. Vous pouvez payer en 4× via PayPal, ou régler en une fois par carte ou PayPal.';
+  'Le 4× sans frais par carte est momentanément indisponible. Vous pouvez payer en 4× via PayPal, ou régler en une fois par carte ou PayPal.';
 
 /**
  * 4× Oney live : off tant que PayPlug n’a pas ouvert l’option sur le compte.

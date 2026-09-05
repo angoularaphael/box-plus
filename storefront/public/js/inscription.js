@@ -475,6 +475,10 @@
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
   }
 
+  function fourXQuartLabel(product) {
+    return ((Number(product?.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
+  }
+
   function buildFourXScheduleHtml(quartLabel, mode = 'card', totalLabel = '') {
     const today = new Date();
     const dates = [0, 30, 60, 90].map((days) => {
@@ -482,14 +486,26 @@
       d.setDate(d.getDate() + days);
       return formatFrDate(d);
     });
-    if (mode === 'paypal_prelevement' || mode === 'payplug_prelevement') {
-      const via = mode === 'paypal_prelevement' ? 'PayPal' : 'PayPlug';
+    if (mode === 'payplug_prelevement') {
       return `
       <div class="fourx-schedule__inner">
-        <p class="fourx-schedule__title">Pour le 4× sans frais ${via} aujourd’hui : <strong>${quartLabel}&nbsp;€</strong></p>
+        <p class="fourx-schedule__title">Pour le 4× sans frais CB</p>
+        <p class="fourx-schedule__lead"><strong>Aujourd’hui : ${quartLabel}&nbsp;€ CB</strong></p>
+        <p class="fourx-schedule__note">Puis saisissez votre RIB dans le formulaire d’inscription pour les 3 autres paiements de ${quartLabel}&nbsp;€.</p>
         <ul>
-          <li>Aujourd’hui : <strong>${quartLabel}&nbsp;€</strong> CB ${via} puis saisissez votre RIB pour les prélèvements automatiques.</li>
-          <li>1er paiement par carte puis saisissez votre RIB pour les 3 autres échéances</li>
+          <li><strong>${dates[0]}</strong> — 1) CB : ${quartLabel}&nbsp;€</li>
+          <li><strong>${dates[1]}</strong> — 2) Prélèvement sur votre RIB : ${quartLabel}&nbsp;€</li>
+          <li><strong>${dates[2]}</strong> — 3) Prélèvement sur votre RIB : ${quartLabel}&nbsp;€</li>
+          <li><strong>${dates[3]}</strong> — 4) Prélèvement sur votre RIB : ${quartLabel}&nbsp;€</li>
+        </ul>
+      </div>`;
+    }
+    if (mode === 'paypal_prelevement') {
+      return `
+      <div class="fourx-schedule__inner">
+        <p class="fourx-schedule__title">Pour le 4× sans frais PayPal aujourd’hui : <strong>${quartLabel}&nbsp;€</strong></p>
+        <ul>
+          <li>Aujourd’hui : <strong>${quartLabel}&nbsp;€</strong> par PayPal, puis saisissez votre RIB pour les prélèvements automatiques.</li>
           <li><strong>${dates[1]}</strong> — 2ᵉ échéance ${quartLabel}&nbsp;€</li>
           <li><strong>${dates[2]}</strong> — 3ᵉ échéance ${quartLabel}&nbsp;€</li>
           <li><strong>${dates[3]}</strong> — 4ᵉ échéance ${quartLabel}&nbsp;€</li>
@@ -559,9 +575,7 @@
       return `<span class="pay-logos" aria-hidden="true">${paypalImg}</span>`;
     }
     if (kind === 'payplug') {
-      return `<span class="pay-logos" aria-hidden="true">
-        <img src="https://www.onatureshop.com/img/cms/Payplug-logo.png" alt="Paiement en 4× sans frais" height="32" style="background:#111;border-radius:6px;padding:2px 6px" />
-      </span>`;
+      return `<span class="pay-logos" aria-hidden="true">${cardImgs}</span>`;
     }
     if (kind === 'card-paypal') {
       return `<span class="pay-logos" aria-hidden="true">${cardImgs}${paypalImg}</span>`;
@@ -645,8 +659,7 @@
   function firstPaymentCaption(product) {
     const amount = priceLabel(product);
     if (supportsInstallmentChoice(product)) {
-      const quart = ((Number(product.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
-      return `Montant total : <strong>${amount}</strong> — 1×, 4× PayPal sans frais, ou 4× PayPlug : <strong>${quart}&nbsp;€</strong> via PayPal ou PayPlug`;
+      return `Montant total : <strong>${amount}</strong> en 1× ou 4× sans frais via PayPal ou CB`;
     }
     if (isComptantLikeProduct(product)) {
       return `Paiement de : <strong>${amount}</strong>`;
@@ -904,7 +917,7 @@
       return 'Paiement carte temporairement indisponible. Essayez PayPal, ou contactez le club.';
     }
     if (data.error === 'payplug_url_missing') {
-      return 'Impossible d\'ouvrir le paiement PayPlug. Réessayez ou choisissez PayPal.';
+      return 'Impossible d\'ouvrir le paiement par carte. Réessayez ou choisissez PayPal.';
     }
     if (data.error === 'portet_payments_paused') {
       return (
@@ -1143,7 +1156,7 @@
           ${emptyPayHtml}
         </div>`;
     } else if (installmentChoice) {
-      const quart = ((Number(p.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
+      const quart = fourXQuartLabel(p);
       const savedMethod = state.order?.payment?.preferred_checkout || 'card';
       const onceMethods = payMethodsHtml({
         name: 'pay_method_once',
@@ -1166,15 +1179,13 @@
           showCard: fourPayplugAvailable,
           showPaypal: showPaypalFour,
           preferPaypal: !fourPayplugAvailable && showPaypalFour,
-          cardTitle: portetViaCawl ? '4× sans frais' : '4× sans frais PayPlug',
+          cardTitle: '4× sans frais CB puis RIB',
           cardSmall: portetViaCawl
             ? 'Carte bancaire'
-            : `${quart} € via PayPlug`,
+            : `${quart} € aujourd’hui<br>3 prochains paiements sur votre RIB`,
           paypalTitle: 'PayPal 4×',
-          paypalSmall: portetPaypal4x
-            ? '4× sans frais via PayPal (Pay Later si éligible)'
-            : '4× sans frais via PayPal (Pay Later si éligible)',
-          cardLogo: portetViaCawl ? 'card' : 'payplug',
+          paypalSmall: '4× sans frais via PayPal (Pay Later si éligible)',
+          cardLogo: 'card',
         }) + (showPaypalFour ? paypalMsgHtml : '');
       billingHtml = `
         <div class="full billing-plan-block">
@@ -1192,13 +1203,7 @@
               <input type="radio" name="payment_plan" value="4x" ${savedInstallment === '4x' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>En 4× sans frais</strong>
-                <small>${
-                  payplug4xPrelev
-                    ? `PayPlug : ${quart}&nbsp;€ via PayPlug — ou 4× sans frais via PayPal.`
-                    : portetPaypal4x
-                      ? 'Via PayPal Portet (Pay Later si éligible).'
-                      : 'Via PayPal (Pay Later si éligible).'
-                }</small>
+                <small>4× ${quart}&nbsp;€ PayPal ou CB</small>
               </span>
             </label>
           </div>
@@ -1350,9 +1355,9 @@
           payBtn.textContent =
             plan === '4x'
               ? fourMethod === 'paypal'
-                ? `Payer ${totalLabel} via PayPal (4× si éligible)`
+                ? 'Payer via PayPal (4× si éligible)'
                 : payplug4xPrelev
-                  ? `Payer ${quart} € via PayPlug`
+                  ? `Payer ${quart} € par CB`
                   : `Payer ${quart} € maintenant (4× sans frais)`
               : 'Payer en une fois';
         }

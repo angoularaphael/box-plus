@@ -240,7 +240,7 @@ describe('PayPlug 4× prélèvement (25 % CB + RIB)', () => {
     const note = buildPaymentChannelInfoComptaNote({
       payment: { payment_plan: '4x', billing_plan: 'rib', method: 'payplug' },
     });
-    assert.equal(note, '4× sans frais PayPlug');
+    assert.equal(note, '4× sans frais CB');
   });
 
   it('pas de note info_compta 4× comptant pour le prélèvement', () => {
