@@ -1252,12 +1252,6 @@
   let materielSalesPage = 1;
   const MATERIEL_SALES_PER_PAGE = 10;
 
-  const OFFRE29_TYPE_LABELS = {
-    duo_ami: 'Ami parrainé',
-    reprise: 'Reprise 29 €',
-    relance: 'Relance dossier',
-  };
-
   function renderOffre29Unsent(data) {
     const tbody = document.getElementById('offre29UnsentBody');
     const badge = document.getElementById('offre29UnsentBadge');
@@ -1265,21 +1259,16 @@
     if (!tbody) return;
     const items = data?.items || [];
     const count = data?.count ?? items.length;
-    const by = data?.by_type || {};
-    if (badge) badge.textContent = `${count} pas parti${count > 1 ? 's' : ''}`;
+    if (badge) badge.textContent = `${count} ami${count > 1 ? 's' : ''} pas parti${count > 1 ? 's' : ''}`;
     if (summary) {
-      summary.textContent = [
-        `${count} message(s) 29 € en attente`,
-        by.duo_ami ? `${by.duo_ami} ami(s) parrainé(s)` : null,
-        by.reprise ? `${by.reprise} reprise(s)` : null,
-        by.relance ? `${by.relance} relance(s) dossier` : null,
-      ]
-        .filter(Boolean)
-        .join(' · ');
+      summary.textContent =
+        count === 0
+          ? 'Tous les SMS amis Offre Duo sont partis.'
+          : `${count} ami(s) invité(s) via l’Offre Duo — SMS pas encore envoyé.`;
     }
     if (!items.length) {
       tbody.innerHTML =
-        '<tr><td colspan="6" style="text-align:center;color:var(--bc-muted);padding:20px">Aucun message 29 € en attente.</td></tr>';
+        '<tr><td colspan="5" style="text-align:center;color:var(--bc-muted);padding:20px">Aucun ami Offre Duo en attente.</td></tr>';
       return;
     }
     tbody.innerHTML = items
@@ -1288,17 +1277,17 @@
           ? new Date(row.created_at).toLocaleString('fr-FR', {
               day: '2-digit',
               month: 'short',
+              year: 'numeric',
               hour: '2-digit',
               minute: '2-digit',
             })
-          : '';
+          : '—';
         return `<tr>
-          <td><span class="badge warn">${escapeHtml(OFFRE29_TYPE_LABELS[row.type] || row.type)}</span></td>
-          <td><strong>${escapeHtml(row.name || '—')}</strong><div style="color:var(--bc-muted);font-size:12px">${escapeHtml(row.label || '')}</div></td>
+          <td><strong>${escapeHtml(row.name || '—')}</strong>${row.email ? `<div style="color:var(--bc-muted);font-size:12px">${escapeHtml(row.email)}</div>` : ''}</td>
           <td>${escapeHtml(row.phone || '—')}</td>
-          <td>${escapeHtml(row.order_id || '—')}<div style="color:var(--bc-muted);font-size:11px">${escapeHtml(when)}</div></td>
-          <td>${row.step != null ? escapeHtml(String(row.step)) : '—'}</td>
-          <td>${escapeHtml(row.payment_status || '—')}</td>
+          <td>${escapeHtml(row.referrer || '—')}</td>
+          <td>${escapeHtml(row.order_id || '—')}</td>
+          <td>${escapeHtml(when)}</td>
         </tr>`;
       })
       .join('');
@@ -1309,7 +1298,7 @@
     const tbody = document.getElementById('offre29UnsentBody');
     if (tbody) {
       tbody.innerHTML =
-        '<tr><td colspan="6" style="text-align:center;color:var(--bc-muted)">Chargement…</td></tr>';
+        '<tr><td colspan="5" style="text-align:center;color:var(--bc-muted)">Chargement…</td></tr>';
     }
     try {
       const res = await fetch('/api/admin/offre29-unsent', { credentials: 'include', headers: headers(false) });
@@ -1322,7 +1311,7 @@
       }
     } catch (err) {
       if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--bc-muted)">${escapeHtml(err.message || 'Erreur')}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--bc-muted)">${escapeHtml(err.message || 'Erreur')}</td></tr>`;
       }
       if (msg) {
         msg.textContent = err.message || 'Chargement impossible';
