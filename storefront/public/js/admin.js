@@ -379,7 +379,6 @@
     if (name === 'coachings') loadCoachings();
     if (name === 'materiel') {
       loadMateriel();
-      loadOffre29Unsent();
       loadMaterielSales();
     }
     if (name === 'stats') initStats();
@@ -1251,76 +1250,6 @@
   let materielSalesLoaded = false;
   let materielSalesPage = 1;
   const MATERIEL_SALES_PER_PAGE = 10;
-
-  function renderOffre29Unsent(data) {
-    const tbody = document.getElementById('offre29UnsentBody');
-    const badge = document.getElementById('offre29UnsentBadge');
-    const summary = document.getElementById('offre29UnsentSummary');
-    if (!tbody) return;
-    const items = data?.items || [];
-    const count = data?.count ?? items.length;
-    if (badge) badge.textContent = `${count} ami${count > 1 ? 's' : ''} pas parti${count > 1 ? 's' : ''}`;
-    if (summary) {
-      summary.textContent =
-        count === 0
-          ? 'Tous les SMS amis Offre Duo sont partis.'
-          : `${count} ami(s) invité(s) via l’Offre Duo — SMS pas encore envoyé.`;
-    }
-    if (!items.length) {
-      tbody.innerHTML =
-        '<tr><td colspan="5" style="text-align:center;color:var(--bc-muted);padding:20px">Aucun ami Offre Duo en attente.</td></tr>';
-      return;
-    }
-    tbody.innerHTML = items
-      .map((row) => {
-        const when = row.created_at
-          ? new Date(row.created_at).toLocaleString('fr-FR', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-            })
-          : '—';
-        return `<tr>
-          <td><strong>${escapeHtml(row.name || '—')}</strong>${row.email ? `<div style="color:var(--bc-muted);font-size:12px">${escapeHtml(row.email)}</div>` : ''}</td>
-          <td>${escapeHtml(row.phone || '—')}</td>
-          <td>${escapeHtml(row.referrer || '—')}</td>
-          <td>${escapeHtml(row.order_id || '—')}</td>
-          <td>${escapeHtml(when)}</td>
-        </tr>`;
-      })
-      .join('');
-  }
-
-  async function loadOffre29Unsent() {
-    const msg = document.getElementById('offre29UnsentMsg');
-    const tbody = document.getElementById('offre29UnsentBody');
-    if (tbody) {
-      tbody.innerHTML =
-        '<tr><td colspan="5" style="text-align:center;color:var(--bc-muted)">Chargement…</td></tr>';
-    }
-    try {
-      const res = await fetch('/api/admin/offre29-unsent', { credentials: 'include', headers: headers(false) });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Chargement impossible');
-      renderOffre29Unsent(data);
-      if (msg) {
-        msg.textContent = '';
-        msg.className = 'form-msg';
-      }
-    } catch (err) {
-      if (tbody) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--bc-muted)">${escapeHtml(err.message || 'Erreur')}</td></tr>`;
-      }
-      if (msg) {
-        msg.textContent = err.message || 'Chargement impossible';
-        msg.className = 'form-msg err';
-      }
-    }
-  }
-
-  document.getElementById('refreshOffre29UnsentBtn')?.addEventListener('click', () => loadOffre29Unsent());
 
   function notifyLabel(sale) {
     const n = sale.manager_notify || {};
