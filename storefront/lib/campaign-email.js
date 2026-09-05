@@ -2,6 +2,41 @@
 
 const CAMPAIGN_FROM_NAME = 'David';
 const CAMPAIGN_SIGN_OFF = 'David de Boxing Center';
+const CLUB_POSTAL_ADDRESS = '12 rue de Fenouillet, 31200 Toulouse';
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function buildSimpleHtmlEmail({ greeting, paragraphs = [], ctaUrl, ctaLabel, signOff }) {
+  const intro = greeting
+    ? `<p style="margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.55;color:#111">${escapeHtml(greeting)}</p>`
+    : '';
+  const body = paragraphs
+    .map(
+      (line) =>
+        `<p style="margin:0 0 14px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#222">${escapeHtml(line)}</p>`
+    )
+    .join('');
+  const cta = ctaUrl
+    ? `<p style="margin:22px 0 8px"><a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:#b91c1c;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:600">${escapeHtml(ctaLabel || 'Voir les cours enfants')}</a></p>`
+    : '';
+  const footer = signOff
+    ? `<p style="margin:24px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#111">${escapeHtml(signOff)}</p>`
+    : '';
+  const legal = `<p style="margin:28px 0 0;padding-top:16px;border-top:1px solid #e8e8e8;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#666">Boxing Center — ${escapeHtml(CLUB_POSTAL_ADDRESS)}<br>Répondre à ce message ou écrire à boxingcentertls@gmail.com</p>`;
+  return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:24px;background:#f4f4f5"><div style="max-width:560px;margin:0 auto;background:#fff;padding:28px 24px;border-radius:12px">${intro}${body}${cta}${footer}${legal}</div></body></html>`;
+}
+
+function campaignReplyHeaders() {
+  return {
+    'List-Unsubscribe': '<mailto:boxingcentertls@gmail.com?subject=Desinscription%20newsletter>',
+  };
+}
 
 function firstNameOf(name) {
   const raw = String(name || '').trim();
@@ -114,18 +149,42 @@ function buildEnfantsCampaignEmail({ name } = {}) {
   const greeting = who
     ? `Salut ${who}, c'est David de Boxing Center.`
     : "Salut, c'est David de Boxing Center.";
-  const subject = 'Cours enfants — Boxing Center';
-  const body = enfantsCampaignBodyLines().slice(1);
-  const emailText = [greeting, '', ...body].join('\n');
+  const subject = 'Cours enfants Boxing Center — places disponibles';
+  const paragraphs = [
+    'Les cours enfants ont repris dans nos 5 clubs et il reste encore des places disponibles.',
+    'Baby Boxe dès 3 ans, Boxe Éducative enfants/ados pour les 7/11 et 12/16 ans — cours encadrés par des coachs professionnels.',
+    'Baby Boxe : samedi 14h15-15h.',
+    'Boxe Éducative (7/11 ans et 12/16 ans) : mercredi et samedi 15h/16h et 16h/17h. Vacances scolaires incluses.',
+    'Paiement possible en 4× sans frais depuis notre boutique en ligne.',
+    "Séance d'essai offerte pour les enfants.",
+  ];
+  const emailText = [
+    greeting,
+    '',
+    ...paragraphs,
+    '',
+    ENFANTS_CAMPAIGN_URL,
+    '',
+    'L’équipe Boxing Center',
+    '',
+    CLUB_POSTAL_ADDRESS,
+  ].join('\n');
+  const html = buildSimpleHtmlEmail({
+    greeting,
+    paragraphs,
+    ctaUrl: ENFANTS_CAMPAIGN_URL,
+    ctaLabel: 'Voir les cours enfants',
+    signOff: 'L’équipe Boxing Center',
+  });
   return {
     fromName: CAMPAIGN_FROM_NAME,
     subject,
-    html: undefined,
+    html,
     emailText,
-    headers: undefined,
+    headers: campaignReplyHeaders(),
     attachments: [],
     unsubscribeUrl: '',
-    preheader: '',
+    preheader: 'Baby Boxe et Boxe éducative — séance d’essai offerte',
   };
 }
 
@@ -158,5 +217,7 @@ module.exports = {
   enfantsCampaignSmsText,
   buildDavidPlainEmail,
   buildInscriptionNudgeEmail,
+  buildSimpleHtmlEmail,
+  campaignReplyHeaders,
   buildUnsubscribeUrl: () => '',
 };

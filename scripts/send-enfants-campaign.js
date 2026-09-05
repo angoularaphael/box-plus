@@ -240,6 +240,8 @@ async function sendEmailOne(contact) {
     to: contact.email,
     subject: copy.subject,
     text: copy.emailText,
+    html: copy.html,
+    headers: copy.headers,
     fromName: copy.fromName,
     replyTo: 'boxingcentertls@gmail.com',
     tags: [{ name: 'campaign', value: 'enfants-2026' }],
@@ -279,11 +281,14 @@ async function main() {
     const results = { email: null, sms: null };
     if (!SMS_ONLY) {
       if (!resendOk()) throw new Error('RESEND_API_KEY manquant');
+      const testCopy = buildEnfantsCampaignEmail({ name: 'Test' });
       results.email = await sendEmailViaResend({
         to: TEST_EMAIL,
-        subject: buildEnfantsCampaignEmail({ name: 'Test' }).subject,
-        text: buildEnfantsCampaignEmail({ name: 'Test' }).emailText,
-        fromName: 'David',
+        subject: testCopy.subject,
+        text: testCopy.emailText,
+        html: testCopy.html,
+        headers: testCopy.headers,
+        fromName: testCopy.fromName,
         replyTo: 'boxingcentertls@gmail.com',
         tags: [{ name: 'campaign', value: 'enfants-test' }],
       });

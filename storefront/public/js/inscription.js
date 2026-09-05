@@ -1351,15 +1351,18 @@
           });
         }
         if (payBtn) {
-          const totalLabel = priceLabel(p);
-          payBtn.textContent =
-            plan === '4x'
-              ? fourMethod === 'paypal'
-                ? 'Payer via PayPal (4× si éligible)'
-                : payplug4xPrelev
-                  ? `Payer ${quart} € par CB`
+          payBtn.classList.remove('pay-btn--4x-cb');
+          if (plan === '4x' && payplug4xPrelev && fourMethod !== 'paypal') {
+            payBtn.classList.add('pay-btn--4x-cb');
+            payBtn.innerHTML = `${quart}&nbsp;€ aujourd'hui<br><span class="pay-btn-sub">3 prochains paiements sur votre RIB</span>`;
+          } else {
+            payBtn.textContent =
+              plan === '4x'
+                ? fourMethod === 'paypal'
+                  ? 'Payer via PayPal (4× si éligible)'
                   : `Payer ${quart} € maintenant (4× sans frais)`
-              : 'Payer en une fois';
+                : 'Payer en une fois';
+          }
         }
       };
       document

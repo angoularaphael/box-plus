@@ -124,7 +124,8 @@ test('tunnel inscription navigateur — 259 € 4× PayPlug affiche le RIB puis 
 
   await page.check('input[name="pay_method_4x"][value="payplug"]');
   let payBtnText = await page.locator('#payBtn').innerText();
-  assert.match(payBtnText, /64,75.*CB/i, 'bouton CB 1ʳᵉ échéance');
+  assert.match(payBtnText, /64,75.*aujourd/i, 'bouton CB 1ʳᵉ échéance');
+  assert.match(payBtnText, /RIB/i, 'bouton mentionne le RIB');
   const schedulePayplug = await page.locator('#fourXSchedule').innerText();
   assert.match(schedulePayplug, /Aujourd.hui.*64,75.*CB/i, 'calendrier CB aujourd’hui');
   assert.match(schedulePayplug, /RIB/i, 'calendrier mentionne le RIB');

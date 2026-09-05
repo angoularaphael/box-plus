@@ -351,9 +351,7 @@
       return `<span class="pay-logos" aria-hidden="true">${paypalImg}</span>`;
     }
     if (kind === 'payplug') {
-      return `<span class="pay-logos" aria-hidden="true">
-        <img src="https://www.onatureshop.com/img/cms/Payplug-logo.png" alt="Paiement en 4× sans frais" height="32" style="background:#111;border-radius:6px;padding:2px 6px" />
-      </span>`;
+      return `<span class="pay-logos" aria-hidden="true">${cardImgs}</span>`;
     }
     if (kind === 'card-paypal') {
       return `<span class="pay-logos" aria-hidden="true">${cardImgs}${paypalImg}</span>`;
@@ -489,7 +487,7 @@
           ${methods('change_pay_method_once', 'payplug', 'paypal', 'Carte bancaire', cardSmall, cardLogoKind, 'Paiement sécurisé')}
         </div>
         <div id="changeFourMethods" class="billing-choice-row" style="display:none">
-          ${methods('change_pay_method_4x', portetViaCawl ? 'cawl' : 'payplug', 'paypal', '4× sans frais CB puis RIB', portetViaCawl ? 'Carte bancaire' : `${quart} € aujourd’hui<br>3 prochains paiements sur votre RIB`, portetViaCawl ? 'card' : 'payplug', '4× sans frais via PayPal (Pay Later si éligible)', { showCard: fourPayplugAvailable, showPaypal: showPaypalFour, preferPaypal: !fourPayplugAvailable && showPaypalFour })}
+          ${methods('change_pay_method_4x', portetViaCawl ? 'cawl' : 'payplug', 'paypal', '4× sans frais CB puis RIB', portetViaCawl ? 'Carte bancaire' : `${quart} € aujourd’hui<br>3 prochains paiements sur votre RIB`, portetViaCawl ? 'card' : 'card', '4× sans frais via PayPal (Pay Later si éligible)', { showCard: fourPayplugAvailable, showPaypal: showPaypalFour, preferPaypal: !fourPayplugAvailable && showPaypalFour })}
         </div>
         ${
           showCard && portetViaCawl

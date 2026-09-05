@@ -16,6 +16,10 @@ test('campagne enfants — mail David avec lien abonnements', () => {
   assert.match(mail.emailText, /abonnements#enfants/);
   assert.match(mail.emailText, /Séance d'essai offerte/);
   assert.equal(mail.fromName, 'David');
+  assert.match(mail.html, /<html lang="fr">/);
+  assert.match(mail.html, /Voir les cours enfants/);
+  assert.match(mail.html, /12 rue de Fenouillet/);
+  assert.ok(mail.headers['List-Unsubscribe']);
 });
 
 test('campagne enfants — SMS sans accents pour GSM', () => {
