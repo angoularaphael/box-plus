@@ -379,6 +379,7 @@
     if (name === 'coachings') loadCoachings();
     if (name === 'materiel') {
       loadMateriel();
+      loadOffre29Unsent();
       loadMaterielSales();
     }
     if (name === 'stats') initStats();
@@ -1250,6 +1251,87 @@
   let materielSalesLoaded = false;
   let materielSalesPage = 1;
   const MATERIEL_SALES_PER_PAGE = 10;
+
+  const OFFRE29_TYPE_LABELS = {
+    duo_ami: 'Ami parrainé',
+    reprise: 'Reprise 29 €',
+    relance: 'Relance dossier',
+  };
+
+  function renderOffre29Unsent(data) {
+    const tbody = document.getElementById('offre29UnsentBody');
+    const badge = document.getElementById('offre29UnsentBadge');
+    const summary = document.getElementById('offre29UnsentSummary');
+    if (!tbody) return;
+    const items = data?.items || [];
+    const count = data?.count ?? items.length;
+    const by = data?.by_type || {};
+    if (badge) badge.textContent = `${count} pas parti${count > 1 ? 's' : ''}`;
+    if (summary) {
+      summary.textContent = [
+        `${count} message(s) 29 € en attente`,
+        by.duo_ami ? `${by.duo_ami} ami(s) parrainé(s)` : null,
+        by.reprise ? `${by.reprise} reprise(s)` : null,
+        by.relance ? `${by.relance} relance(s) dossier` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+    }
+    if (!items.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="6" style="text-align:center;color:var(--bc-muted);padding:20px">Aucun message 29 € en attente.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = items
+      .map((row) => {
+        const when = row.created_at
+          ? new Date(row.created_at).toLocaleString('fr-FR', {
+              day: '2-digit',
+              month: 'short',
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          : '';
+        return `<tr>
+          <td><span class="badge warn">${escapeHtml(OFFRE29_TYPE_LABELS[row.type] || row.type)}</span></td>
+          <td><strong>${escapeHtml(row.name || '—')}</strong><div style="color:var(--bc-muted);font-size:12px">${escapeHtml(row.label || '')}</div></td>
+          <td>${escapeHtml(row.phone || '—')}</td>
+          <td>${escapeHtml(row.order_id || '—')}<div style="color:var(--bc-muted);font-size:11px">${escapeHtml(when)}</div></td>
+          <td>${row.step != null ? escapeHtml(String(row.step)) : '—'}</td>
+          <td>${escapeHtml(row.payment_status || '—')}</td>
+        </tr>`;
+      })
+      .join('');
+  }
+
+  async function loadOffre29Unsent() {
+    const msg = document.getElementById('offre29UnsentMsg');
+    const tbody = document.getElementById('offre29UnsentBody');
+    if (tbody) {
+      tbody.innerHTML =
+        '<tr><td colspan="6" style="text-align:center;color:var(--bc-muted)">Chargement…</td></tr>';
+    }
+    try {
+      const res = await fetch('/api/admin/offre29-unsent', { credentials: 'include', headers: headers(false) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Chargement impossible');
+      renderOffre29Unsent(data);
+      if (msg) {
+        msg.textContent = '';
+        msg.className = 'form-msg';
+      }
+    } catch (err) {
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--bc-muted)">${escapeHtml(err.message || 'Erreur')}</td></tr>`;
+      }
+      if (msg) {
+        msg.textContent = err.message || 'Chargement impossible';
+        msg.className = 'form-msg err';
+      }
+    }
+  }
+
+  document.getElementById('refreshOffre29UnsentBtn')?.addEventListener('click', () => loadOffre29Unsent());
 
   function notifyLabel(sale) {
     const n = sale.manager_notify || {};

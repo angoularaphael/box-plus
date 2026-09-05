@@ -1587,6 +1587,19 @@ function createApp() {
     }
   });
 
+  app.get('/api/admin/offre29-unsent', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const { listOffre29Unsent, DEFAULT_SINCE } = require('./lib/offre29-unsent');
+      const since = String(req.query.since || DEFAULT_SINCE).trim() || DEFAULT_SINCE;
+      const data = await listOffre29Unsent({ since });
+      res.json({ ok: true, ...data });
+    } catch (err) {
+      logError('Admin offre 29 pas parti', { error: err.message });
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   app.post('/api/admin/materiel-orders/:id/notify-manager', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
