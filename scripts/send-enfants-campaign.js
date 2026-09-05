@@ -53,7 +53,7 @@ const BD_FILES = [
 ];
 const STATE_FILE = path.join(ROOT, 'data', 'enfants-campaign-sent.json');
 
-const TEST_EMAIL = 'konizakoniza3@gmail.com';
+const TEST_EMAIL = 'giffareno05@gmail.com';
 const TEST_PHONE = '0684698028';
 
 const DRY = !process.argv.includes('--send') && !process.argv.includes('--test');
