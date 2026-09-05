@@ -35,9 +35,11 @@ const GYM_LABELS = {
 
 function paymentLabel(order) {
   const method = order.payment?.method;
-  const plan = order.payment?.billing_plan;
+  const billingPlan = order.payment?.billing_plan || order.billing_plan;
+  const paymentPlan = order.payment?.payment_plan || order.payment_plan;
   const product = order.product_snapshot || {};
-  if (plan) return paymentModeLabel(product, plan);
+  const labeled = paymentModeLabel(product, billingPlan, paymentPlan);
+  if (labeled) return labeled;
   if (method === 'stripe') return 'Carte bancaire (Stripe)';
   if (method === 'demo') return 'Paiement démo';
   return method || 'Carte bancaire';
