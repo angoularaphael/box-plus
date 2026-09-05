@@ -47,7 +47,13 @@ Copy-Item (Join-Path $BoxPlus "bot\.env.example") (Join-Path $BotOut ".env.examp
   "dependencies": {
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "playwright": "^1.51.1"
+    "imapflow": "^1.6.6",
+    "mailparser": "^3.9.15",
+    "playwright": "^1.55.0",
+    "ws": "^8.21.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
 '@ | Set-Content (Join-Path $BotOut "package.json") -Encoding UTF8

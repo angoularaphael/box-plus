@@ -119,9 +119,7 @@ function ensureBotRepo() {
 
 ensureBotRepo();
 
-if (!fs.existsSync(path.join(BOT_DIR, 'node_modules'))) {
-  run('npm install --omit=dev --ignore-scripts', BOT_DIR);
-}
+run('npm install --omit=dev --no-fund --no-audit', BOT_DIR);
 
 installPlaywright(BOT_DIR);
 
@@ -130,4 +128,4 @@ const depsDir = path.join(resolvePath(process.env.BOT_DATA_DIR || 'data'), 'syst
 installChromiumSystemDeps({ baseDir: depsDir, botDir: BOT_DIR, log: (m) => log(m) });
 
 log('Démarrage bot Deciplus…');
-run('node bot/index.js', BOT_DIR);
+run('node start.js', BOT_DIR);
