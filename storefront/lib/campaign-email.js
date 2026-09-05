@@ -34,7 +34,7 @@ function buildSimpleHtmlEmail({ greeting, paragraphs = [], ctaUrl, ctaLabel, sig
 
 function campaignReplyHeaders() {
   return {
-    'List-Unsubscribe': '<mailto:boxingcentertls@gmail.com?subject=Desinscription%20newsletter>',
+    'List-Unsubscribe': '<mailto:boxingcentertls@gmail.com?subject=Desinscription>',
   };
 }
 
@@ -146,45 +146,40 @@ function enfantsCampaignBodyLines() {
 
 function buildEnfantsCampaignEmail({ name } = {}) {
   const who = firstNameOf(name);
-  const greeting = who
-    ? `Salut ${who}, c'est David de Boxing Center.`
-    : "Salut, c'est David de Boxing Center.";
-  const subject = 'Cours enfants Boxing Center — places disponibles';
-  const paragraphs = [
-    'Les cours enfants ont repris dans nos 5 clubs et il reste encore des places disponibles.',
-    'Baby Boxe dès 3 ans, Boxe Éducative enfants/ados pour les 7/11 et 12/16 ans — cours encadrés par des coachs professionnels.',
-    'Baby Boxe : samedi 14h15-15h.',
-    'Boxe Éducative (7/11 ans et 12/16 ans) : mercredi et samedi 15h/16h et 16h/17h. Vacances scolaires incluses.',
-    'Paiement possible en 4× sans frais depuis notre boutique en ligne.',
-    "Séance d'essai offerte pour les enfants.",
-  ];
+  const greeting = who ? `Salut ${who},` : 'Salut,';
+  const subject = who ? `${who}, c'est David` : "C'est David";
   const emailText = [
     greeting,
     '',
-    ...paragraphs,
+    "C'est David de Boxing Center. Les cours enfants ont repris dans nos 5 clubs.",
     '',
+    'Baby Boxe dès 3 ans — samedi 14h15-15h.',
+    'Boxe éducative 7/11 et 12/16 ans — mercredi et samedi 15h/16h et 16h/17h.',
+    'Vacances scolaires incluses.',
+    '',
+    "Séance d'essai offerte pour les enfants.",
+    '',
+    'Horaires et inscriptions ici :',
     ENFANTS_CAMPAIGN_URL,
     '',
-    'L’équipe Boxing Center',
+    'À bientôt,',
+    CAMPAIGN_SIGN_OFF,
     '',
     CLUB_POSTAL_ADDRESS,
+    '',
+    'Répondre à ce mail ou écrire à boxingcentertls@gmail.com',
+    'Pour ne plus recevoir ce type de message : répondez « désinscription ».',
   ].join('\n');
-  const html = buildSimpleHtmlEmail({
-    greeting,
-    paragraphs,
-    ctaUrl: ENFANTS_CAMPAIGN_URL,
-    ctaLabel: 'Voir les cours enfants',
-    signOff: 'L’équipe Boxing Center',
-  });
   return {
-    fromName: CAMPAIGN_FROM_NAME,
+    fromName: 'David de Boxing Center',
     subject,
-    html,
+    html: undefined,
     emailText,
     headers: campaignReplyHeaders(),
     attachments: [],
     unsubscribeUrl: '',
-    preheader: 'Baby Boxe et Boxe éducative — séance d’essai offerte',
+    preheader: '',
+    replyTo: 'boxingcentertls@gmail.com',
   };
 }
 

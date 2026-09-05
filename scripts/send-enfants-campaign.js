@@ -34,7 +34,7 @@ function loadEnvFile(file) {
 const ROOT = path.join(__dirname, '..');
 loadEnvFile(path.join(ROOT, '.env'));
 process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
-process.env.RESEND_SENDER_NAME = 'David';
+process.env.RESEND_SENDER_NAME = 'David de Boxing Center';
 process.env.RESEND_REPLY_TO = process.env.RESEND_REPLY_TO || 'boxingcentertls@gmail.com';
 
 const {
@@ -240,11 +240,9 @@ async function sendEmailOne(contact) {
     to: contact.email,
     subject: copy.subject,
     text: copy.emailText,
-    html: copy.html,
     headers: copy.headers,
     fromName: copy.fromName,
-    replyTo: 'boxingcentertls@gmail.com',
-    tags: [{ name: 'campaign', value: 'enfants-2026' }],
+    replyTo: copy.replyTo || 'boxingcentertls@gmail.com',
   });
 }
 
@@ -286,11 +284,9 @@ async function main() {
         to: TEST_EMAIL,
         subject: testCopy.subject,
         text: testCopy.emailText,
-        html: testCopy.html,
         headers: testCopy.headers,
         fromName: testCopy.fromName,
-        replyTo: 'boxingcentertls@gmail.com',
-        tags: [{ name: 'campaign', value: 'enfants-test' }],
+        replyTo: testCopy.replyTo || 'boxingcentertls@gmail.com',
       });
     }
     if (!EMAIL_ONLY) {
