@@ -20,6 +20,7 @@ const {
   customerPhone,
 } = require('../storefront/lib/inscription-nudge');
 const { gymEssaiFollowupText } = require('../storefront/lib/essai-followup');
+const { isOfferPlacesSmsPaused } = require('../storefront/lib/whatsapp-outbound');
 
 const DRY = process.argv.includes('--dry') || !process.argv.includes('--send');
 const DUO_ONLY = process.argv.includes('--duo-only');
@@ -198,6 +199,10 @@ async function main() {
   }
 
   for (const r of duoRows) {
+    if (isOfferPlacesSmsPaused()) {
+      skipped.push({ reason: 'offer_places_sms_paused', type: 'duo', order_id: r.order_id });
+      continue;
+    }
     const friend = sanitizeFriend(r.referral_friend);
     const copy = buildReferralCopy({
       friendPrenom: friend.prenom,

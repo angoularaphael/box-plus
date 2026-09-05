@@ -242,8 +242,8 @@ async function notifyManager(manager, message, order, hooks = {}) {
   const sendEmail = hooks.sendEmail || sendManagerSaleEmail;
 
   let whatsapp = { sent: false };
-  const { isAllWhatsAppPaused, isPromoWhatsAppPaused } = require('./whatsapp-outbound');
-  const skipWa = skipDemoWa || isAllWhatsAppPaused() || isPromoWhatsAppPaused();
+  const { isAllWhatsAppPaused } = require('./whatsapp-outbound');
+  const skipWa = skipDemoWa || isAllWhatsAppPaused();
   if (skipDemoWa) {
     logInfo('WhatsApp manager matériel ignoré (tests/démo)', {
       manager: manager.name,

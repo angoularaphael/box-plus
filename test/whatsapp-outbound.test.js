@@ -6,6 +6,7 @@ const {
   BATCH_SIZE,
   isPromoWhatsAppPaused,
   isAllWhatsAppPaused,
+  isOfferPlacesSmsPaused,
   promoPauseReason,
 } = require('../storefront/lib/whatsapp-outbound');
 
@@ -24,6 +25,11 @@ test('WHATSAPP_PROMO_PAUSED=1 coupe encore les envois', () => {
   const env = { WHATSAPP_PROMO_PAUSED: '1' };
   assert.equal(isPromoWhatsAppPaused(env), true);
   assert.equal(promoPauseReason(env), 'promo_paused');
+});
+
+test('OFFER_PLACES_SMS_PAUSED coupe les SMS offre places sans bloquer tout le promo', () => {
+  assert.equal(isOfferPlacesSmsPaused({ OFFER_PLACES_SMS_PAUSED: '1' }), true);
+  assert.equal(isPromoWhatsAppPaused({ OFFER_PLACES_SMS_PAUSED: '1' }), false);
 });
 
 test('coupe totale si WA_OUTBOUND_PAUSED ou SMS_OUTBOUND_PAUSED', () => {

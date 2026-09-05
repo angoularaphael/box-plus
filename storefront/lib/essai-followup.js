@@ -318,8 +318,10 @@ async function sendCustomerNudge(
   }
 
   if (phone) {
-    const { isPromoWhatsAppPaused } = require('./whatsapp-outbound');
-    if (liveWa && isPromoWhatsAppPaused()) {
+    const { isPromoWhatsAppPaused, isOfferPlacesSmsPaused } = require('./whatsapp-outbound');
+    if (liveWa && isOfferPlacesSmsPaused()) {
+      out.whatsapp = { sent: false, skipped: true, reason: 'offer_places_sms_paused', to: phone };
+    } else if (liveWa && isPromoWhatsAppPaused()) {
       out.whatsapp = { sent: false, skipped: true, reason: 'promo_paused', to: phone };
     } else {
       try {

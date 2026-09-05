@@ -33,6 +33,16 @@ function isPromoWhatsAppPaused(env = process.env) {
   return truthyFlag(env.WHATSAPP_PROMO_PAUSED) || truthyFlag(env.SMS_OUTBOUND_PAUSED);
 }
 
+/** Campagnes offre 29/259 « Salut / il reste des places » — SMS coupés, emails conservés. */
+function isOfferPlacesSmsPaused(env = process.env) {
+  if (isAllWhatsAppPaused(env)) return true;
+  return (
+    truthyFlag(env.OFFER_PLACES_SMS_PAUSED) ||
+    truthyFlag(env.WHATSAPP_OFFER_SMS_PAUSED) ||
+    truthyFlag(env.OFFER_CAMPAIGN_SMS_PAUSED)
+  );
+}
+
 function promoPauseReason(env = process.env, now = Date.now()) {
   if (isAllWhatsAppPaused(env)) return 'outbound_paused';
   if (!isPromoWhatsAppPaused(env, now)) return null;
@@ -46,5 +56,6 @@ module.exports = {
   restrictedUntilMs,
   isAllWhatsAppPaused,
   isPromoWhatsAppPaused,
+  isOfferPlacesSmsPaused,
   promoPauseReason,
 };

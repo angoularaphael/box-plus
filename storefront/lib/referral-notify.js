@@ -3,7 +3,7 @@
 const { getStoreUrl } = require('../../lib/app-urls');
 const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
 const { sendWhatsAppMessage } = require('./whatsapp-bot');
-const { isPromoWhatsAppPaused } = require('./whatsapp-outbound');
+const { isPromoWhatsAppPaused, isOfferPlacesSmsPaused } = require('./whatsapp-outbound');
 const { logInfo, logWarn } = require('../../lib/logger');
 
 function clean(v, max = 80) {
@@ -99,7 +99,9 @@ async function notifyReferralFriend({ order, friend, referrer, skipEmail = false
     out.email = { sent: true, skipped: true };
   }
 
-  if (isPromoWhatsAppPaused()) {
+  if (isOfferPlacesSmsPaused()) {
+    out.whatsapp = { sent: false, skipped: true, reason: 'offer_places_sms_paused' };
+  } else if (isPromoWhatsAppPaused()) {
     out.whatsapp = { sent: false, skipped: true, reason: 'promo_paused' };
   } else {
     try {
