@@ -1,5 +1,25 @@
 'use strict';
 
+const { cluster } = require('../../lib/seo-keywords');
+
+const LANDING_CLUSTER_MAP = {
+  '/boxe-anglaise-toulouse': ['boxe_anglaise', 'niveaux_objectifs', 'localites', 'offres_conversion', 'technique_entrainement'],
+  '/boxe-thai-toulouse': ['boxe_thai_kickboxing', 'localites', 'offres_conversion'],
+  '/kick-boxing-toulouse': ['boxe_thai_kickboxing', 'localites', 'offres_conversion'],
+  '/mma-toulouse': ['mma', 'grappling_jjb', 'localites', 'offres_conversion'],
+  '/grappling-toulouse': ['grappling_jjb', 'mma', 'localites', 'offres_conversion'],
+  '/boxe-femme-toulouse': ['femmes', 'boxe_anglaise', 'fitness_condition_physique', 'offres_conversion'],
+  '/boxe-enfant-toulouse': ['boxe_educative_enfants', 'localites', 'offres_conversion'],
+  '/cross-training-toulouse': ['fitness_condition_physique', 'boxe_anglaise', 'offres_conversion'],
+};
+
+function landingKeywords(route, page) {
+  const names = LANDING_CLUSTER_MAP[route] || [];
+  const merged = [...(page.keywords || [])];
+  for (const name of names) merged.push(...cluster(name));
+  return [...new Set(merged.map((item) => String(item).trim()).filter(Boolean))];
+}
+
 const LANDINGS = {
   '/boxe-anglaise-toulouse': {
     name: 'Boxe anglaise',
@@ -106,6 +126,7 @@ function esc(value) {
 function renderLanding(route) {
   const page = LANDINGS[route];
   if (!page) return null;
+  const pageKeywords = landingKeywords(route, page);
   const otherLinks = Object.entries(LANDINGS)
     .filter(([path]) => path !== route)
     .map(([path, item]) => `<a href="${path}">${esc(item.name)}</a>`)
@@ -117,6 +138,7 @@ function renderLanding(route) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${esc(page.title)}</title>
   <meta name="description" content="${esc(page.description)}" />
+  <meta name="keywords" content="${esc(pageKeywords.join(', ').slice(0, 1800))}" />
   <script src="/js/boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -215,7 +237,7 @@ function landingJsonLd(route, siteUrl) {
         areaServed: { '@type': 'City', name: 'Toulouse' },
         url: `${siteUrl}${route}`,
         image: `${siteUrl}${page.image}`,
-        keywords: page.keywords.join(', '),
+        keywords: landingKeywords(route, page).join(', '),
         offers: [
           { '@type': 'Offer', name: 'Séance d’essai', price: '10.00', priceCurrency: 'EUR', url: `${siteUrl}/seance-essai` },
           { '@type': 'Offer', name: 'Abonnements Boxing Center', url: `${siteUrl}/abonnements` },

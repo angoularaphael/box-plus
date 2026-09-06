@@ -19,6 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const { jsonLdCreator, AUTEURS } = require('./auteurs');
 const { LANDINGS, renderLanding, landingJsonLd } = require('./seo-landings');
+const { knowsAbout: seoKnowsAbout, keywordsMeta: seoKeywordsMeta } = require('../../lib/seo-keywords');
 
 const SITE_URL = (() => {
   const env = (process.env.SITE_URL || '').replace(/\/+$/, '');
@@ -70,8 +71,10 @@ const SALLES = [
 ];
 
 const DISCIPLINES = [
-  'Boxe anglaise', 'Boxe thaï', 'Kickboxing', 'MMA',
-  'Cross training', 'Boxing Lady', 'Boxe éducative', 'Fitness boxing',
+  'Boxe anglaise', 'Boxe thaï', 'Muay Thaï', 'Kickboxing', 'K1', 'MMA',
+  'Grappling', 'Jiu-Jitsu brésilien', 'Savate', 'Boxe française',
+  'Cross training', 'HYROX', 'Boxing Lady', 'Boxe éducative', 'Baby Boxe',
+  'Fitness boxing', 'Boxing Camp', 'Open Sparring', 'Pattes d\'ours',
 ];
 
 // Keep in sync with public/js/faq.js (FAQ_ITEMS).
@@ -132,7 +135,7 @@ function orgJsonLd() {
     },
     openingHoursSpecification: openingHoursSpec(),
     hasMap: 'https://www.google.com/maps/search/?api=1&query=12+rue+de+Fenouillet+31200+Toulouse',
-    knowsAbout: DISCIPLINES,
+    knowsAbout: seoKnowsAbout(),
   };
 }
 
@@ -583,7 +586,7 @@ function headTags(route, { ogImage, ogImageAlt, jsonLd, video, extra, noindex } 
     parts.push('<meta name="geo.placename" content="Toulouse, Minimes" />');
     parts.push('<meta name="ICBM" content="43.6256, 1.4309" />');
     parts.push('<meta name="language" content="fr" />');
-    parts.push('<meta name="keywords" content="boutique boxe Toulouse, abonnement boxe Toulouse, Boxing Center, matériel de boxe, séance d\'essai boxe, Minimes, Ramonville, Portet-sur-Garonne" />');
+    parts.push(`<meta name="keywords" content="${esc(seoKeywordsMeta())}" />`);
     parts.push(`<link rel="alternate" hreflang="fr" href="${url}" />`);
     parts.push(`<link rel="alternate" hreflang="x-default" href="${url}" />`);
   }
