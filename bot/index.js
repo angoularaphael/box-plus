@@ -651,19 +651,22 @@ async function processSaleJob(page, order, jobMeta = {}) {
       badge_action: checkpoint.badge_action || null,
     };
   } else if (productConfig.requires_payment !== false && paid) {
-    if (ibanError && !isPayplug4xPrelevementOrder(order)) {
-      productConfig.paiement_comptant = true;
-      productConfig.requires_iban = false;
-      productConfig.skip_rib_prompt = true;
-      logWarn('IBAN absent — vente Deciplus en comptant (1er mois déjà payé)', {
-        order_id: order.order_id,
-        member_id: memberId,
-      });
-    } else if (ibanError && isPayplug4xPrelevementOrder(order)) {
-      logWarn('IBAN absent — vente Deciplus 4× prélèvement (1er quart déjà payé)', {
-        order_id: order.order_id,
-        member_id: memberId,
-      });
+    if (ibanError) {
+      const { shouldFallbackToComptantOnIbanError } = require('../lib/billing-plan');
+      if (shouldFallbackToComptantOnIbanError(order, productConfig)) {
+        productConfig.paiement_comptant = true;
+        productConfig.requires_iban = false;
+        productConfig.skip_rib_prompt = true;
+        logWarn('IBAN absent — vente Deciplus en comptant (1er mois déjà payé)', {
+          order_id: order.order_id,
+          member_id: memberId,
+        });
+      } else {
+        logWarn('IBAN absent — vente Deciplus en prélèvement (échéancier requis, 1er mois déjà payé)', {
+          order_id: order.order_id,
+          member_id: memberId,
+        });
+      }
     }
     saleResult = await recordSale(page, order, productConfig, memberId, gymConfig, {
       badgeProductConfig,
@@ -1602,6 +1605,7 @@ function installCrashGuards() {
 async function main() {
   const once = process.argv.includes('--once');
   installCrashGuards();
+  console.log('[BOXPLUS] Lancement boucle bot Deciplus');
   for (;;) {
     try {
       await runLoop(once);
@@ -1627,4 +1631,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { processJob, processOneJob, runLoop, processCancelJob, processSaleJob, processMemberPhotoJob, processCheckSaleJob };
+module.exports = { processJob, processOneJob, runLoop, main, processCancelJob, processSaleJob, processMemberPhotoJob, processCheckSaleJob };
