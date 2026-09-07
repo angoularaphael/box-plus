@@ -8,6 +8,7 @@ const {
 const { generateInscriptionLegalPdfs } = require('./legal-pdf');
 const { sendEmailViaBrevo, isConfigured, defaultReplyTo } = require('./brevo-send');
 const { formatPickupLine } = require('./gym-pickup');
+const { CLUB_PORTET } = require('./pdf-layout');
 
 function buildConfirmationHtml(order, attachmentNames = []) {
   const short = order.customer_short || {};
@@ -168,20 +169,39 @@ function isPortetOrder(order) {
   return gym === 'portet' || gym.includes('portet');
 }
 
+function portetInvoiceEmails() {
+  const raw = String(process.env.PORTET_DOSSIER_CC || CLUB_PORTET.email || '').trim();
+  return raw
+    .split(/[,;]+/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 function portetDossierCc(order) {
   if (!isPortetOrder(order)) return [];
-  const cc = String(process.env.PORTET_DOSSIER_CC || 'nobleartportesien@gmail.com').trim();
   const to = String(order?.customer_short?.email || '').trim().toLowerCase();
-  if (!cc || cc.toLowerCase() === to) return [];
-  return [cc];
+  return portetInvoiceEmails().filter((cc) => cc.toLowerCase() !== to);
+}
+
+function isPortetPickup(order) {
+  const gym = String(order?.pickup_gym || order?.customer?.pickup_gym || '').toLowerCase();
+  return gym.includes('portet');
 }
 
 function materielClubCc(order) {
   const { clubMaterielEmail } = require('./gym-materiel-managers');
-  const cc = clubMaterielEmail();
   const to = String(order?.customer?.email || '').trim().toLowerCase();
-  if (!cc || cc.toLowerCase() === to) return [];
-  return [cc];
+  const list = [clubMaterielEmail()];
+  if (isPortetOrder(order) || isPortetPickup(order)) {
+    list.push(...portetInvoiceEmails());
+  }
+  const seen = new Set();
+  return list.filter((cc) => {
+    const key = String(cc || '').trim().toLowerCase();
+    if (!key || key === to || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function isAventureMail(order = {}) {
@@ -521,5 +541,6 @@ module.exports = {
   getMailFrom,
   isPortetOrder,
   portetDossierCc,
+  portetInvoiceEmails,
   materielClubCc,
 };

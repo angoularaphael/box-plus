@@ -39,7 +39,7 @@ const CLUB_PORTET = {
   tva: 'FR80444152482',
   naf: '9312Z',
   phone: '06 87 90 02 16',
-  email: 'nobleartportesien@gmail.com',
+  email: 'vgsportmanagement@gmail.com',
   web: '',
 };
 
@@ -169,6 +169,8 @@ function clubEmitterRows(club = CLUB) {
     { label: 'SIRET', value: club.siret },
     { label: 'TVA', value: club.tva },
     club.naf ? { label: 'NAF / APE', value: club.naf } : null,
+    club.email ? { label: 'Email', value: club.email } : null,
+    club.phone ? { label: 'Téléphone', value: club.phone } : null,
     { label: 'Site web', value: club.web },
   ];
   return rows.filter((row) => row?.value);
@@ -352,6 +354,7 @@ function clubEmitterRowsCompact(club = CLUB) {
     { label: 'Adresse', value: `${club.address}, ${club.city}` },
     { label: 'SIRET', value: club.siret },
     club.tva ? { label: 'TVA', value: club.tva } : null,
+    club.email ? { label: 'Email', value: club.email } : null,
     { label: 'Site web', value: club.web },
   ].filter((row) => row?.value);
 }
@@ -476,7 +479,7 @@ function drawPageFooter(doc, clubOrOrder) {
   const club = resolveClubArg(clubOrOrder);
   const range = doc.bufferedPageRange();
   const total = range.count;
-  const footerText = [club.name, club.siret ? `SIRET ${club.siret}` : null, club.web]
+  const footerText = [club.name, club.siret ? `SIRET ${club.siret}` : null, club.email, club.web]
     .filter(Boolean)
     .join(' — ');
 

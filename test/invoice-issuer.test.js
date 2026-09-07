@@ -23,6 +23,7 @@ describe('émetteur facture', () => {
     assert.equal(club.tva, 'FR80444152482');
     assert.equal(club.naf, '9312Z');
     assert.equal(club.brand, 'Noble Art Portésien');
+    assert.equal(club.email, 'vgsportmanagement@gmail.com');
     assert.doesNotMatch(club.brand, /Boxing Center/i);
     assert.ok(!club.web);
   });
@@ -49,5 +50,7 @@ describe('émetteur facture', () => {
     assert.equal(byLabel.SIRET, '444 152 482 00022');
     assert.equal(byLabel.TVA, 'FR80444152482');
     assert.equal(byLabel['NAF / APE'], '9312Z');
+    assert.equal(byLabel.Email, 'vgsportmanagement@gmail.com');
+    assert.equal(byLabel.Téléphone, '06 87 90 02 16');
   });
 });

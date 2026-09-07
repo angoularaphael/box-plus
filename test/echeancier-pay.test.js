@@ -7,13 +7,13 @@ const { decodePayload, OFFER_LABELS } = require('../storefront/lib/echeancier-pa
 const { isOpsOrder } = require('../lib/bot-forward');
 
 describe('Portet dossier CC', () => {
-  it('copie nobleartportesien pour une inscription Portet', () => {
+  it('copie vgsportmanagement pour une inscription Portet', () => {
     const order = {
       customer_short: { email: 'adrien@example.com' },
       customer_full: { gym: 'portet' },
     };
     assert.equal(isPortetOrder(order), true);
-    assert.deepEqual(portetDossierCc(order), ['nobleartportesien@gmail.com']);
+    assert.deepEqual(portetDossierCc(order), ['vgsportmanagement@gmail.com']);
   });
 
   it('pas de copie pour Minimes', () => {
@@ -24,12 +24,19 @@ describe('Portet dossier CC', () => {
 
 describe('CC club matériel', () => {
   it('copie boxingcenter31 pour toutes les salles', () => {
-    for (const gym of ['minimes', 'portet', 'st-cyprien', 'ramonville', 'etats-unis']) {
+    for (const gym of ['minimes', 'st-cyprien', 'ramonville', 'etats-unis']) {
       assert.deepEqual(
         materielClubCc({ customer: { email: 'client@example.com' }, pickup_gym: gym }),
         ['boxingcenter31@gmail.com']
       );
     }
+  });
+
+  it('Portet : copie aussi vgsportmanagement sur la facture matériel', () => {
+    assert.deepEqual(
+      materielClubCc({ customer: { email: 'client@example.com' }, pickup_gym: 'Portet-sur-Garonne' }),
+      ['boxingcenter31@gmail.com', 'vgsportmanagement@gmail.com']
+    );
   });
 
   it('ne se copie pas si le client est déjà boxingcenter31', () => {
