@@ -89,4 +89,11 @@ test('OFFRE A 29€ matche OFFRE DUO 29€, pas un 44,99 résilié', () => {
     ),
     false
   );
+  assert.equal(
+    saleContractMatches(
+      'CONTRAT N°C2026-043680 vendu le 07/09/2026 07/09/2026 08/08/2027 335 jours restants',
+      offre29
+    ),
+    true
+  );
 });
