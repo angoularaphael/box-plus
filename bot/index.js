@@ -1121,6 +1121,9 @@ async function processJob(page, job) {
   if (role === 'sales' && !salesAllowed) {
     throw new Error(`Bot ventes refuse « ${action} » — utiliser BOXPLUS_BOT_URL_OPS`);
   }
+  if (role === 'ops' && salesAllowed) {
+    throw new Error(`Bot maintenance refuse les ventes inscription — utiliser BOXPLUS_BOT_URL`);
+  }
 
   if (order.action === 'inscription_nudge') {
     return processInscriptionNudgeJob(order);

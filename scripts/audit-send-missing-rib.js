@@ -40,6 +40,11 @@ const CHECK = process.argv.includes('--check') || NO_MODE;
 const SEND = process.argv.includes('--send');
 const TEST = process.argv.includes('--test');
 const SEND_ONLY = process.argv.includes('--send-only');
+const SEARCH_NAMES = (process.argv.find((a) => a.startsWith('--names=')) || '')
+  .slice(8)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 const RUN_AUDIT = CHECK || ((SEND || TEST) && !SEND_ONLY && !fs.existsSync(OUT_JSON));
 const LIMIT = Number((process.argv.find((a) => a.startsWith('--limit=')) || '').slice(8) || 0);
 const DELAY_MS = Number((process.argv.find((a) => a.startsWith('--delay=')) || '').slice(8) || 500);
@@ -60,13 +65,18 @@ function sinceIso() {
 function nameOf(p) {
   const cs = p.customer_short || {};
   const cf = p.customer_full || {};
-  return `${cs.first_name || cf.first_name || ''} ${cs.last_name || cf.last_name || ''}`
+  const summary = p.summary || {};
+  return `${cs.first_name || cf.first_name || summary.first_name || ''} ${
+    cs.last_name || cf.last_name || summary.last_name || ''
+  }`
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 function emailOf(p) {
-  return String(p.customer_short?.email || p.customer_full?.email || '')
+  return String(
+    p.customer_short?.email || p.customer_full?.email || p.summary?.email || ''
+  )
     .trim()
     .toLowerCase();
 }
@@ -124,23 +134,59 @@ async function loadCandidates() {
     const member = String(p.deciplus_member_id || '').trim();
     if (!/^\d+$/.test(member)) continue;
     const email = emailOf(p);
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
     const paidAt = orderPaidAt(p) || row.created_at;
     const prev = byMember.get(member);
+    const rowData = {
+      order_id: row.order_id,
+      name: nameOf(p),
+      email,
+      member,
+      gym: p.customer_full?.gym || p.gym || 'minimes',
+      product: p.product_snapshot?.display_name || p.product_snapshot?.name || p.product_name || 'Abonnement',
+      paid_at: paidAt,
+      iban_in_order: normalizeIban(p.payment?.iban || p.customer_full?.iban || ''),
+    };
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      rowData.no_email = true;
+    }
     if (!prev || new Date(paidAt) > new Date(prev.paid_at)) {
-      byMember.set(member, {
-        order_id: row.order_id,
-        name: nameOf(p),
-        email,
-        member,
-        gym: p.customer_full?.gym || p.gym || 'minimes',
-        product: p.product_snapshot?.display_name || p.product_snapshot?.name || p.product_name || 'Abonnement',
-        paid_at: paidAt,
-        iban_in_order: normalizeIban(p.payment?.iban || p.customer_full?.iban || ''),
-      });
+      byMember.set(member, rowData);
     }
   }
   return { since, candidates: [...byMember.values()] };
+}
+
+async function searchDeciplusByNames(page, existingMembers) {
+  if (!SEARCH_NAMES.length) return [];
+  const { searchMemberByName } = require('../bot/member');
+  const extra = [];
+  const seen = new Set(existingMembers.map((c) => String(c.member)));
+  for (const raw of SEARCH_NAMES) {
+    const parts = raw.trim().split(/\s+/);
+    const last = parts.length > 1 ? parts[parts.length - 1] : parts[0];
+    const first = parts.length > 1 ? parts.slice(0, -1).join(' ') : '';
+    try {
+      const hit = await searchMemberByName(page, last, first);
+      if (!hit?.found || !hit.member_id) continue;
+      const member = String(hit.member_id);
+      if (!/^\d+$/.test(member) || seen.has(member)) continue;
+      seen.add(member);
+      extra.push({
+        order_id: `DECIPLUS-SEARCH-${member}`,
+        name: hit.name || raw,
+        email: hit.email || '',
+        member,
+        gym: 'minimes',
+        product: 'Recherche Deciplus',
+        paid_at: null,
+        iban_in_order: '',
+        source: 'deciplus_search',
+      });
+    } catch (err) {
+      console.error('SEARCH_FAIL', raw, err.message);
+    }
+  }
+  return extra;
 }
 
 async function readMandate(page, memberId) {
@@ -227,7 +273,8 @@ function writeMarkdown(report) {
     '|-----|-------|--------|---------|----------|',
   ];
   for (const r of report.missing) {
-    lines.push(`| ${r.name || '—'} | ${r.email} | ${r.member} | ${r.product || '—'} | ${r.order_id} |`);
+    const mail = r.email ? r.email : '— (pas d’email)';
+    lines.push(`| ${r.name || '—'} | ${mail} | ${r.member} | ${r.product || '—'} | ${r.order_id} |`);
   }
   if (!report.missing.length) {
     lines.push('| — | — | — | — | — |');
@@ -321,8 +368,23 @@ async function sendEmails(targets) {
 (async () => {
   if (require.main !== module) return;
   fs.mkdirSync(path.dirname(OUT_JSON), { recursive: true });
-  const { since, candidates } = await loadCandidates();
-  console.log(`Depuis ${since} — ${candidates.length} membre(s) prélèvement avec email`);
+  const { since, candidates: loaded } = await loadCandidates();
+  let candidates = loaded;
+  console.log(`Depuis ${since} — ${candidates.length} membre(s) prélèvement avec email (commandes)`);
+
+  if (RUN_AUDIT && SEARCH_NAMES.length) {
+    const browsers = path.join(process.env.USERPROFILE || '', 'AppData', 'Local', 'ms-playwright');
+    if (fs.existsSync(browsers)) process.env.PLAYWRIGHT_BROWSERS_PATH = browsers;
+    await runWithSession('audit-search-names', async (page) => {
+      await login(page, { siteLabel: 'Minimes' }).catch(() => login(page, { siteLabel: 'Saint-Cyprien' }));
+      const extra = await searchDeciplusByNames(page, candidates);
+      if (extra.length) {
+        candidates = [...candidates, ...extra];
+        console.log(`+ ${extra.length} membre(s) via recherche Deciplus`);
+      }
+    });
+    await closeBrowser().catch(() => {});
+  }
 
   let report = {
     at: new Date().toISOString(),
@@ -353,7 +415,7 @@ async function sendEmails(targets) {
   }
 
   if (SEND || TEST || SEND_ONLY) {
-    const targets = report.missing.filter((r) => r.email);
+    const targets = report.missing.filter((r) => r.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email));
     if (!targets.length) {
       console.log('Aucun mail à envoyer.');
       return;
