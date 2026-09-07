@@ -27,6 +27,7 @@ const {
   findActiveContracts,
   cancelSale,
   isPendingOrFutureContract,
+  parseFrDatesFromLabel,
 } = require('../bot/cancel-sale');
 
 const CHECK = !process.argv.includes('--apply');
@@ -94,18 +95,30 @@ async function loadTargets() {
   return [...byMember.values()];
 }
 
+function is4xPrelevementLabel(label) {
+  const t = String(label || '').toLowerCase();
+  return /4x|prelevement|64,75|64\.75/.test(t);
+}
+
 function is12moisPendingLabel(label) {
   const t = String(label || '').toLowerCase();
-  if (!/offre promo 12|12mois|\b259\b/.test(t)) return false;
-  if (/4x|prelevement|64,75|64\.75/.test(t)) return false;
-  return isPendingOrFutureContract(label);
+  if (is4xPrelevementLabel(t)) return false;
+  if (!isPendingOrFutureContract(label)) return false;
+  if (/offre promo 12|12mois|\b259\b/.test(t)) return true;
+  // Fiche membre Deciplus : libellé souvent « Contrat n°… En attente » sans nom produit.
+  if (/contrat n°|vendu le/.test(t) && /en attente/i.test(t)) return true;
+  const dates = parseFrDatesFromLabel(label);
+  if (dates.length >= 2 && dates[0] > new Date()) return true;
+  return false;
 }
 
 function is12moisActiveLabel(label) {
   const t = String(label || '').toLowerCase();
-  if (!/offre promo 12|12mois|\b259\b/.test(t)) return false;
-  if (/4x|prelevement|64,75|64\.75/.test(t)) return false;
-  return !isPendingOrFutureContract(label) && !/annul|resilie|expir/i.test(t);
+  if (is4xPrelevementLabel(t)) return false;
+  if (isPendingOrFutureContract(label)) return false;
+  if (/offre promo 12|12mois|\b259\b/.test(t)) return true;
+  if (/jours restants/.test(t) && !/annul|resilie|expir/i.test(t)) return true;
+  return false;
 }
 
 async function fixMember(page, target) {
@@ -152,19 +165,41 @@ async function fixMember(page, target) {
   const browsers = path.join(process.env.USERPROFILE || '', 'AppData', 'Local', 'ms-playwright');
   if (fs.existsSync(browsers)) process.env.PLAYWRIGHT_BROWSERS_PATH = browsers;
 
+  const byGym = new Map();
+  for (const t of targets) {
+    const gymKey = String(t.gym || 'minimes').toLowerCase();
+    if (!byGym.has(gymKey)) byGym.set(gymKey, []);
+    byGym.get(gymKey).push(t);
+  }
+
   await runWithSession('fix-pending-12mois', async (page) => {
-    await login(page, { siteLabel: 'Minimes' }).catch(() => login(page, { siteLabel: 'Saint-Cyprien' }));
-    for (const t of targets) {
-      try {
-        const row = await fixMember(page, t);
-        report.results.push(row);
-        if (row.pending?.length) {
-          console.log(CHECK ? 'PENDING' : 'FIXED', t.email || t.name, 'member', t.member, row.pending.length, 'en attente');
+    for (const [gymKey, group] of byGym) {
+      const gym = getGymConfig(gymKey);
+      const siteLabel = gym.deciplus_label || 'Minimes';
+      console.log(`Site Deciplus : ${siteLabel} (${group.length} membres)`);
+      await login(page, { siteLabel }).catch(() => login(page, { siteLabel: 'Minimes' }));
+      let n = 0;
+      for (const t of group) {
+        n += 1;
+        if (n % 25 === 0) console.log(`… ${siteLabel} ${n}/${group.length}`);
+        try {
+          const row = await fixMember(page, t);
+          report.results.push(row);
+          if (row.pending?.length) {
+            console.log(
+              CHECK ? 'PENDING' : 'FIXED',
+              t.email || t.name,
+              'member',
+              t.member,
+              row.pending.length,
+              'en attente'
+            );
+          }
+        } catch (err) {
+          report.results.push({ ...t, error: err.message.slice(0, 180) });
+          console.error('FAIL', t.member, err.message);
+          await closeGreyboxIfOpen(page).catch(() => {});
         }
-      } catch (err) {
-        report.results.push({ ...t, error: err.message.slice(0, 180) });
-        console.error('FAIL', t.member, err.message);
-        await closeGreyboxIfOpen(page).catch(() => {});
       }
     }
   });

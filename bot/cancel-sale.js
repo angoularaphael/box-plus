@@ -73,7 +73,38 @@ function getScopes(page) {
 /**
  * Liste les contrats actifs via #prestation_XXXX (structure Deciplus réelle).
  */
+async function revealHiddenContracts(page) {
+  for (const ctx of getScopes(page)) {
+    try {
+      const toggled = await ctx
+        .evaluate(() => {
+          const labels = [...document.querySelectorAll('label, span, div')];
+          const hit = labels.find((el) =>
+            /masquer les contrats inactifs/i.test(String(el.textContent || ''))
+          );
+          if (!hit) return false;
+          const row = hit.closest('label, div, tr, p') || hit.parentElement;
+          const input =
+            row?.querySelector('input[type="checkbox"]') ||
+            hit.previousElementSibling?.querySelector?.('input[type="checkbox"]') ||
+            hit.parentElement?.querySelector('input[type="checkbox"]');
+          if (!input || input.type !== 'checkbox') return false;
+          if (input.checked) {
+            input.click();
+            return true;
+          }
+          return false;
+        })
+        .catch(() => false);
+      if (toggled) await page.waitForTimeout(500);
+    } catch {
+      /* frame */
+    }
+  }
+}
+
 async function expandContractSections(page) {
+  await revealHiddenContracts(page);
   for (const ctx of getScopes(page)) {
     try {
       await ctx
@@ -189,6 +220,46 @@ async function findActiveContracts(page, options = {}) {
       }
     } catch {
       /* frame détachée */
+    }
+  }
+
+  if (!found.length) {
+    for (const ctx of getScopes(page)) {
+      try {
+        const rows = await ctx
+          .evaluate(() =>
+            [...document.querySelectorAll('[id^="prestation_"]')].map((el) => ({
+              idc: (String(el.id || '').match(/prestation_(\d+)/i) || [])[1] || '',
+              label: String(el.textContent || '')
+                .replace(/\s+/g, ' ')
+                .trim(),
+            }))
+          )
+          .catch(() => []);
+        for (const row of rows) {
+          const idc = String(row.idc || '').trim();
+          const label = String(row.label || '').trim();
+          if (!idc || seen.has(idc) || !label) continue;
+          if (/r[ée]sili[ée]|annul[ée]e?|termin[ée]|expir[ée]|inactif|cl[ôo]tur|archiv/i.test(label)) {
+            continue;
+          }
+          seen.add(idc);
+          found.push({
+            ctx,
+            item: null,
+            consulter: null,
+            idc,
+            label: label.slice(0, 160),
+            isBadge:
+              (/\bbadge\b/i.test(label) && !/essai|coaching/i.test(label)) ||
+              (/pr[ée]-?d[ée]compt/i.test(label) &&
+                /0 cr[ée]dit restant/i.test(label) &&
+                !/essai|coaching|offre duo|abonnement|12\s*mois|259/i.test(label)),
+          });
+        }
+      } catch {
+        /* frame */
+      }
     }
   }
 
