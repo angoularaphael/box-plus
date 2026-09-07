@@ -130,13 +130,13 @@ async function auditDeciplus(rows) {
   const { switchDeciplusSite } = require('../bot/deciplus-zone');
   const { openMemberCheck, closeGreyboxIfOpen } = require('../bot/wallet');
   const { findActiveContracts } = require('../bot/cancel-sale');
-  const { loadCatalog } = require('../bot/catalog');
+  const { fetchDeciplusCatalog } = require('../bot/catalog');
 
-  const catalog = await loadCatalog();
   const report = { synced: [], missing: [], errors: [] };
 
   await runWithSession('flush-catchup-audit', async (page) => {
     await login(page, { siteLabel: 'Minimes' });
+    const catalog = await fetchDeciplusCatalog(page);
     let n = 0;
     for (const row of rows) {
       if (LIMIT > 0 && n >= LIMIT) break;
