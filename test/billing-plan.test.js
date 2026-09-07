@@ -10,6 +10,7 @@ const {
   normalizePaymentPlan,
   requiresIbanForPlan,
   applyBillingPlanToProductConfig,
+  shouldFallbackToComptantOnIbanError,
   paymentModeLabel,
   isChildOfferProduct,
   ageFromBirthdate,
@@ -91,5 +92,36 @@ describe('billing-plan', () => {
     assert.equal(adultOfferAgeError(fourteen, baby), null);
     assert.equal(adultOfferAgeError(seven, educative), null);
     assert.equal(adultOfferAgeError(sixteen, educative), null);
+  });
+
+  it('IBAN manquant : 29 € / 4 semaines restent en prélèvement, 259 € reste comptant', () => {
+    assert.equal(
+      shouldFallbackToComptantOnIbanError(
+        { product_name: 'Sans engagement — 29 €', product_id: 'offre-duo' },
+        { paiement_comptant: false, name: 'OFFRE DUO 29€' }
+      ),
+      false
+    );
+    assert.equal(
+      shouldFallbackToComptantOnIbanError(
+        { product_name: '44,99€/4 semaines' },
+        { paiement_comptant: false, name: '44,99€/4 semaines' }
+      ),
+      false
+    );
+    assert.equal(
+      shouldFallbackToComptantOnIbanError(
+        { payment: { payment_plan: '4x', billing_plan: 'rib' } },
+        { paiement_comptant: false }
+      ),
+      false
+    );
+    assert.equal(
+      shouldFallbackToComptantOnIbanError(
+        { product_name: 'OFFRE PROMO 12 MOIS' },
+        { paiement_comptant: true, name: 'OFFRE PROMO 12 MOIS' }
+      ),
+      true
+    );
   });
 });

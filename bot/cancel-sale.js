@@ -1036,7 +1036,7 @@ async function voidPendingSaleIfPossible(page, contract, { allowStarted = false 
   return false;
 }
 
-async function cancelOneContract(page, contract, { cancelDate = null } = {}) {
+async function cancelOneContract(page, contract, { cancelDate = null, forceVoid = false } = {}) {
   const dateStr = formatFrDate(parseCancelDate(cancelDate));
   const opened = await openContractPage(page, contract);
   if (!opened) {
@@ -1049,9 +1049,9 @@ async function cancelOneContract(page, contract, { cancelDate = null } = {}) {
     return { cancelled: false, reason: 'action_panel_missing', idc: contract.idc };
   }
 
-  if (contract.isBadge || isPendingOrFutureContract(contract.label)) {
+  if (forceVoid || contract.isBadge || isPendingOrFutureContract(contract.label)) {
     const voided = await voidPendingSaleIfPossible(page, contract, {
-      allowStarted: Boolean(contract.isBadge),
+      allowStarted: forceVoid || Boolean(contract.isBadge),
     });
     if (voided) {
       return {
@@ -1189,7 +1189,7 @@ async function reopenMemberAfterCancel(page, memberId) {
   await randomDelay(600, 1000);
 }
 
-async function cancelAllMemberSales(page, memberId, { maxSales = 15, cancelDate = null, filter = null } = {}) {
+async function cancelAllMemberSales(page, memberId, { maxSales = 15, cancelDate = null, filter = null, forceVoid = false } = {}) {
   let total = 0;
   const details = [];
   const doneIds = new Set();
@@ -1234,7 +1234,7 @@ async function cancelAllMemberSales(page, memberId, { maxSales = 15, cancelDate 
       break;
     }
 
-    const result = await cancelOneContract(page, contracts[0], { cancelDate });
+    const result = await cancelOneContract(page, contracts[0], { cancelDate, forceVoid });
     details.push(result);
     doneIds.add(contracts[0].idc);
 
@@ -1330,6 +1330,7 @@ async function cancelSale(page, memberId, options = {}) {
   const outcome = await cancelAllMemberSales(page, memberId, {
     maxSales: 15,
     cancelDate,
+    forceVoid: options.forceVoid === true,
     filter: extraFilter,
   });
   if (outcome.cancelled_count === 0) {

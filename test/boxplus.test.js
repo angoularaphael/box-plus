@@ -122,6 +122,8 @@ test('force_requeue reprend un échec sans vente, pas un succès', () => {
 test('vente payée n’est pas bloquée par un échec RIB', () => {
   const src = fs.readFileSync(path.join(ROOT, 'bot', 'index.js'), 'utf8');
   assert.match(src, /vente quand même \(1er mois déjà payé\)/);
+  assert.match(src, /shouldFallbackToComptantOnIbanError/);
+  assert.match(src, /échéancier requis/);
   assert.match(src, /\/api\/internal\/sale-status/);
   const wallet = fs.readFileSync(path.join(ROOT, 'bot', 'wallet.js'), 'utf8');
   assert.match(wallet, /clickReplaceMandate/);

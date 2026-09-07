@@ -38,10 +38,12 @@ const ORDER_FILTER = (process.argv.find((a) => a.startsWith('--order=')) || '').
 const LIMIT = Number((process.argv.find((a) => a.startsWith('--limit=')) || '').slice(8) || 0);
 const SYNC = process.argv.includes('--sync');
 const REPAIR = process.argv.includes('--repair');
+const REPAIR_ONLY = process.argv.includes('--repair-only');
 const PHOTOS_ONLY = process.argv.includes('--photos-only');
 const UPLOAD_PHOTOS =
-  !process.argv.includes('--no-photos') && (SYNC || REPAIR || PHOTOS_ONLY || process.argv.includes('--photos'));
-const CHECK = !SYNC && !REPAIR && !PHOTOS_ONLY;
+  !process.argv.includes('--no-photos') &&
+  (SYNC || REPAIR || REPAIR_ONLY || PHOTOS_ONLY || process.argv.includes('--photos'));
+const CHECK = !SYNC && !REPAIR && !REPAIR_ONLY && !PHOTOS_ONLY;
 const OUT = path.join(__dirname, '..', 'data', `verify-boutique-deciplus-${Date.now()}.json`);
 const OUT_MD = path.join(__dirname, '..', 'docs', 'verify-boutique-deciplus.md');
 
@@ -356,7 +358,7 @@ async function main() {
   const report = {
     at: new Date().toISOString(),
     since: SINCE,
-    mode: PHOTOS_ONLY ? 'photos-only' : CHECK ? 'check' : SYNC ? 'sync' : 'repair',
+    mode: PHOTOS_ONLY ? 'photos-only' : REPAIR_ONLY ? 'repair-only' : CHECK ? 'check' : SYNC ? 'sync' : 'repair',
     total: list.length,
     results: [],
   };
@@ -417,6 +419,28 @@ async function main() {
             status: 'photo_error',
             error: err.message.slice(0, 160),
           });
+        }
+      }
+      return;
+    }
+
+    if (REPAIR_ONLY) {
+      console.log(`Réparation directe : ${list.length} commande(s)`);
+      for (const row of list) {
+        if (BLOCK_REPAIR.has(row.order_id)) {
+          report.results.push({ order_id: row.order_id, name: row.name, status: 'blocked' });
+          continue;
+        }
+        try {
+          report.results.push(await repairOne(page, catalog, row));
+        } catch (err) {
+          report.results.push({
+            order_id: row.order_id,
+            name: row.name,
+            status: 'repair_error',
+            error: err.message.slice(0, 160),
+          });
+          console.error('REPAIR ERR', row.order_id, err.message);
         }
       }
       return;
