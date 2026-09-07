@@ -100,8 +100,12 @@ function installPlaywright(botDir) {
 }
 
 loadEnvFile(ENV_FILE);
+process.env.BOT_ROLE = process.env.BOT_ROLE || 'sales';
+process.env.BOT_ID = process.env.BOT_ID || 'raphael';
+process.env.ALERT_EMAIL = process.env.ALERT_EMAIL || 'boxingcentertls@gmail.com';
 ensureDataPaths();
 log(`.env ${fs.existsSync(ENV_FILE) ? 'OK' : 'MANQUANT'} (${ENV_FILE})`);
+log(`BOT_ROLE=${process.env.BOT_ROLE} BOT_ID=${process.env.BOT_ID}`);
 
 function ensureBotRepo() {
   if (!fs.existsSync(path.join(BOT_DIR, 'bot', 'index.js'))) {

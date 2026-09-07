@@ -1,6 +1,7 @@
 # BotHosting — index.js + .env (comme KataBump)
 
-**URL :** `http://prem-eu1.bot-hosting.net:20311`
+**URL :** `http://prem-eu1.bot-hosting.net:20311`  
+**Vendeur Deciplus :** Raphaël (`BOT_ID=raphael`) — Eddy est sur `prem-eu2:21871`.
 
 ## Étape 1 — Upload (AVANT de lancer)
 
@@ -38,6 +39,8 @@ Au 1er lancement, `index.js` va :
 
 ```
 BOXPLUS_BOT_URL=http://prem-eu1.bot-hosting.net:20311
+BOXPLUS_BOT_URL_SALES_2=http://prem-eu2.bot-hosting.net:21871
+BOXPLUS_BOT_URL_OPS=http://prem-eu2.bot-hosting.net:21268
 SYNC_SECRET=boxplus-bc-2026-test
 ```
 

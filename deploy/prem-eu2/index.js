@@ -1,27 +1,26 @@
-#!/usr/bin/env node
-/**
- * Bot maintenance Deciplus — prem-eu2 (BotHosting)
- *
- * Upload sur le serveur :
- *   /home/container/index.js  (ce fichier)
- *   /home/container/.env      (voir .env.example)
- *
- * Startup panel : node index.js
- *
- * Rôle : résils, vérifs, relances, rattrapages — PAS les nouvelles inscriptions.
- * Les ventes vont sur prem-eu1 (BOXPLUS_BOT_URL).
- */
+# =============================================================================
+# Bot ventes Eddy — prem-eu2.bot-hosting.net:21871
+# =============================================================================
+# Inscriptions (vendeur Deciplus EDDY). Même procédure que Raphaël sur eu1:20311.
+# Ops / résils restent sur :21268 (BOXPLUS_BOT_URL_OPS).
+#
+# Upload sur le serveur :
+#   /home/container/index.js  (ce fichier)
+#   /home/container/.env      (voir .env.example)
+#
+# Startup panel : node index.js
+#
 const path = require('path');
 const fs = require('fs');
 
 const ROOT = __dirname;
 const ENV_FILE = path.join(ROOT, '.env');
 const BOT_DIR = path.join(ROOT, 'boxi-deci-bot');
-const REPO = process.env.BOT_REPO_URL || 'https://github.com/angoularaphael/box-plus.git';
+const REPO = process.env.BOT_REPO_URL || 'https://github.com/angoularaphael/boxi-deci-bot.git';
 const BRANCH = process.env.BOT_REPO_BRANCH || 'main';
 
 function log(msg) {
-  console.log(`[BOXPLUS maintenance eu2] ${msg}`);
+  console.log(`[BOXPLUS ventes Eddy eu2] ${msg}`);
 }
 
 function loadEnvFile(filePath) {
@@ -65,14 +64,16 @@ function ensureDataPaths() {
 
 loadEnvFile(ENV_FILE);
 
-// Defaults maintenance bot prem-eu2
-process.env.BOT_ROLE = process.env.BOT_ROLE || 'ops';
+process.env.BOT_ROLE = process.env.BOT_ROLE || 'sales';
+process.env.BOT_ID = process.env.BOT_ID || 'eddy';
 process.env.BOT_HTTP_PORT = process.env.BOT_HTTP_PORT || process.env.PORT || '21871';
 process.env.DECIPLUS_HEADLESS = process.env.DECIPLUS_HEADLESS || 'true';
 process.env.DECIPLUS_FAST = process.env.DECIPLUS_FAST || '1';
+process.env.BOT_CATALOG_PUSH_ENABLED = process.env.BOT_CATALOG_PUSH_ENABLED || 'false';
+process.env.ALERT_EMAIL = process.env.ALERT_EMAIL || 'boxingcentertls@gmail.com';
 
 ensureDataPaths();
-log(`BOT_ROLE=${process.env.BOT_ROLE} PORT=${process.env.BOT_HTTP_PORT}`);
+log(`BOT_ROLE=${process.env.BOT_ROLE} BOT_ID=${process.env.BOT_ID} PORT=${process.env.BOT_HTTP_PORT}`);
 
 function ensureBotRepo() {
   if (!fs.existsSync(path.join(BOT_DIR, 'bot', 'index.js'))) {
@@ -97,5 +98,5 @@ if (!hasPw) {
   run('npx playwright install chromium-headless-shell', BOT_DIR);
 }
 
-log('Démarrage bot maintenance Deciplus…');
+log('Démarrage bot ventes Eddy Deciplus…');
 run('node start.js', BOT_DIR);

@@ -26,5 +26,5 @@ Audit **283 membres** prélèvement (juin → sept. 2026) + recherche Deciplus p
 
 ## Bot maintenance prem-eu2
 
-Dossier : `deploy/prem-eu2/` — `BOT_ROLE=ops`, port **21871**  
-Vercel : `BOXPLUS_BOT_URL_OPS=https://prem-eu2.bot-hosting.net:21871`
+Dossier : `deploy/prem-eu2/` — inscriptions Eddy, port **21871**  
+Ops : `BOXPLUS_BOT_URL_OPS=http://prem-eu2.bot-hosting.net:21268`
