@@ -401,10 +401,19 @@ async function processSaleJob(page, order, jobMeta = {}) {
     productConfig.paiement_comptant = false;
   }
 
+  const { isOffre29Product, isAnnualPromoProduct } = require('../lib/sale-contract-match');
+  if (isAnnualPromoProduct(productConfig) || isAnnualPromoProduct(order)) {
+    productConfig.auto_badge = false;
+    if (!isPayplug4xPrelevementOrder(order)) {
+      productConfig.paiement_comptant = true;
+      productConfig.requires_iban = false;
+      productConfig.skip_rib_prompt = true;
+    }
+  }
+
   if (isCartePrestationConfig(productConfig)) {
     productConfig.auto_badge = false;
   } else {
-    const { isOffre29Product } = require('../lib/sale-contract-match');
     if (isOffre29Product(productConfig) || isOffre29Product(order)) {
       const { shouldGiftBadgeComptant } = require('../lib/balma');
       const giftBadge = shouldGiftBadgeComptant(order, {

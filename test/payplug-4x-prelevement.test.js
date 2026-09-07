@@ -219,6 +219,21 @@ describe('PayPlug 4× prélèvement (25 % CB + RIB)', () => {
     assert.match(cfg.deciplus_product_name, /4X PRELEVEMENT/i);
   });
 
+  it('buildProductConfig — commande 12 mois payée sans métadonnées paiement → comptant, pas badge', () => {
+    const cfg = buildProductConfig(
+      {
+        product_id: 'dp-100',
+        product_name: 'OFFRE PROMO 12 MOIS',
+        payment: { status: 'paid', paid_at: '2026-08-16T18:48:58.694Z' },
+        product_snapshot: { price_cents: 25900, supports_installment_choice: true },
+      },
+      { id: 100, title: 'OFFRE PROMO 12MOIS', type: 'abo', categoryId: 'abo', price: 259 }
+    );
+    assert.equal(cfg.paiement_comptant, true);
+    assert.equal(cfg.requires_iban, false);
+    assert.equal(cfg.auto_badge, false);
+  });
+
   it('buildProductConfig — vente abo + IBAN 259 €, pas comptant', () => {
     const cfg = buildProductConfig(
       {
