@@ -34,6 +34,7 @@ const { resolveProductConfig, fetchDeciplusCatalog } = require('../bot/catalog')
 const { isPendingOrFutureContract } = require('../bot/cancel-sale');
 
 const SINCE = (process.argv.find((a) => a.startsWith('--since=')) || '').slice(8) || '2026-09-07';
+const ORDER_FILTER = (process.argv.find((a) => a.startsWith('--order=')) || '').slice(8) || '';
 const LIMIT = Number((process.argv.find((a) => a.startsWith('--limit=')) || '').slice(8) || 0);
 const SYNC = process.argv.includes('--sync');
 const REPAIR = process.argv.includes('--repair');
@@ -179,11 +180,14 @@ async function uploadPhotoOne(page, row, memberId) {
     return { ok: false, reason: 'no_photo_in_order' };
   }
   const { uploadMemberPhoto } = require('../bot/member');
+  const { switchDeciplusSite } = require('../bot/deciplus-zone');
   const { openMemberCheck, closeGreyboxIfOpen } = require('../bot/wallet');
   const gymCfg = getGymConfig(row.gym || 'minimes');
+  const site = gymCfg.deciplus_label || 'Minimes';
   await closeGreyboxIfOpen(page).catch(() => {});
+  await switchDeciplusSite(page, site).catch(() => {});
   await openMemberCheck(page, String(memberId), gymCfg).catch(() => {});
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(600);
   const result = await uploadMemberPhoto(page, null, photoBase64, String(memberId), photoUrl).catch((err) => ({
     ok: false,
     reason: err.message,
@@ -338,7 +342,14 @@ function writeMd(report) {
 }
 
 async function main() {
-  const rows = await loadOrders();
+  let rows = await loadOrders();
+  if (ORDER_FILTER) {
+    const wanted = new Set(
+      ORDER_FILTER.split(',').map((s) => s.trim()).filter(Boolean)
+    );
+    rows = rows.filter((r) => wanted.has(r.order_id));
+    if (!rows.length) throw new Error(`Aucune commande pour --order=${ORDER_FILTER}`);
+  }
   const list = LIMIT > 0 ? rows.slice(0, LIMIT) : rows;
   console.log(`Commandes payées+signées : ${list.length} (depuis ${SINCE})`);
 
