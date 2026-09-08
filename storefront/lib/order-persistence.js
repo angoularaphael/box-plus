@@ -171,6 +171,7 @@ function buildOrderSummary(order) {
     deciplus_sale_id: order.deciplus_sale_id || null,
     bot_status: order.bot_status || null,
     bot_error: order.bot_error || null,
+    reliability: order.reliability || null,
     manual_migration: Boolean(order.manual_migration),
     essai_followup_status: order.essai_followup_status || null,
     essai_followup_at: order.essai_followup_at || null,
@@ -276,6 +277,7 @@ function reconstructOrderFromListRow(row) {
     })(),
     bot_status: rowValue(row, 'bot_status', 'payload->bot_status') || null,
     bot_error: rowValue(row, 'bot_error', 'payload->bot_error') || null,
+    reliability: stripHeavyFields(rowValue(row, 'reliability', 'payload->reliability') || {}),
     manual_migration: Boolean(rowValue(row, 'manual_migration', 'payload->manual_migration')),
     created_at: rowValue(row, 'created_at', 'payload->created_at') || row.created_at || null,
     updated_at: row.updated_at || rowValue(row, 'payload->updated_at') || null,
@@ -327,6 +329,7 @@ const SLIM_SELECT = [
   'deciplus_sale_id:payload->>deciplus_sale_id',
   'bot_status:payload->bot_status',
   'bot_error:payload->bot_error',
+  'reliability:payload->reliability',
   'manual_migration:payload->manual_migration',
   'blade_addon:payload->addons->blade',
 ].join(',\n');

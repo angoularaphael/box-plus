@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { ROOT, ensureDir } = require('../../lib/utils');
+const { STATES, advanceOrder } = require('../../lib/job-lifecycle');
 const persistence = require('./order-persistence');
 
 const ORDERS_DIR = persistence.ORDERS_DIR;
@@ -214,6 +215,7 @@ async function markPaymentPaidAsync(orderId, paymentData) {
     status: 'paid',
     paid_at: order.payment?.paid_at || paymentData.paid_at || new Date().toISOString(),
   };
+  advanceOrder(order, STATES.PAID);
   const paidAt = Date.parse(order.payment.paid_at);
   const nudgeMs = Number(process.env.BOXPLUS_INSCRIPTION_NUDGE_MS || 30 * 60 * 1000);
   order.funnel = {
@@ -293,6 +295,9 @@ async function updateFullProfileAsync(orderId, customer_full) {
   if (customer_full.photo_path) {
     order.documents = { ...(order.documents || {}), photo: customer_full.photo_path };
   }
+  if (String(order.payment?.status || '').toLowerCase() === 'paid') {
+    advanceOrder(order, STATES.DOSSIER_COMPLETE);
+  }
   order.step = Math.max(order.step || 1, STEPS.SIGNATURE);
   return saveOrderAsync(order);
 }
@@ -308,6 +313,7 @@ async function recordSignatureAsync(orderId, signatureData) {
     ...signatureData,
     signed_at: new Date().toISOString(),
   };
+  advanceOrder(order, STATES.SIGNED);
   order.step = STEPS.CONFIRMED;
   order.ready_for_dispatch = true;
   return saveOrderAsync(order);
@@ -580,6 +586,17 @@ async function applyBotSaleStatus(orderId, patch = {}) {
     order.skip_bot = true;
   }
   order.bot_error = patch.error ? String(patch.error).slice(0, 500) : null;
+  if (memberId) advanceOrder(order, STATES.MEMBER_CREATED);
+  if (patch.mandate_set) advanceOrder(order, STATES.MANDATE_SET);
+  if (saleId) advanceOrder(order, STATES.SALE_CREATED);
+  if (patch.verified) advanceOrder(order, STATES.VERIFIED);
+  if (patch.status === 'manual_review') {
+    const { transitionOrder } = require('../../lib/job-lifecycle');
+    transitionOrder(order, STATES.MANUAL_REVIEW, {
+      reason: patch.error || 'Revue manuelle requise',
+      action_required: patch.action_required || null,
+    });
+  }
   order.bot_processed_at = new Date().toISOString();
   await saveOrderAsync(order);
   return order;

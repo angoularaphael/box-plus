@@ -7,6 +7,7 @@
 const { isAventureOrder } = require('../../lib/aventure-policy');
 const { STEPS } = require('./order-lifecycle');
 const { compareJobsFifo } = require('../../lib/queue');
+const { reconcileOrders } = require('../../lib/reliability-reconcile');
 
 const REQUEUE_COOLDOWN_MS = Number(process.env.BOXPLUS_SALE_REQUEUE_MS || 10 * 60 * 1000);
 const MAX_SALE_RETRIES = Number(process.env.BOXPLUS_SALE_REQUEUE_MAX || 12);
@@ -200,6 +201,7 @@ async function reconcileMissingDeciplusSales({
     redispatched,
     skipped,
     exhausted,
+    reliability_report: reconcileOrders(listed, { now }),
   };
 }
 
