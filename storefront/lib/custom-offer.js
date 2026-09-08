@@ -11,7 +11,6 @@ const GYM_SLUGS = new Set([
   'portet',
   'etats-unis',
   'st-cyprien',
-  'balma',
 ]);
 
 const GYM_LABELS = {
@@ -20,7 +19,6 @@ const GYM_LABELS = {
   portet: 'Portet',
   'etats-unis': 'États-Unis',
   'st-cyprien': 'Saint-Cyprien',
-  balma: 'Balma',
 };
 
 function formatPriceLabel(cents) {
