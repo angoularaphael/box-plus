@@ -94,7 +94,7 @@ const CORE = `
 - Boxing HIIT : haute intensité, alternance frappes et exercices cardio/renforcement sur intervalles courts.
 
 # SALLES (5) — horaires généraux des pages salles : LUNDI AU SAMEDI, 10h00–21h30
-1. Minimes / Barrière de Paris — 12 rue de Fenouillet, 31200 Toulouse. ~5 min du métro B Barrière de Paris, rocade sortie 31. Salle historique, forte identité Boxe Anglaise, 3 rings, sacs, musculation et charges libres, Cross Training, espace cardio, loisirs et compétiteurs, Boxing Lady / Lady Punch, Boxing Camp, Boxe Éducative, accès libre.
+1. Minimes / Barrière de Paris — 12 rue de Fenouillet, 31200 Toulouse. ~5 min du métro B Barrière de Paris, rocade sortie 31. Salle historique, forte identité Boxe Anglaise, 3 rings, sacs, musculation et charges libres, Cross Training, espace cardio, loisirs et compétiteurs, Boxing Lady, Boxing Camp, Boxe Éducative, Cross-training encadré, accès libre.
 2. Portet-sur-Garonne — 61 route d'Espagne, 31120. Très grande salle : ~400 m² Cross Training, ~500 m² boxe, ring olympique, tatamis, panneaux MMA, nombreux sacs. Boxe Anglaise, Boxe Française/Savate, Kick/K1, MMA, Grappling, Boxe Éducative, Lady Kick, Boxing Lady, prépa physique, musculation/fitness.
 3. Ramonville-Saint-Agne — 33 rue des Ormes, 31520. Complexe sur deux niveaux, étage musculation/cardio, octogone de 7 m, ring olympique, espace extérieur protégé ~300 m². Boxe Anglaise, Boxe Éducative, Baby Boxe, Pieds-Poings, Boxing Lady, Kick Boxing, Grappling, Boxing Camp, Hyrox.
 4. Saint-Cyprien — 11 rue Sainte-Lucie, 31300 Toulouse, près du rond-point du Fer à Cheval. Salle de centre-ville : musculation, cardio, ring, tatamis, sacs. Boxe Anglaise, Boxe Thaï/K1, Kick Boxing, Boxing Lady, Baby Boxe, Boxe Éducative, Boxing Camp, Cross Training, HYROX, accès libre.
@@ -220,38 +220,37 @@ Badge / QR personnel et incessible, interdiction de faire entrer une personne sa
 const PLANNINGS = {
   minimes: `
 ## PLANNING 2026-2027 — MINIMES / BARRIÈRE DE PARIS (12 rue de Fenouillet, 31200 Toulouse)
-LUNDI 10h00-12h00 Accès libre
+LUNDI 11h00-12h00 Accès libre
 LUNDI 12h40-13h20 Boxing Camp (Mehdi B., tous niveaux)
-LUNDI 13h20-18h00 Accès libre
+LUNDI 14h15-18h00 Accès libre
 LUNDI 18h00-19h30 Boxe Compétiteurs (Mehdi B., confirmés uniquement)
 LUNDI 18h30-19h30 Boxing Lady (Chloé, 100 % féminin)
 LUNDI 19h40-21h00 Boxe Anglaise Loisirs (Mehdi B., tous niveaux)
-MARDI 10h00-12h00 Accès libre
+MARDI 11h00-12h00 Accès libre
 MARDI 12h40-13h20 Boxe Anglaise Loisirs (Mehdi B.)
-MARDI 13h20-18h00 Accès libre
+MARDI 14h15-18h00 Accès libre
 MARDI 18h00-19h30 Boxe Compétiteurs (Mehdi B., confirmés)
-MARDI 18h30-19h30 Boxing Camp (Clément)
+MARDI 18h30-19h30 Cross-training (Clément, tous niveaux)
 MARDI 19h40-21h00 Boxe Anglaise Loisirs (Mehdi B.)
-MERCREDI 10h00-12h00 Accès libre
+MERCREDI 11h00-12h00 Accès libre
 MERCREDI 12h40-13h20 Boxe Anglaise Loisirs (Mehdi B.)
-MERCREDI 13h20-15h00 Accès libre
+MERCREDI 14h15-15h00 Accès libre
 MERCREDI 15h00-16h00 Boxe Éducative 7-11 ans (Mehdi B.)
 MERCREDI 16h00-17h00 Boxe Éducative 12-16 ans (Mehdi B.)
 MERCREDI 17h00-18h30 Boxe Éducative Compétiteurs (Mehdi B., jeunes confirmés)
 MERCREDI 18h30-19h30 Boxing Lady (David, 100 % féminin)
 MERCREDI 19h40-21h00 Boxe Pieds-Poings (David)
-JEUDI 10h00-12h00 Accès libre
+JEUDI 11h00-12h00 Accès libre
 JEUDI 12h40-13h20 Boxe Anglaise Loisirs (Mehdi B.)
-JEUDI 13h20-18h00 Accès libre
+JEUDI 14h15-18h00 Accès libre
 JEUDI 18h00-19h30 Boxe Compétiteurs (Mehdi B., confirmés)
-JEUDI 18h30-19h30 Boxing Camp (David)
+JEUDI 18h30-19h30 Cross-training (Clément, tous niveaux)
 JEUDI 19h40-21h00 Boxe Anglaise Loisirs (Mehdi B.)
-VENDREDI 10h00-12h00 Accès libre
+VENDREDI 11h00-12h00 Accès libre
 VENDREDI 12h40-13h20 Boxing Camp (Mehdi B.)
-VENDREDI 13h20-18h00 Accès libre
+VENDREDI 14h15-18h00 Accès libre
 VENDREDI 18h00-19h30 Boxe Compétiteurs (Mehdi B., confirmés)
 VENDREDI 19h40-21h00 Boxe Anglaise Loisirs (Mehdi B.)
-SAMEDI 10h00-11h00 Accès libre
 SAMEDI 11h00-12h00 Boxing Camp (Mehdi B.)
 SAMEDI 12h40-14h15 Accès libre
 SAMEDI 14h15-15h00 Baby Boxe dès 3 ans (Mehdi B.)
@@ -259,6 +258,7 @@ SAMEDI 15h00-16h00 Boxe Éducative 7-11 ans (Mehdi B.)
 SAMEDI 16h00-17h00 Boxe Éducative 12-16 ans (Mehdi B.)
 SAMEDI 17h00-18h30 Boxe Éducative Compétiteurs (Mehdi B.)
 SAMEDI 18h30-19h30 Open Sparring (Mehdi B., pas pour un débutant complet)
+SAMEDI 19h40-21h00 Accès libre
 `.trim(),
 
   ramonville: `
@@ -459,7 +459,7 @@ function detectGyms(text) {
  */
 const GYM_INDEX = `
 # OÙ SE PRATIQUE QUOI (pour orienter avant de donner un horaire)
-- Minimes : Boxe Anglaise (loisirs et compétiteurs), Boxing Camp, Boxing Lady, Boxe Pieds-Poings, Boxe Éducative, Baby Boxe, Open Sparring.
+- Minimes : Boxe Anglaise (loisirs et compétiteurs), Boxing Camp, Boxing Lady, Boxe Pieds-Poings, Boxe Éducative, Baby Boxe, Open Sparring, Cross Training.
 - Ramonville : Boxe Anglaise, Boxe Pieds-Poings, Boxing Camp, Lady Punch, Grappling, MMA, Boxe Éducative, Baby Boxe.
 - Saint-Cyprien : Boxe Anglaise, Boxe Thaï / K1, Boxing Camp, Cross Training, HYROX, Grappling, Lady Punch, Boxe Éducative, Baby Boxe.
 - Portet : Boxe Anglaise (loisirs, amateurs et pros), Kick / K1, Boxe Française, Lady Kick, Boxing Lady, préparation physique, Sparring, Boxe Éducative, Baby Boxe. Planning PROVISOIRE.
@@ -480,7 +480,7 @@ const DISCIPLINE_GYMS = [
   { test: /grappling|lutte au sol|sol sans frappe/i, gyms: ['etats-unis', 'st-cyprien', 'ramonville'] },
   { test: /jjb|jiu[-\s]?jitsu/i, gyms: ['etats-unis'] },
   { test: /hyrox/i, gyms: ['st-cyprien', 'etats-unis'] },
-  { test: /cross[-\s]?training|crossfit/i, gyms: ['st-cyprien', 'etats-unis'] },
+  { test: /cross[-\s]?training|crossfit/i, gyms: ['minimes', 'st-cyprien', 'etats-unis'] },
   { test: /boxing hiit|\bhiit\b/i, gyms: ['etats-unis'] },
   { test: /lady punch/i, gyms: ['ramonville', 'st-cyprien', 'etats-unis'] },
   { test: /boxing lady/i, gyms: ['minimes', 'portet'] },
