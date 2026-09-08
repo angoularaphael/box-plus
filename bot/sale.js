@@ -2674,9 +2674,18 @@ async function finalizePayment(page, productConfig, gymConfig = {}) {
     if (!done) done = await clickTerminerVente(page);
     if (!done) done = await clickVenteFooterAction(page, /\bTerminer\b/i);
     if (!done) {
-      logWarn('Vente virement — footer Terminer introuvable, vérification du contrat requise', {
-        screenshot: await captureSaleDebugScreenshot(page, 'virement-finalize-missing'),
+      await page.waitForTimeout(1500);
+      done = await clickTerminerVente(page);
+    }
+    if (!done) {
+      done = await clickVenteFooterAction(page, /\bTerminer\b/i, {
+        preferClass: 'verticalDocumentBar',
       });
+    }
+    if (!done) {
+      const screenshot = await captureSaleDebugScreenshot(page, 'virement-finalize-missing');
+      logWarn('Vente virement — footer Terminer introuvable', { screenshot });
+      throw new Error('Vente Deciplus — bouton Terminer introuvable après virement');
     }
   } else if (mode === 'card' || mode === 'cb') {
     await clickFirst(page, sel('payment_finalize.carte_bancaire'), { force: true });
@@ -2985,11 +2994,9 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
         }).toCancel.filter((c) => leftoverIds.has(String(c.idc)));
       }
       if (leftover.length) {
-        logWarn('Ancien abo toujours visible — on vend le nouveau quand même', {
-          order_id: order.order_id,
-          member_id: memberId,
-          labels: leftover.map((c) => String(c.label || '').slice(0, 80)),
-        });
+        throw new Error(
+          `Ancien abo toujours actif (${leftover.map((c) => c.idc).join(', ')}) — nouvelle vente reportée`
+        );
       }
     }
 

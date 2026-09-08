@@ -130,17 +130,29 @@ function searchSites(t = {}) {
   const minimes = getGymConfig('minimes');
   const balma = getGymConfig('balma');
   const eu = existingSiteConfig(getGymConfig('etats-unis'));
+  const euSite = {
+    name: eu?.deciplus_label || 'Etats-Unis',
+    cfg: eu || { deciplus_label: 'Etats-Unis', deciplus_zone_id: '7' },
+  };
+  const balmaSite = { name: 'Balma', cfg: balma };
+  const minimesSite = { name: 'Minimes', cfg: minimes };
   const ordered =
     t.gym && t.gym !== 'balma' && t.gym !== 'etats-unis' ? getGymConfig(t.gym) : null;
-  const core = [
-    { name: 'Minimes', cfg: minimes },
-    { name: 'Balma', cfg: balma },
-    { name: eu?.deciplus_label || 'Etats-Unis', cfg: eu || { deciplus_label: 'Etats-Unis', deciplus_zone_id: '7' } },
-  ];
+
+  const mid = Number(t.member_id || 0);
+  const legacyBalma = mid > 0 && mid < 15000;
+  const etatsUnisOrder = String(t.gym || '').toLowerCase() === 'etats-unis';
+
+  // Anciens membres Balma (ex. Cyril Demaria #14370) : chercher Balma en premier.
+  let core =
+    legacyBalma || etatsUnisOrder
+      ? [balmaSite, minimesSite, euSite]
+      : [minimesSite, balmaSite, euSite];
+
   if (ordered?.deciplus_label) {
     const label = ordered.deciplus_label;
     if (!core.some((s) => s.name === label)) {
-      core.unshift({ name: label, cfg: ordered });
+      core = [{ name: label, cfg: ordered }, ...core];
     }
   }
   return core;
@@ -193,8 +205,16 @@ async function locateMember(page, t) {
           site,
           site.cfg
         );
+        const live = found[found.length - 1]?.live;
+        if (String(live?.zone) === '2' || /minimes/i.test(live?.label || '')) {
+          return found;
+        }
+        if (needsMigrate(live)) {
+          return found;
+        }
       }
     }
+    if (hasId && found.length) continue;
     let hit = null;
     if (t.email) {
       const s = await searchMember(page, t.email).catch(() => null);
@@ -204,7 +224,11 @@ async function locateMember(page, t) {
       const s = await searchMemberByName(page, t.last_name, t.first_name).catch(() => null);
       if (s?.found && s.member_id) hit = { member_id: String(s.member_id), via: 'name', site: site.name };
     }
-    if (hit) await remember(hit, site, site.cfg);
+    if (hit) {
+      await remember(hit, site, site.cfg);
+      const live = found[found.length - 1]?.live;
+      if (String(live?.zone) === '2' || needsMigrate(live)) return found;
+    }
   }
   return found;
 }
