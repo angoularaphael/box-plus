@@ -4,8 +4,7 @@
  * Une inscription payée ne doit jamais rester sans vente Deciplus.
  * dispatched_at = « job envoyé », pas « contrat créé ».
  */
-const { isAventureOrder } = require('../../lib/aventure-policy');
-const { STEPS } = require('./order-lifecycle');
+const { aventureDossierReady, boutiqueSaleDispatchAllowed } = require('../../lib/sale-dispatch-policy');
 const { compareJobsFifo } = require('../../lib/queue');
 const { reconcileOrders } = require('../../lib/reliability-reconcile');
 
@@ -51,18 +50,6 @@ function identityReady(order = {}) {
   return Boolean(first && last && birth && gym);
 }
 
-function aventureDossierReady(order = {}) {
-  if (order.ready_for_dispatch || order.signature?.signed_at) return true;
-  if (Number(order.step || 0) < STEPS.SIGNATURE) return false;
-  const short = order.customer_short || {};
-  const full = order.customer_full || {};
-  const cust = order.customer || {};
-  const first = full.first_name || short.first_name || cust.first_name;
-  const last = full.last_name || short.last_name || cust.last_name;
-  const birth = full.birthdate || short.birthdate || cust.birthdate;
-  return Boolean(first && last && birth);
-}
-
 /** @deprecated Ne plus utiliser pour déclencher un dispatch — conservé pour tests / audit. */
 function paidUnsignedReady(order = {}, now = Date.now()) {
   if (order.signature?.signed_at || order.ready_for_dispatch) return false;
@@ -70,12 +57,6 @@ function paidUnsignedReady(order = {}, now = Date.now()) {
   const paid = Date.parse(order.payment?.paid_at || order.created_at || 0);
   if (!Number.isFinite(paid)) return false;
   return now - paid >= PAID_UNSIGNED_GRACE_MS;
-}
-
-function boutiqueSaleDispatchAllowed(order = {}) {
-  if (order.signature?.signed_at || order.ready_for_dispatch) return true;
-  if (isAventureOrder(order)) return aventureDossierReady(order);
-  return false;
 }
 
 /** Anomalie type Lina : payé, non signé, mais fiche Deciplus déjà posée. */
