@@ -3,6 +3,16 @@
 **URL :** `http://prem-eu1.bot-hosting.net:20311`  
 **Vendeur Deciplus :** Raphaël (`BOT_ID=raphael`) — Eddy est sur `prem-eu2:21871`.
 
+Le bot Raphaël transfère automatiquement à Eddy une vente qui échoue après
+les retries sur une erreur technique (session, réseau ou UI). Le relais est
+limité à une tentative par commande pour éviter les boucles :
+
+```env
+BOT_MAX_FAILOVERS=1
+BOT_FAILOVER_TARGET=eddy
+BOT_FAILOVER_URL=http://prem-eu2.bot-hosting.net:21871
+```
+
 ## Étape 1 — Upload (AVANT de lancer)
 
 Dans **Files** (`/home/container/`), upload **uniquement** :

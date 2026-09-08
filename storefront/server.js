@@ -5092,6 +5092,12 @@ function createApp() {
         error: body.error || null,
         deciplus_member_id: body.deciplus_member_id || null,
         deciplus_sale_id: body.deciplus_sale_id || null,
+        source_bot: body.source_bot || null,
+        sales_bot: body.sales_bot || null,
+        attempts: body.attempts,
+        error_classification: body.error_classification || null,
+        failover_count: body.failover_count,
+        failover_from: body.failover_from || null,
       });
       if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
       res.json({

@@ -58,6 +58,10 @@ const idempotency = require('../lib/persistent-idempotency');
 const { STATES } = require('../lib/job-lifecycle');
 const { classifyError, backoffMs } = require('../lib/retry-policy');
 const {
+  shouldFailoverSale,
+  handoffFailedSale,
+} = require('../lib/bot-failover');
+const {
   maybeKeepSessionAlive,
   forceRefreshSession,
   touchKeepAliveClock,
@@ -1327,6 +1331,12 @@ async function pushBotSaleStatus(order, outcome = {}) {
         deciplus_member_id: outcome.deciplus_member_id || null,
         deciplus_sale_id: outcome.deciplus_sale_id || outcome.sale?.sale_id || null,
         action,
+        source_bot: getBotId() || null,
+        sales_bot: outcome.sales_bot || order.sales_bot || null,
+        attempts: Number(outcome.attempts || order.attempts || 0),
+        error_classification: outcome.error_classification || null,
+        failover_count: Number(outcome.failover_count || order.failover_count || 0),
+        failover_from: outcome.failover_from || order.failover_from || null,
       }),
     });
     if (!res.ok) {
@@ -1341,6 +1351,53 @@ async function pushBotSaleStatus(order, outcome = {}) {
       order_id: order.order_id,
     });
   }
+}
+
+async function failoverExhaustedJob(job, filePath, { policy, error, attempts } = {}) {
+  const order = normalizeOrder(job);
+  if (
+    !shouldFailoverSale(order, policy, {
+      action: order.action,
+      deciplus_sale_id: job.checkpoint?.deciplus_sale_id || null,
+    })
+  ) {
+    return null;
+  }
+
+  const handoff = await handoffFailedSale(order, { error });
+  if (!handoff.handed_off) return null;
+  const transferred = {
+    status: STATUS.FAILED_OVER,
+    error: `Relais automatique vers ${handoff.target}`,
+    action: order.action || 'sale',
+    sales_bot: handoff.target,
+    failover_count: handoff.failover_count,
+    failover_from: getBotId() || order.sales_bot || null,
+    error_classification: policy.classification,
+    attempts: Number(attempts || 0),
+    deciplus_member_id: job.checkpoint?.deciplus_member_id || null,
+    deciplus_sale_id: job.checkpoint?.deciplus_sale_id || null,
+  };
+  markProcessed(job.job_id || job.order_id, transferred);
+  removeJob(filePath);
+  await pushBotSaleStatus(job, {
+    ...transferred,
+    status: 'failover',
+    error: null,
+  });
+  logWarn('Job transféré au bot de secours', {
+    job_id: job.job_id || job.order_id,
+    order_id: order.order_id,
+    from: transferred.failover_from,
+    to: handoff.target,
+    classification: policy.classification,
+  });
+  return {
+    ok: false,
+    handed_off: true,
+    target: handoff.target,
+    failover_count: handoff.failover_count,
+  };
 }
 
 async function processOneJob(job) {
@@ -1367,6 +1424,21 @@ async function processOneJob(job) {
       deciplus_member_id: job.checkpoint?.deciplus_member_id || null,
       deciplus_sale_id: job.checkpoint?.deciplus_sale_id || null,
     };
+    const policy = classifyError(error);
+    try {
+      const handedOff = await failoverExhaustedJob(job, filePath, {
+        policy,
+        error,
+        attempts: priorAttempts,
+      });
+      if (handedOff) return handedOff;
+    } catch (failoverErr) {
+      logError('Relais vers le second bot échoué', {
+        job_id: jobId,
+        order_id: job.order_id,
+        error: failoverErr.message,
+      });
+    }
     markProcessed(jobId, exhaustedOutcome);
     removeJob(filePath);
     await pushBotSaleStatus(job, exhaustedOutcome);
@@ -1626,6 +1698,23 @@ async function processOneJob(job) {
       }).catch((checkpointErr) => {
         logError('Échec checkpoint erreur', { order_id: order.order_id, error: checkpointErr.message });
       });
+    }
+
+    if (exhausted) {
+      try {
+        const handedOff = await failoverExhaustedJob(job, filePath, {
+          policy,
+          error: lastError,
+          attempts,
+        });
+        if (handedOff) return handedOff;
+      } catch (failoverErr) {
+        logError('Relais vers le second bot échoué', {
+          job_id: jobId,
+          order_id: order.order_id,
+          error: failoverErr.message,
+        });
+      }
     }
 
     if (status === STATUS.MANUAL_REVIEW) {

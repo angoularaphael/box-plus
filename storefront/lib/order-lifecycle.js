@@ -581,6 +581,17 @@ async function applyBotSaleStatus(orderId, patch = {}) {
   if (memberId) order.deciplus_member_id = memberId;
   if (saleId) order.deciplus_sale_id = saleId;
   if (patch.status) order.bot_status = String(patch.status);
+  if (patch.sales_bot) order.sales_bot = String(patch.sales_bot);
+  if (patch.source_bot) order.last_bot_id = String(patch.source_bot);
+  if (patch.attempts != null) order.bot_attempts = Math.max(0, Number(patch.attempts || 0));
+  if (patch.error_classification) {
+    order.bot_error_classification = String(patch.error_classification);
+  }
+  if (patch.failover_count != null) {
+    order.failover_count = Math.max(0, Number(patch.failover_count || 0));
+  }
+  if (patch.failover_from) order.failover_from = String(patch.failover_from);
+  if (patch.status === 'failover') order.failover_at = new Date().toISOString();
   if (patch.manual_migration) {
     order.manual_migration = true;
     order.skip_bot = true;
