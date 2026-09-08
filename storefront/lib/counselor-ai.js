@@ -433,7 +433,8 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
   const lastUser = lastMemberMessage(messages, freeText);
   const lastBot = lastAssistantMessage(messages);
 
-  if (/résili|resili|annul.*abo|arrêter.*abo|arreter.*abo/i.test(lastUser)) {
+  /* « Brésilien » contient « résili » : ne pas traiter le JJB comme une résiliation. */
+  if (/(?<![A-Za-zÀ-ÿ])r[ée]sili|annul.*abo|arr[êe]ter.*abo|arreter.*abo/i.test(lastUser)) {
     const variants = persona.id === 'fabien' ? REDIRECT_DAVID_VOUS : REDIRECT_DAVID;
     let reply = pickVariant(variants);
     if (lastBot && similarityScore(reply, lastBot) >= 0.55) {

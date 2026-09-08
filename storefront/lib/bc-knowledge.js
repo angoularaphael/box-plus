@@ -580,7 +580,7 @@ const ON_DEMAND = [
   { key: 'coachs', test: /coach|prof|entra[îi]neur|encadr|qui\s+(donne|anime|s'occupe)|mehdi|dadi|brice|j[ée]r[ôo]me|zouhir|valentin|sonia|renaud|samuel|nicolas|enzo|mourad|ingrid|farouk|hicham|tawee|yannis|cl[ée]ment|chlo[ée]|david/i },
   { key: 'inscription', test: /inscri|s'abonner|abonner|dossier|mineur|enfant|parent|papier|document|contrat|adh[ée]sion|activ/i },
   /* « partir » est volontairement absent : « à partir de quel âge » n'est pas une résiliation. */
-  { key: 'resiliation', test: /r[ée]sili|annul|arr[êe]ter|stopper|pr[ée]l[èe]vement|rembours|engagement|r[ée]tractation|badge|quitter|me d[ée]sinscrire/i },
+  { key: 'resiliation', test: /(?<![A-Za-zÀ-ÿ])r[ée]sili|annul|arr[êe]ter|stopper|pr[ée]l[èe]vement|rembours|engagement|r[ée]tractation|badge|quitter|me d[ée]sinscrire/i },
   { key: 'sante', test: /m[ée]dical|certificat|sant[ée]|bless|douleur|malaise|prot[èe]ge|gant|casque|s[ée]curit[ée]|retard|sparring|enceinte|op[ée]r/i },
   { key: 'reglement', test: /r[èe]glement|tenue|vestiaire|douche|casier|photo|vid[ée]o|alcool|fum|interdit|badge|comportement/i },
   { key: 'pratique', test: /douche|vestiaire|casier|parking|stationn|se garer|garer|voiture|scooter|v[ée]lo|r[ée]server|r[ée]servation|chauff|climatis|\bclim\b|clim(?:atisation|atiseur)?|ventil|il fait (?:chaud|froid)|temp[ée]rature|t[ée]l[ée]phone|contact|appeler|f[ée]d[ée]ration|femme|mixte|plusieurs salles|multi/i },

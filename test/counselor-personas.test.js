@@ -80,6 +80,24 @@ test('guideWelcome renvoie le conseiller retenu', async () => {
   assert.equal(d.persona, 'chloe');
 });
 
+test('Jiu-Jitsu Brésilien n’est pas traité comme une résiliation', async () => {
+  const r = await guideWelcome({
+    freeText: 'horaire du Jiu-Jitsu Brésilien lundi à États-Unis',
+    messages: [],
+    persona: 'chloe',
+  });
+  assert.notEqual(r.source, 'redirect-david', r.reply);
+});
+
+test('une vraie demande de résiliation passe toujours par David', async () => {
+  const r = await guideWelcome({
+    freeText: 'je veux résilier mon abonnement',
+    messages: [],
+    persona: 'chloe',
+  });
+  assert.equal(r.source, 'redirect-david');
+});
+
 test('la relance générique prend la voix du conseiller', async () => {
   const nassim = await guideWelcome({ freeText: 'salut', messages: [], persona: 'nassim' });
   const fabien = await guideWelcome({ freeText: 'salut', messages: [], persona: 'fabien' });
