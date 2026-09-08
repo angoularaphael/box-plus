@@ -2221,11 +2221,17 @@ async function applyBadgeConfigModal(page, productConfig, _memberId = null) {
     await ensurePaiementComptantOff(page, { strict: true });
     await randomDelay(200, 400);
     const ctx = await resolveDeciplusWorkPage(page);
+    await fillBadgeValideDuDate(ctx, startStr).catch(() => false);
+    await fillBadgeAuDate(page, ctx, endStr).catch(() => false);
     await badgeDomEvaluate(ctx, 'fillDu', startStr).catch(() => false);
     await badgeDomEvaluate(ctx, 'fillAu', endStr).catch(() => false);
     await fillBadgePaymentDate(page, payStr);
     await randomDelay(400, 700);
     await waitForBadgeWarningGone(page, 6000).catch(() => {});
+    const auReadback = await readBadgeAuValueFromModal(page).catch(() => null);
+    if (!isFrDateAtLeast(auReadback, endStr)) {
+      logWarn('Badge — Valide au non confirmée avant Appliquer', { expected: endStr, actual: auReadback });
+    }
   }
 
   const clicked = await clickBadgeModalAppliquer(page);

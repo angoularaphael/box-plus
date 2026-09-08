@@ -253,6 +253,39 @@ async function confirmMigrate(page) {
   page.once('dialog', async (dialog) => {
     await dialog.accept().catch(() => {});
   });
+
+  for (const ctx of getScopes(page)) {
+    const clicked = await ctx
+      .evaluate(() => {
+        const scopes = [document, ...Array.from(document.querySelectorAll('iframe')).map((f) => {
+          try {
+            return f.contentDocument;
+          } catch {
+            return null;
+          }
+        }).filter(Boolean)];
+        for (const doc of scopes) {
+          const candidates = [
+            ...doc.querySelectorAll('input.fichemembre_button'),
+            ...doc.querySelectorAll('input[type="button"]'),
+            ...doc.querySelectorAll('input[type="submit"]'),
+          ];
+          for (const btn of candidates) {
+            const value = String(btn.value || btn.getAttribute('value') || '').trim();
+            if (!/Changer le site/i.test(value)) continue;
+            btn.click();
+            return true;
+          }
+        }
+        return false;
+      })
+      .catch(() => false);
+    if (clicked) {
+      await randomDelay(1000, 1600);
+      return true;
+    }
+  }
+
   const builders = [];
   for (const ctx of getScopes(page)) {
     builders.push(

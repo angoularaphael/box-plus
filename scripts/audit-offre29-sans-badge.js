@@ -44,7 +44,14 @@ function rowName(p) {
 }
 
 function isExpiredBadge(label) {
-  return /expir[eé]|0 cr[eé]dit restant/i.test(String(label || ''));
+  const t = String(label || '');
+  if (/expir[eé]/i.test(t)) return true;
+  if (/0 cr[eé]dit restant/i.test(t)) {
+    // Badge différé IBAN : 0 crédit avant prélèvement J+72h ≠ badge expiré
+    if (/pr[ée]-?d[ée]compt/i.test(t)) return false;
+    return true;
+  }
+  return false;
 }
 
 function activeBadges(contracts) {
