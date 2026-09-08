@@ -1,0 +1,16 @@
+From: Service connexion <security@example.invalid>
+To: bot@example.invalid
+Subject: Connexion Boxing Center
+Date: Tue, 08 Sep 2026 10:01:00 +0000
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+<!doctype html>
+<html>
+  <body>
+    <style>.hidden { display: none; }</style>
+    <p>Code de vérification&nbsp;:</p>
+    <div><strong>731456</strong></div>
+  </body>
+</html>
