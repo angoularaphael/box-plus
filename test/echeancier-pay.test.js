@@ -78,3 +78,22 @@ describe('bot-forward ops', () => {
     assert.equal(isOpsOrder({ action: 'sale' }), false);
   });
 });
+
+describe('normalize encaisser', () => {
+  const { normalizeOrder, validateOrder, getJobId } = require('../lib/normalize');
+
+  it('conserve action encaisser (pas de fallback sale)', () => {
+    const order = normalizeOrder({
+      order_id: 'ENCAISSER-payplug-abc',
+      action: 'encaisser',
+      deciplus_member_id: '21892',
+      gym: 'minimes',
+      amount_cents: 2999,
+      customer: { first_name: 'Lina', last_name: 'Roques', email: 'lina@test.fr' },
+      payment: { status: 'paid', amount: 29.99 },
+    });
+    assert.equal(order.action, 'encaisser');
+    assert.equal(getJobId(order), 'ENCAISSER-payplug-abc#encaisser');
+    assert.deepEqual(validateOrder(order), []);
+  });
+});

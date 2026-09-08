@@ -11,6 +11,7 @@ const { compareJobsFifo } = require('../../lib/queue');
 const REQUEUE_COOLDOWN_MS = Number(process.env.BOXPLUS_SALE_REQUEUE_MS || 10 * 60 * 1000);
 const MAX_SALE_RETRIES = Number(process.env.BOXPLUS_SALE_REQUEUE_MAX || 12);
 const LOOKBACK_MS = Number(process.env.BOXPLUS_SALE_REQUEUE_LOOKBACK_MS || 14 * 24 * 60 * 60 * 1000);
+// Legacy — ne plus déclencher un dispatch boutique sans signature (cf. inscription-nudge).
 const PAID_UNSIGNED_GRACE_MS = Number(
   process.env.BOXPLUS_SALE_UNSIGNED_GRACE_MS || 15 * 60 * 1000
 );
@@ -61,6 +62,7 @@ function aventureDossierReady(order = {}) {
   return Boolean(first && last && birth);
 }
 
+/** @deprecated Ne plus utiliser pour déclencher un dispatch — conservé pour tests / audit. */
 function paidUnsignedReady(order = {}, now = Date.now()) {
   if (order.signature?.signed_at || order.ready_for_dispatch) return false;
   if (!identityReady(order)) return false;
@@ -69,14 +71,27 @@ function paidUnsignedReady(order = {}, now = Date.now()) {
   return now - paid >= PAID_UNSIGNED_GRACE_MS;
 }
 
+function boutiqueSaleDispatchAllowed(order = {}) {
+  if (order.signature?.signed_at || order.ready_for_dispatch) return true;
+  if (isAventureOrder(order)) return aventureDossierReady(order);
+  return false;
+}
+
+/** Anomalie type Lina : payé, non signé, mais fiche Deciplus déjà posée. */
+function isPaidUnsignedWithMember(order = {}) {
+  return (
+    String(order.payment?.status || '').toLowerCase() === 'paid' &&
+    !order.signature?.signed_at &&
+    !order.ready_for_dispatch &&
+    Boolean(order.deciplus_member_id)
+  );
+}
+
 function orderNeedsDeciplusSale(order = {}, now = Date.now()) {
   if (!isBoutiqueSaleOrder(order)) return false;
   if (deciplusSaleSettled(order)) return false;
   if (!productRequiresDeciplusSale(order)) return false;
-  if (isAventureOrder(order)) return aventureDossierReady(order);
-  return Boolean(
-    order.signature?.signed_at || order.ready_for_dispatch || paidUnsignedReady(order, now)
-  );
+  return boutiqueSaleDispatchAllowed(order);
 }
 
 function lastDispatchAt(order = {}) {
@@ -199,6 +214,8 @@ module.exports = {
   identityReady,
   aventureDossierReady,
   paidUnsignedReady,
+  boutiqueSaleDispatchAllowed,
+  isPaidUnsignedWithMember,
   orderNeedsDeciplusSale,
   recentlyAttemptedDispatch,
   shouldRedispatchMissingSale,

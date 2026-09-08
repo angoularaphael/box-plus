@@ -461,6 +461,20 @@ async function processSaleJob(page, order, jobMeta = {}) {
   };
 
   if (!memberId) {
+    const { boutiqueSaleDispatchAllowed } = require('../storefront/lib/deciplus-sale-reconcile');
+    if (!boutiqueSaleDispatchAllowed(order)) {
+      const err =
+        'Dispatch refusé — signature ou ready_for_dispatch requis avant création membre Deciplus';
+      logWarn('Création membre bloquée (commande non signée)', {
+        order_id: order.order_id,
+        signed_at: order.signature?.signed_at || null,
+        ready_for_dispatch: Boolean(order.ready_for_dispatch),
+      });
+      return {
+        status: STATUS.REJECTED,
+        error: err,
+      };
+    }
     if (order.reuse_deciplus_member !== true) {
       order.force_new_member = order.force_new_member !== false;
     }
@@ -1157,6 +1171,12 @@ async function processJob(page, job) {
     return runBalmaSwitch(page, order);
   }
 
+  if (order.action === 'encaisser' || order.action === 'echeancier') {
+    throw new Error(
+      `Action « ${order.action} » — utiliser BOXPLUS_BOT_URL_OPS (bot échéancier / résiliation)`
+    );
+  }
+
   return processSaleJob(page, order, {
     file: job.file,
     checkpoint: job.checkpoint || {},
@@ -1254,7 +1274,8 @@ async function pushBotSaleStatus(order, outcome = {}) {
     action === 'inscription_nudge' ||
     action === 'cancel' ||
     action === 'verify_identity' ||
-    action === 'echeancier'
+    action === 'echeancier' ||
+    action === 'encaisser'
   ) {
     return;
   }

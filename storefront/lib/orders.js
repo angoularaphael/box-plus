@@ -278,6 +278,11 @@ function buildOrderFromLifecycle(order, product) {
     product
   );
   if (order.deciplus_member_id) payload.deciplus_member_id = String(order.deciplus_member_id);
+  if (order.signature?.signed_at) {
+    payload.signature = { signed_at: order.signature.signed_at };
+  }
+  if (order.ready_for_dispatch) payload.ready_for_dispatch = true;
+  if (order.aventure) payload.aventure = true;
   if (order.skip_bot || order.manual_migration) {
     payload.skip_bot = true;
     payload.manual_migration = true;

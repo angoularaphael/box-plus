@@ -171,7 +171,7 @@ test('force_requeue remplace un job PENDING (Aventure already_queued)', () => {
   assert.equal(again.queued, true);
 });
 
-test('payé depuis plus de 15 min sans signature → à rattraper', () => {
+test('payé depuis plus de 15 min sans signature → pas de dispatch boutique', () => {
   const { paidUnsignedReady, orderNeedsDeciplusSale } = require('../storefront/lib/deciplus-sale-reconcile');
   const paidAt = new Date(Date.now() - 20 * 60 * 1000).toISOString();
   const unsigned = {
@@ -185,13 +185,20 @@ test('payé depuis plus de 15 min sans signature → à rattraper', () => {
     product_snapshot: { name: 'OFFRE A 29€', price_cents: 2900, sale_type: 'abonnement' },
   };
   assert.equal(paidUnsignedReady(unsigned), true);
-  assert.equal(orderNeedsDeciplusSale(unsigned), true);
+  assert.equal(orderNeedsDeciplusSale(unsigned), false);
   assert.equal(
     orderNeedsDeciplusSale({
       ...unsigned,
-      payment: { status: 'paid', paid_at: new Date().toISOString() },
+      signature: { signed_at: new Date().toISOString() },
     }),
-    false
+    true
+  );
+  assert.equal(
+    orderNeedsDeciplusSale({
+      ...unsigned,
+      ready_for_dispatch: true,
+    }),
+    true
   );
 });
 
@@ -215,6 +222,18 @@ test('dispatch Aventure ne s’arrête plus sur dispatched_at', () => {
   assert.doesNotMatch(src, /dispatched_at \|\| order\.dispatch_result/);
   assert.match(src, /deciplusSaleSettled/);
   assert.match(src, /aventureDossierReady/);
+});
+
+test('isPaidUnsignedWithMember signale payé + fiche sans signature', () => {
+  const { isPaidUnsignedWithMember, orderNeedsDeciplusSale } = require('../storefront/lib/deciplus-sale-reconcile');
+  const risky = {
+    order_id: 'BC-LINA',
+    payment: { status: 'paid', paid_at: new Date().toISOString() },
+    deciplus_member_id: '21892',
+    product_snapshot: { sale_type: 'abonnement' },
+  };
+  assert.equal(isPaidUnsignedWithMember(risky), true);
+  assert.equal(orderNeedsDeciplusSale(risky), false);
 });
 
 test('bot Aventure remonte deciplus_sale_id et ne valide pas une vente absente', () => {
