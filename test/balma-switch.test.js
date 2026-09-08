@@ -43,10 +43,10 @@ test('isOpsOrder — sale balma_retour n’est pas ops', () => {
   assert.equal(isOpsOrder({ action: 'sale', source: 'balma_retour' }), false);
 });
 
-test('badge comptant uniquement source=balma_retour + offre 29', () => {
+test('aucun badge comptant, y compris pour un retour Balma', () => {
   assert.equal(
     shouldGiftBadgeComptant({ source: 'balma_retour' }, { id: 'offre-duo' }),
-    true
+    false
   );
   assert.equal(
     shouldGiftBadgeComptant({ source: 'balma_retour' }, { id: 'offre-saison' }),
@@ -408,8 +408,8 @@ test('Aventure — vente 29 et 259 après création Minimes, pas si unpaid / non
     false
   );
   const src = fs.readFileSync(path.join(__dirname, '..', 'bot', 'aventure-clone.js'), 'utf8');
-  assert.match(src, /shouldGiftBadgeComptant/);
-  assert.match(src, /paiement_comptant = true/);
+  assert.match(src, /orderNeedsAutoBadge/);
+  assert.match(src, /paiement_comptant = !payplug4x/);
   assert.match(src, /auto_badge = false/);
 });
 

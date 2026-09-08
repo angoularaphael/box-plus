@@ -9,6 +9,7 @@ limité à une tentative par commande pour éviter les boucles :
 
 ```env
 BOT_MAX_FAILOVERS=1
+BOT_FAILOVER_AFTER_ATTEMPTS=1
 BOT_FAILOVER_TARGET=eddy
 BOT_FAILOVER_URL=http://prem-eu2.bot-hosting.net:21871
 ```

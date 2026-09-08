@@ -133,11 +133,12 @@ test('Badge actif → pas de nouveau badge ; Badge absent → besoin', () => {
   assert.equal(noBadge.needsBadge, true);
 });
 
-test('Aventure 29 € force le badge auto', () => {
+test('Aventure applique la même matrice Badge que le bot principal', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/aventure-clone.js'), 'utf8');
-  assert.match(src, /productConfig\.auto_badge = true/);
+  assert.match(src, /orderNeedsAutoBadge\(order, productConfig\)/);
+  assert.doesNotMatch(src, /productConfig\.auto_badge = true/);
   const idx = require('fs').readFileSync(require('path').join(__dirname, '../bot/index.js'), 'utf8');
-  assert.match(idx, /isOffre29Product/);
+  assert.match(idx, /orderNeedsAutoBadge\(order, productConfig\)/);
   assert.match(idx, /badgeDone/);
 });
 
@@ -170,7 +171,7 @@ test('le bot ventes résilie l’ancien abo avant de vendre le nouveau', () => {
   assert.match(src, /change_replace_existing/);
   assert.match(src, /Badge déjà actif/);
   assert.match(src, /replaceExisting:\s*true/);
-  assert.match(src, /on vend le nouveau quand même/);
+  assert.match(src, /Ancien abo toujours actif/);
   assert.match(src, /leftover\.length === 0/);
   assert.doesNotMatch(src, /nouvelle vente bloquée pour éviter un doublon/);
 });
@@ -235,6 +236,6 @@ test('échéance badge : gymConfig est un argument (plus de ReferenceError)', ()
 
 test('badge impayé : Annuler la vente même si le contrat a déjà commencé', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/cancel-sale.js'), 'utf8');
-  assert.match(src, /allowStarted: Boolean\(contract\.isBadge\)/);
+  assert.match(src, /allowStarted: forceVoid \|\| Boolean\(contract\.isBadge\) \|\| sameDayStart/);
   assert.match(src, /reason: contract\.isBadge \? 'badge_voided' : 'pending_voided'/);
 });
