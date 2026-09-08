@@ -1,33 +1,5 @@
--- Registre partagé entre bots : leases, idempotence et checkpoints Deciplus.
--- Additif et sans mutation des commandes existantes.
-create table if not exists public.boxplus_job_actions (
-  order_id text not null,
-  action text not null,
-  status text not null default 'processing'
-    check (status in ('processing', 'completed', 'failed', 'manual_review')),
-  lifecycle_state text,
-  attempt integer not null default 1 check (attempt >= 1),
-  worker_id text,
-  lease_expires_at timestamptz,
-  error_classification text,
-  error_message text,
-  human_action text,
-  member_id text,
-  sale_id text,
-  metadata jsonb not null default '{}'::jsonb,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  completed_at timestamptz,
-  primary key (order_id, action)
-);
-
-create index if not exists boxplus_job_actions_status_idx
-  on public.boxplus_job_actions (status, updated_at desc);
-create index if not exists boxplus_job_actions_lease_idx
-  on public.boxplus_job_actions (lease_expires_at)
-  where status = 'processing';
-
-alter table public.boxplus_job_actions enable row level security;
+﻿-- Hotfix : `attempt` ambigu dans boxplus_acquire_job_action (RETURNS TABLE).
+-- Réapplique les fonctions de 008 déjà déployé. Sans mutation des commandes.
 
 create or replace function public.boxplus_acquire_job_action(
   p_order_id text,

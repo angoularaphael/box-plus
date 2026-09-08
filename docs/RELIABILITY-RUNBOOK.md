@@ -3,6 +3,7 @@
 ## Déploiement (ordre obligatoire)
 
 1. Exécuter `supabase/008_boxplus_job_reliability.sql` dans le SQL Editor Supabase (ou via la CLI liée au projet).
+   Si 008 est déjà en place et que les ventes bloquent avec `column reference "attempt" is ambiguous`, exécuter `supabase/009_boxplus_job_reliability_attempt.sql`.
 2. Vérifier que le compte `service_role` peut appeler `boxplus_acquire_job_action`.
 3. Configurer chaque bot avec `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, un `BOT_ID` unique et les secrets existants.
 4. Déployer la boutique Vercel, puis redéployer/redémarrer chaque bot.
