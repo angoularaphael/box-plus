@@ -2109,7 +2109,8 @@ async function configureBadgeDeferredDates(page, scheduleOrDays) {
       await badgeDomEvaluate(ctx, 'fillDu', schedule.startStr).catch(() => false);
       await badgeDomEvaluate(ctx, 'fillAu', schedule.endStr).catch(() => false);
       await fillBadgePaymentDate(page, schedule.payStr);
-      await randomDelay(300, 500);
+      await randomDelay(400, 700);
+      await waitForBadgeWarningGone(page, 6000).catch(() => {});
       if (await clickBadgeModalAppliquer(page)) {
         await waitForBadgeModalClosed(page, 8000);
         await dismissPostApplyDialogs(page, { allowRib: false }).catch(() => {});
@@ -2219,14 +2220,12 @@ async function applyBadgeConfigModal(page, productConfig, _memberId = null) {
   } else {
     await ensurePaiementComptantOff(page, { strict: true });
     await randomDelay(200, 400);
-    const modalReady = await fillBadgeDatesInConfigModal(page, delayDays, productConfig).catch(() => false);
-    if (!modalReady) {
-      const ctx = await resolveDeciplusWorkPage(page);
-      await badgeDomEvaluate(ctx, 'fillDu', startStr).catch(() => false);
-      await badgeDomEvaluate(ctx, 'fillAu', endStr).catch(() => false);
-      await fillBadgePaymentDate(page, payStr);
-      await randomDelay(200, 400);
-    }
+    const ctx = await resolveDeciplusWorkPage(page);
+    await badgeDomEvaluate(ctx, 'fillDu', startStr).catch(() => false);
+    await badgeDomEvaluate(ctx, 'fillAu', endStr).catch(() => false);
+    await fillBadgePaymentDate(page, payStr);
+    await randomDelay(400, 700);
+    await waitForBadgeWarningGone(page, 6000).catch(() => {});
   }
 
   const clicked = await clickBadgeModalAppliquer(page);
