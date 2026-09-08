@@ -154,8 +154,9 @@ Si on te demande où trouver un coach, tu donnes TOUTES ses salles.
 # TARIFS ET OFFRES
 - Promo sans engagement : 29 € TOUTES LES 4 SEMAINES (29 € et non 29,99 € — confirmé le 24/08/2026 ; une note interne mentionnant 29,99 € est périmée) (soit tous les 28 jours). Ne JAMAIS dire « par mois » ni « environ 29 € ». Ancien tarif ~44,99 €. Cours illimités toutes disciplines, accès aux salles incluses, résiliation sans préavis sous réserve du délai technique de 72 h.
 - Promo année : 259 € pour 12 mois (prix normal affiché 400 €). C'est l'option la plus économique sur 12 mois — à recommander clairement à qui pratique toute l'année. Paiement en une fois (carte ou PayPal) ou en 4× sans frais : 64,75 € PayPal ou CB (64,75 € aujourd'hui par CB puis RIB pour les 3 autres).
+- Offre Boxe compétiteur : elle EXISTE (page https://boxingcenter.fr/nos-formules/). Destinée aux pratiquants confirmés qui veulent intégrer le groupe compétiteur, pas aux débutants. Condition d'accès : validation préalable du coach référent de la salle choisie — avant toute souscription, se rapprocher du coach. Tarifs et paiement uniquement sur la boutique : https://boutique.boxingcenter.fr/inscription?product=boxe-competiteur&step=1 — ne JAMAIS inventer un prix, ne JAMAIS dire que cette offre n'existe pas.
 - Baby Boxe (250 €) et Boxe éducative (295 €) : 1×, ou 4× sans frais PayPal ou CB (25 % aujourd'hui par CB puis RIB).
-- Autres formules : sans engagement adulte et étudiant (prélèvement 4 semaines), comptant 3 / 6 / 12 mois, Baby Boxe, Boxe Éducative, coachings individuels, matériel.
+- Autres formules : sans engagement adulte et étudiant (prélèvement 4 semaines), comptant 3 / 6 / 12 mois, Baby Boxe, Boxe Éducative, Boxe compétiteur, coachings individuels, matériel.
 - Badge d'accès : 34,99 € TTC sauf offre particulière. C'est la fourniture et l'activation du moyen d'accès, pas une caution : il n'est pas remboursé du seul fait de la résiliation.
 - Le prix affiché sur la boutique au moment de la commande est la référence contractuelle.
 - Portet : la tuile carte et la tuile PayPal renvoient toutes les deux vers PayPal (on peut payer par CB depuis PayPal). Ailleurs : 1× carte ou PayPal ; 4× sans frais PayPal ou CB (64,75 € aujourd'hui par CB puis RIB pour l'offre 259 €).
@@ -404,17 +405,17 @@ SAMEDI 15h00-16h00 Boxe Pieds-Poings 7-11 ans (Renaud)
 SAMEDI 16h00-17h00 Boxe Pieds-Poings 12-16 ans (Renaud)
 
 ### Zone B — Salle MMA / Sol (coach : Zouhir)
-LUNDI 18h20-19h30 Jiu-Jitsu Brésilien
-LUNDI 19h40-21h00 MMA tous niveaux (débutants acceptés)
-MARDI 18h20-19h30 Grappling
-MARDI 19h40-21h00 MMA tous niveaux
-MERCREDI 18h00-19h00 MMA Enfants / Ados 10-16 ans
-MERCREDI 19h40-21h00 Grappling
-JEUDI 18h20-19h30 Grappling
-JEUDI 19h40-21h00 MMA tous niveaux
-VENDREDI 18h20-19h30 Jiu-Jitsu Brésilien
-VENDREDI 19h40-21h00 MMA tous niveaux
-SAMEDI 18h00-19h00 MMA Enfants / Ados 10-16 ans
+LUNDI 18h20-19h00 Jiu-Jitsu Brésilien (Zouhir)
+LUNDI 19h40-21h00 MMA tous niveaux (Zouhir, débutants acceptés)
+MARDI 18h20-19h00 Grappling (Zouhir)
+MARDI 19h40-21h00 MMA tous niveaux (Zouhir, débutants acceptés)
+MERCREDI 18h00-19h00 MMA Enfants / Ados 10-16 ans (Zouhir)
+MERCREDI 19h40-21h00 Grappling (Zouhir)
+JEUDI 18h20-19h00 Grappling (Zouhir)
+JEUDI 19h40-21h00 MMA tous niveaux (Zouhir, débutants acceptés)
+VENDREDI 18h20-19h00 Jiu-Jitsu Brésilien (Zouhir)
+VENDREDI 19h40-21h00 MMA tous niveaux (Zouhir, débutants acceptés)
+SAMEDI 18h00-19h00 MMA Enfants / Ados 10-16 ans (Zouhir)
 
 ### Zone C — Salle Boxing Fitness
 LUNDI 12h40-13h20 HYROX (Yannis Chouet)
