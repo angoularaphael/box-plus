@@ -47,7 +47,7 @@ const CATALOG = (Array.isArray(RAW_CATALOG) ? RAW_CATALOG : RAW_CATALOG.products
 const BUSINESS = {
   name: 'Boxing Center',
   legalName: 'Boxing Center Toulouse',
-  telephone: '+33562244682',
+  telephone: '+33939036748',
   email: 'boxingcenter31@gmail.com',
   foundingDate: '2016-09-01',
     sameAs: [
@@ -788,7 +788,7 @@ type: club de boxe / boutique d'abonnements et matériel
 - Ne pas confondre avec d'autres clubs de boxe toulousains
 
 # Contact
-phone: 05 62 24 46 82
+phone: 09 39 03 67 48
 email: ${BUSINESS.email}
 club_site: https://boxingcenter.fr
 
@@ -844,7 +844,7 @@ ${Object.entries(VIDEOS)
 ${salles}
 
 ## Contact
-- Téléphone réseau : 05 62 24 46 82
+- Téléphone réseau : 09 39 03 67 48
 - Email : ${BUSINESS.email}
 - Site du club : https://boxingcenter.fr
 - Boxing Center Minimes : https://boxe-toulouse.com/
@@ -1041,7 +1041,7 @@ function registerSeo(app, publicDir) {
   // Crawlable NAP (name/address/phone) for no-JS crawlers — the footer and
   // gym cards are JS-rendered, so the visible addresses need a fallback.
   const homeNoscript = `<noscript><section><h2>Nos 5 salles de boxe à Toulouse</h2><ul>${
-    SALLES.map((s) => `<li>Boxing Center ${esc(s.name)} — ${[s.street, `${s.postal} ${s.city}`].filter(Boolean).map(esc).join(', ')} — Tél. 05 62 24 46 82</li>`).join('')
+    SALLES.map((s) => `<li>Boxing Center ${esc(s.name)} — ${[s.street, `${s.postal} ${s.city}`].filter(Boolean).map(esc).join(', ')} — Tél. 09 39 03 67 48</li>`).join('')
   }</ul></section></noscript>`;
 
   // Indexable pages: canonical + og:url/og:image + robots hints + JSON-LD.
