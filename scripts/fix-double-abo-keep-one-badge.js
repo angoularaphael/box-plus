@@ -35,6 +35,7 @@ const { openMemberCheck, closeGreyboxIfOpen } = require('../bot/wallet');
 const {
   findActiveContracts,
   cancelSale,
+  cancelOneContract,
   isPendingOrFutureContract,
 } = require('../bot/cancel-sale');
 const { fetchDeciplusCatalog, resolveBadgeProductConfig } = require('../bot/catalog');
@@ -64,8 +65,49 @@ function isExpiredBadge(label) {
   return false;
 }
 
+function isBadgeContract(c) {
+  return Boolean(c?.isBadge || c?.badge);
+}
+
 function activeBadgeCount(contracts) {
-  return (contracts || []).filter((c) => c.isBadge && !isExpiredBadge(c.label)).length;
+  return (contracts || []).filter((c) => isBadgeContract(c) && !isExpiredBadge(c.label)).length;
+}
+
+function aboKeepScore(c, t) {
+  const label = String(c.label || '');
+  let score = 0;
+  if (!/expir[eé]/i.test(label)) score += 100;
+  if (/jours restants/i.test(label)) score += 80;
+  if (t.is29 && /29|duo/i.test(label)) score += 70;
+  if (t.isFlex && /44|semaines/i.test(label)) score += 70;
+  if (!t.is29 && !t.isFlex && /promo|259|prelevement/i.test(label)) score += 70;
+  if (/essai/i.test(label)) score += 10;
+  if (/cr[eé]dit restant/i.test(label) && !/expir[eé]/i.test(label)) score += 30;
+  score += Number(c.idc) / 10000;
+  return score;
+}
+
+function pickKeeperAbo(abos, t) {
+  return [...abos].sort((a, b) => aboKeepScore(b, t) - aboKeepScore(a, t))[0];
+}
+
+async function loadRawContracts(page, memberId, gym) {
+  await closeGreyboxIfOpen(page).catch(() => {});
+  await openMemberCheck(page, memberId, gym).catch(() => {});
+  await page.waitForTimeout(600);
+  return findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => []);
+}
+
+async function cancelListedContracts(page, memberId, gym, contracts, label) {
+  const out = [];
+  for (const c of contracts) {
+    const res = await cancelOneContract(page, c, { forceVoid: true });
+    out.push({ idc: c.idc, ...res });
+    console.log(`  ${label}`, c.idc, res.cancelled ? 'OK' : res.reason || 'fail');
+    await closeGreyboxIfOpen(page).catch(() => {});
+    await openMemberCheck(page, memberId, gym).catch(() => {});
+  }
+  return out;
 }
 
 function slim(c) {
@@ -201,12 +243,22 @@ async function snapshot(page, memberId, gym) {
       const extraAbo = before.started.length > 1;
       const needsRemoveBadge = Boolean(t.noBadgeProduct) && before.badges.length > 0 && !PENDING_ONLY;
       const needsAbo = !PENDING_ONLY && wantsBadge && before.started.length === 0;
+      const needsExtraBadgeDedupe =
+        wantsBadge && activeBadgeCount(before.contracts) > 1 && !PENDING_ONLY;
       const needsBadge = wantsBadge && activeBadgeCount(before.contracts) === 0;
-      row.needs = { pendingCancel: needsPendingCancel, extraAbo, removeBadge: needsRemoveBadge, recreateAbo: needsAbo, badge: needsBadge };
+      row.needs = {
+        pendingCancel: needsPendingCancel,
+        extraAbo,
+        extraBadge: needsExtraBadgeDedupe,
+        removeBadge: needsRemoveBadge,
+        recreateAbo: needsAbo,
+        badge: needsBadge,
+      };
 
       const issueBits = [];
       if (needsPendingCancel) issueBits.push(`en_attente=${before.pending.length}`);
       if (extraAbo) issueBits.push(`abo_actifs=${before.started.length}`);
+      if (needsExtraBadgeDedupe) issueBits.push(`badges=${activeBadgeCount(before.contracts)}`);
       if (needsRemoveBadge) issueBits.push(`badge_interdit=${before.badges.length}`);
       if (!APPLY) {
         if (issueBits.length) {
@@ -220,9 +272,16 @@ async function snapshot(page, memberId, gym) {
         continue;
       }
 
-      if (!needsPendingCancel && !needsAbo && !needsBadge && !needsRemoveBadge) {
-        row.status = extraAbo ? 'partial' : 'ok';
-        console.log(extraAbo ? `  WARN ${before.started.length} abos actifs` : '  OK');
+      const nothingToDo =
+        !needsPendingCancel &&
+        !needsAbo &&
+        !needsBadge &&
+        !needsRemoveBadge &&
+        !extraAbo &&
+        !needsExtraBadgeDedupe;
+      if (nothingToDo) {
+        row.status = 'ok';
+        console.log('  OK');
         report.results.push(row);
         continue;
       }
@@ -238,6 +297,34 @@ async function snapshot(page, memberId, gym) {
       }
 
       let live = await snapshot(page, t.member_id, gym);
+
+      if (!PENDING_ONLY && live.started.length > 1) {
+        const raw = await loadRawContracts(page, t.member_id, gym);
+        const started = raw.filter((c) => !c.isBadge && !isPendingOrFutureContract(c.label));
+        if (started.length > 1) {
+          const keeper = pickKeeperAbo(started, t);
+          const extras = started.filter((c) => String(c.idc) !== String(keeper.idc));
+          console.log('  garde abo', keeper.idc, 'void', extras.map((c) => c.idc).join(','));
+          const cancelled = await cancelListedContracts(page, t.member_id, gym, extras, 'void abo extra');
+          row.actions.push({ cancel_extra_abo: { keeper: keeper.idc, cancelled } });
+          live = await snapshot(page, t.member_id, gym);
+        }
+      }
+
+      if (!PENDING_ONLY && wantsBadge && activeBadgeCount(live.contracts) > 1) {
+        const raw = await loadRawContracts(page, t.member_id, gym);
+        const badges = raw
+          .filter((c) => c.isBadge && !isExpiredBadge(c.label))
+          .sort((a, b) => Number(a.idc) - Number(b.idc));
+        if (badges.length > 1) {
+          const keeper = badges[0];
+          const extras = badges.slice(1);
+          console.log('  garde badge', keeper.idc, 'void', extras.map((c) => c.idc).join(','));
+          const cancelled = await cancelListedContracts(page, t.member_id, gym, extras, 'void badge extra');
+          row.actions.push({ cancel_extra_badge: { keeper: keeper.idc, cancelled } });
+          live = await snapshot(page, t.member_id, gym);
+        }
+      }
       if (!PENDING_ONLY && live.started.length === 0) {
         const raw = await loadOrderAsync(t.order_id);
         const hydrated = await hydrateOrderMedia(raw);
@@ -286,11 +373,10 @@ async function snapshot(page, memberId, gym) {
 
       const after = await snapshot(page, t.member_id, gym);
       row.after = after;
+      const badgeOk = !wantsBadge || activeBadgeCount(after.contracts) <= 1;
       row.status =
-        after.pending.length === 0 && after.started.length >= 1
-          ? after.started.length === 1
-            ? 'fixed'
-            : 'partial'
+        after.pending.length === 0 && after.started.length === 1 && badgeOk
+          ? 'fixed'
           : after.started.length >= 1
             ? 'partial'
             : 'still_broken';
