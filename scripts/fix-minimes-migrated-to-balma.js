@@ -6,6 +6,7 @@
  *   node scripts/fix-minimes-migrated-to-balma.js --apply --names="Manoelle Gamon,Leo Blanchier"
  */
 require('dotenv').config();
+process.env.BOXPLUS_BALMA_MIGRATION_LOOKUP = '1';
 process.env.BOXPLUS_ORDERS_REMOTE = '1';
 process.env.DECIPLUS_FAST = process.env.DECIPLUS_FAST || '1';
 process.env.DECIPLUS_HEADLESS = process.env.DECIPLUS_HEADLESS || 'true';
@@ -33,7 +34,12 @@ const NAMES = (process.argv.find((a) => a.startsWith('--names=')) || '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
-const DEFAULT_NAMES = ['Manoelle Gamon', 'Leo Blanchier', 'Léa Blanchier', 'Léo Blanchier'];
+const IDS = (process.argv.find((a) => a.startsWith('--ids=')) || '')
+  .slice(6)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+const DEFAULT_NAMES = ['Manoelle Gamon', 'Leo Blanchier'];
 const TARGETS = NAMES.length ? NAMES : DEFAULT_NAMES;
 const OUT = path.join(__dirname, '..', 'data', `fix-minimes-to-balma-${Date.now()}.json`);
 
@@ -116,17 +122,18 @@ async function inspect(page, memberId, siteCfg) {
 
 async function locate(page, row) {
   const sites = [
-    { name: 'Balma', cfg: getGymConfig('balma') },
     { name: 'Minimes', cfg: getGymConfig('minimes') },
+    { name: 'Balma', cfg: getGymConfig('balma') },
   ];
   for (const site of sites) {
+    console.log('locate', row.name || row.member_id, 'on', site.name);
     await closeGreyboxIfOpen(page).catch(() => {});
     const switched = await switchDeciplusSite(page, site.name).catch(() => false);
     if (!switched) continue;
     if (row.member_id) {
       await openMemberCheck(page, String(row.member_id), site.cfg).catch(() => {});
       const live = await detectMemberGymConfig(page, site.cfg).catch(() => null);
-      if (live?.deciplus_label) {
+      if (live?.deciplus_label || live?.deciplus_zone_id) {
         return { member_id: String(row.member_id), via: 'id', opened_on: site.name, live };
       }
     }
@@ -151,18 +158,40 @@ async function main() {
   const browsers = path.join(process.env.USERPROFILE || '', 'AppData', 'Local', 'ms-playwright');
   if (fs.existsSync(browsers)) process.env.PLAYWRIGHT_BROWSERS_PATH = browsers;
 
-  const orders = await loadOrders();
+  const orders = IDS.length ? [] : await loadOrders();
   const minimes = getGymConfig('minimes');
   const report = { apply: APPLY, targets: TARGETS, orders, results: [] };
 
   await runWithSession('fix-minimes-to-balma', async (page) => {
-    await login(page, { siteLabel: 'Balma' }).catch(async () => {
-      await login(page, { siteLabel: 'Minimes' });
-    });
+    await login(page, { siteLabel: 'Minimes' });
 
-    const people = orders.length
-      ? orders
-      : TARGETS.map((name) => ({ ...parseName(name), name, member_id: null, email: null, gym: null }));
+    const people = IDS.length
+      ? IDS.map((id) => {
+          const known = {
+            21890: {
+              name: 'Manoëlle GAMON',
+              email: 'g.manono971@gmail.com',
+              first_name: 'Manoëlle',
+              last_name: 'GAMON',
+            },
+            18493: {
+              name: 'Léo BLANCHIER',
+              email: 'leoblanchier@gmail.com',
+              first_name: 'Léo',
+              last_name: 'BLANCHIER',
+            },
+            19046: {
+              name: 'Océane TESTAN',
+              email: 'oceanesonia974@gmail.com',
+              first_name: 'Océane',
+              last_name: 'TESTAN',
+            },
+          }[String(id)] || { name: `id-${id}` };
+          return { member_id: String(id), ...known };
+        })
+      : orders.length
+        ? orders
+        : TARGETS.map((name) => ({ ...parseName(name), name, member_id: null, email: null, gym: null }));
 
     const seen = new Set();
     for (const row of people) {

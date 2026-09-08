@@ -55,9 +55,16 @@ test('une séance d’essai existante est reconnue avant toute nouvelle créatio
   assert.equal(isTrialPrestationConfig({ sale_type: 'carte', name: 'COACHING PRIVE 10 SEANCES' }), false);
 });
 
-test('la recherche membre vérifie Balma avant de créer une nouvelle fiche', () => {
+test('la recherche membre n’inclut plus Balma par défaut', () => {
+  const { uniqueDeciplusSearchConfigs } = require('../lib/deciplus-sites');
   const sites = uniqueDeciplusSearchConfigs('st-cyprien');
-  assert.ok(sites.some((site) => /balma/i.test(String(site.deciplus_label || site.label || site.key))));
+  assert.ok(
+    !sites.some((site) => /balma/i.test(String(site.deciplus_label || site.label || site.key)))
+  );
+  const withLookup = uniqueDeciplusSearchConfigs('st-cyprien', { allowBalmaLookup: true });
+  assert.ok(
+    !withLookup.some((site) => /balma/i.test(String(site.deciplus_label || site.label || site.key)))
+  );
 });
 
 test('une demande de création Balma est forcée vers Minimes', () => {
@@ -80,16 +87,27 @@ test('une reprise après vente conserve le sale_id du checkpoint', () => {
 });
 
 test('Balma n’est plus une destination de vente ni un choix boutique', () => {
-  const { resolveSaleGymConfig, remapBalmaGymSlug } = require('../lib/gym-slugs');
+  const {
+    resolveSaleGymConfig,
+    remapBalmaGymSlug,
+    assertNeverBalmaDestination,
+    BALMA_DESTINATION_FORBIDDEN,
+  } = require('../lib/gym-slugs');
   const { normalizeOrder } = require('../lib/normalize');
   const dest = resolveSaleGymConfig(getGymConfig('balma'), { gym: 'balma' });
   assert.equal(dest.key, 'minimes');
   assert.equal(String(dest.deciplus_zone_id), '2');
   assert.equal(remapBalmaGymSlug('balma'), 'minimes');
   assert.equal(normalizeOrder({ order_id: 'BC-1', gym: 'balma', customer: { first_name: 'A', last_name: 'B' } }).gym, 'minimes');
+  assert.throws(
+    () => assertNeverBalmaDestination(getGymConfig('balma'), {}, 'test'),
+    new RegExp(BALMA_DESTINATION_FORBIDDEN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  );
 
   const migrate = fs.readFileSync(path.join(__dirname, '../bot/migrate-gym.js'), 'utf8');
-  assert.match(migrate, /Migration vers Balma interdite/);
+  assert.match(migrate, /assertNeverBalmaDestination/);
+  const zone = fs.readFileSync(path.join(__dirname, '../bot/deciplus-zone.js'), 'utf8');
+  assert.match(zone, /switchDeciplusSite: \$\{label\}/);
   const checkout = fs.readFileSync(path.join(__dirname, '../storefront/public/checkout.html'), 'utf8');
   assert.doesNotMatch(checkout, /option value="balma"/);
   const admin = fs.readFileSync(path.join(__dirname, '../storefront/public/admin/index.html'), 'utf8');
