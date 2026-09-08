@@ -254,10 +254,10 @@ async function fetchDeciplusEmailCode(opts = {}) {
           logInfo(
             `Diagnostic IMAP Deciplus (folder=${mailbox.role}, recent=${scan.recentCount}, matches=${scan.matchCount})`,
             {
-            attempt,
-            folder: mailbox.role,
-            recent_count: scan.recentCount,
-            match_count: scan.matchCount,
+              attempt,
+              folder: mailbox.role,
+              recent_count: scan.recentCount,
+              match_count: scan.matchCount,
             }
           );
         }
