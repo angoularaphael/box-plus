@@ -8,6 +8,7 @@
  *   node scripts/fix-double-abo-keep-one-badge.js --check --since=2026-09-07
  *   node scripts/fix-double-abo-keep-one-badge.js --apply --since=2026-09-07
  *   node scripts/fix-double-abo-keep-one-badge.js --apply --only=bujia
+ *   node scripts/fix-double-abo-keep-one-badge.js --apply --badges-only --members=21850,21834
  */
 require('dotenv').config();
 process.env.BOXPLUS_ORDERS_REMOTE = '1';
@@ -44,6 +45,7 @@ const { processSaleJob } = require('../bot/index');
 
 const APPLY = process.argv.includes('--apply');
 const PENDING_ONLY = process.argv.includes('--pending-only');
+const BADGES_ONLY = process.argv.includes('--badges-only');
 const SINCE = (process.argv.find((a) => a.startsWith('--since=')) || '').slice(8) || '2026-09-07';
 const ONLY = (process.argv.find((a) => a.startsWith('--only=')) || '').slice(7).toLowerCase();
 const MEMBERS = (process.argv.find((a) => a.startsWith('--members=')) || '').slice(10);
@@ -239,13 +241,17 @@ async function snapshot(page, memberId, gym) {
       const before = await snapshot(page, t.member_id, gym);
       const row = { ...t, before, actions: [] };
       const wantsBadge = (Boolean(t.is29) || Boolean(t.isFlex)) && !PENDING_ONLY;
-      const needsPendingCancel = before.pending.length > 0 && (before.started.length > 0 || before.pending.length > 1);
-      const extraAbo = before.started.length > 1;
-      const needsRemoveBadge = Boolean(t.noBadgeProduct) && before.badges.length > 0 && !PENDING_ONLY;
-      const needsAbo = !PENDING_ONLY && wantsBadge && before.started.length === 0;
+      const needsPendingCancel =
+        !BADGES_ONLY &&
+        before.pending.length > 0 &&
+        (before.started.length > 0 || before.pending.length > 1);
+      const extraAbo = !BADGES_ONLY && before.started.length > 1;
+      const needsRemoveBadge =
+        !BADGES_ONLY && Boolean(t.noBadgeProduct) && before.badges.length > 0 && !PENDING_ONLY;
+      const needsAbo = !BADGES_ONLY && !PENDING_ONLY && wantsBadge && before.started.length === 0;
       const needsExtraBadgeDedupe =
         wantsBadge && activeBadgeCount(before.contracts) > 1 && !PENDING_ONLY;
-      const needsBadge = wantsBadge && activeBadgeCount(before.contracts) === 0;
+      const needsBadge = !BADGES_ONLY && wantsBadge && activeBadgeCount(before.contracts) === 0;
       row.needs = {
         pendingCancel: needsPendingCancel,
         extraAbo,
@@ -298,7 +304,7 @@ async function snapshot(page, memberId, gym) {
 
       let live = await snapshot(page, t.member_id, gym);
 
-      if (!PENDING_ONLY && live.started.length > 1) {
+      if (!BADGES_ONLY && !PENDING_ONLY && live.started.length > 1) {
         const raw = await loadRawContracts(page, t.member_id, gym);
         const started = raw.filter((c) => !c.isBadge && !isPendingOrFutureContract(c.label));
         if (started.length > 1) {
@@ -325,7 +331,7 @@ async function snapshot(page, memberId, gym) {
           live = await snapshot(page, t.member_id, gym);
         }
       }
-      if (!PENDING_ONLY && live.started.length === 0) {
+      if (!BADGES_ONLY && !PENDING_ONLY && live.started.length === 0) {
         const raw = await loadOrderAsync(t.order_id);
         const hydrated = await hydrateOrderMedia(raw);
         const product = raw.product_snapshot || { id: raw.product_id, name: raw.product_name };
@@ -359,7 +365,13 @@ async function snapshot(page, memberId, gym) {
       }
 
       live = await snapshot(page, t.member_id, gym);
-      if (!PENDING_ONLY && wantsBadge && activeBadgeCount(live.contracts) === 0 && live.started.length + live.pending.length > 0) {
+      if (
+        !BADGES_ONLY &&
+        !PENDING_ONLY &&
+        wantsBadge &&
+        activeBadgeCount(live.contracts) === 0 &&
+        live.started.length + live.pending.length > 0
+      ) {
         const badgeCfg = resolveBadgeProductConfig(catalog, {
           badge_timing: 'deferred',
           badge_method: 'iban',
@@ -374,8 +386,11 @@ async function snapshot(page, memberId, gym) {
       const after = await snapshot(page, t.member_id, gym);
       row.after = after;
       const badgeOk = !wantsBadge || activeBadgeCount(after.contracts) <= 1;
-      row.status =
-        after.pending.length === 0 && after.started.length === 1 && badgeOk
+      row.status = BADGES_ONLY
+        ? badgeOk
+          ? 'fixed'
+          : 'partial'
+        : after.pending.length === 0 && after.started.length === 1 && badgeOk
           ? 'fixed'
           : after.started.length >= 1
             ? 'partial'
