@@ -218,6 +218,7 @@ const {
   listAllOrdersAsync,
   listOrdersCreatedSinceAsync,
   listPaidOrdersSinceAsync,
+  listFreeTrialOrdersPageAsync,
   deleteOrderAsync,
   toAdminSummary,
   sortAdminOrders,
@@ -2133,6 +2134,27 @@ function createApp() {
     }
     const orders = sortAdminOrders(kept.map(toAdminSummary));
     res.json({ ok: true, orders, count: orders.length });
+  });
+
+  app.get('/api/admin/free-trials', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const page = Math.max(1, Math.trunc(Number(req.query.page) || 1));
+      const pageSize = Math.min(100, Math.max(1, Math.trunc(Number(req.query.page_size) || 25)));
+      const result = await listFreeTrialOrdersPageAsync({ page, pageSize });
+      res.json({
+        ok: true,
+        orders: result.orders,
+        count: result.orders.length,
+        total: result.total,
+        page: result.page,
+        page_size: result.page_size,
+        pages: Math.max(1, Math.ceil(result.total / result.page_size)),
+      });
+    } catch (err) {
+      logError('Liste séances essai gratuites admin', { error: err.message });
+      res.status(500).json({ ok: false, error: 'free_trials_unavailable' });
+    }
   });
 
   app.get('/api/admin/coachings', async (req, res) => {

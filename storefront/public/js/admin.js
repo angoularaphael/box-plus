@@ -4,6 +4,10 @@
   let featuredHome = [];
   let orders = [];
   let coachings = [];
+  let freeTrials = [];
+  let freeTrialsPage = 1;
+  let freeTrialsPages = 1;
+  let freeTrialsTotal = 0;
   let currentUser = null;
 
   const STEP_LABELS = {
@@ -368,7 +372,7 @@
   }
 
   function showTab(name) {
-    ['tabOffers', 'tabMateriel', 'tabContracts', 'tabCustomOffers', 'tabCoachings', 'tabStats', 'tabWhatsapp'].forEach((id) => {
+    ['tabOffers', 'tabMateriel', 'tabContracts', 'tabFreeTrials', 'tabCustomOffers', 'tabCoachings', 'tabStats', 'tabWhatsapp'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.hidden = id !== `tab${name.charAt(0).toUpperCase()}${name.slice(1)}`;
     });
@@ -376,6 +380,7 @@
       btn.classList.toggle('active', btn.dataset.tab === name);
     });
     if (name === 'contracts') loadOrders();
+    if (name === 'freeTrials') loadFreeTrials(freeTrialsPage);
     if (name === 'coachings') loadCoachings();
     if (name === 'materiel') {
       loadMateriel();
@@ -394,6 +399,8 @@
 
   if (location.hash === '#contracts' || location.pathname.endsWith('/contrats')) {
     showTab('contracts');
+  } else if (location.hash === '#freeTrials' || location.hash === '#seances-essai-gratuites') {
+    showTab('freeTrials');
   } else if (location.hash === '#customOffers' || location.hash === '#offres-perso') {
     showTab('customOffers');
   } else if (location.hash === '#materiel') {
@@ -460,6 +467,102 @@
       msg.textContent = err.message;
       msg.className = 'form-msg err';
     }
+  }
+
+  async function loadFreeTrials(page = 1) {
+    const msg = document.getElementById('freeTrialsMsg');
+    const tbody = document.getElementById('freeTrialsBody');
+    if (msg) {
+      msg.textContent = 'Chargement…';
+      msg.className = 'form-msg';
+    }
+    if (tbody) {
+      tbody.innerHTML =
+        '<tr><td colspan="8" style="text-align:center;color:var(--bc-muted)">Chargement…</td></tr>';
+    }
+    try {
+      const safePage = Math.max(1, Number(page) || 1);
+      const res = await fetch(`/api/admin/free-trials?page=${safePage}&page_size=25`, {
+        credentials: 'include',
+        headers: headers(false),
+      });
+      if (!res.ok) throw new Error('Impossible de charger les séances gratuites');
+      const data = await res.json();
+      freeTrials = data.orders || [];
+      freeTrialsPage = data.page || safePage;
+      freeTrialsPages = data.pages || 1;
+      freeTrialsTotal = data.total || 0;
+      if (msg) msg.textContent = '';
+      renderFreeTrials();
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message;
+        msg.className = 'form-msg err';
+      }
+      if (tbody) {
+        tbody.innerHTML =
+          '<tr><td colspan="8" style="text-align:center;color:var(--bc-muted)">Chargement impossible</td></tr>';
+      }
+    }
+  }
+
+  function freeTrialPaymentLabel(order) {
+    const payment = escapeHtml(order.payment_status || 'gratuit');
+    const signed = order.signed
+      ? `Signée ${formatDate(order.signed_at)}`
+      : 'Non signée';
+    return `<span class="badge ok">${payment}</span><br><small>${escapeHtml(signed)}</small>`;
+  }
+
+  function renderFreeTrials() {
+    const tbody = document.getElementById('freeTrialsBody');
+    const count = document.getElementById('freeTrialsCount');
+    const pager = document.getElementById('freeTrialsPager');
+    const pagerInfo = document.getElementById('freeTrialsPagerInfo');
+    const prev = document.getElementById('freeTrialsPrev');
+    const next = document.getElementById('freeTrialsNext');
+    if (!tbody) return;
+    if (count) count.textContent = `${freeTrialsTotal} inscription(s) gratuite(s)`;
+    if (pager) pager.hidden = freeTrialsPages <= 1;
+    if (pagerInfo) pagerInfo.textContent = `Page ${freeTrialsPage} sur ${freeTrialsPages}`;
+    if (prev) prev.disabled = freeTrialsPage <= 1;
+    if (next) next.disabled = freeTrialsPage >= freeTrialsPages;
+
+    if (!freeTrials.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="8" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune séance d’essai gratuite sur cette page</td></tr>';
+      return;
+    }
+    tbody.innerHTML = freeTrials
+      .map((order) => {
+        const contact = [
+          order.email
+            ? `<a href="mailto:${encodeURIComponent(order.email)}" style="color:var(--bc-cta)">${escapeHtml(order.email)}</a>`
+            : '—',
+          order.phone
+            ? `<a href="tel:${escapeHtml(order.phone)}">${escapeHtml(order.phone)}</a>`
+            : null,
+        ].filter(Boolean).join('<br>');
+        const deciplus = [
+          `Membre : ${escapeHtml(order.deciplus_member_id || '—')}`,
+          `Vente : ${escapeHtml(order.deciplus_sale_id || '—')}`,
+        ].join('<br>');
+        const bot = order.bot_error
+          ? `<span class="badge err">${escapeHtml(order.bot_status || 'Erreur')}</span><br><small title="${escapeHtml(order.bot_error)}">${escapeHtml(order.bot_error)}</small>`
+          : `<span class="badge ${order.bot_status === 'success' ? 'ok' : 'pending'}">${escapeHtml(order.bot_status || '—')}</span>`;
+        return `
+          <tr>
+            <td style="font-size:12px">${formatDate(order.created_at)}</td>
+            <td><strong>${escapeHtml(order.name)}</strong><br><code style="font-size:11px">${escapeHtml(order.order_id)}</code></td>
+            <td>${contact}</td>
+            <td>${escapeHtml(gymLabel(order.gym))}</td>
+            <td>${escapeHtml(order.product)}<br><small>${escapeHtml(order.order_status || 'Reçue')}</small></td>
+            <td>${freeTrialPaymentLabel(order)}</td>
+            <td style="font-size:12px">${deciplus}</td>
+            <td style="max-width:240px;font-size:12px">${bot}</td>
+          </tr>`;
+      })
+      .join('');
   }
 
   function formatDate(iso) {
@@ -2441,6 +2544,9 @@
   });
   document.getElementById('refreshCoachingsBtn')?.addEventListener('click', loadCoachings);
   document.getElementById('coachingsSearch')?.addEventListener('input', renderCoachings);
+  document.getElementById('refreshFreeTrialsBtn')?.addEventListener('click', () => loadFreeTrials(freeTrialsPage));
+  document.getElementById('freeTrialsPrev')?.addEventListener('click', () => loadFreeTrials(freeTrialsPage - 1));
+  document.getElementById('freeTrialsNext')?.addEventListener('click', () => loadFreeTrials(freeTrialsPage + 1));
 
   (async function init() {
     try {
@@ -2449,6 +2555,8 @@
       await loadMerch();
       if (location.hash === '#contracts' || location.pathname.endsWith('/contrats')) {
         showTab('contracts');
+      } else if (location.hash === '#freeTrials' || location.hash === '#seances-essai-gratuites') {
+        showTab('freeTrials');
       } else if (location.hash === '#materiel') {
         showTab('materiel');
       }

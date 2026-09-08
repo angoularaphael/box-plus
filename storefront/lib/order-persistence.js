@@ -78,7 +78,8 @@ function pickPayment(payment) {
   return {
     status: p.status || null,
     paid_at: p.paid_at || null,
-    amount: p.amount || null,
+    amount: p.amount ?? null,
+    amount_cents: p.amount_cents ?? null,
     billing_plan: p.billing_plan || null,
     payment_plan: p.payment_plan || null,
     stripe_subscription_id: p.stripe_subscription_id || null,
@@ -584,6 +585,68 @@ async function listPaidOrdersSince(sinceIso) {
     .map((order) => stripHeavyFields(order));
 }
 
+const FREE_TRIAL_CANDIDATE_FILTER = [
+  'payload->>product_id.eq.seance-essai-offerte',
+  'payload->>product_reference.eq.seance-essai-offerte',
+  'payload->>source.eq.seance-offerte-web',
+  'payload->>product_name.ilike.*offert*',
+  'payload->>product_name.ilike.*gratuit*',
+  'payload->product_snapshot->>name.ilike.*offert*',
+  'payload->product_snapshot->>name.ilike.*gratuit*',
+  'payload->product_snapshot->>display_name.ilike.*offert*',
+  'payload->product_snapshot->>display_name.ilike.*gratuit*',
+].join(',');
+
+const FREE_TRIAL_ZERO_FILTER = [
+  'payload->payment->>amount.eq.0',
+  'payload->payment->>amount_cents.eq.0',
+  'payload->product_snapshot->>price_cents.eq.0',
+  'payload->product_snapshot->>requires_payment.eq.false',
+  'payload->>requires_payment.eq.false',
+].join(',');
+
+/**
+ * Candidats séances gratuites, paginés côté stockage.
+ * Le filtre métier définitif reste appliqué après reconstruction de la commande.
+ */
+async function listFreeTrialCandidatesPage({ page = 1, pageSize = 25 } = {}) {
+  const safePage = Math.max(1, Math.trunc(Number(page) || 1));
+  const safePageSize = Math.min(100, Math.max(1, Math.trunc(Number(pageSize) || 25)));
+  const from = (safePage - 1) * safePageSize;
+
+  if (useRemoteStore()) {
+    const sb = getSupabase();
+    const { data, error, count } = await sb
+      .from('boxplus_orders')
+      .select(SLIM_SELECT, { count: 'exact' })
+      .or(FREE_TRIAL_CANDIDATE_FILTER)
+      .or(FREE_TRIAL_ZERO_FILTER)
+      .not('order_id', 'ilike', 'TEST-%')
+      .not('order_id', 'ilike', 'DEMO-%')
+      .order('created_at', { ascending: false })
+      .range(from, from + safePageSize - 1);
+    if (error) throw error;
+    return {
+      orders: (data || []).map(reconstructOrderFromListRow).filter(Boolean),
+      total: Number(count || 0),
+      page: safePage,
+      page_size: safePageSize,
+    };
+  }
+
+  const { isFreeTrialOrder, compareNewestFirst } = require('./admin-free-trials');
+  const all = listOrdersFromFs()
+    .filter(isFreeTrialOrder)
+    .sort(compareNewestFirst)
+    .map((order) => stripHeavyFields(order));
+  return {
+    orders: all.slice(from, from + safePageSize),
+    total: all.length,
+    page: safePage,
+    page_size: safePageSize,
+  };
+}
+
 async function findOrderBySubscriptionId(subscriptionId) {
   if (!subscriptionId) return null;
   if (useRemoteStore()) {
@@ -636,6 +699,7 @@ module.exports = {
   listAllOrders,
   listOrdersCreatedSince,
   listPaidOrdersSince,
+  listFreeTrialCandidatesPage,
   deleteOrder,
   findOrderBySubscriptionId,
   buildOrderSummary,

@@ -27,6 +27,7 @@
         <button type="button" class="admin-tab active" data-tab="offers">Offres</button>
         <button type="button" class="admin-tab" data-tab="materiel">Matériel</button>
         <button type="button" class="admin-tab" data-tab="contracts">Contrats & inscriptions</button>
+        <button type="button" class="admin-tab" data-tab="freeTrials">Séances d’essai gratuites</button>
         <button type="button" class="admin-tab" data-tab="customOffers">Offres personnalisées</button>
         <button type="button" class="admin-tab" data-tab="coachings">Réservations coaching</button>
         <button type="button" class="admin-tab" data-tab="stats">Stats</button>
@@ -533,6 +534,46 @@
         </div>
       </section>
 
+      <section id="tabFreeTrials" hidden>
+        <div class="admin-section">
+          <div class="admin-section-head" style="flex-wrap:wrap;gap:10px">
+            <div>
+              <h2 class="admin-section-title">Séances d’essai gratuites</h2>
+              <p class="admin-section-desc">Toutes les inscriptions web réellement offertes (0 €), de la plus récente à la plus ancienne. Les séances d’essai payées 10 € et les coachings sont exclus.</p>
+            </div>
+            <button type="button" class="btn sm secondary" id="refreshFreeTrialsBtn">Actualiser</button>
+          </div>
+          <p class="form-msg" id="freeTrialsMsg"></p>
+          <div class="admin-table-wrap" style="overflow-x:auto;margin-top:12px">
+            <table class="admin-table" id="freeTrialsTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Personne</th>
+                  <th>Contact</th>
+                  <th>Salle</th>
+                  <th>Inscription</th>
+                  <th>Paiement / signature</th>
+                  <th>Deciplus</th>
+                  <th>Bot</th>
+                </tr>
+              </thead>
+              <tbody id="freeTrialsBody">
+                <tr><td colspan="8" style="text-align:center;color:var(--bc-muted)">Ouvrez l’onglet pour charger les inscriptions.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="freeTrialsPager" class="pan-pagination" hidden>
+            <span id="freeTrialsPagerInfo" class="pan-pagination__n"></span>
+            <span class="pan-pagination__b">
+              <button type="button" class="btn sm secondary" id="freeTrialsPrev">Précédent</button>
+              <button type="button" class="btn sm secondary" id="freeTrialsNext">Suivant</button>
+            </span>
+          </div>
+          <p id="freeTrialsCount" class="admin-section-foot" style="margin-top:10px"></p>
+        </div>
+      </section>
+
       <section id="tabContracts" hidden>
         <div class="admin-section">
           <div class="admin-section-head">
@@ -713,7 +754,7 @@
   </div>
 
   <script src="../js/contract-open.js?v=8"></script>
-  <script src="/js/admin.js?v=31"></script>
+  <script src="/js/admin.js?v=32"></script>
   <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
        reecrit pas une ligne (un autre developpeur y travaille). -->
   <script src="/js/admin-shell.js?v=20"></script>

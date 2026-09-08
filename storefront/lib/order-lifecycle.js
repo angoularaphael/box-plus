@@ -448,6 +448,15 @@ async function listPaidOrdersSinceAsync(sinceIso) {
   });
 }
 
+async function listFreeTrialOrdersPageAsync(options = {}) {
+  const { buildFreeTrialRows } = require('./admin-free-trials');
+  const result = await persistence.listFreeTrialCandidatesPage(options);
+  return {
+    ...result,
+    orders: buildFreeTrialRows(result.orders),
+  };
+}
+
 function actionProductLabel(order) {
   if (order.action === 'cancel') return order.product_name || 'Résiliation abonnement';
   if (order.action === 'verify_identity') return order.product_name || 'Vérification identité';
@@ -643,6 +652,7 @@ module.exports = {
   listAllOrdersAsync,
   listOrdersCreatedSinceAsync,
   listPaidOrdersSinceAsync,
+  listFreeTrialOrdersPageAsync,
   deleteOrderAsync,
   memberDisplayName,
   toAdminSummary,
