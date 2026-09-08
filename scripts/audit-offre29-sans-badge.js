@@ -210,7 +210,21 @@ async function inspect(page, row) {
           entry.actions.push({ cancel_pending: cancel });
         }
         const refreshed = await inspect(page, row);
-        if (refreshed && refreshed.badges_active === 0 && refreshed.abo_29 > 0) {
+        const phantomBadges = (refreshed?.contracts || []).filter(
+          (c) => c.isBadge && isExpiredBadge(c.label)
+        );
+        if (phantomBadges.length > 0) {
+          for (const phantom of phantomBadges) {
+            const cancelPhantom = await cancelSale(page, row.member_id, {
+              filter: (c) => String(c.idc) === String(phantom.idc),
+              cancelReason: 'change_replace_existing',
+              gymConfig: gym,
+            }).catch((err) => ({ error: err.message, idc: phantom.idc }));
+            entry.actions.push({ cancel_phantom_badge: { idc: phantom.idc, ...cancelPhantom } });
+          }
+        }
+        const afterPhantom = await inspect(page, row);
+        if (afterPhantom && afterPhantom.badges_active === 0 && afterPhantom.abo_29 > 0) {
           const gift = row.balma_gift;
           const badgeCfg = resolveBadgeProductConfig(
             catalog,
