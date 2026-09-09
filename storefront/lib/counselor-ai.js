@@ -17,7 +17,7 @@ const {
   kidsPlanningIntent,
   isAdultPivot,
   isClubOpeningHours,
-  ADDRESS_ASK,
+  isAddressAsk,
 } = require('./welcome-faq');
 
 const KNOWLEDGE = `
@@ -512,7 +512,7 @@ function isGymPickFollowup(text) {
 
 function isPlanningFollowup(text) {
   const t = String(text || '');
-  if (ADDRESS_ASK.test(t)) return false;
+  if (isAddressAsk(t)) return false;
   return (
     PLANNING_DETAIL_ASK.test(t) ||
     PLANNING_ASK.test(t) ||
@@ -645,6 +645,42 @@ function endMinutes(entry) {
   return m ? Number(m[1]) * 60 + Number(m[2]) : -1;
 }
 
+function topicSlotLines(topicRule, skipGymId) {
+  if (!topicRule) return [];
+  const search = Object.keys(GYMS).filter((id) => id !== skipGymId);
+  const all = search.flatMap((id) => {
+    const block = planningContext(GYMS[id].label) || '';
+    return planningEntries(block, id);
+  });
+  const lines = [];
+  for (const e of all) {
+    if (!topicRule.course.test(e.cours)) continue;
+    if (/acc[èe]s libre/i.test(e.cours)) continue;
+    const line = `**${GYMS[e.gymId].label}** — ${e.text}`;
+    if (!lines.includes(line)) lines.push(line);
+    if (lines.length === 8) break;
+  }
+  return lines;
+}
+
+function emptyPlanningReply({ topicRule, coachRule, ids, requestedDay, requestedPart }) {
+  const subject = topicRule
+    ? ` de **${topicRule.label}**`
+    : coachRule
+      ? ` avec **${coachRule.label}**`
+      : '';
+  const loc = ids.length === 1 ? ` à **${GYMS[ids[0]].label}**` : '';
+  const day = requestedDay ? ` le **${requestedDay}**` : '';
+  const part = requestedPart ? ` ${requestedPart}` : '';
+  const provisoire = ids[0] === 'portet' ? ' Planning Portet **provisoire**.' : '';
+  let reply = `Aucun créneau${subject} publié${loc}${day}${part}.${provisoire}`;
+  const alt = topicSlotLines(topicRule, ids[0]);
+  if (alt.length) {
+    reply += ` Les créneaux publiés :\n• ${alt.join('\n• ')}`;
+  }
+  return { reply, source: 'knowledge-planning' };
+}
+
 function planningFromKnowledge(text, persona, lastBot, messages) {
   const t = String(text || '');
   const vous = persona && persona.id === 'fabien';
@@ -768,11 +804,10 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
     /* La V4 marque le planning Portet « PLANNING PROVISOIRE ». */
     const provisoire = ids[0] === 'portet' ? ' Planning Portet **provisoire**.' : '';
     if (!lines.length) {
-      const subject = topicRule
-        ? ` de **${topicRule.label}**`
-        : coachRule
-          ? ` avec **${coachRule.label}**`
-          : '';
+      if (topicRule || coachRule) {
+        return emptyPlanningReply({ topicRule, coachRule, ids, requestedDay, requestedPart });
+      }
+      const subject = '';
       const day = requestedDay ? ` le **${requestedDay}**` : '';
       const part = requestedPart ? ` ${requestedPart}` : '';
       return {
@@ -800,6 +835,10 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
       reply: `${subject}${day} :\n• ${lines.join('\n• ')}`,
       source: 'knowledge-planning',
     };
+  }
+
+  if (topicRule || coachRule) {
+    return emptyPlanningReply({ topicRule, coachRule, ids, requestedDay, requestedPart });
   }
 
   return {
@@ -909,11 +948,12 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     Boolean(topicFromText(lastUser)) &&
     !DEFINITION_ASK.test(lastUser) &&
     (PLANNING_ASK.test(lastUser) ||
-      /\bquand\b|horaire|quelle?\s+heure|o[uù]\s+et\s+quand|quand\s+et\s+o[uù]|je veux (?:faire|m['’]inscrire)|il y a (?:du |de la |des )?/i.test(
+      detectGyms(lastUser).length > 0 ||
+      /\bquand\b|horaire|quelle?\s+heure|o[uù]\s+et\s+quand|quand\s+et\s+o[uù]|\bje veux\b|il y a (?:du |de la |des )?/i.test(
         lastUser
       ));
   const wantsPlanning =
-    !ADDRESS_ASK.test(lastUser) &&
+    !isAddressAsk(lastUser) &&
     !MONEY_ASK.test(lastUser) &&
     !/\bprix\b|tarifs?|combien|fiche tarif/i.test(lastUser) &&
     (PLANNING_ASK.test(lastUser) ||
@@ -931,9 +971,8 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
   const inheritedTopic = inheritedPlanningContext(lastUser, messages).topic;
   const contextualGymSwitch =
     detectGyms(lastUser).length === 1 &&
-    /\d{1,2}h\d{2}|aucun cr[ée]neau/i.test(String(lastBot || '')) &&
     Boolean(inheritedTopic) &&
-    !ADDRESS_ASK.test(lastUser);
+    !isAddressAsk(lastUser);
   if (contextualGymSwitch) {
     return { ...planningFromKnowledge(lastUser, persona, lastBot, messages), persona: persona.id };
   }

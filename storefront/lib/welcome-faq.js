@@ -107,6 +107,13 @@ function kidsPlanningIntent(text, lastBot, messages) {
 const ADDRESS_ASK =
   /adresse|o[uù]\s+(est|se trouve)|c['’]est o[uù]|trouver la salle|comment (y )?aller|o[uù] c['’]est|o[uù] exactement|(?:la salle|elle|il)\s+(?:est|se trouve)\s+o[uù]|elle est o[uù]|^(?:et\s+)?(?:o[uù]|ou)\s*\??\.?$|cette\s+sal[le]e?\b/i;
 
+function isAddressAsk(text) {
+  const t = String(text || '');
+  /* « C’est où et quand ? » n’est pas une demande d’adresse seule. */
+  if (/\bquand\b|horaires?|cr[ée]neaux?|quelle?\s+heure/i.test(t)) return false;
+  return ADDRESS_ASK.test(t);
+}
+
 const PRIOR_COURSE_ASK =
   /baby\s*boxe|babi\s*box|boxe\s*[ée]ducative|box(?:ing|in)\s*camp|boxing\s*lady|lady\s*punch|lady\s*kick|\bjjb\b|jiu[-\s]?jitsu|\bmma\b|grappling|hyrox|\bhiit\b|cross|sparring|boxe\s+anglaise|kick|k1|savate|pieds[-\s]?poings/i;
 
@@ -272,7 +279,7 @@ function matchNamedGymFollowup(text, lastBot, persona, messages) {
     if (m.role !== 'user' && m.role !== 'member') return false;
     return PRIOR_COURSE_ASK.test(String(m.content || m.text || ''));
   });
-  if (priorCourse && /\d{1,2}h\d{2}|aucun cr[ée]neau/i.test(last) && !ADDRESS_ASK.test(t)) {
+  if (priorCourse && !isAddressAsk(t) && !isPriceAsk(t)) {
     return null;
   }
 
@@ -470,7 +477,7 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
   }
 
   const gymIds = detectGyms(t);
-  const adresseAsk = ADDRESS_ASK.test(t);
+  const adresseAsk = isAddressAsk(t);
   /* « Et la salle est où exactement ? » : la salle nommée deux tours plus haut. */
   const adresseGym = gymIds.length === 1 ? gymIds[0] : adresseAsk ? lastChosenGymId(messages) : null;
   if (adresseAsk) {
@@ -896,9 +903,11 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
     };
   }
 
+  const kidsPriceBlob = [t, last]
+    .concat((Array.isArray(messages) ? messages : []).map((m) => String(m.content || m.text || '')))
+    .join('\n');
   const kidsPriceCtx =
-    /baby|bébé|[ée]ducative|educative|3\s*ans|7–11|enfant|fils|fille|250/i.test(t) ||
-    /Baby Boxe|Boxe Éducative|educative|3 ans|enfant/i.test(last);
+    /baby|bébé|[ée]ducative|educative|3\s*ans|7–11|enfant|fils|fille|250|BABY BOXE/i.test(kidsPriceBlob);
   if (kidsPriceCtx && isPriceAsk(t) && !/29,99|sans engagement|par mois|4 semaines/i.test(t)) {
     return {
       reply: pickAvoid(
@@ -913,7 +922,7 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
   }
 
   if (
-    /quelle offre|promo|29,99|29\s*€|29\s*euros?|259|sans engagement|c['’]est combien|combien (co[uû]te|l['’]abo|l['’]abonnement|la formule)|\btarifs?|\bprix\b|\babonnement\b|\babo\b|par mois|mensuel|4 semaines|pr[ée]l[èe]vement/i.test(
+    /quelle offre|promo|29,99|29\s*€|29\s*euros?|259|sans engagement|c['’]est combien|combien.{0,20}co[uû]te|combien (l['’]abo|l['’]abonnement|la formule)|\btarifs?|\bprix\b|\babonnement\b|\babo\b|par mois|mensuel|4 semaines|pr[ée]l[èe]vement/i.test(
       t
     )
   ) {
@@ -1010,4 +1019,5 @@ module.exports = {
   isClubOpeningHours,
   similarityScore,
   ADDRESS_ASK,
+  isAddressAsk,
 };

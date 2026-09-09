@@ -396,12 +396,16 @@ module.exports = [
       {
         q: 'MMA à Portet mardi soir ?',
         must: [fact('absence', /pas de|aucun|rien/i), fact('salle', /Portet/i), fact('jour', /mardi/i)],
-        mustNot: [fact('horaire inventé', /\d{1,2}h\d{2}[–-]\d{1,2}h\d{2}.*MMA/is)],
+        mustNot: [
+          fact('horaire inventé à Portet', /à \*\*Portet\*\*[\s\S]{0,80}\d{1,2}h\d{2}[–-]\d{1,2}h\d{2}.*MMA/is),
+        ],
       },
       {
         q: 'Et du grappling ?',
         must: [fact('absence', /pas de|aucun|rien/i)],
-        mustNot: [fact('horaire inventé', /\d{1,2}h\d{2}[–-]\d{1,2}h\d{2}.*GRAPPLING/is)],
+        mustNot: [
+          fact('horaire inventé à Portet', /à \*\*Portet\*\*[\s\S]{0,80}\d{1,2}h\d{2}[–-]\d{1,2}h\d{2}.*GRAPPLING/is),
+        ],
       },
     ],
   },
@@ -568,7 +572,9 @@ module.exports = [
       {
         q: 'Grappling mercredi États-Unis : quelle heure et quel coach ?',
         must: [fact('absence', /aucun|pas de|rien/i), fact('discipline', /Grappling/i), fact('jour', /mercredi/i)],
-        mustNot: [fact('horaire inventé', /\d{1,2}h\d{2}[–-]\d{1,2}h\d{2}.*GRAPPLING/is)],
+        mustNot: [
+          fact('grappling inventé mercredi aux États-Unis', /\*\*États-Unis\*\* — Mercredi[^\n]*GRAPPLING/i),
+        ],
       },
     ],
   },
