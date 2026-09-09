@@ -83,3 +83,9 @@ test('une question horaire Minimes reste sous le budget du modèle', () => {
   assert.match(k, /BOXING CAMP/i);
   assert.match(k, /Clément|Clement/);
 });
+
+test('un horaire États-Unis JJB reste sous le budget du modèle', () => {
+  const k = buildKnowledge('JJB aux États-Unis le lundi, quel horaire ?');
+  assert.ok(k.length <= 11000, `prompt trop long: ${k.length}`);
+  assert.match(k, /18h20–19h30/);
+});

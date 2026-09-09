@@ -212,12 +212,17 @@ function planningContext(text) {
  * SÉLECTION DES SECTIONS V4
  * ------------------------------------------------------------------ */
 
-const ALWAYS = ['regles', 'tarifs', 'vigilance'];
+const ALWAYS = ['tarifs'];
 
 const ON_DEMAND = [
   {
+    key: 'regles',
+    test: /d[ée]butant|confirm[ée]|comp[ée]tit|accessible|niveau|mixte|femme|homme|enfant/i,
+  },
+  { key: 'vigilance', test: /dimanche|7j|provisoire|portet|clim|chauff|horaire d['’]ouverture/i },
+  {
     key: 'disciplines',
-    test: /c['’]est quoi|discipline|d[ée]butant|niveau|apprendre|commencer|self[-\s]?d[ée]fense|diff[ée]rence entre|pratiqu/i,
+    test: /c['’]est quoi|discipline|apprendre|commencer|self[-\s]?d[ée]fense|diff[ée]rence entre|pratiqu/i,
   },
   { key: 'salles', test: /salle|adresse|o[uù]\s+(est|se trouve)|parking|m[ée]tro|quartier|proche|implant/i },
   {
@@ -243,6 +248,8 @@ const DROP_ORDER = [
   'faq',
   'coachs',
   'salles',
+  'regles',
+  'vigilance',
   'essai',
   'inscription',
   'sante',
@@ -252,10 +259,10 @@ const DROP_ORDER = [
 function selectSectionKeys(text) {
   const t = String(text || '');
   const gyms = detectGyms(t);
-  const skipDisciplines = gyms.length > 0 && PLANNING_INTENT.test(t);
+  const skipHeavy = gyms.length > 0 && PLANNING_INTENT.test(t);
   const keys = [...ALWAYS];
   for (const { key, test } of ON_DEMAND) {
-    if (key === 'disciplines' && skipDisciplines) continue;
+    if ((key === 'disciplines' || key === 'faq' || key === 'scripts') && skipHeavy) continue;
     if (test.test(t) && !keys.includes(key)) keys.push(key);
   }
   return keys;
