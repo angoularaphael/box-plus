@@ -609,7 +609,8 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
           content: [
             'Réponds à LA question avec les faits de la base seulement — comme David au téléphone, en chat. Réponse directe, factuelle, sans formule de fin.',
             'Aucun tarif, horaire, coach ou offre hors de cette base. Le 29,99 € / 4 semaines de la V4 ne doit pas être arrondi à 29 €.',
-            'Si une salle ou un quartier est nommé : créneaux de CETTE salle (jour, heure, coach). Pas un simple lien. Pas le planning adulte du soir pour un enfant.',
+            'Si une salle ou un quartier est nommé : créneaux de CETTE salle seulement, pris dans la base. Pas le planning adulte du soir pour un enfant.',
+            'Si aucune salle n’est nommée : ne cite PAS d’exemple de créneau (ni Saint-Cyprien ni ailleurs). Demande la salle et donne les liens planning.',
             '3 à 6 ans = Baby Boxe dès 3 ans, pas éducative 7-11, pas boxe anglaise adulte. Moins de 3 ans : trop jeune. Reynerie / Mirail = Saint-Cyprien.',
             'Les salles ne sont PAS climatisées ni chauffées.',
             'Rédige une réponse utile et **différente** de ta précédente (autre angle / autre formulation).',
@@ -626,7 +627,12 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     );
     let reply = cleanWelcomeReply(content, fallback);
 
-    if (/\d{1,2}\s*h\s*\d{2}/.test(reply) && (PLANNING_ASK.test(lastUser) || kidsPlanningIntent(lastUser, lastBot, messages))) {
+    if (
+      /\d{1,2}\s*h\s*\d{2}/.test(reply) &&
+      (PLANNING_ASK.test(lastUser) ||
+        kidsPlanningIntent(lastUser, lastBot, messages) ||
+        /\b(fils|fille|enfant|enfants|gamin|baby)\b|\b([3-6])\s*ans\b/i.test(lastUser))
+    ) {
       const alt =
         matchKidsPlanning(lastUser, lastBot, persona, messages) ||
         planningFromKnowledge(lastUser, persona, lastBot, messages);
