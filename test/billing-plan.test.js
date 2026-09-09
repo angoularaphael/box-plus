@@ -111,10 +111,10 @@ describe('billing-plan', () => {
     );
     assert.equal(
       shouldFallbackToComptantOnIbanError(
-        { payment: { payment_plan: '4x', billing_plan: 'rib' } },
-        { paiement_comptant: false }
+        { payment: { payment_plan: '4x', billing_plan: 'rib' }, product_name: 'OFFRE PROMO 12 MOIS' },
+        { paiement_comptant: false, name: '259€ EN 4X PRELEVEMENT' }
       ),
-      false
+      true
     );
     assert.equal(
       shouldFallbackToComptantOnIbanError(

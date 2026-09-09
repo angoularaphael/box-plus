@@ -208,6 +208,36 @@ test('29 € déjà démarré + replaceExisting → on résilie puis on revend',
   assert.equal(kept.toCancel.length, 0);
 });
 
+test('vente du jour du même produit : on ne résilie pas (retry / sale_id manquant)', () => {
+  const { parisDay, pickKeepSaleId } = require('../lib/replace-existing-abo');
+  const [y, m, d] = parisDay().split('-');
+  const sold = `${d}/${m}/${y}`;
+  const contracts = [
+    {
+      idc: '43892',
+      isBadge: false,
+      label: `OFFRE DUO 29€ CONTRAT N°C2026-043892 vendu le ${sold} ${sold} 330 jours restants`,
+    },
+  ];
+  const c = classifyMemberContracts(contracts, offre29, { ...opts, replaceExisting: true });
+  assert.equal(c.needsNewSale, false);
+  assert.deepEqual(c.toCancel.map((x) => x.idc), []);
+  assert.equal(pickKeepSaleId(c, null), '43892');
+});
+
+test('vente du jour déjà annulée (mêmes dates, pas de jours restants) ne bloque pas', () => {
+  const { parisDay, isStaleOrInactiveAbo, leftoverBlocksNewSale } = require('../lib/replace-existing-abo');
+  const [y, m, d] = parisDay().split('-');
+  const sold = `${d}/${m}/${y}`;
+  const cancelled = {
+    idc: '43892',
+    isBadge: false,
+    label: `ENFANTS 295€ 4X SANS FRAIS CONTRAT N°C2026-043892 vendu le ${sold} ${sold}`,
+  };
+  assert.equal(isStaleOrInactiveAbo(cancelled.label), true);
+  assert.equal(leftoverBlocksNewSale(cancelled), false);
+});
+
 test('le bot ventes résilie l’ancien abo avant de vendre le nouveau', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/sale.js'), 'utf8');
   assert.match(src, /classifyMemberContracts/);
@@ -216,7 +246,9 @@ test('le bot ventes résilie l’ancien abo avant de vendre le nouveau', () => {
   assert.match(src, /replaceExisting:\s*true/);
   assert.match(src, /leftoverBlocksNewSale/);
   assert.match(src, /Ancien abo clos \/ expiré/);
+  assert.match(src, /pickKeepSaleId/);
   assert.match(src, /leftover\.length === 0/);
+  assert.match(src, /vérification du contrat requise/);
   assert.doesNotMatch(src, /nouvelle vente bloquée pour éviter un doublon/);
 });
 

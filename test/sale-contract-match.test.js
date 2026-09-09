@@ -97,3 +97,19 @@ test('OFFRE A 29€ matche OFFRE DUO 29€, pas un 44,99 résilié', () => {
     true
   );
 });
+
+test('BOXE EDUCATIVE matche ENFANTS 295€ malgré le symbole euro', () => {
+  const educative = {
+    id: 'dp-45',
+    name: 'BOXE EDUCATIVE',
+    deciplus_product_name: 'ENFANTS 295€ 4x SANS FRAIS',
+    deciplus_product_search: 'enfants 295 4x',
+  };
+  assert.equal(
+    saleContractMatches(
+      'ENFANTS 295€ 4X SANS FRAIS CONTRAT N°C2026-043892 vendu le 09/09/2026 09/09/2026 08/09/2027 364 jours restants',
+      educative
+    ),
+    true
+  );
+});
