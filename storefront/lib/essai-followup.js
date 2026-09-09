@@ -2,8 +2,8 @@
 
 /**
  * Essais boutique à 10 € :
- *  - J+0 / J+1 / J+2 : 3 e-mails au client (abonnement 29 € / 259 €)
- *  - SMS Twilio : une seule fois (1re relance)
+ *  - Plus de relance client (e-mail / SMS) après le paiement 10 €
+ *    (on ne propose plus l’abo 29 € / 259 € juste après l’essai).
  *  - J+3 : si toujours pas d’abo, WhatsApp au coach de la salle
  * Écart WhatsApp : 2 min. Périmètre : paiements depuis le 13 août 2026.
  */
@@ -17,6 +17,7 @@ const { buildOfferCampaignEmail } = require('./campaign-email');
 
 const ESSAI_SINCE_MS = Date.parse('2026-08-13T00:00:00+02:00');
 const FOLLOWUP_AFTER_MS = 3 * 24 * 60 * 60 * 1000;
+const CUSTOMER_NUDGE_ENABLED = false;
 const CUSTOMER_NUDGE_DAYS = 3;
 const CUSTOMER_NUDGE_GAP_MS = 24 * 60 * 60 * 1000;
 const WA_GAP_MS = 2 * 60 * 1000;
@@ -261,6 +262,7 @@ function customerNudgeCopy(order, day = 1) {
 }
 
 function classifyCustomerNudge(order, { now = Date.now(), membershipKeys } = {}) {
+  if (!CUSTOMER_NUDGE_ENABLED) return { action: 'skip', reason: 'disabled' };
   if (!isPaidEssaiOrder(order)) return { action: 'skip', reason: 'not_paid_essai' };
   const paid = paidAtMs(order);
   if (!paid || paid < ESSAI_SINCE_MS) return { action: 'skip', reason: 'before_13_aout' };
@@ -684,6 +686,7 @@ async function dispatchDueEssaiFollowups({
 module.exports = {
   ESSAI_SINCE_MS,
   FOLLOWUP_AFTER_MS,
+  CUSTOMER_NUDGE_ENABLED,
   CUSTOMER_NUDGE_DAYS,
   CUSTOMER_NUDGE_GAP_MS,
   WA_GAP_MS,
