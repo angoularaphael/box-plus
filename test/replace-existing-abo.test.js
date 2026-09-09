@@ -16,6 +16,49 @@ const offre29 = {
 
 const opts = { isPendingOrFuture: isPendingOrFutureContract };
 
+test('contrat expiré / résilié ne bloque pas une nouvelle vente', () => {
+  const { leftoverBlocksNewSale, isStaleOrInactiveAbo } = require('../lib/replace-existing-abo');
+  const expired = {
+    idc: '40919',
+    isBadge: false,
+    label: 'BOXE EDUCATIVE Contrat n°C2026-040919 vendu le 28/01/2026 28/01/2026 27/06/2026 Expiré',
+  };
+  const expiredCaps = {
+    idc: '35598',
+    isBadge: false,
+    label: 'OFFRE A 29€ CONTRAT N°C2025-035598 01/01/2025 31/12/2025 EXPIRÉ',
+  };
+  const cancelled = {
+    idc: '9',
+    isBadge: false,
+    label: '44,99€/4 SEMAINES CONTRAT N°C2025-011111 Résilié',
+  };
+  const live = {
+    idc: '1',
+    isBadge: false,
+    label: '44,99€/4 SEMAINES SANS ENGAGEMENT CONTRAT N°C2026-040925 132 jours restants',
+  };
+  const withBanner = {
+    idc: '2',
+    isBadge: false,
+    label: '1 ANNULÉ, 1 ACTIF BOXE EDUCATIVE CONTRAT N°C2026-040919 90 jours restants',
+  };
+  assert.equal(isStaleOrInactiveAbo(expired.label), true);
+  assert.equal(isStaleOrInactiveAbo(expiredCaps.label), true);
+  assert.equal(isStaleOrInactiveAbo(cancelled.label), true);
+  assert.equal(isStaleOrInactiveAbo(live.label), false);
+  assert.equal(isStaleOrInactiveAbo(withBanner.label), false);
+  assert.equal(leftoverBlocksNewSale(expired), false);
+  assert.equal(leftoverBlocksNewSale(expiredCaps), false);
+  assert.equal(leftoverBlocksNewSale(cancelled), false);
+  assert.equal(leftoverBlocksNewSale(live), true);
+  const c = classifyMemberContracts([expired, cancelled, live], offre29, opts);
+  assert.deepEqual(
+    c.toCancel.map((x) => x.idc),
+    ['1']
+  );
+});
+
 test('44,99 en cours → on résilie, on vend le 29, badge manquant', () => {
   const contracts = [
     {
@@ -171,7 +214,8 @@ test('le bot ventes résilie l’ancien abo avant de vendre le nouveau', () => {
   assert.match(src, /change_replace_existing/);
   assert.match(src, /Badge déjà actif/);
   assert.match(src, /replaceExisting:\s*true/);
-  assert.match(src, /Ancien abo toujours actif/);
+  assert.match(src, /leftoverBlocksNewSale/);
+  assert.match(src, /Ancien abo clos \/ expiré/);
   assert.match(src, /leftover\.length === 0/);
   assert.doesNotMatch(src, /nouvelle vente bloquée pour éviter un doublon/);
 });
