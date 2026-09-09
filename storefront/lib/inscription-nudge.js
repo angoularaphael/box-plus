@@ -35,6 +35,12 @@ function nudgeWhatsappDone(order) {
   return Boolean(order?.funnel?.nudge_whatsapp_sent_at || order?.funnel?.nudge_whatsapp_skipped_at);
 }
 
+/** SMS Twilio : une seule relance. Les e-mails restent à 3. */
+function shouldSendNudgeSms(order) {
+  if (nudgeWhatsappDone(order)) return false;
+  return nudgeAttemptCount(order) < 1;
+}
+
 function nudgeAttemptCount(order) {
   const n = Number(order?.funnel?.nudge_attempts || 0);
   if (n > 0) return n;
@@ -621,33 +627,38 @@ async function sendAndMarkNudge(order) {
     });
   }
 
-  try {
-    const wa = await sendNudgeWhatsApp(order);
-    if (wa.sent) {
-      await patchNudgeFunnel(order.order_id, { nudge_whatsapp_sent_at: new Date().toISOString() });
-      out.whatsapp = { sent: true, phone: wa.phone };
-      out.sent = true;
-    } else if (wa.skipped) {
-      await patchNudgeFunnel(order.order_id, {
-        nudge_whatsapp_skipped_at: new Date().toISOString(),
-        nudge_whatsapp_skipped: wa.reason,
-      });
-      out.whatsapp = { sent: false, skipped: true, reason: wa.reason };
-      logWarn('Relance inscription — WhatsApp ignoré', {
-        order_id: order.order_id,
-        reason: wa.reason,
-      });
-    } else {
+  const latestForSms = (await loadOrderAsync(order.order_id)) || order;
+  if (!shouldSendNudgeSms(latestForSms)) {
+    out.whatsapp = { sent: false, skipped: true, reason: 'sms_once' };
+  } else {
+    try {
+      const wa = await sendNudgeWhatsApp(latestForSms);
+      if (wa.sent) {
+        await patchNudgeFunnel(order.order_id, { nudge_whatsapp_sent_at: new Date().toISOString() });
+        out.whatsapp = { sent: true, phone: wa.phone };
+        out.sent = true;
+      } else if (wa.skipped) {
+        await patchNudgeFunnel(order.order_id, {
+          nudge_whatsapp_skipped_at: new Date().toISOString(),
+          nudge_whatsapp_skipped: wa.reason,
+        });
+        out.whatsapp = { sent: false, skipped: true, reason: wa.reason };
+        logWarn('Relance inscription — WhatsApp ignoré', {
+          order_id: order.order_id,
+          reason: wa.reason,
+        });
+      } else {
+        out.ok = false;
+        out.whatsapp = { sent: false, error: wa.error || 'whatsapp_not_sent' };
+      }
+    } catch (err) {
       out.ok = false;
-      out.whatsapp = { sent: false, error: wa.error || 'whatsapp_not_sent' };
+      out.whatsapp = { sent: false, error: err.message };
+      logWarn('Relance inscription — WhatsApp échoué', {
+        order_id: order.order_id,
+        error: err.message,
+      });
     }
-  } catch (err) {
-    out.ok = false;
-    out.whatsapp = { sent: false, error: err.message };
-    logWarn('Relance inscription — WhatsApp échoué', {
-      order_id: order.order_id,
-      error: err.message,
-    });
   }
 
   const latest = await loadOrderAsync(order.order_id);
@@ -725,6 +736,7 @@ module.exports = {
   customerPhone,
   nudgeEmailDone,
   nudgeWhatsappDone,
+  shouldSendNudgeSms,
   nudgeFullySent,
   listDueNudges,
   markNudgeQueued,

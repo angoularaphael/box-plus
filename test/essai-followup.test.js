@@ -20,6 +20,8 @@ const {
   FOLLOWUP_AFTER_MS,
   CUSTOMER_NUDGE_GAP_MS,
   WA_GAP_MS,
+  sendCustomerNudge,
+  essaiSmsAlreadySent,
 } = require('../storefront/lib/essai-followup');
 
 const THREE_DAYS = FOLLOWUP_AFTER_MS;
@@ -372,4 +374,31 @@ test('dispatch : 1 WhatsApp max, 2 min, Portet / St-Cyprien / Minimes', async ()
   assert.equal(store.get('BC-MIN').essai_followup_status, 'sent');
   assert.equal(store.get('BC-POR').essai_followup_status, 'ready');
   assert.equal(out.sent, 1);
+});
+
+test('SMS Twilio une seule fois, e-mails J+0 J+1 J+2', async () => {
+  let sms = 0;
+  const sendWa = async () => {
+    sms += 1;
+    return { sent: true };
+  };
+  const sendEmail = async () => ({ sent: true });
+  const first = essai();
+  const d1 = await sendCustomerNudge(first, 1, { sendWa, sendEmail });
+  assert.equal(d1.whatsapp.sent, true);
+  assert.equal(d1.email.sent, true);
+  assert.equal(sms, 1);
+  const after1 = essai({
+    essai_customer_nudges: [{ day: 1, at: '2026-08-20T10:05:00.000Z', whatsapp: true, email: true }],
+  });
+  assert.equal(essaiSmsAlreadySent(after1), true);
+  const d2 = await sendCustomerNudge(after1, 2, { sendWa, sendEmail });
+  assert.equal(d2.email.sent, true);
+  assert.equal(d2.whatsapp.sent, false);
+  assert.equal(d2.whatsapp.reason, 'sms_once');
+  assert.equal(sms, 1);
+  const d3 = await sendCustomerNudge(after1, 3, { sendWa, sendEmail });
+  assert.equal(d3.email.sent, true);
+  assert.equal(d3.whatsapp.sent, false);
+  assert.equal(sms, 1);
 });

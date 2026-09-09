@@ -2,7 +2,8 @@
 
 /**
  * Essais boutique à 10 € :
- *  - J+0 / J+1 / J+2 : WhatsApp + e-mail au client (abonnement 29 € / 259 €)
+ *  - J+0 / J+1 / J+2 : 3 e-mails au client (abonnement 29 € / 259 €)
+ *  - SMS Twilio : une seule fois (1re relance)
  *  - J+3 : si toujours pas d’abo, WhatsApp au coach de la salle
  * Écart WhatsApp : 2 min. Périmètre : paiements depuis le 13 août 2026.
  */
@@ -191,6 +192,10 @@ function customerNudges(order = {}) {
   return Array.isArray(order.essai_customer_nudges) ? order.essai_customer_nudges : [];
 }
 
+function essaiSmsAlreadySent(order = {}) {
+  return customerNudges(order).some((n) => Boolean(n.whatsapp));
+}
+
 function firstNameOf(order = {}) {
   return String(
     order.customer_short?.first_name || order.customer_full?.first_name || order.customer?.first_name || ''
@@ -324,7 +329,9 @@ async function sendCustomerNudge(
     out.email = { sent: false, reason: 'no_email' };
   }
 
-  if (phone) {
+  if (essaiSmsAlreadySent(order)) {
+    out.whatsapp = { sent: false, skipped: true, reason: 'sms_once' };
+  } else if (phone) {
     const { isPromoWhatsAppPaused, isOfferPlacesSmsPaused } = require('./whatsapp-outbound');
     if (liveWa && isOfferPlacesSmsPaused()) {
       out.whatsapp = { sent: false, skipped: true, reason: 'offer_places_sms_paused', to: phone };
@@ -698,6 +705,7 @@ module.exports = {
   sendGymFollowup,
   dispatchDueEssaiFollowups,
   customerNudges,
+  essaiSmsAlreadySent,
   orderEmail,
   orderPhone,
   orderGym,

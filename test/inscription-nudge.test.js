@@ -325,3 +325,29 @@ test('mails reprise / relance transactionnels — Boxing Center, HTML, sujet ins
   if (prev === undefined) delete process.env.STORE_URL;
   else process.env.STORE_URL = prev;
 });
+
+test('SMS Twilio une seule relance, e-mail 3 fois', () => {
+  const { shouldSendNudgeSms, MAX_NUDGE_ATTEMPTS } = require('../storefront/lib/inscription-nudge');
+  assert.equal(MAX_NUDGE_ATTEMPTS, 3);
+  assert.equal(shouldSendNudgeSms({ funnel: {} }), true);
+  assert.equal(
+    shouldSendNudgeSms({ funnel: { nudge_whatsapp_sent_at: '2026-08-13T17:40:00.000Z' } }),
+    false
+  );
+  assert.equal(
+    shouldSendNudgeSms({ funnel: { nudge_whatsapp_skipped_at: '2026-08-13T17:40:00.000Z' } }),
+    false
+  );
+  assert.equal(
+    shouldSendNudgeSms({
+      funnel: { nudge_attempts: 1, last_nudge_at: '2026-08-13T17:40:00.000Z' },
+    }),
+    false
+  );
+  assert.equal(
+    shouldSendNudgeSms({
+      funnel: { nudge_attempts: 2, last_nudge_at: '2026-08-13T18:10:00.000Z' },
+    }),
+    false
+  );
+});
