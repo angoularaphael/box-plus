@@ -455,6 +455,14 @@ module.exports = [
         must: [fact('jour', /samedi/i), fact('début Minimes', /14h15/i)],
         mustNot: [fact('éducative parasite', /7\s*[–-]\s*11|12\s*[–-]\s*16/i)],
       },
+      {
+        q: "Et c'est où ?",
+        must: [
+          fact('adresse Minimes', /12 rue de Fenouillet/i),
+          fact('adresse Ramonville', /33 rue des Ormes/i),
+        ],
+        mustNot: [fact('menu générique', /Offres, salles|dis-moi juste|partir sur quoi/i)],
+      },
     ],
   },
   {
@@ -463,7 +471,12 @@ module.exports = [
     steps: [
       {
         q: 'Je veux faire du JJB',
-        must: [fact('discipline', /JJB|Jiu-Jitsu/i), fact('salle', /États-Unis|Etats-Unis/i)],
+        must: [
+          fact('discipline', /JJB|Jiu-Jitsu/i),
+          fact('salle', /États-Unis|Etats-Unis/i),
+          fact('horaire', /18h20[–-]19h00/i),
+          fact('coach', /Zouhir/i),
+        ],
         mustNot: [fact('autre salle', /Portet|Minimes|Ramonville|Saint-Cyprien/i)],
       },
       {
@@ -572,6 +585,35 @@ module.exports = [
           fact('cours', /BOXING CAMP/i),
         ],
         mustNot: [fact('autres cours', /BOXE ANGLAISE|BOXE COMPÉTITEURS|COMPETITEURS/i)],
+      },
+    ],
+  },
+  {
+    id: 'hyrox-ou-et-quand',
+    persona: 'fabien',
+    steps: [
+      {
+        q: "HYROX c'est où et quand ?",
+        must: [
+          fact('cyprien', /Saint-Cyprien|St-Cyprien/i),
+          fact('cyprien horaire', /18h20[–-]19h00/i),
+          fact('etats-unis', /États-Unis|Etats-Unis/i),
+          fact('etats horaire', /18h40[–-]19h20/i),
+          fact('coach Brice', /Brice/i),
+          fact('coach Yannis', /Yannis/i),
+        ],
+        mustNot: [fact('lien à la place des heures', /Pour l['’]horaire|Lien planning/i)],
+      },
+    ],
+  },
+  {
+    id: 'coach-sans-contexte',
+    persona: 'chloe',
+    steps: [
+      {
+        q: 'Qui est le coach ?',
+        must: [fact('demande le cours', /cours|salle/i)],
+        mustNot: [fact('coach inventé', /Mehdi|Jérôme|Zouhir|Clément|Hicham/i)],
       },
     ],
   },

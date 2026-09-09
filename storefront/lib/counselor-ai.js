@@ -415,7 +415,9 @@ function cleanWelcomeReply(content, fallback) {
 }
 
 const PLANNING_ASK =
-  /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours|quels?\s+(cours|soirs?|jours?)|c['’]est\s+quand|[çc]a se passe quand|(?:il|elle|[çc]a|sa)\s+(?:commence|komance)\s+(?:quand|kan)|c\s+kan|\bkan\b|ce soir|ce matin|ce midi|\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b/i;
+  /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours|quels?\s+(cours|soirs?|jours?)|c['’]est\s+quand|[çc]a se passe quand|(?:il|elle|[çc]a|sa)\s+(?:commence|komance)\s+(?:quand|kan)|c\s+kan|\bkan\b|o[uù]\s+et\s+quand|quand\s+et\s+o[uù]|ce soir|ce matin|ce midi|\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b/i;
+
+const DEFINITION_ASK = /c['’]est quoi|kesako|diff[ée]rence/i;
 
 const PLANNING_DETAIL_ASK =
   /\b(?:qui\s+(?:est\s+)?(?:le\s+)?coach|qui\s+coach|ki\s+coach|coachs?|quel(?:le)?\s+niveau|c['’]est quel niveau|[àa]\s+quelle\s+heure\s+(?:[çc]a|il|elle)?\s*commence|[çc]a\s+(?:commence|komance)\s+(?:quand|kan)|le cours pour|d[ée]butant|je peux|leurs?\s+horaires?|et\s+(?:le|la|du|de la)\s+(?:mma|grappling|baby|boxe|kick|jjb|jiu|hyrox|cours))/i;
@@ -740,7 +742,16 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
   }
 
   const lines = [];
-  const lineCap = requestedDay && !topicRule && !kidsCtx ? 12 : 6;
+  const lineCap =
+    ids.length === 1 && !topicRule && !kidsCtx
+      ? requestedDay
+        ? 16
+        : 20
+      : requestedDay && !topicRule && !kidsCtx
+        ? 16
+        : topicRule || kidsCtx
+          ? 12
+          : 6;
   for (const e of entries) {
     const prefix =
       ids.length === 1
@@ -810,6 +821,19 @@ function welcomeFallbackReply(lastUser, lastBot, persona, messages = []) {
     }
     return reply;
   };
+  if (
+    /^(?:et\s+)?(?:qui\s+(?:est\s+)?(?:le\s+)?coach|qui\s+coach|c['’]est quel niveau|quel niveau)\s*\??$/i.test(
+      lastUser.trim()
+    )
+  ) {
+    return {
+      reply:
+        persona && persona.id === 'fabien'
+          ? 'De quel cours parlez-vous, et dans quelle salle ?'
+          : 'De quel cours tu parles, et dans quelle salle ?',
+      source: 'faq',
+    };
+  }
   if (/clim|climatis|chauff/i.test(lastUser) && !PLANNING_ASK.test(lastUser)) {
     return { reply: pick('clim'), source: 'faq' };
   }
@@ -881,11 +905,19 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
   const kidsGymReady =
     kidsPlanningIntent(lastUser, lastBot, messages) &&
     (detectGyms(lastUser).length === 1 || Boolean(lastChosenGymId(messages)));
+  const topicSlotsAsk =
+    Boolean(topicFromText(lastUser)) &&
+    !DEFINITION_ASK.test(lastUser) &&
+    (PLANNING_ASK.test(lastUser) ||
+      /\bquand\b|horaire|quelle?\s+heure|o[uù]\s+et\s+quand|quand\s+et\s+o[uù]|je veux (?:faire|m['’]inscrire)|il y a (?:du |de la |des )?/i.test(
+        lastUser
+      ));
   const wantsPlanning =
     !ADDRESS_ASK.test(lastUser) &&
     !MONEY_ASK.test(lastUser) &&
     !/\bprix\b|tarifs?|combien|fiche tarif/i.test(lastUser) &&
     (PLANNING_ASK.test(lastUser) ||
+      topicSlotsAsk ||
       contextualPlanningDetail ||
       kidsGymReady ||
       (isPlanningFollowup(lastUser) &&
@@ -939,6 +971,12 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
 
   const faqHit = matchWelcomeFaq(lastUser, { persona, lastBot, messages });
   if (faqHit) {
+    if (topicSlotsAsk && !/\d{1,2}h\d{2}/.test(faqHit.reply)) {
+      const slots = planningFromKnowledge(lastUser, persona, lastBot, messages);
+      if (slots && /\d{1,2}h\d{2}|aucun cr[ée]neau/i.test(slots.reply)) {
+        return { ...slots, persona: persona.id };
+      }
+    }
     return { ...faqHit, persona: persona.id };
   }
 

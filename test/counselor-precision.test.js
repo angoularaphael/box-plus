@@ -26,8 +26,8 @@ test('campagne naturelle — chaque réponse reste exacte, complète et contextu
   }
 
   assert.deepEqual(report.summary, {
-    responses: 66,
-    perfect: 66,
+    responses: 69,
+    perfect: 69,
     partial: 0,
     incorrect: 0,
     invented: 0,
