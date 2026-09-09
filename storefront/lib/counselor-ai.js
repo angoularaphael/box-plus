@@ -159,18 +159,20 @@ function cleanReply(content, fallback) {
   return reply || fallback;
 }
 
-function buildTranscript(messages = [], freeText = '') {
+function buildTranscript(messages = [], freeText = '', speaker = 'Chloe') {
   const lines = [];
   for (const m of messages) {
-    const role = m.role === 'assistant' || m.role === 'bot' ? 'David' : 'Membre';
+    const role = m.role === 'assistant' || m.role === 'bot' ? speaker : 'Visiteur';
     const text = String(m.content || m.text || '').trim();
     if (!text) continue;
-    lines.push(`${role}: ${text.slice(0, 400)}`);
+    lines.push(`${role}: ${text.slice(0, 1200)}`);
   }
-  if (!lines.length && freeText) {
-    lines.push(`Membre: ${String(freeText).slice(0, 1200)}`);
+  const last = String(freeText || '').trim();
+  if (last) {
+    const already = lines.some((l) => l.startsWith('Visiteur:') && l.includes(last.slice(0, 80)));
+    if (!already) lines.push(`Visiteur: ${last.slice(0, 1200)}`);
   }
-  return lines.slice(-12).join('\n');
+  return lines.join('\n');
 }
 
 function lastMemberMessage(messages = [], freeText = '') {
@@ -213,7 +215,7 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
   const fallback = FALLBACKS[reasonId] || FALLBACKS.other;
   const lastUser = lastMemberMessage(messages, freeText);
   const lastBot = lastAssistantMessage(messages);
-  const transcript = buildTranscript(messages, freeText);
+  const transcript = buildTranscript(messages, freeText, 'David');
   const injuryContext = reasonId === 'medical' || isInjuryMessage(lastUser) || isInjuryMessage(freeText);
 
   // Après la question suspension : oui → manager / non → rester
@@ -360,9 +362,9 @@ const FAQ_VARIANTS = {
     'Saison à **259 €** : un an, cours illimités. À prendre si tu sais que tu vas t’entraîner sur l’année.',
   ],
   gyms: [
-    '5 salles : **Minimes**, **Ramonville**, **St-Cyprien**, **Portet**, **États-Unis**. Accès **du lundi au samedi, 10h–21h30**. Managers : Mehdi, Pascal, Dadi, Valentin, Sébastien.',
+    'On a 5 salles : **Minimes**, **Ramonville**, **St-Cyprien**, **Portet**, **États-Unis**. Accès du lundi au samedi, 10h–21h30. Managers : Mehdi, Pascal, Dadi, Valentin, Sébastien.',
     'Tu as le choix entre Minimes, Ramonville, St-Cyprien, Portet et États-Unis — accès du lundi au samedi, 10h–21h30. Quelle zone te parle ?',
-    'Réseau toulousain : 5 clubs, même abo multi-salles selon formule. Dis-moi ton quartier, je te pointe la plus pratique.',
+    'Cinq clubs sur Toulouse, même abo multi-salles selon la formule. Dis-moi ton quartier, je te pointe la plus pratique.',
   ],
   legal: [
     'Tenue de sport + eau pour démarrer. **Gants perso** OK sur rings/sacs (désinfecter). Docs : CGV, règlement intérieur et déclaration médicale en ligne / à l’inscription.',
@@ -370,14 +372,14 @@ const FAQ_VARIANTS = {
     'Côté formalités : CGV + règlement + déclaration médicale. En salle, tenue de sport ; gants perso OK sur sacs/rings après désinfection.',
   ],
   clim: [
-    'Non : les salles **ne sont pas chauffées ni climatisées**. Elles sont isolées pour rester supportables à l’entraînement.',
-    'Pas de clim, nulle part : les salles **ne sont pas climatisées** et **pas chauffées**, mais correctement isolées.',
-    '**Pas de clim** : les 5 salles **ne sont pas climatisées** (ni chauffées). Elles sont isolées pour rester supportables pendant les cours.',
+    'Ah non : les salles **ne sont pas chauffées ni climatisées**. Elles sont isolées pour rester supportables à l’entraînement.',
+    'Pas de clim, nulle part — les salles **ne sont pas climatisées** et **pas chauffées**, mais correctement isolées.',
+    'Aucune clim dans les 5 salles : **pas climatisées**, pas chauffées. Isolées pour rester supportables pendant les cours.',
   ],
   kidsBaby: [
-    'Dès **3 ans**, c’est la **Baby Boxe** (ludique, motricité) — pas la boxe anglaise adulte. **7–11 ans** : boxe éducative. **12–16 ans** : éducative ados. En dessous de 3 ans, trop jeune.',
+    'Dès **3 ans**, c’est la **Baby Boxe** — ludique, pas la boxe anglaise adulte. **7–11 ans** : éducative. **12–16** : éducative ados. En dessous de 3 ans, trop jeune.',
     'Un enfant de **3 à 6 ans** va en **Baby Boxe**, pas en boxe anglaise. **7–11** : éducative. **Moins de 3 ans** : trop jeune. Inscription en ligne.',
-    '**Baby Boxe dès 3 ans**, éducative **7–11** puis **12–16**. Ce n’est pas le cours adulte. Quelle salle ?',
+    '**Baby Boxe dès 3 ans**, éducative **7–11** puis **12–16**. Ce n’est pas le cours adulte. Tu vises quelle salle ?',
   ],
   trial: [
     'Les **débutants** sont les bienvenus. Réserve une **séance d’essai à 10 €** en ligne : un coach t’accueille, pas besoin d’expérience ni de gros matériel.',
@@ -479,10 +481,9 @@ function planningEntries(block) {
 
 function recentMemberText(messages) {
   return (Array.isArray(messages) ? messages : [])
-    .slice(-8)
     .filter((m) => m.role === 'user' || m.role === 'member')
     .map((m) => String(m.content || m.text || ''))
-    .join(' ');
+    .join('\n');
 }
 
 function weekdayFrParis(now = new Date()) {
@@ -607,15 +608,15 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
     const provisoire = ids[0] === 'portet' ? ' Planning Portet **provisoire**.' : '';
     return {
       reply: vous
-        ? `${rien}À **${g.label}** (${g.address}) :${facts} Le détail complet : ${link}.${provisoire}`
-        : `${rien}À **${g.label}** :${facts} Le détail : ${link}.${provisoire}`,
+        ? `${rien}À **${g.label}** (${g.address}), voilà ce qu’on a :${facts} Le détail complet : ${link}.${provisoire}`
+        : `${rien}Aux **${g.label}**, tu as :${facts} Le détail : ${link}.${provisoire}`,
       source: 'knowledge-planning',
     };
   }
   return {
-    reply: vous
-      ? `Pour le **planning**, quelle salle vous arrange ? **Minimes**, **Portet**, **Ramonville**, **Saint-Cyprien** ou **États-Unis** ? Ou [tous les plannings](${PLANNING_HUB}).`
-      : `Pour le **planning**, quelle salle te va ? **Minimes**, **Portet**, **Ramonville**, **Saint-Cyprien** ou **États-Unis** ? Ou [tous les plannings](${PLANNING_HUB}).`,
+      reply: vous
+        ? `Pour le planning, quelle salle vous arrange — **Minimes**, **Portet**, **Ramonville**, **Saint-Cyprien** ou **États-Unis** ? Ou [tous les plannings](${PLANNING_HUB}).`
+        : `Pour le planning, quelle salle te va — **Minimes**, **Portet**, **Ramonville**, **Saint-Cyprien** ou **États-Unis** ? Ou [tous les plannings](${PLANNING_HUB}).`,
     source: 'knowledge-planning',
   };
 }
@@ -694,22 +695,6 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     return { ...planningFollow, persona: persona.id };
   }
 
-  const gymFollow = matchNamedGymFollowup(lastUser, lastBot, persona, messages);
-  if (gymFollow) {
-    return { ...gymFollow, persona: persona.id };
-  }
-
-  if (
-    PLANNING_ASK.test(lastUser) &&
-    !isClubOpeningHours(lastUser) &&
-    !MONEY_ASK.test(lastUser) &&
-    !RESIL_ASK.test(lastUser)
-  ) {
-    if (!(/\bessai\b|10\s*€/i.test(lastUser) && !/planning|horaire/i.test(lastUser))) {
-      return { ...planningFromKnowledge(lastUser, persona, lastBot, messages), persona: persona.id };
-    }
-  }
-
   /* « Brésilien » contient « résili » : ne pas traiter le JJB comme une résiliation. */
   if (RESIL_ASK.test(lastUser)) {
     const variants = persona.id === 'fabien' ? REDIRECT_DAVID_VOUS : REDIRECT_DAVID;
@@ -725,9 +710,24 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     return { reply: managerReply, source: 'managers' };
   }
 
-  /* Avec l’IA : la FAQ ne doit pas recoller un script (29,99, Baby Boxe…)
-     par-dessus la question actuelle. Sans IA (tests), la FAQ reste la source. */
+  /* Sans IA (tests) : scripts déterministes. Avec l’IA : lire tout le fil, puis répondre. */
   if (!isAiEnabled()) {
+    const gymFollow = matchNamedGymFollowup(lastUser, lastBot, persona, messages);
+    if (gymFollow) {
+      return { ...gymFollow, persona: persona.id };
+    }
+
+    if (
+      PLANNING_ASK.test(lastUser) &&
+      !isClubOpeningHours(lastUser) &&
+      !MONEY_ASK.test(lastUser) &&
+      !RESIL_ASK.test(lastUser)
+    ) {
+      if (!(/\bessai\b|10\s*€/i.test(lastUser) && !/planning|horaire/i.test(lastUser))) {
+        return { ...planningFromKnowledge(lastUser, persona, lastBot, messages), persona: persona.id };
+      }
+    }
+
     const faqHit = matchWelcomeFaq(lastUser, { persona, lastBot, messages });
     if (faqHit) {
       return { ...faqHit, persona: persona.id };
@@ -738,33 +738,32 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
   const fallback = pickVariant(persona.fallbacks);
 
   try {
-    const transcript = buildTranscript(messages, freeText).replace(/David:/g, `${persona.name}:`);
+    const transcript = buildTranscript(messages, freeText, persona.name);
     const { content } = await chatCompletion(
       [
-        /* Base V4 uniquement : pas le catalogue boutique. */
         { role: 'system', content: buildKnowledge(`${recentMemberText(messages)}\n${lastUser}\n${freeText || ''}`) },
         { role: 'system', content: persona.tone },
         {
           role: 'user',
           content: [
-            'Réponds UNIQUEMENT au dernier message du visiteur, avec les faits de la base — comme David au téléphone, en chat. Réponse directe, factuelle, sans formule de fin.',
-            'L’historique sert à comprendre (salle, enfant ou adulte). Si le sujet change (tarif, planning, adulte, clim, essai, autre salle, autre discipline), tu changes de sujet. Tu ne recolles PAS ta réponse précédente.',
-            'Aucun tarif, horaire, coach ou offre hors de cette base. Le 29,99 € / 4 semaines de la V4 ne doit pas être arrondi à 29 €. Baby Boxe = 250 € la saison, éducative = 295 € la saison.',
-            'Si une salle ou un quartier est nommé : créneaux de CETTE salle seulement, pris dans la base. Pas le planning adulte du soir pour un enfant. Pas la Baby Boxe si la personne dit qu’elle est adulte ou demande ce soir.',
-            'Si aucune salle n’est nommée : ne cite PAS d’exemple de créneau (ni Saint-Cyprien ni ailleurs). Demande la salle et donne les liens planning.',
-            '3 à 6 ans = Baby Boxe dès 3 ans, pas éducative 7-11, pas boxe anglaise adulte. Moins de 3 ans : trop jeune. Reynerie / Mirail = Saint-Cyprien.',
+            'ÉTAPE 1 — Lis TOUTE la conversation ci-dessous, du premier au dernier message. Ne saute rien.',
+            'ÉTAPE 2 — Réponds au dernier message du visiteur, en tenant compte de tout ce qui a déjà été dit (salle, âge, adulte/enfant, tarif, ce qu’il vient de corriger).',
+            'Si le sujet change, tu changes. Tu ne recolles pas un ancien script.',
+            'Parle comme une personne à l’accueil du club : naturel, utile, 2 à 4 phrases. Pas de catalogue, pas de gras partout.',
+            'Aucun tarif, horaire, coach ou offre hors de cette base. Le 29,99 € / 4 semaines ne doit pas être arrondi à 29 €. Baby Boxe = 250 € la saison, éducative = 295 € la saison.',
+            'Si une salle est nommée (même plus tôt dans le fil) : créneaux de CETTE salle, pris dans la base. Pas le planning adulte du soir pour un enfant. Pas la Baby Boxe si la personne dit qu’elle est adulte ou demande ce soir.',
+            'Si aucune salle n’est nommée : ne cite PAS d’exemple de créneau. Demande la salle.',
+            '3 à 6 ans = Baby Boxe dès 3 ans. Moins de 3 ans : trop jeune. Reynerie / Mirail = Saint-Cyprien.',
             'Les salles ne sont PAS climatisées ni chauffées.',
-            'Rédige une réponse utile et **différente** de ta précédente (autre angle / autre formulation).',
-            `Reste dans la voix de ${persona.name} : les faits ne changent pas, la façon de les dire oui.`,
-            transcript ? `Conversation:\n${transcript}` : '',
-            lastBot ? `Ta dernière réponse (à NE PAS répéter) : ${lastBot.slice(0, 500)}` : '',
+            `Voix de ${persona.name} : les faits ne changent pas, la façon de les dire oui. Formule différente de ta précédente.`,
+            transcript ? `Conversation complète (à lire en entier) :\n${transcript}` : '',
             lastUser ? `Dernier message (à traiter maintenant) : ${lastUser}` : '',
           ]
             .filter(Boolean)
             .join('\n'),
         },
       ],
-      { maxTokens: 320, temperature: 0.75 }
+      { maxTokens: 420, temperature: 0.82 }
     );
     let reply = cleanWelcomeReply(content, fallback);
 
@@ -779,14 +778,6 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
         matchKidsPlanning(lastUser, lastBot, persona, messages) ||
         planningFromKnowledge(lastUser, persona, lastBot, messages);
       if (alt) return { ...alt, persona: persona.id, source: 'guard-planning' };
-    }
-
-    if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
-      const alt =
-        matchWelcomeFaq(lastUser, { persona, lastBot, messages }) ||
-        welcomeFallbackReply(lastUser, lastBot, persona, messages);
-      reply = alt.reply;
-      return { reply, source: 'dedup', persona: persona.id };
     }
 
     return { reply: reply || fallback, source: 'groq', persona: persona.id };
@@ -808,6 +799,7 @@ module.exports = {
   guideWelcome,
   isAiEnabled,
   isInternalUnlockPhrase,
+  buildTranscript,
   FALLBACKS,
   WELCOME_FALLBACK,
 };

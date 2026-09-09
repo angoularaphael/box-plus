@@ -4254,14 +4254,14 @@ function createApp() {
       const { guideRetention } = require('./lib/counselor-ai');
       const messages = Array.isArray(body.messages)
         ? body.messages
-            .slice(-16)
+            .slice(-80)
             .map((m) => ({
               role: m.role === 'bot' || m.role === 'assistant' ? 'assistant' : 'user',
               content: String(m.content || m.text || m.html || '')
                 .replace(/<[^>]+>/g, ' ')
                 .replace(/\s+/g, ' ')
                 .trim()
-                .slice(0, 600),
+                .slice(0, 1500),
             }))
             .filter((m) => m.content)
         : [];
@@ -4305,14 +4305,14 @@ function createApp() {
       }
       const messages = Array.isArray(body.messages)
         ? body.messages
-            .slice(-16)
+            .slice(-80)
             .map((m) => ({
               role: m.role === 'bot' || m.role === 'assistant' ? 'assistant' : 'user',
               content: String(m.content || m.text || m.html || '')
                 .replace(/<[^>]+>/g, ' ')
                 .replace(/\s+/g, ' ')
                 .trim()
-                .slice(0, 600),
+                .slice(0, 1500),
             }))
             .filter(
               (m) =>

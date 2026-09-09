@@ -137,7 +137,7 @@ function matchKidsPlanning(text, lastBot, persona, messages) {
       return {
         reply: voice(
           persona,
-          `Aux **États-Unis**, les 3–6 ans c’est **Boxe pieds-poings** (pas la Baby Boxe). Planning : ${link}.`,
+        `Ok, aux **États-Unis** les 3–6 ans c’est **Boxe pieds-poings** (pas la Baby Boxe). Le planning : ${link}.`,
           `Aux **États-Unis**, les 3–6 ans correspondent à la **Boxe pieds-poings** (pas la Baby Boxe). Planning : ${link}.`
         ),
         source: 'redirect-planning',
@@ -146,7 +146,7 @@ function matchKidsPlanning(text, lastBot, persona, messages) {
     return {
       reply: voice(
         persona,
-        `Le planning **Baby Boxe / éducative** de **${g.label}** : ${link}.`,
+        `Ok, aux **${g.label}** le planning Baby Boxe / éducative est là : ${link}.`,
         `Le planning **Baby Boxe / éducative** de **${g.label}** se trouve ici : ${link}.`
       ),
       source: 'redirect-planning',
@@ -157,7 +157,7 @@ function matchKidsPlanning(text, lastBot, persona, messages) {
   const variants = [
     voice(
       persona,
-      `Pour la **Baby Boxe dès 3 ans**, ouvre la salle : ${KIDS_PLANNING_GYMS.map(gymMdLink).join(' · ')} (Portet = samedi). Aux **États-Unis**, c’est pieds-poings 3–6 ans : [${eu.label}](${eu.planningUrl}).`,
+      `Pour la Baby Boxe dès 3 ans, ouvre la salle : ${KIDS_PLANNING_GYMS.map(gymMdLink).join(' · ')} (Portet = samedi). Aux **États-Unis**, c’est pieds-poings 3–6 ans : [${eu.label}](${eu.planningUrl}).`,
       `Pour la **Baby Boxe dès 3 ans** : ${KIDS_PLANNING_GYMS.map(gymMdLink).join(' · ')} (Portet = samedi). Aux **États-Unis**, pieds-poings 3–6 ans : [${eu.label}](${eu.planningUrl}).`
     ),
     `**Baby Boxe** = Minimes, Ramonville, Saint-Cyprien, Portet. Liens directs : ${KIDS_PLANNING_GYMS.map(gymMdLink).join(' · ')}. États-Unis = pieds-poings 3–6 ans, pas Baby Boxe.`,
@@ -251,8 +251,8 @@ function matchNamedGymFollowup(text, lastBot, persona, messages) {
   return {
     reply: voice(
       persona,
-      `**${g.label}** : ${g.address}. Planning : ${link}.`,
-      `**${g.label}** se trouve au ${g.address}. Planning : ${link}.`
+      `**${g.label}**, ${g.address}. Le planning est ici : ${link}.`,
+      `**${g.label}** se trouve au ${g.address}. Le planning : ${link}.`
     ),
     source: 'redirect-planning',
   };
@@ -649,7 +649,7 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
     return {
       reply: pickAvoid(
         [
-          'Non : les salles **ne sont pas chauffées ni climatisées**. Elles sont isolées pour rester supportables à l’entraînement.',
+          'Ah non : les salles **ne sont pas chauffées ni climatisées**. Elles sont isolées pour rester supportables à l’entraînement.',
         ],
         lastBot
       ),
@@ -804,8 +804,8 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
     return {
       reply: pickAvoid(
         [
-          'Oui : **Baby Boxe 250 €** la saison, **Boxe éducative 295 €** la saison. Les offres **adultes** : **29,99 € / 4 semaines** ou **259 € / 12 mois**.',
-          'Pour un enfant : **250 €** la saison (Baby Boxe) et **295 €** (éducative). Adulte : **29,99 € / 4 semaines** ou **259 € / 12 mois**.',
+          'Pour lui : **250 €** la saison en Baby Boxe, **295 €** en éducative. À côté, les abos adultes c’est **29,99 € / 4 semaines** ou **259 € / 12 mois**.',
+          'Oui — un enfant : **250 €** la saison (Baby Boxe) et **295 €** (éducative). Adulte : **29,99 € / 4 semaines** ou **259 € / 12 mois**.',
         ],
         lastBot
       ),
@@ -821,7 +821,7 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
     return {
       reply: pickAvoid(
         [
-          'Deux offres promo : **29,99 € / 4 semaines** (28 jours, **pas un mois**) et **259 € / 12 mois**. La première = flexibilité ; la seconde = le meilleur prix sur l’année.',
+          'On a deux offres : **29,99 € / 4 semaines** (28 jours, pas un mois) et **259 € / 12 mois**. La première = tu restes souple ; la seconde = le meilleur prix sur l’année.',
           'On ne dit pas « 29 € par mois » : c’est **29,99 € toutes les 4 semaines** (28 jours), ou **259 € / 12 mois**.',
         ],
         lastBot

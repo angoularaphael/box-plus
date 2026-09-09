@@ -137,8 +137,7 @@ window.BCChloe = (function () {
                       .replace(/\s+/g, ' ')
                       .trim(),
                   }))
-                  .filter((m) => m.content)
-                  .slice(-12),
+                  .filter((m) => m.content),
               };
               const res = await fetch('/api/membership/welcome-counsel', {
                 method: 'POST',

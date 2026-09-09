@@ -11,7 +11,7 @@ const {
   resolvePersona,
   personaIds,
 } = require('../storefront/lib/counselor-personas');
-const { guideWelcome, isAiEnabled } = require('../storefront/lib/counselor-ai');
+const { guideWelcome, isAiEnabled, buildTranscript } = require('../storefront/lib/counselor-ai');
 
 test('les trois conseillers sont déclarés', () => {
   assert.deepEqual(personaIds().sort(), ['chloe', 'fabien', 'nassim']);
@@ -78,6 +78,21 @@ test('guideWelcome renvoie le conseiller retenu', async () => {
   assert.equal(r.persona, 'nassim');
   const d = await guideWelcome({ freeText: 'bonjour', messages: [], persona: 'inconnu' });
   assert.equal(d.persona, 'chloe');
+});
+
+test('la transcription reprend toute la discussion, pas seulement les 12 derniers tours', () => {
+  const messages = [];
+  for (let i = 0; i < 20; i += 1) {
+    messages.push({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `tour-${i} ${i === 0 ? 'enfant-3-ans' : i === 19 ? 'ce-soir-adulte' : 'suite'}`,
+    });
+  }
+  const t = buildTranscript(messages, '', 'Chloe');
+  assert.match(t, /enfant-3-ans/);
+  assert.match(t, /ce-soir-adulte/);
+  assert.match(t, /Chloe:/);
+  assert.match(t, /Visiteur:/);
 });
 
 test('une question horaire répond depuis la base, pas seulement par un lien', async () => {
