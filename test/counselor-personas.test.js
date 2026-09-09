@@ -194,3 +194,45 @@ test('Chloe dit qu’il n’y a pas de clim dans les salles', async () => {
   assert.doesNotMatch(r.reply, /sont climatisées/i);
 });
 
+test('après la Baby Boxe, « les prix » donne 250 € / 295 €, pas le script 29,99', async () => {
+  const r = await guideWelcome({
+    freeText: 'Ok et les prix ?',
+    messages: [
+      { role: 'user', content: 'Minimes' },
+      {
+        role: 'assistant',
+        content:
+          'Le planning **Baby Boxe / éducative** de **Minimes** : [voir le planning](https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/).',
+      },
+      { role: 'user', content: 'Ok et les prix ?' },
+    ],
+    persona: 'chloe',
+  });
+  assert.match(r.reply, /250/);
+  assert.match(r.reply, /295/);
+  assert.doesNotMatch(r.reply, /On ne dit pas/);
+});
+
+test('un adulte ce soir aux Minimes n’est pas recollé à la Baby Boxe', async () => {
+  const r = await guideWelcome({
+    freeText:
+      'Je suis un adulte, c’est quoi le planning des Minimes pour ce soir je veux essayer un entrainement de boxe',
+    messages: [
+      {
+        role: 'assistant',
+        content:
+          'Le planning **Baby Boxe / éducative** de **Minimes** : [voir le planning](https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/).',
+      },
+      {
+        role: 'user',
+        content:
+          'Je suis un adulte, c’est quoi le planning des Minimes pour ce soir je veux essayer un entrainement de boxe',
+      },
+    ],
+    persona: 'chloe',
+  });
+  assert.doesNotMatch(r.reply, /Baby Boxe \/ éducative/);
+  assert.match(r.reply, /Minimes/i);
+  assert.match(r.source, /planning/);
+});
+

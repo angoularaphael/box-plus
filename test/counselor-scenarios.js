@@ -22,6 +22,31 @@ function step(q, extra = {}) {
 
 module.exports = [
   {
+    id: 'suit-la-question-pas-le-script',
+    persona: 'chloe',
+    steps: [
+      step('J’ai un enfant de 3 ans qui veut boxer', { must: [/Baby Boxe/i, /3 ans/] }),
+      step('Minimes', { must: [/Minimes/] }),
+      step('Ok et les prix ?', { must: [/250/, /295/], mustNot: [/On ne dit pas « 29/] }),
+      step('Je ne trouve pas les memes infos sur la fiche tarif du site. Pour la Baby c’est 250€ la saison', {
+        must: [/250/],
+        mustNot: [/On ne dit pas « 29/],
+      }),
+      step('Ok et moi j’ai quels cours ce soir aux Minimes ?', {
+        must: [/Minimes/i, /voir le planning|\d{1,2}h\d{2}/i],
+        mustNot: [/Baby Boxe \/ éducative/],
+      }),
+      step('Je suis un adulte, c’est quoi le planning des Minimes pour ce soir je veux essayer un entrainement de boxe', {
+        must: [/Minimes/i],
+        mustNot: [/Baby Boxe \/ éducative/],
+      }),
+      step('Les salles sont climatisées ?', {
+        must: [/pas climatis|ne sont pas/i],
+        mustNot: [/Baby Boxe \/ éducative/, /29,99/],
+      }),
+    ],
+  },
+  {
     id: 'parent-3-ans-fil-screenshot',
     persona: 'chloe',
     steps: [
@@ -180,7 +205,7 @@ module.exports = [
     persona: 'chloe',
     steps: [
       step('cours pour les enfants', { must: [/Baby Boxe/i] }),
-      step('c’est combien', { must: [/29,99/, /259/] }),
+      step('c’est combien', { must: [/250/, /295/, /29,99/, /259/] }),
       step('vous ouvrez dimanche matin', { must: [/samedi|dimanche/i] }),
       step('planning baby boxe', { must: [/Minimes/, /Baby Boxe/i], mustNot: [/Le plus simple : ouvre/] }),
     ],

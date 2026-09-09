@@ -62,25 +62,46 @@ const KIDS_PLANNING_GYMS = ['minimes', 'ramonville', 'st-cyprien', 'portet'];
 
 /* Une question qui cite un jour, une heure ou un coach veut le créneau exact. */
 const PRECISE_PLANNING_ASK =
-  /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b|quelle?\s+heures?|quels?\s+(cr[ée]neaux?|horaires?|coachs?|soirs?|jours?)|[àa]\s+quelle\s+heure|c['’]est quand/i;
+  /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b|quelle?\s+heures?|\bhoraires?\b|\bcr[ée]neaux?\b|quels?\s+(cr[ée]neaux?|horaires?|cours|coachs?|soirs?|jours?)|[àa]\s+quelle\s+heure|c['’]est quand|ce soir|ce matin|ce midi/i;
+
+function isAdultPivot(text) {
+  const t = String(text || '');
+  if (/\b(fils|fille|enfant|enfants|gamin|baby|bébé|[ée]ducative|\d+\s*ans)\b/i.test(t)) return false;
+  return /\badulte|majeur|je (suis|veux) (un )?(adulte|homme|femme)|ce soir|ce matin|ce midi|entra[îi]nement|boxer|cours du soir/i.test(
+    t
+  );
+}
+
+function isPriceAsk(text) {
+  return /\bprix\b|tarifs?|combien|250|fiche tarif|c['’]est combien/i.test(text || '');
+}
+
+function leavesKidsScript(text) {
+  const t = String(text || '');
+  if (isAdultPivot(t)) return true;
+  if (isPriceAsk(t) && !/\b(fils|fille|enfant|baby|bébé|[ée]ducative|\d+\s*ans)\b/i.test(t)) return true;
+  return /clim|climatis|chauff|essai|10\s*€|badge|r[ée]sil|cgv|douche|casier|r[ée]tract/i.test(t);
+}
 
 function kidsPlanningIntent(text, lastBot, messages) {
   const t = String(text || '');
-  const last = String(lastBot || '');
-  const recent = (Array.isArray(messages) ? messages : [])
-    .slice(-8)
-    .map((m) => String(m.content || m.text || ''))
-    .join(' ');
-  const blob = `${t}\n${last}\n${recent}`;
+  if (leavesKidsScript(t)) return false;
   const now =
     /baby\s*boxe|b[ée]b[ée]|\b(fils|fille|enfant|enfants|gamin|gamins|gamines?|mineur|petits?)\b|\b([3-6])\s*ans\b|[ée]ducative/i.test(
       t
     );
-  const before =
-    /Baby Boxe|Boxe Éducative|educative|\b3 ans\b|7–11|12–16|cours enfants|pieds-poings 3|ton petit|inscrire/i.test(
-      `${last} ${recent}`
+  if (now) return true;
+  /* Fil enfants : suivi court (nom de salle / planning), pas un nouveau sujet. */
+  const sticky = /Baby Boxe|Boxe Éducative|educative|\b3 ans\b|7–11|12–16|cours enfants|pieds-poings 3/i.test(
+    String(lastBot || '')
+  );
+  const shortFollow =
+    /^(ok\s+)?(et )?(minimes?|ramonville|portet|st[-\s]?cyprien|saint[-\s]?cyprien|cyprien|[eé]tats([-\s]?unis)?|le planning|les plannings|la salle)\??\.?$/i.test(
+      t.trim()
     );
-  return now || before || (/enfant|fils|fille|Baby Boxe/i.test(blob) && /planning|salle|club|horaire/i.test(t));
+  const planningFollow = /plannings?|horaires?|cr[ée]neaux?/i.test(t) && !detectGyms(t).length;
+  const gymPick = detectGyms(t).length === 1 && t.trim().split(/\s+/).length <= 4;
+  return sticky && (shortFollow || planningFollow || gymPick);
 }
 
 function lastChosenGymId(messages) {
@@ -194,12 +215,20 @@ function matchNamedGymFollowup(text, lastBot, persona, messages) {
   const id = ids[0];
   const g = GYMS[id];
 
-  /* « Ramonville le mardi, quelle heure ? » attend les créneaux de la V4,
-     pas l'adresse et un lien : on laisse passer vers le planning détaillé. */
-  if (PRECISE_PLANNING_ASK.test(t)) return null;
+  /* Un nouveau sujet (horaire précis, tarif, adulte, clim…) n’est pas
+     « je choisis cette salle » : on laisse la question actuelle décider. */
+  if (
+    PRECISE_PLANNING_ASK.test(t) ||
+    isAdultPivot(t) ||
+    isPriceAsk(t) ||
+    /clim|climatis|chauff|essai|10\s*€|badge|r[ée]sil|cgv|douche|casier/i.test(t)
+  ) {
+    return null;
+  }
 
-  if (kidsPlanningIntent(t, last, messages) || /Baby Boxe|3 ans|enfant|petit|inscrire/i.test(last)) {
-    return matchKidsPlanning(`planning ${g.label}`, last, persona, messages);
+  if (kidsPlanningIntent(t, last, messages)) {
+    const kids = matchKidsPlanning(t, last, persona, messages);
+    if (kids) return kids;
   }
 
   const managerCtx = /\bmanagers?\b|responsable(s)? de salle/i.test(last);
@@ -272,14 +301,19 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
   const last = String(lastBot || '');
 
   const enfant =
-    /\b(fils|fille|enfant|enfants|gamin|gamines?|gamins|baby\s*boxe|ados?|mineur|petits?|coll[ée]giens?|lyc[ée]ens?)\b/i.test(
+    !isAdultPivot(t) &&
+    !isPriceAsk(t) &&
+    (/\b(fils|fille|enfant|enfants|gamin|gamines?|gamins|baby\s*boxe|ados?|mineur|petits?|coll[ée]giens?|lyc[ée]ens?)\b/i.test(
       t
     ) ||
-    /b[ée]b[ée]/i.test(t) ||
-    /\b([3-9]|1[0-6])\s*ans\b/i.test(t) ||
-    /[ée]ducative/i.test(t);
+      /b[ée]b[ée]/i.test(t) ||
+      /\b([3-9]|1[0-6])\s*ans\b/i.test(t) ||
+      /[ée]ducative/i.test(t));
   const parleDeSalle = /quelle salle|dans quelle salle|o[uù] (ça|ca|c['’]est)|quelle club/i.test(t);
-  const contexteEnfant = /Baby Boxe|3 ans|éducative|educative|enfant/i.test(last);
+  const contexteEnfant =
+    !isAdultPivot(t) &&
+    !isPriceAsk(t) &&
+    /Baby Boxe|3 ans|éducative|educative|enfant/i.test(last);
 
   if ((parleDeSalle && (enfant || contexteEnfant)) || (enfant && /salle/i.test(t) && !detectGyms(t).length)) {
     const salles = voice(
@@ -763,6 +797,22 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
     };
   }
 
+  const kidsPriceCtx =
+    /baby|bébé|[ée]ducative|educative|3\s*ans|7–11|enfant|fils|fille|250/i.test(t) ||
+    /Baby Boxe|Boxe Éducative|educative|3 ans|enfant/i.test(last);
+  if (kidsPriceCtx && isPriceAsk(t) && !/29,99|sans engagement|par mois|4 semaines/i.test(t)) {
+    return {
+      reply: pickAvoid(
+        [
+          'Oui : **Baby Boxe 250 €** la saison, **Boxe éducative 295 €** la saison. Les offres **adultes** : **29,99 € / 4 semaines** ou **259 € / 12 mois**.',
+          'Pour un enfant : **250 €** la saison (Baby Boxe) et **295 €** (éducative). Adulte : **29,99 € / 4 semaines** ou **259 € / 12 mois**.',
+        ],
+        lastBot
+      ),
+      source: 'faq-v4',
+    };
+  }
+
   if (
     /quelle offre|promo|29,99|29\s*€|29\s*euros?|259|sans engagement|c['’]est combien|combien (co[uû]te|l['’]abo|l['’]abonnement|la formule)|\btarifs?|\bprix\b|\babonnement\b|\babo\b|par mois|mensuel|4 semaines|pr[ée]l[èe]vement/i.test(
       t
@@ -857,6 +907,7 @@ module.exports = {
   matchNamedGymFollowup,
   lastChosenGymId,
   kidsPlanningIntent,
+  isAdultPivot,
   isClubOpeningHours,
   similarityScore,
 };

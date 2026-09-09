@@ -15,6 +15,7 @@ const {
   matchNamedGymFollowup,
   lastChosenGymId,
   kidsPlanningIntent,
+  isAdultPivot,
   isClubOpeningHours,
 } = require('./welcome-faq');
 
@@ -411,7 +412,7 @@ function cleanWelcomeReply(content, fallback) {
 }
 
 const PLANNING_ASK =
-  /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours|quels?\s+(soirs?|jours?)|c['’]est quand|[çc]a se passe quand|\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b/i;
+  /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours|quels?\s+(cours|soirs?|jours?)|c['’]est quand|[çc]a se passe quand|ce soir|ce matin|ce midi|\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b/i;
 
 /* « c'est quand » et un jour de semaine parlent aussi d'argent ou d'arrêt
    d'abonnement : dans ces deux cas, ce n'est pas une question de planning. */
@@ -484,6 +485,19 @@ function recentMemberText(messages) {
     .join(' ');
 }
 
+function weekdayFrParis(now = new Date()) {
+  return new Intl.DateTimeFormat('fr-FR', { weekday: 'long', timeZone: 'Europe/Paris' })
+    .format(now)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function startMinutes(entryText) {
+  const m = /(\d{1,2})h(\d{2})/.exec(String(entryText || ''));
+  return m ? Number(m[1]) * 60 + Number(m[2]) : -1;
+}
+
 function planningFromKnowledge(text, persona, lastBot, messages) {
   const t = String(text || '');
   const vous = persona && persona.id === 'fabien';
@@ -492,9 +506,7 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
     const remembered = lastChosenGymId(messages);
     if (remembered) ids = [remembered];
   }
-  const kidsCtx =
-    wantsKids(t) ||
-    kidsPlanningIntent(t, lastBot, messages);
+  const kidsCtx = wantsKids(t) || kidsPlanningIntent(t, lastBot, messages);
   /* « Quel est le créneau exact ? » : charger le planning de la salle retenue. */
   const ctxText = ids.length === 1 ? `${t} ${GYMS[ids[0]].label}` : t;
   const block = planningContext(ctxText) || '';
@@ -522,6 +534,32 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
     const banded = bandRe ? kidEntries.filter((e) => bandRe.test(e.cours)) : [];
     if (banded.length) entries = banded;
     else if (kidEntries.length) entries = kidEntries;
+  } else if (isAdultPivot(t) || /\bce soir\b|\bce matin\b|\bce midi\b/i.test(t)) {
+    const adult = (entries.length ? entries : all).filter((e) => !KID_LINE.test(e.cours));
+    if (adult.length) entries = adult;
+  }
+  const slotAsk = /\bce soir\b/i.test(t) ? 'soir' : /\bce matin\b/i.test(t) ? 'matin' : /\bce midi\b/i.test(t) ? 'midi' : '';
+  if (slotAsk && !kidsCtx) {
+    const today = weekdayFrParis();
+    if (today === 'dimanche') {
+      const g = ids.length === 1 ? GYMS[ids[0]] : null;
+      const link = g ? `[voir le planning](${g.planningUrl})` : `[tous les plannings](${PLANNING_HUB})`;
+      return {
+        reply: vous
+          ? `Ce soir c’est **dimanche** : pas de créneaux publiés (lundi–samedi). ${g ? `Le planning de **${g.label}** : ${link}.` : `Quel jour vous arrange ? ${link}`}`
+          : `Ce soir c’est **dimanche** : pas de créneaux publiés (lundi–samedi). ${g ? `Le planning de **${g.label}** : ${link}.` : `Quel jour te va ? ${link}`}`,
+        source: 'knowledge-planning',
+      };
+    }
+    const onDay = entries.filter((e) => e.day === today);
+    if (onDay.length) entries = onDay;
+    const lo = slotAsk === 'matin' ? 0 : slotAsk === 'midi' ? 11 * 60 : 17 * 60;
+    const hi = slotAsk === 'matin' ? 12 * 60 : slotAsk === 'midi' ? 15 * 60 : 24 * 60;
+    const band = entries.filter((e) => {
+      const m = startMinutes(e.text);
+      return m >= lo && m < hi;
+    });
+    if (band.length) entries = band;
   }
   /* Le jour est un en-tête du planning, pas un mot de la ligne : sans cette
      lecture par jour, « Ramonville le mardi » ressortait avec le lundi. */
@@ -687,29 +725,32 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     return { reply: managerReply, source: 'managers' };
   }
 
-  const faqHit = matchWelcomeFaq(lastUser, { persona, lastBot, messages });
-  if (faqHit) {
-    return { ...faqHit, persona: persona.id };
+  /* Avec l’IA : la FAQ ne doit pas recoller un script (29,99, Baby Boxe…)
+     par-dessus la question actuelle. Sans IA (tests), la FAQ reste la source. */
+  if (!isAiEnabled()) {
+    const faqHit = matchWelcomeFaq(lastUser, { persona, lastBot, messages });
+    if (faqHit) {
+      return { ...faqHit, persona: persona.id };
+    }
+    return { ...welcomeFallbackReply(lastUser, lastBot, persona, messages), persona: persona.id };
   }
 
   const fallback = pickVariant(persona.fallbacks);
-  if (!isAiEnabled()) {
-    return { ...welcomeFallbackReply(lastUser, lastBot, persona, messages), persona: persona.id };
-  }
 
   try {
     const transcript = buildTranscript(messages, freeText).replace(/David:/g, `${persona.name}:`);
     const { content } = await chatCompletion(
       [
         /* Base V4 uniquement : pas le catalogue boutique. */
-        { role: 'system', content: buildKnowledge(`${lastUser}\n${freeText || ''}`) },
+        { role: 'system', content: buildKnowledge(`${recentMemberText(messages)}\n${lastUser}\n${freeText || ''}`) },
         { role: 'system', content: persona.tone },
         {
           role: 'user',
           content: [
-            'Réponds à LA question avec les faits de la base seulement — comme David au téléphone, en chat. Réponse directe, factuelle, sans formule de fin.',
-            'Aucun tarif, horaire, coach ou offre hors de cette base. Le 29,99 € / 4 semaines de la V4 ne doit pas être arrondi à 29 €.',
-            'Si une salle ou un quartier est nommé : créneaux de CETTE salle seulement, pris dans la base. Pas le planning adulte du soir pour un enfant.',
+            'Réponds UNIQUEMENT au dernier message du visiteur, avec les faits de la base — comme David au téléphone, en chat. Réponse directe, factuelle, sans formule de fin.',
+            'L’historique sert à comprendre (salle, enfant ou adulte). Si le sujet change (tarif, planning, adulte, clim, essai, autre salle, autre discipline), tu changes de sujet. Tu ne recolles PAS ta réponse précédente.',
+            'Aucun tarif, horaire, coach ou offre hors de cette base. Le 29,99 € / 4 semaines de la V4 ne doit pas être arrondi à 29 €. Baby Boxe = 250 € la saison, éducative = 295 € la saison.',
+            'Si une salle ou un quartier est nommé : créneaux de CETTE salle seulement, pris dans la base. Pas le planning adulte du soir pour un enfant. Pas la Baby Boxe si la personne dit qu’elle est adulte ou demande ce soir.',
             'Si aucune salle n’est nommée : ne cite PAS d’exemple de créneau (ni Saint-Cyprien ni ailleurs). Demande la salle et donne les liens planning.',
             '3 à 6 ans = Baby Boxe dès 3 ans, pas éducative 7-11, pas boxe anglaise adulte. Moins de 3 ans : trop jeune. Reynerie / Mirail = Saint-Cyprien.',
             'Les salles ne sont PAS climatisées ni chauffées.',
@@ -717,7 +758,7 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
             `Reste dans la voix de ${persona.name} : les faits ne changent pas, la façon de les dire oui.`,
             transcript ? `Conversation:\n${transcript}` : '',
             lastBot ? `Ta dernière réponse (à NE PAS répéter) : ${lastBot.slice(0, 500)}` : '',
-            lastUser ? `Dernier message: ${lastUser}` : '',
+            lastUser ? `Dernier message (à traiter maintenant) : ${lastUser}` : '',
           ]
             .filter(Boolean)
             .join('\n'),
@@ -729,6 +770,7 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
 
     if (
       /\d{1,2}\s*h\s*\d{2}/.test(reply) &&
+      !isAdultPivot(lastUser) &&
       (PLANNING_ASK.test(lastUser) ||
         kidsPlanningIntent(lastUser, lastBot, messages) ||
         /\b(fils|fille|enfant|enfants|gamin|baby)\b|\b([3-6])\s*ans\b/i.test(lastUser))

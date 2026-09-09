@@ -221,6 +221,27 @@ module.exports = [
     failIf: [/64,75/],
   },
   {
+    id: 'prix-baby-apres-planning-enfants',
+    q: 'Ok et les prix ?',
+    messages: follow(
+      'Le planning **Baby Boxe / éducative** de **Minimes** : [voir le planning](https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/).',
+      'Ok et les prix ?'
+    ),
+    must: [/250/, /295/],
+    failIf: [/On ne dit pas/],
+  },
+  {
+    id: 'adulte-ce-soir-minimes-pas-baby',
+    q: 'Je suis un adulte, c’est quoi le planning des Minimes pour ce soir',
+    messages: follow(
+      'Le planning **Baby Boxe / éducative** de **Minimes** : [voir le planning](https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/).',
+      'Je suis un adulte, c’est quoi le planning des Minimes pour ce soir'
+    ),
+    must: [/Minimes/i],
+    mustNot: [/Baby Boxe \/ éducative/],
+    expectSource: 'knowledge-planning',
+  },
+  {
     id: 'offres-promo',
     q: 'Quelle offre promouvoir en priorité ?',
     must: BOTH_OFFERS,
