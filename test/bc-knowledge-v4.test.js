@@ -10,6 +10,8 @@ const {
   V4_PATH,
   buildKnowledge,
   planningContext,
+  fallbackFromKnowledge,
+  detectGyms,
 } = require('../storefront/lib/bc-knowledge');
 
 test('le fichier V4 est bien embarqué', () => {
@@ -88,4 +90,28 @@ test('un horaire États-Unis JJB reste sous le budget du modèle', () => {
   const k = buildKnowledge('JJB aux États-Unis le lundi, quel horaire ?');
   assert.ok(k.length <= 11000, `prompt trop long: ${k.length}`);
   assert.match(k, /18h20–19h30/);
+});
+
+test('Reynerie pointe Saint-Cyprien', () => {
+  assert.deepEqual(detectGyms('salle près de la Reynerie'), ['st-cyprien']);
+  const k = buildKnowledge('salle près de la Reynerie');
+  assert.match(k, /Reynerie \/ Mirail/i);
+});
+
+test('un enfant de 2 et 4 ans reçoit Baby Boxe, pas la boxe anglaise adulte', () => {
+  const q = 'Je souhaite inscrire mes enfants de 2 ans et 4 ans à la boxe anglaise.';
+  const k = buildKnowledge(q);
+  assert.match(k, /Baby Boxe/i);
+  assert.match(k, /trop jeune/i);
+  assert.match(k, /pas la boxe anglaise adulte/i);
+  const fallback = fallbackFromKnowledge(q);
+  assert.match(fallback, /trop jeune/i);
+  assert.match(fallback, /Baby Boxe/i);
+  assert.match(fallback, /4 ans/i);
+});
+
+test('la clim reste interdite dans les 5 salles', () => {
+  const k = buildKnowledge('il y a la clim dans les salles ?');
+  assert.match(k, /AUCUNE/i);
+  assert.match(k, /PAS climatisées/i);
 });

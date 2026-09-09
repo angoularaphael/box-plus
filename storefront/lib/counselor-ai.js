@@ -7,11 +7,10 @@ const {
   pickVariant,
 } = require('./welcome-knowledge');
 const { resolvePersona } = require('./counselor-personas');
-const { buildKnowledge, GYMS, detectGyms, PLANNING_HUB } = require('./bc-knowledge');
+const { buildKnowledge, GYMS, detectGyms, fallbackFromKnowledge, planningContext, wantsKids } = require('./bc-knowledge');
 const {
   matchWelcomeFaq,
   matchPlanningFollowup,
-  matchKidsPlanning,
   matchNamedGymFollowup,
   isClubOpeningHours,
 } = require('./welcome-faq');
@@ -366,6 +365,16 @@ const FAQ_VARIANTS = {
     'Pour démarrer : tenue propre, eau, et les docs (CGV, règlement, attestation médicale) sont sur la boutique. Gants perso autorisés si désinfectés.',
     'Côté formalités : CGV + règlement + déclaration médicale. En salle, tenue de sport ; gants perso OK sur sacs/rings après désinfection.',
   ],
+  clim: [
+    'Non : les salles **ne sont pas chauffées ni climatisées**. Elles sont isolées pour rester supportables à l’entraînement.',
+    'Pas de clim, nulle part : les salles **ne sont pas climatisées** et **pas chauffées**, mais correctement isolées.',
+    '**Pas de clim** : les 5 salles **ne sont pas climatisées** (ni chauffées). Elles sont isolées pour rester supportables pendant les cours.',
+  ],
+  kidsBaby: [
+    'Dès **3 ans**, c’est la **Baby Boxe** (ludique, motricité) — pas la boxe anglaise adulte. **7–11 ans** : boxe éducative. **12–16 ans** : éducative ados. En dessous de 3 ans, trop jeune.',
+    'Un enfant de **3 à 6 ans** va en **Baby Boxe**, pas en boxe anglaise. **7–11** : éducative. **Moins de 3 ans** : trop jeune. Inscription en ligne.',
+    '**Baby Boxe dès 3 ans**, éducative **7–11** puis **12–16**. Ce n’est pas le cours adulte. Quelle salle ?',
+  ],
   trial: [
     'Les **débutants** sont les bienvenus. Réserve une **séance d’essai à 10 €** en ligne : un coach t’accueille, pas besoin d’expérience ni de gros matériel.',
     'Pas d’expérience requise — réserve un **essai à 10 €** en ligne, un coach te prend en charge. Tu arrives en tenue, c’est tout.',
@@ -398,10 +407,80 @@ function cleanWelcomeReply(content, fallback) {
   return reply || fallback;
 }
 
-function welcomeFallbackReply(lastUser, lastBot, persona) {
-  const faq = matchWelcomeFaq(lastUser, { persona, lastBot });
-  if (faq) return faq;
+const PLANNING_ASK =
+  /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours/i;
 
+function planningFromKnowledge(text, persona, lastBot) {
+  const t = String(text || '');
+  const vous = persona && persona.id === 'fabien';
+  const ids = detectGyms(t);
+  const kidsCtx =
+    wantsKids(t) ||
+    /Baby Boxe|Boxe Éducative|educative|\b3 ans\b|7–11|12–16|cours enfants|pieds-poings 3/i.test(String(lastBot || ''));
+  const block = planningContext(t) || '';
+  const all = block
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !/^#/.test(l) && /–|\d+h/i.test(l));
+
+  const topic = [];
+  if (/jiu|jjb/i.test(t)) topic.push(/jiu|jjb/i);
+  if (/\bmma\b/i.test(t)) topic.push(/\bmma\b/i);
+  if (/grappling/i.test(t)) topic.push(/grappling/i);
+  if (/hyrox/i.test(t)) topic.push(/hyrox/i);
+  if (kidsCtx) topic.push(/baby|[ée]ducative|enfants|ados|dès 3|pieds-poings/i);
+  if (/lady punch/i.test(t)) topic.push(/lady punch/i);
+  if (/boxing lady/i.test(t)) topic.push(/boxing lady/i);
+  if (/hiit/i.test(t)) topic.push(/hiit/i);
+  const dayRe = /(lundi|mardi|mercredi|jeudi|vendredi|samedi)/i.exec(t);
+  let lines = all;
+  if (topic.length) {
+    const hit = all.filter((l) => topic.some((re) => re.test(l)));
+    if (hit.length) lines = hit;
+  }
+  if (dayRe) {
+    const day = new RegExp(dayRe[1], 'i');
+    const onDay = lines.filter((l) => day.test(l) || !/(lundi|mardi|mercredi|jeudi|vendredi|samedi)/i.test(l));
+    if (onDay.length && onDay.length < lines.length) lines = onDay;
+  }
+  lines = lines.slice(0, 6);
+
+  const gymLink = (id) => {
+    const g = GYMS[id];
+    return `[${g.label}](${g.planningUrl})`;
+  };
+
+  if (kidsCtx && ids.length !== 1) {
+    const babyGyms = ['minimes', 'ramonville', 'st-cyprien', 'portet'];
+    const eu = GYMS['etats-unis'];
+    return {
+      reply: vous
+        ? `**Baby Boxe dès 3 ans** : ${babyGyms.map(gymLink).join(' · ')} (Portet = samedi). Aux **États-Unis**, c’est **pieds-poings 3–6 ans** : [${eu.label}](${eu.planningUrl}).`
+        : `**Baby Boxe dès 3 ans** : ${babyGyms.map(gymLink).join(' · ')} (Portet = samedi). Aux **États-Unis**, c’est **pieds-poings 3–6 ans** : [${eu.label}](${eu.planningUrl}).`,
+      source: 'knowledge-planning',
+    };
+  }
+
+  if (ids.length === 1) {
+    const g = GYMS[ids[0]];
+    const facts = lines.length ? ` ${lines.join(' · ')}.` : '';
+    const link = `[voir le planning](${g.planningUrl})`;
+    return {
+      reply: vous
+        ? `À **${g.label}** (${g.address}) :${facts} Le détail complet : ${link}.`
+        : `À **${g.label}** :${facts} Le détail : ${link}.`,
+      source: 'knowledge-planning',
+    };
+  }
+  return {
+    reply: vous
+      ? 'Quelle salle vous arrange ? **Minimes**, **Portet**, **Ramonville**, **Saint-Cyprien** ou **États-Unis** ? Je vous donne alors les créneaux (jour, heure, coach).'
+      : 'Quelle salle te va ? **Minimes**, **Portet**, **Ramonville**, **Saint-Cyprien** ou **États-Unis** ? Je te donne ensuite les créneaux (jour, heure, coach).',
+    source: 'knowledge-planning',
+  };
+}
+
+function welcomeFallbackReply(lastUser, lastBot, persona) {
   const generic = (persona && persona.fallbacks) || WELCOME_FALLBACKS;
   const pick = (key) => {
     const variants = FAQ_VARIANTS[key] || generic;
@@ -412,11 +491,39 @@ function welcomeFallbackReply(lastUser, lastBot, persona) {
     }
     return reply;
   };
+  if (/clim|climatis|chauff/i.test(lastUser) && !PLANNING_ASK.test(lastUser)) {
+    return { reply: pick('clim'), source: 'faq' };
+  }
+  if (isClubOpeningHours(lastUser)) {
+    const hours = matchWelcomeFaq(lastUser, { persona, lastBot });
+    if (hours) return hours;
+  }
+  if (PLANNING_ASK.test(lastUser) && !(/\bessai\b|10\s*€/i.test(lastUser) && !/planning|horaire/i.test(lastUser))) {
+    return planningFromKnowledge(lastUser, persona, lastBot);
+  }
+  const kidsReply = fallbackFromKnowledge(lastUser, { vous: persona && persona.id === 'fabien' });
+  if (kidsReply) {
+    return { reply: kidsReply, source: 'knowledge-kids' };
+  }
+  if (/enfant|fils|fille|gamin|baby|bébé|[ée]ducative|\d+\s*ans/i.test(lastUser)) {
+    return { reply: pick('kidsBaby'), source: 'faq' };
+  }
+  const faq = matchWelcomeFaq(lastUser, { persona, lastBot });
+  if (faq) return faq;
   if (/29|sans engagement|4 semaines|pr[eé]l[eè]vement/i.test(lastUser)) {
     return { reply: pick('offer29'), source: 'faq' };
   }
   if (/259|12 mois|4x|4×|comptant/i.test(lastUser)) {
     return { reply: pick('offer259'), source: 'faq' };
+  }
+  if (/reynerie|mirail|bellefontaine|bagatelle/i.test(lastUser)) {
+    return {
+      reply:
+        persona && persona.id === 'fabien'
+          ? 'La **Reynerie** / le **Mirail**, c’est **Saint-Cyprien**, 11 rue Sainte-Lucie, près du Fer à Cheval. Manager : **Dadi**.'
+          : 'La **Reynerie** / le **Mirail**, c’est **Saint-Cyprien**, 11 rue Sainte-Lucie, près du Fer à Cheval.',
+      source: 'faq',
+    };
   }
   if (/salle|minimes|ramonville|portet|cyprien|[eé]tats/i.test(lastUser)) {
     return { reply: pick('gyms'), source: 'faq' };
@@ -437,39 +544,6 @@ function welcomeFallbackReply(lastUser, lastBot, persona) {
   return { reply, source: 'template' };
 }
 
-const PLANNING_ASK =
-  /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours/i;
-
-function matchPlanningRedirect(text, persona, lastBot) {
-  const t = String(text || '');
-  if (isClubOpeningHours(t)) return null;
-  if (!PLANNING_ASK.test(t)) return null;
-  if (/\bessai\b|10\s*€/i.test(t) && !/planning|horaire/i.test(t)) return null;
-
-  const kidsPlan = matchKidsPlanning(t, lastBot, persona);
-  if (kidsPlan) return kidsPlan;
-
-  const vous = persona && persona.id === 'fabien';
-  const ids = detectGyms(t);
-  if (ids.length === 1) {
-    const g = GYMS[ids[0]];
-    const link = `[voir le planning](${g.planningUrl})`;
-    return {
-      reply: vous
-        ? `Le planning de **${g.label}** est sur la page de la salle : ${link}.`
-        : `Le planning de **${g.label}**, c’est ici : ${link}.`,
-      source: 'redirect-planning',
-    };
-  }
-  const hub = `[tous les plannings](${PLANNING_HUB})`;
-  return {
-    reply: vous
-      ? `Le plus simple : consultez ${hub}. Dites-moi la salle (Minimes, Ramonville, St-Cyprien, Portet ou États-Unis) pour le lien direct.`
-      : `Le plus simple : ouvre ${hub}. Dis-moi ta salle (Minimes, Ramonville, St-Cyprien, Portet ou États-Unis) pour le lien direct.`,
-    source: 'redirect-planning',
-  };
-}
-
 async function guideWelcome({ freeText, messages = [], persona: personaId } = {}) {
   const persona = resolvePersona(personaId);
   const lastUser = lastMemberMessage(messages, freeText);
@@ -478,11 +552,6 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
   const planningFollow = matchPlanningFollowup(lastUser, lastBot, persona);
   if (planningFollow) {
     return { ...planningFollow, persona: persona.id };
-  }
-
-  const planningRedirect = matchPlanningRedirect(lastUser, persona, lastBot);
-  if (planningRedirect) {
-    return { ...planningRedirect, persona: persona.id };
   }
 
   /* « Brésilien » contient « résili » : ne pas traiter le JJB comme une résiliation. */
@@ -505,11 +574,6 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     return { ...gymFollow, persona: persona.id };
   }
 
-  const faqHit = matchWelcomeFaq(lastUser, { persona, lastBot });
-  if (faqHit) {
-    return { ...faqHit, persona: persona.id };
-  }
-
   const fallback = pickVariant(persona.fallbacks);
   if (!isAiEnabled()) {
     return { ...welcomeFallbackReply(lastUser, lastBot, persona), persona: persona.id };
@@ -525,9 +589,11 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
         {
           role: 'user',
           content: [
-            'Réponds au visiteur de boxingcenter.fr à partir de la base V4 seulement. Réponse directe, factuelle, sans formule de fin.',
+            'Réponds à LA question avec les faits de la base seulement — comme David au téléphone, en chat. Réponse directe, factuelle, sans formule de fin.',
             'Aucun tarif, horaire, coach ou offre hors de cette base. Le 29,99 € / 4 semaines de la V4 ne doit pas être arrondi à 29 €.',
-            'Si la question porte sur un horaire : uniquement des créneaux présents dans les plannings fournis, avec le coach. Aucun créneau inventé.',
+            'Si une salle ou un quartier est nommé : créneaux de CETTE salle (jour, heure, coach). Pas un simple lien. Pas le planning adulte du soir pour un enfant.',
+            '3 à 6 ans = Baby Boxe dès 3 ans, pas éducative 7-11, pas boxe anglaise adulte. Moins de 3 ans : trop jeune. Reynerie / Mirail = Saint-Cyprien.',
+            'Les salles ne sont PAS climatisées ni chauffées.',
             'Rédige une réponse utile et **différente** de ta précédente (autre angle / autre formulation).',
             `Reste dans la voix de ${persona.name} : les faits ne changent pas, la façon de les dire oui.`,
             transcript ? `Conversation:\n${transcript}` : '',

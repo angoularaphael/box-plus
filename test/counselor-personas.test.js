@@ -80,27 +80,26 @@ test('guideWelcome renvoie le conseiller retenu', async () => {
   assert.equal(d.persona, 'chloe');
 });
 
-test('une question horaire envoie vers la page planning de la salle', async () => {
+test('une question horaire répond depuis la base, pas seulement par un lien', async () => {
   const r = await guideWelcome({
     freeText: 'horaire du Jiu-Jitsu Brésilien lundi à États-Unis',
     messages: [],
     persona: 'chloe',
   });
-  assert.equal(r.source, 'redirect-planning');
-  assert.match(r.reply, /voir le planning/);
-  assert.match(r.reply, /etats-unis/i);
+  assert.equal(r.source, 'knowledge-planning');
+  assert.match(r.reply, /États-Unis|Etats-Unis/i);
+  assert.match(r.reply, /18h20|Zouhir|Jiu/i);
 });
 
-test('sans salle, le planning renvoie vers la page de tous les plannings', async () => {
+test('sans salle, le planning demande la salle comme David', async () => {
   const r = await guideWelcome({
     freeText: 'je veux voir le planning',
     messages: [],
     persona: 'fabien',
   });
-  assert.equal(r.source, 'redirect-planning');
-  assert.match(r.reply, /tous les plannings/);
-  assert.match(r.reply, /salle-de-sport-toulouse/);
-  assert.match(r.reply, /vous|consultez/i);
+  assert.equal(r.source, 'knowledge-planning');
+  assert.match(r.reply, /Minimes/);
+  assert.match(r.reply, /vous/i);
 });
 
 test('un enfant de 3 ans reçoit la Baby Boxe, pas un menu générique', async () => {
@@ -109,7 +108,7 @@ test('un enfant de 3 ans reçoit la Baby Boxe, pas un menu générique', async (
     messages: [],
     persona: 'chloe',
   });
-  assert.equal(r.source, 'faq-v4');
+  assert.equal(r.source, 'knowledge-kids');
   assert.match(r.reply, /Baby Boxe/i);
   assert.match(r.reply, /3 ans/);
   assert.doesNotMatch(r.reply, /dis-moi juste ce que tu cherches/i);
@@ -121,7 +120,7 @@ test('« il n’y a pas de cours enfants ? » est corrigé, pas un menu', async 
     messages: [],
     persona: 'chloe',
   });
-  assert.equal(r.source, 'faq-v4');
+  assert.match(r.source, /knowledge-kids|faq/);
   assert.match(r.reply, /Baby Boxe|Éducative|educative/i);
 });
 
@@ -171,3 +170,27 @@ test('la relance générique prend la voix du conseiller', async () => {
   assert.ok(PERSONAS.nassim.fallbacks.includes(nassim.reply));
   assert.ok(PERSONAS.fabien.fallbacks.includes(fabien.reply));
 });
+
+test('2 ans trop jeune, 4 ans Baby Boxe — pas la boxe anglaise adulte', async () => {
+  const r = await guideWelcome({
+    freeText: 'Je souhaite inscrire mes enfants de 2 ans et 4 ans à la boxe anglaise.',
+    messages: [],
+    persona: 'chloe',
+  });
+  assert.equal(r.source, 'knowledge-kids');
+  assert.match(r.reply, /trop jeune/i);
+  assert.match(r.reply, /Baby Boxe/i);
+  assert.doesNotMatch(r.reply, /éducative 7/i);
+});
+
+test('Chloe dit qu’il n’y a pas de clim dans les salles', async () => {
+  const r = await guideWelcome({
+    freeText: 'il y a la clim dans les salles ?',
+    messages: [],
+    persona: 'chloe',
+  });
+  assert.equal(r.source, 'faq');
+  assert.match(r.reply, /aucune|pas de clim|climatis/i);
+  assert.doesNotMatch(r.reply, /sont climatisées/i);
+});
+

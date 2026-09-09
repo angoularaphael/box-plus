@@ -9,6 +9,8 @@
  *
  * Le prompt = sections V4 utiles à la question + planning de la salle
  * détectée. On ne charge pas les 18 sections à chaque message (quota modèle).
+ * Même logique de sélection que le bot téléphone (David) : répondre à LA
+ * question avec les faits du fichier (âges, quartier, créneaux).
  */
 
 const fs = require('fs');
@@ -51,7 +53,7 @@ const GYMS = {
     manager: 'Dadi',
     url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/',
     planningUrl: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/',
-    match: /st[-\s]?cyprien|saint[-\s]?cyprien|sainte[-\s]?lucie|fer\s+[àa]\s+cheval|\bcyprien\b/i,
+    match: /st[-\s]?cyprien|saint[-\s]?cyprien|sainte[-\s]?lucie|fer\s+[àa]\s+cheval|\bcyprien\b|reynerie|mirail|bellefontaine|bagatelle/i,
     planningKey: 'planning-saint-cyprien',
   },
   portet: {
@@ -219,6 +221,87 @@ function planningContext(text) {
  * SÉLECTION DES SECTIONS V4
  * ------------------------------------------------------------------ */
 
+function wantsKids(text) {
+  return /enfant|fils|fille|gamin|ado|mineur|baby|bébé|[ée]ducative|\b\d+\s*ans?\b/i.test(text || '');
+}
+
+function agesIn(text) {
+  return [...String(text || '').matchAll(/(\d+)\s*ans?/gi)]
+    .map((m) => Number(m[1]))
+    .filter((n) => n > 0 && n < 20);
+}
+
+function sliceHeading(body, startRe, endRe) {
+  const src = String(body || '');
+  const start = src.search(startRe);
+  if (start < 0) return '';
+  const rest = src.slice(start);
+  const end = endRe ? rest.search(endRe) : -1;
+  return (end > 0 ? rest.slice(0, end) : rest).trim();
+}
+
+function babyPlanningLines() {
+  return String(V4_TEXT || '')
+    .split('\n')
+    .filter((l) => /baby boxe|éducative 7|éducative 12|dès 3 ans|educative 7|educative 12/i.test(l))
+    .slice(0, 40)
+    .join('\n');
+}
+
+function kidsExtras(text) {
+  if (!wantsKids(text)) return '';
+  const disc = SECTIONS.disciplines || '';
+  const faq = SECTIONS.faq || '';
+  return [
+    sliceHeading(disc, /2\.4\.|Baby Boxe/i, /\n2\.5\./),
+    sliceHeading(faq, /À partir de quel âge|age les enfants/i, /\nQ :/),
+    babyPlanningLines(),
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+function fallbackFromKnowledge(text, { vous = false } = {}) {
+  const ages = agesIn(text);
+  if (!wantsKids(text) && !ages.length) return '';
+  const tooYoung = ages.filter((a) => a < 3);
+  const baby = ages.filter((a) => a >= 3 && a <= 6);
+  const edu = ages.filter((a) => a >= 7 && a <= 11);
+  const ado = ages.filter((a) => a >= 12 && a <= 16);
+  const parts = [];
+  if (tooYoung.length) {
+    parts.push(
+      vous
+        ? `La Baby Boxe commence à **3 ans**. Un enfant de ${tooYoung.join(' et ')} ans est trop jeune pour s'inscrire.`
+        : `La Baby Boxe commence à **3 ans**. Un enfant de ${tooYoung.join(' et ')} ans est trop jeune pour s'inscrire.`
+    );
+  }
+  if (baby.length || (!ages.length && wantsKids(text) && !tooYoung.length && !edu.length && !ado.length)) {
+    const who = baby.length
+      ? `${vous ? 'À' : 'À'} ${baby.join(' et ')} ans`
+      : vous
+        ? 'Pour un jeune enfant'
+        : 'Pour un jeune enfant';
+    parts.push(
+      `${who}, ce n'est pas la boxe anglaise adulte : c'est la **Baby Boxe**, dès 3 ans. C'est ludique, le samedi après-midi selon la salle. L'inscription se fait en ligne.`
+    );
+  }
+  if (edu.length) {
+    parts.push(
+      `De 7 à 11 ans, c'est la **boxe éducative**, mercredi et samedi. L'inscription se fait en ligne.`
+    );
+  }
+  if (ado.length) {
+    parts.push(`De 12 à 16 ans, c'est la **boxe éducative 12-16 ans**, mercredi et samedi.`);
+  }
+  parts.push(
+    vous
+      ? 'Quelle salle vous arrange ? **Minimes**, **Portet**, **Ramonville**, **Saint-Cyprien** ou **États-Unis** ?'
+      : 'Quelle salle te va ? **Minimes**, **Portet**, **Ramonville**, **Saint-Cyprien** ou **États-Unis** ?'
+  );
+  return parts.join(' ');
+}
+
 const ALWAYS = ['tarifs'];
 
 const ON_DEMAND = [
@@ -266,11 +349,16 @@ const DROP_ORDER = [
 function selectSectionKeys(text) {
   const t = String(text || '');
   const gyms = detectGyms(t);
-  const skipHeavy = gyms.length > 0 && PLANNING_INTENT.test(t);
+  const skipHeavy = gyms.length > 0 && PLANNING_INTENT.test(t) && !wantsKids(t);
   const keys = [...ALWAYS];
   for (const { key, test } of ON_DEMAND) {
     if ((key === 'disciplines' || key === 'faq' || key === 'scripts') && skipHeavy) continue;
     if (test.test(t) && !keys.includes(key)) keys.push(key);
+  }
+  if (wantsKids(t)) {
+    for (const key of ['disciplines', 'faq', 'inscription']) {
+      if (!keys.includes(key)) keys.push(key);
+    }
   }
   return keys;
 }
@@ -303,15 +391,19 @@ const STYLE_RULES = `
 
 const IDENTITY = `
 Tu es conseiller Boxing Center sur boxingcenter.fr.
-Source unique de tes faits : la base de connaissances V4 (18/08/2026) ci-dessous.
+Source unique de tes faits : la base de connaissances V4 (même fichier que David au téléphone) ci-dessous.
+Tu écoutes la question et tu y réponds tout de suite, à partir de ces faits. Pas de menu si la question est claire. Pas de réponse générique. Pas un simple lien si tu as les créneaux.
 Tu ne t'appuies PAS sur le catalogue boutique, les pages produit, ni des faits absents de cette base.
 INTERDIT d'inventer un tarif, un horaire, un coach, une offre ou une salle qui n'y figure pas.
 Si l'information manque : le dire, sans combler le trou.
 Mission : informer avec exactitude ET donner envie de venir.
 
-GARDE-FOUS V4 — ne jamais les contredire :
+GARDE-FOUS — ne jamais les contredire :
 - Tarif promo : 29,99 € toutes les 4 semaines (28 jours, jamais « par mois ») ET 259 € / 12 mois. Présente les deux.
-- Les 5 salles ne sont PAS chauffées et PAS climatisées ; elles sont isolées pour rester supportables.
+- CLIMATISATION : il n'y en a AUCUNE, dans aucune des cinq salles. Les salles ne sont PAS chauffées et PAS climatisées ; elles sont isolées pour rester supportables. Tu ne réponds JAMAIS oui, même partiellement, même pour une seule salle.
+- Moins de 3 ans : trop jeune. Baby Boxe à partir de 3 ans. 3 à 6 ans : Baby Boxe, pas la boxe anglaise adulte, pas la boxe éducative 7-11. 7-11 : éducative. 12-16 : éducative ados.
+- Reynerie / Mirail / Bellefontaine / Bagatelle = Saint-Cyprien (11 rue Sainte-Lucie).
+- Si une salle ou un quartier est nommé, tu donnes les créneaux de CETTE salle (jour, heure, coach) tels qu'écrits dans la base. Tu ne récites pas le planning adulte du soir pour un enfant.
 - Femmes : cours mixtes ouverts + Boxing Lady et Lady Punch (100 % féminin).
 - Cours collectifs : illimités et sans réservation pour les formules concernées.
 - Dimanche : ne pas inventer d'horaires. Pages salles = lundi au samedi, 10h00–21h30.
@@ -320,12 +412,16 @@ GARDE-FOUS V4 — ne jamais les contredire :
 
 function buildKnowledge(userText) {
   const planning = planningContext(userText);
+  const extras = kidsExtras(userText);
   const planningBlock = planning
     ? `# PLANNINGS (extraits V4 — seuls horaires autorisés)\n${planning}`
     : '';
+  const extraBlock = extras
+    ? `# EXTRAITS ENFANTS (source unique — Baby Boxe / éducative)\n${extras}`
+    : '';
   let keys = selectSectionKeys(userText);
   const wrap = (sectionKeys) =>
-    [IDENTITY, ...sectionKeys.map((k) => SECTIONS[k]).filter(Boolean), planningBlock, STYLE_RULES]
+    [IDENTITY, ...sectionKeys.map((k) => SECTIONS[k]).filter(Boolean), extraBlock, planningBlock, STYLE_RULES]
       .filter(Boolean)
       .join('\n\n');
   let out = wrap(keys);
@@ -350,4 +446,8 @@ module.exports = {
   planningContext,
   selectSections,
   buildKnowledge,
+  wantsKids,
+  agesIn,
+  fallbackFromKnowledge,
+  kidsExtras,
 };
