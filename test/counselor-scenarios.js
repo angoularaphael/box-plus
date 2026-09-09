@@ -251,6 +251,117 @@ module.exports = [
       step('et États-Unis', { must: [/etats-unis|États-Unis/i] }),
     ],
   },
+  {
+    id: 'v4-visiteur-boxe-anglaise-minimes',
+    persona: 'chloe',
+    steps: [
+      step('Bonjour, je n’ai jamais boxé. Je peux commencer par la boxe anglaise ?', {
+        must: [/débutant|tous niveaux|sans.*expérience/i],
+      }),
+      step('Je préfère Minimes lundi soir, quel créneau et quel coach ?', {
+        must: [/Minimes/i, /19h40/, /21h00/, /Mehdi/i],
+        failIf: [/compétiteurs.*première séance/i],
+      }),
+      step('Et la salle est où exactement ?', { must: [/12 rue de Fenouillet/i] }),
+    ],
+  },
+  {
+    id: 'v4-visiteur-mma-ramonville',
+    persona: 'nassim',
+    steps: [
+      step('Le MMA est accessible si je suis totalement débutant ?', {
+        must: [/débutant|tous niveaux|progress/i],
+      }),
+      step('Je voudrais le faire à Ramonville le mardi, c’est à quelle heure ?', {
+        must: [/Ramonville/i, /19h45/, /21h15/, /Jérôme/i],
+      }),
+      step('Le MMA mélange quoi exactement ?', { must: [/frappe|striking/i, /sol|lutte/i] }),
+    ],
+  },
+  {
+    id: 'v4-visiteuse-lady-punch-cyprien',
+    persona: 'chloe',
+    steps: [
+      step('Je cherche un cours uniquement pour les femmes, vous avez quoi ?', {
+        must: [/Boxing Lady|Lady Punch/i, /100\s*%|fémini/i],
+      }),
+      step('Lady Punch à Saint-Cyprien jeudi, quel horaire et quel coach ?', {
+        must: [/Cyprien/i, /18h20/, /19h00/, /Dadi/i],
+      }),
+      step('C’est quelle adresse ?', { must: [/11 rue Sainte-Lucie/i] }),
+    ],
+  },
+  {
+    id: 'v4-parent-baby-boxe-portet',
+    persona: 'fabien',
+    steps: [
+      step('Ma fille vient d’avoir 3 ans, quel cours est adapté ?', {
+        must: [/Baby Boxe/i, /3 ans/],
+        mustNot: [/boxe anglaise adulte/i],
+      }),
+      step('À Portet le samedi, vous avez l’horaire et les coachs ?', {
+        must: [/Portet/i, /15h00/, /16h00/, /Valentin/i, /Mourad/i, /Ingrid/i],
+      }),
+      step('Ces horaires sont définitifs ?', { must: [/provisoire/i] }),
+    ],
+  },
+  {
+    id: 'v4-parent-etats-unis-3-6-ans',
+    persona: 'chloe',
+    steps: [
+      step('Aux États-Unis, il y a de la Baby Boxe pour mon fils de 5 ans ?', {
+        must: [/pieds-poings/i, /3–6|3-6/i],
+        mustNot: [/Baby Boxe.*États-Unis/i],
+      }),
+      step('Quel est le créneau exact ?', {
+        must: [/États-Unis|Etats-Unis/i, /14h15/, /15h00/, /Renaud/i],
+      }),
+      step('Et pour sa sœur de 8 ans ?', { must: [/7–11|7-11|éducative|pieds-poings/i] }),
+    ],
+  },
+  {
+    id: 'v4-visiteur-essai-puis-offre',
+    persona: 'nassim',
+    steps: [
+      step('Je veux tester avant de m’engager, ça coûte combien ?', { must: [/10\s*€/] }),
+      step('Pour l’essai, vous prêtez les gants ?', { must: [/prêt|matériel/i] }),
+      step('Si ça me plaît, quelles sont les deux promos ?', {
+        must: [/29,99/, /4 semaines|28 jours/i, /259/, /12 mois/i],
+        failIf: [/29,99.*par mois/i],
+      }),
+      step('Je veux surtout économiser sur un an', { must: [/259/, /12 mois|année/i] }),
+    ],
+  },
+  {
+    id: 'v4-adherent-resiliation-72h',
+    persona: 'fabien',
+    steps: [
+      step('Je souhaite résilier mon abonnement sans engagement', {
+        must: [/David|Gérer mon abonnement|72/i],
+        expectSource: 'redirect-david',
+      }),
+      step('Je suis prélevé dans deux jours, ce sera arrêté avant ?', { must: [/72|échéance|prélev/i] }),
+      step('La période que j’ai déjà payée est remboursée au prorata ?', {
+        must: [/pas.*rembours|non.*rembours|période déjà payée/i],
+      }),
+    ],
+  },
+  {
+    id: 'v4-visiteur-securite-et-reglement',
+    persona: 'chloe',
+    steps: [
+      step('Pour du loisir, le certificat médical est toujours obligatoire ?', {
+        must: [/pas systématiquement|compétiteur|licencié/i],
+        failIf: [/jamais obligatoire/i],
+      }),
+      step('Si j’arrive avec 15 minutes de retard je peux participer ?', {
+        must: [/10 minutes|refus|coach|échauffement/i],
+      }),
+      step('Et si je ressens un malaise pendant le cours ?', {
+        must: [/arrêt|arrêter|coach|personnel|santé/i],
+      }),
+    ],
+  },
 ];
 
 /** Questions factuelles : un menu générique au milieu d’un fil = faille. */

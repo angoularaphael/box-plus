@@ -60,6 +60,10 @@ function pickAvoid(list, lastBot) {
 
 const KIDS_PLANNING_GYMS = ['minimes', 'ramonville', 'st-cyprien', 'portet'];
 
+/* Une question qui cite un jour, une heure ou un coach veut le créneau exact. */
+const PRECISE_PLANNING_ASK =
+  /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b|quelle?\s+heures?|quels?\s+(cr[ée]neaux?|horaires?|coachs?)|[àa]\s+quelle\s+heure/i;
+
 function kidsPlanningIntent(text, lastBot, messages) {
   const t = String(text || '');
   const last = String(lastBot || '');
@@ -190,6 +194,10 @@ function matchNamedGymFollowup(text, lastBot, persona, messages) {
   const id = ids[0];
   const g = GYMS[id];
 
+  /* « Ramonville le mardi, quelle heure ? » attend les créneaux de la V4,
+     pas l'adresse et un lien : on laisse passer vers le planning détaillé. */
+  if (PRECISE_PLANNING_ASK.test(t)) return null;
+
   if (kidsPlanningIntent(t, last, messages) || /Baby Boxe|3 ans|enfant|petit|inscrire/i.test(last)) {
     return matchKidsPlanning(`planning ${g.label}`, last, persona, messages);
   }
@@ -257,7 +265,7 @@ function kidsAgeBand(t) {
   return null;
 }
 
-function matchWelcomeFaq(text, { persona, lastBot } = {}) {
+function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
   const t = String(text || '');
   if (!t.trim()) return null;
 
@@ -284,6 +292,25 @@ function matchWelcomeFaq(text, { persona, lastBot } = {}) {
 
   if (enfant) {
     const ages = [...String(t).matchAll(/\b([1-9]|1[0-6])\s*ans\b/gi)].map((m) => Number(m[1]));
+
+    /* États-Unis n'a pas de Baby Boxe : les 3–6 ans y font pieds-poings. */
+    const nommees = detectGyms(t);
+    if (
+      nommees.length === 1 &&
+      nommees[0] === 'etats-unis' &&
+      (/baby/i.test(t) || ages.some((n) => n >= 3 && n <= 6))
+    ) {
+      const eu = GYMS['etats-unis'];
+      return {
+        reply: voice(
+          persona,
+          `Aux **États-Unis**, il n’y a pas de Baby Boxe : les **3–6 ans** font **Boxe pieds-poings**. Planning : [voir le planning](${eu.planningUrl}). La **Baby Boxe** est à Minimes, Ramonville, Saint-Cyprien et Portet.`,
+          `Aux **États-Unis**, il n’y a pas de Baby Boxe : les **3–6 ans** font **Boxe pieds-poings**. Planning : [voir le planning](${eu.planningUrl}). La **Baby Boxe** se trouve à Minimes, Ramonville, Saint-Cyprien et Portet.`
+        ),
+        source: 'faq-v4',
+      };
+    }
+
     if (ages.some((n) => n < 3) && ages.some((n) => n >= 3 && n <= 6)) {
       return {
         reply:
@@ -353,11 +380,14 @@ function matchWelcomeFaq(text, { persona, lastBot } = {}) {
   }
 
   const gymIds = detectGyms(t);
-  if (
-    gymIds.length === 1 &&
-    /adresse|o[uù] (est|se trouve)|c['’]est o[uù]|trouver la salle|comment (y )?aller|o[uù] c['’]est/i.test(t)
-  ) {
-    const g = GYMS[gymIds[0]];
+  const adresseAsk =
+    /adresse|o[uù] (est|se trouve)|c['’]est o[uù]|trouver la salle|comment (y )?aller|o[uù] c['’]est|la salle est o[uù]|o[uù] exactement/i.test(
+      t
+    );
+  /* « Et la salle est où exactement ? » : la salle nommée deux tours plus haut. */
+  const adresseGym = gymIds.length === 1 ? gymIds[0] : adresseAsk ? lastChosenGymId(messages) : null;
+  if (adresseGym && adresseAsk) {
+    const g = GYMS[adresseGym];
     return {
       reply: voice(
         persona,
@@ -499,7 +529,7 @@ function matchWelcomeFaq(text, { persona, lastBot } = {}) {
             'Oui. Les cours mixtes sont ouverts aux femmes, et il y a aussi des cours **100 % féminins** : **Boxing Lady** (Minimes, Portet), **Lady Punch** (Ramonville, Saint-Cyprien, États-Unis) et **Lady Kick** (Portet). Tu préfères mixte ou 100 % féminin ?',
             'Oui. Les cours mixtes sont ouverts aux femmes, et nous proposons **Boxing Lady**, **Lady Punch** et **Lady Kick** (100 % féminin). Vous préférez mixte ou 100 % féminin ?'
           ),
-          '**Lady Punch** : Ramonville, Saint-Cyprien, États-Unis. **Boxing Lady** : Minimes et Portet. **Lady Kick** : Portet.',
+          'Cours **100 % féminins** : **Lady Punch** (Ramonville, Saint-Cyprien, États-Unis), **Boxing Lady** (Minimes, Portet) et **Lady Kick** (Portet). Les cours mixtes restent ouverts aux femmes.',
         ],
         lastBot
       ),
@@ -762,6 +792,41 @@ function matchWelcomeFaq(text, { persona, lastBot } = {}) {
     return {
       reply:
         'Un **retard important** (autour de **10 min**) peut empêcher d’entrer en cours si l’échauffement / les consignes de sécu sont passés : c’est le **coach** qui décide.',
+      source: 'faq-v4',
+    };
+  }
+
+  if (/malaise|vertige|perte de connaissance|essouffl|cardiaque|douleur|bless/i.test(t)) {
+    return {
+      reply: voice(
+        persona,
+        'En cas de **malaise, douleur inhabituelle, vertige ou gêne respiratoire** : tu **arrêtes la séance**, tu préviens tout de suite le **coach ou le personnel**, et tu consultes un professionnel de **santé** avant de reprendre si besoin.',
+        'En cas de **malaise, douleur inhabituelle, vertige ou gêne respiratoire** : vous **arrêtez la séance**, vous prévenez immédiatement le **coach ou le personnel**, et vous consultez un professionnel de **santé** avant reprise si la situation le justifie.'
+      ),
+      source: 'faq-v4',
+    };
+  }
+
+  if (/d[ée]finitif|provisoire|susceptible de changer|[çc]a peut changer/i.test(t)) {
+    return {
+      reply:
+        'Le planning **Portet** est affiché comme **provisoire** — il peut encore bouger. Les autres salles suivent les plannings de rentrée 2026–2027 de la base.',
+      source: 'faq-v4',
+    };
+  }
+
+  if (/prorata|p[ée]riode d[ée]j[àa] pay/i.test(t)) {
+    return {
+      reply:
+        'La résiliation prend effet **à la fin de la période déjà payée**. Pas de remboursement **au prorata** d’une période de 4 semaines déjà commencée, sauf obligation légale.',
+      source: 'faq-v4',
+    };
+  }
+
+  if (/pr[ée]lev|[ée]ch[ée]ance/i.test(t) && /72|avant|arr[êe]t|stop|emp[êe]ch|[ée]viter|annul/i.test(t)) {
+    return {
+      reply:
+        'Pour bloquer la **prochaine échéance**, la résiliation doit être enregistrée **plus de 72 h avant** la date de prélèvement. Enregistrée dans les **72 h**, l’échéance reste due : l’accès continue 4 semaines, puis l’abo s’arrête sans nouvelle demande.',
       source: 'faq-v4',
     };
   }

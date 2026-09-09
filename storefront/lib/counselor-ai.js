@@ -413,6 +413,72 @@ function cleanWelcomeReply(content, fallback) {
 const PLANNING_ASK =
   /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours/i;
 
+const KID_LINE = /baby boxe|d[èe]s 3 ans|3\s*[–-]\s*6|7\s*[–-]\s*11|12\s*[–-]\s*16|10\s*[–-]\s*16|enfants|ados/i;
+
+const KIDS_BANDS = [
+  { min: 3, max: 6, re: /baby\s*boxe|d[èe]s 3 ans|3\s*[–-]\s*6/i },
+  { min: 7, max: 11, re: /7\s*[–-]\s*11/i },
+  { min: 12, max: 16, re: /12\s*[–-]\s*16|10\s*[–-]\s*16/i },
+];
+
+function kidsBandRe(text) {
+  const ages = [...String(text || '').matchAll(/\b([1-9]|1[0-6])\s*ans\b/gi)].map((m) => Number(m[1]));
+  const band = KIDS_BANDS.find((b) => ages.some((a) => a >= b.min && a <= b.max));
+  return band ? band.re : null;
+}
+
+const DAY_HEADER = /^(LUNDI|MARDI|MERCREDI|JEUDI|VENDREDI|SAMEDI|DIMANCHE)\b/i;
+const ZONE_HEADER = /^8\.[A-C]\..*[–-]\s*(.+?)\s*$/i;
+
+/**
+ * Lit un bloc planning V4 en gardant le jour de l'en-tête : une ligne de cours
+ * ne porte pas son jour, seule la position sous « MARDI » le dit.
+ */
+function planningEntries(block) {
+  const out = [];
+  let day = '';
+  let zone = '';
+  for (const raw of String(block || '').split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    const zoneHit = ZONE_HEADER.exec(line);
+    if (zoneHit) {
+      zone = zoneHit[1].replace(/^SALLE\s+/i, '').toLowerCase();
+      continue;
+    }
+    if (DAY_HEADER.test(line)) {
+      day = line.match(DAY_HEADER)[1].toLowerCase();
+      continue;
+    }
+    if (!line.startsWith('-') || !line.includes('|')) continue;
+    const parts = line
+      .replace(/^[-\s]+/, '')
+      .replace(/\.\s*$/, '')
+      .split('|')
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (!parts.length || !/\d{1,2}h\d{2}/.test(parts[0])) continue;
+    const [horaire, cours = '', coach = ''] = parts;
+    const jour = day ? day.charAt(0).toUpperCase() + day.slice(1) : '';
+    const salle = zone && !/^boxe$/i.test(zone) ? ` (salle ${zone})` : '';
+    const qui = /coach/i.test(coach) ? ` · ${coach}` : '';
+    out.push({
+      day,
+      cours: `${cours} ${parts.slice(2).join(' ')}`,
+      text: `${jour} ${horaire} · ${cours}${qui}${salle}`.trim(),
+    });
+  }
+  return out;
+}
+
+function recentMemberText(messages) {
+  return (Array.isArray(messages) ? messages : [])
+    .slice(-8)
+    .filter((m) => m.role === 'user' || m.role === 'member')
+    .map((m) => String(m.content || m.text || ''))
+    .join(' ');
+}
+
 function planningFromKnowledge(text, persona, lastBot, messages) {
   const t = String(text || '');
   const vous = persona && persona.id === 'fabien';
@@ -424,11 +490,10 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
   const kidsCtx =
     wantsKids(t) ||
     kidsPlanningIntent(t, lastBot, messages);
-  const block = planningContext(t) || '';
-  const all = block
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l && !/^#/.test(l) && /–|\d+h/i.test(l));
+  /* « Quel est le créneau exact ? » : charger le planning de la salle retenue. */
+  const ctxText = ids.length === 1 ? `${t} ${GYMS[ids[0]].label}` : t;
+  const block = planningContext(ctxText) || '';
+  const all = planningEntries(block);
 
   const topic = [];
   if (/jiu|jjb/i.test(t)) topic.push(/jiu|jjb/i);
@@ -440,17 +505,37 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
   if (/boxing lady/i.test(t)) topic.push(/boxing lady/i);
   if (/hiit/i.test(t)) topic.push(/hiit/i);
   const dayRe = /(lundi|mardi|mercredi|jeudi|vendredi|samedi)/i.exec(t);
-  let lines = all;
+  let entries = all;
   if (topic.length) {
-    const hit = all.filter((l) => topic.some((re) => re.test(l)));
-    if (hit.length) lines = hit;
+    const hit = entries.filter((e) => topic.some((re) => re.test(e.cours)));
+    if (hit.length) entries = hit;
   }
+  /* Un parent veut le créneau de SA tranche d'âge, pas les 6 premiers cours
+     enfants de la salle — sinon la Baby Boxe du samedi passe à la trappe. */
+  if (kidsCtx) {
+    const kidEntries = all.filter((e) => KID_LINE.test(e.cours));
+    const bandRe = kidsBandRe(`${t} ${recentMemberText(messages)}`);
+    const banded = bandRe ? kidEntries.filter((e) => bandRe.test(e.cours)) : [];
+    if (banded.length) entries = banded;
+    else if (kidEntries.length) entries = kidEntries;
+  }
+  /* Le jour est un en-tête du planning, pas un mot de la ligne : sans cette
+     lecture par jour, « Ramonville le mardi » ressortait avec le lundi. */
   if (dayRe) {
     const day = new RegExp(dayRe[1], 'i');
-    const onDay = lines.filter((l) => day.test(l) || !/(lundi|mardi|mercredi|jeudi|vendredi|samedi)/i.test(l));
-    if (onDay.length && onDay.length < lines.length) lines = onDay;
+    const onDay = entries.filter((e) => day.test(e.day));
+    if (onDay.length) entries = onDay;
   }
-  lines = lines.slice(0, 6);
+  /* « ACCÈS LIBRE » n'est pas un cours : hors sujet si on demande un créneau. */
+  if (!/acc[eè]s libre|muscu|libre/i.test(t)) {
+    const cours = entries.filter((e) => !/acc[èe]s libre/i.test(e.cours));
+    if (cours.length) entries = cours;
+  }
+  const lines = [];
+  for (const e of entries) {
+    if (!lines.includes(e.text)) lines.push(e.text);
+    if (lines.length === 6) break;
+  }
 
   const gymLink = (id) => {
     const g = GYMS[id];
@@ -470,12 +555,14 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
 
   if (ids.length === 1) {
     const g = GYMS[ids[0]];
-    const facts = lines.length ? ` ${lines.join(' · ')}.` : '';
+    const facts = lines.length ? ` ${lines.join(' · ').replace(/\.$/, '')}.` : '';
     const link = `[voir le planning](${g.planningUrl})`;
+    /* La V4 marque le planning Portet « PLANNING PROVISOIRE ». */
+    const provisoire = ids[0] === 'portet' ? ' Planning Portet **provisoire**.' : '';
     return {
       reply: vous
-        ? `À **${g.label}** (${g.address}) :${facts} Le détail complet : ${link}.`
-        : `À **${g.label}** :${facts} Le détail : ${link}.`,
+        ? `À **${g.label}** (${g.address}) :${facts} Le détail complet : ${link}.${provisoire}`
+        : `À **${g.label}** :${facts} Le détail : ${link}.${provisoire}`,
       source: 'knowledge-planning',
     };
   }
@@ -487,7 +574,7 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
   };
 }
 
-function welcomeFallbackReply(lastUser, lastBot, persona) {
+function welcomeFallbackReply(lastUser, lastBot, persona, messages = []) {
   const generic = (persona && persona.fallbacks) || WELCOME_FALLBACKS;
   const pick = (key) => {
     const variants = FAQ_VARIANTS[key] || generic;
@@ -502,11 +589,11 @@ function welcomeFallbackReply(lastUser, lastBot, persona) {
     return { reply: pick('clim'), source: 'faq' };
   }
   if (isClubOpeningHours(lastUser)) {
-    const hours = matchWelcomeFaq(lastUser, { persona, lastBot });
+    const hours = matchWelcomeFaq(lastUser, { persona, lastBot, messages });
     if (hours) return hours;
   }
   if (PLANNING_ASK.test(lastUser) && !(/\bessai\b|10\s*€/i.test(lastUser) && !/planning|horaire/i.test(lastUser))) {
-    return planningFromKnowledge(lastUser, persona, lastBot, []);
+    return planningFromKnowledge(lastUser, persona, lastBot, messages);
   }
   const kidsReply = fallbackFromKnowledge(lastUser, { vous: persona && persona.id === 'fabien' });
   if (kidsReply) {
@@ -515,7 +602,7 @@ function welcomeFallbackReply(lastUser, lastBot, persona) {
   if (/enfant|fils|fille|gamin|baby|bébé|[ée]ducative|\d+\s*ans/i.test(lastUser)) {
     return { reply: pick('kidsBaby'), source: 'faq' };
   }
-  const faq = matchWelcomeFaq(lastUser, { persona, lastBot });
+  const faq = matchWelcomeFaq(lastUser, { persona, lastBot, messages });
   if (faq) return faq;
   if (/29|sans engagement|4 semaines|pr[eé]l[eè]vement/i.test(lastUser)) {
     return { reply: pick('offer29'), source: 'faq' };
@@ -587,14 +674,14 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     return { reply: managerReply, source: 'managers' };
   }
 
-  const faqHit = matchWelcomeFaq(lastUser, { persona, lastBot });
+  const faqHit = matchWelcomeFaq(lastUser, { persona, lastBot, messages });
   if (faqHit) {
     return { ...faqHit, persona: persona.id };
   }
 
   const fallback = pickVariant(persona.fallbacks);
   if (!isAiEnabled()) {
-    return { ...welcomeFallbackReply(lastUser, lastBot, persona), persona: persona.id };
+    return { ...welcomeFallbackReply(lastUser, lastBot, persona, messages), persona: persona.id };
   }
 
   try {
@@ -640,14 +727,18 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     }
 
     if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
-      const alt = matchWelcomeFaq(lastUser, { persona, lastBot }) || welcomeFallbackReply(lastUser, lastBot, persona);
+      const alt =
+        matchWelcomeFaq(lastUser, { persona, lastBot, messages }) ||
+        welcomeFallbackReply(lastUser, lastBot, persona, messages);
       reply = alt.reply;
       return { reply, source: 'dedup', persona: persona.id };
     }
 
     return { reply: reply || fallback, source: 'groq', persona: persona.id };
   } catch (err) {
-    const alt = matchWelcomeFaq(lastUser, { persona, lastBot }) || welcomeFallbackReply(lastUser, lastBot, persona);
+    const alt =
+      matchWelcomeFaq(lastUser, { persona, lastBot, messages }) ||
+      welcomeFallbackReply(lastUser, lastBot, persona, messages);
     return {
       ...alt,
       source: alt.source === 'faq-v4' ? 'faq-v4' : 'template-fallback',

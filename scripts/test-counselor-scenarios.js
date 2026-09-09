@@ -99,6 +99,7 @@ async function chaos() {
 
 async function main() {
   const wantChaos = process.argv.includes('--chaos');
+  const showReplies = process.argv.includes('--show');
   let totalKo = 0;
   let turns = 0;
   for (const scenario of SCENARIOS) {
@@ -108,10 +109,11 @@ async function main() {
     const mark = played.ko ? 'KO' : 'OK';
     console.log(`${mark} ${scenario.id} (${played.persona}) ${played.ko} fail / ${played.report.length} tours`);
     for (const t of played.report) {
-      if (!t.flags.length) continue;
-      console.log(`  T${t.turn} [${t.source}] ${t.flags.join(' ; ')}`);
+      if (!showReplies && !t.flags.length) continue;
+      const verdict = t.flags.length ? `KO ${t.flags.join(' ; ')}` : 'OK';
+      console.log(`  T${t.turn} [${t.source}] ${verdict}`);
       console.log(`    Q: ${t.q}`);
-      console.log(`    R: ${(t.reply || '').slice(0, 260)}`);
+      console.log(`    R: ${t.reply || ''}`);
     }
   }
   if (wantChaos) {
