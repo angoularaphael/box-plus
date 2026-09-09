@@ -428,11 +428,18 @@ function resumeWhatsAppText(order, { kind } = {}) {
 
 async function sendResumeWhatsApp(order, { kind = 'resume' } = {}) {
   const { toWhatsAppPhone, sendWhatsAppMessage } = require('./whatsapp-bot');
+  const { sendTransactionalSms } = require('./twilio-sms');
   const raw = customerPhone(order);
   const dest = toWhatsAppPhone(raw);
   if (!dest) return { sent: false, error: 'no_phone' };
-  await sendWhatsAppMessage(raw, resumeWhatsAppText(order, { kind }), { source: 'inscription-reprise' });
-  return { sent: true, to: dest, via: 'sms' };
+  const text = resumeWhatsAppText(order, { kind });
+  const result = await sendTransactionalSms(raw, text, { source: 'inscription-reprise' });
+  if (result.ok) return { sent: true, to: dest, via: 'twilio', sid: result.sid };
+  if (result.error === 'twilio_not_configured') {
+    await sendWhatsAppMessage(raw, text, { source: 'inscription-reprise', transactional: true });
+    return { sent: true, to: dest, via: 'sms-gateway' };
+  }
+  return { sent: false, error: result.error || 'sms_failed' };
 }
 
 async function sendResumeNotify(order, { kind = 'resume', email = true, sms = true } = {}) {
@@ -554,14 +561,19 @@ async function sendNudgeEmail(order) {
 }
 
 async function sendNudgeWhatsApp(order) {
-  const { isPromoWhatsAppPaused } = require('./whatsapp-outbound');
-  if (isPromoWhatsAppPaused()) return { sent: false, skipped: true, reason: 'promo_paused' };
   const phone = customerPhone(order);
   const { toWhatsAppPhone, sendWhatsAppMessage } = require('./whatsapp-bot');
+  const { sendTransactionalSms } = require('./twilio-sms');
   const to = toWhatsAppPhone(phone);
   if (!to) return { sent: false, skipped: true, reason: 'no_phone' };
-  await sendWhatsAppMessage(phone, nudgeWhatsAppText(order), { source: 'inscription-relance' });
-  return { sent: true, phone: to };
+  const text = nudgeWhatsAppText(order);
+  const result = await sendTransactionalSms(phone, text, { source: 'inscription-relance' });
+  if (result.ok) return { sent: true, phone: to, via: 'twilio', sid: result.sid };
+  if (result.error === 'twilio_not_configured') {
+    await sendWhatsAppMessage(phone, text, { source: 'inscription-relance', transactional: true });
+    return { sent: true, phone: to, via: 'sms-gateway' };
+  }
+  return { sent: false, error: result.error || 'sms_failed' };
 }
 
 async function dispatchOneNudge(orderId, { force = false } = {}) {

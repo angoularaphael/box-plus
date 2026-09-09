@@ -11,6 +11,7 @@ const { getStoreUrl } = require('../../lib/app-urls');
 const { logInfo, logWarn } = require('../../lib/logger');
 const { isMembershipContract } = require('../../lib/sale-contract-match');
 const { sendWhatsAppMessage } = require('./whatsapp-bot');
+const { sendTransactionalSms } = require('./twilio-sms');
 const { buildOfferCampaignEmail } = require('./campaign-email');
 
 const ESSAI_SINCE_MS = Date.parse('2026-08-13T00:00:00+02:00');
@@ -288,7 +289,16 @@ async function sendCustomerNudge(
   const out = { day, email: { sent: false }, whatsapp: { sent: false }, copy };
   if (dryRun) return { ...out, dry: true };
   const liveWa = !sendWa;
-  const waSend = sendWa || ((to, text) => sendWhatsAppMessage(to, text, { kind: 'promo' }));
+  const waSend =
+    sendWa ||
+    (async (to, text) => {
+      const result = await sendTransactionalSms(to, text, { source: 'essai-relance' });
+      if (result.ok) return { sent: true, via: 'twilio', sid: result.sid };
+      if (result.error === 'twilio_not_configured') {
+        return sendWhatsAppMessage(to, text, { source: 'essai-relance', transactional: true });
+      }
+      return { sent: false, error: result.error || 'sms_failed' };
+    });
 
   if (emailTo) {
     try {
