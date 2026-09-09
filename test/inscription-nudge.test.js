@@ -85,12 +85,14 @@ test('mails reprise / relance : David, texte brut, Principal', () => {
   const payMail = buildInscriptionNudgeEmail({
     name: 'Diego',
     url: 'https://boutique.boxingcenter.fr/inscription?order=BC-MAIL&step=4&pay=1',
+    kind: 'pay',
   });
   assert.equal(payMail.fromName, 'David');
   assert.equal(payMail.subject, 'Diego, c’est David');
   assert.equal(payMail.html, undefined);
   assert.match(payMail.emailText, /Salut Diego/);
   assert.match(payMail.emailText, /C’est David/);
+  assert.match(payMail.emailText, /Il ne reste plus qu’à payer/);
   assert.match(payMail.emailText, /boutique\.boxingcenter\.fr\/inscription/);
   assert.doesNotMatch(payMail.subject, /Boxing Center|inscription|€/);
   const payWa = resumeWhatsAppText(unpaid, { kind: 'pay' });
@@ -288,15 +290,10 @@ test('relance 30 min : due si bloqué à une étape, max 3 tentatives', () => {
   );
 });
 
-test('mails reprise / relance transactionnels — Boxing Center, HTML, sujet inscription', () => {
+test('envoi relance / reprise : David, texte brut, pas de HTML Boxing Center', () => {
   const prev = process.env.STORE_URL;
   process.env.STORE_URL = 'https://boutique.boxingcenter.fr';
-  const {
-    resumeEmailSubject,
-    resumeEmailHtml,
-    nudgeEmailSubject,
-    nudgeEmailHtml,
-  } = require('../storefront/lib/inscription-nudge');
+  const { nudgeEmailCopy } = require('../storefront/lib/inscription-nudge');
   const unpaid = {
     order_id: 'BC-TX',
     access_token: 'c'.repeat(48),
@@ -307,21 +304,23 @@ test('mails reprise / relance transactionnels — Boxing Center, HTML, sujet ins
     product_snapshot: { name: 'OFFRE A 29€', price_cents: 2999, requires_payment: true },
     payment: { status: 'failed' },
   };
-  const subject = resumeEmailSubject(unpaid, { kind: 'pay' });
-  const html = resumeEmailHtml(unpaid, { kind: 'pay' });
-  assert.match(subject, /Boxing Center/);
-  assert.match(subject, /payer/i);
-  assert.match(html, /Boxing Center/);
-  assert.match(html, /Payer maintenant/);
-  assert.doesNotMatch(subject, /c’est David/i);
+  const pay = nudgeEmailCopy(unpaid, { kind: 'pay' });
+  assert.equal(pay.fromName, 'David');
+  assert.equal(pay.subject, 'Diego, c’est David');
+  assert.equal(pay.html, undefined);
+  assert.match(pay.emailText, /Il ne reste plus qu’à payer/);
+  assert.match(pay.emailText, /boutique\.boxingcenter\.fr\/inscription/);
+  assert.doesNotMatch(pay.subject, /Boxing Center|inscription|€/);
 
   const paid = {
     ...unpaid,
     step: 6,
     payment: { status: 'paid', paid_at: '2026-08-16T08:00:00.000Z' },
   };
-  assert.match(nudgeEmailSubject(), /finalisé votre inscription Boxing Center/i);
-  assert.match(nudgeEmailHtml(paid), /dossier et la signature/i);
+  const nudge = nudgeEmailCopy(paid);
+  assert.equal(nudge.fromName, 'David');
+  assert.equal(nudge.html, undefined);
+  assert.match(nudge.emailText, /Le règlement est bon/);
   if (prev === undefined) delete process.env.STORE_URL;
   else process.env.STORE_URL = prev;
 });

@@ -216,11 +216,24 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
-const TRANSACTIONAL_FROM_NAME = 'Boxing Center';
 const TRANSACTIONAL_EMAIL_TAGS = [{ name: 'category', value: 'transactional' }];
 const TRANSACTIONAL_EMAIL_HEADERS = {
   'X-Transactional': 'true',
 };
+
+function nudgeEmailCopy(order, { kind } = {}) {
+  const { buildInscriptionNudgeEmail } = require('./campaign-email');
+  const pay = kind === 'pay' || wantsPayCta(order, { kind });
+  const paidDossier = !pay && isPaidIncomplete(order) && resumeStep(order) >= STEPS.IBAN;
+  const url =
+    kind === 'pay' || kind === 'resume' ? describeResume(order, { kind }).url : nudgeResumeUrl(order);
+  return buildInscriptionNudgeEmail({
+    name: firstName(order),
+    url,
+    paidDossier,
+    kind: pay ? 'pay' : undefined,
+  });
+}
 
 function htmlToPlainText(html) {
   return String(html || '')
@@ -390,15 +403,14 @@ async function sendResumeEmail(order, { kind = 'resume', to } = {}) {
   }
   const { sendEmailViaResend, isConfigured } = require('./resend-send');
   if (!isConfigured()) return { sent: false, error: 'resend_not_configured' };
-  const subject = resumeEmailSubject(order, { kind });
-  const html = resumeEmailHtml(order, { kind });
+  const copy = nudgeEmailCopy(order, { kind });
   try {
     const result = await sendEmailViaResend({
       to: dest,
-      subject,
-      html,
-      text: htmlToPlainText(html),
-      fromName: TRANSACTIONAL_FROM_NAME,
+      subject: copy.subject,
+      html: undefined,
+      text: copy.emailText,
+      fromName: copy.fromName,
       tags: TRANSACTIONAL_EMAIL_TAGS,
       headers: TRANSACTIONAL_EMAIL_HEADERS,
     });
@@ -543,15 +555,14 @@ async function sendNudgeEmail(order) {
   }
   const { sendEmailViaResend, isConfigured } = require('./resend-send');
   if (!isConfigured()) return { sent: false, reason: 'resend_not_configured' };
-  const subject = nudgeEmailSubject();
-  const html = nudgeEmailHtml(order);
+  const copy = nudgeEmailCopy(order);
   try {
     const result = await sendEmailViaResend({
       to: item.email,
-      subject,
-      html,
-      text: htmlToPlainText(html),
-      fromName: TRANSACTIONAL_FROM_NAME,
+      subject: copy.subject,
+      html: undefined,
+      text: copy.emailText,
+      fromName: copy.fromName,
       tags: TRANSACTIONAL_EMAIL_TAGS,
       headers: TRANSACTIONAL_EMAIL_HEADERS,
     });
@@ -730,6 +741,8 @@ module.exports = {
   sendResumeEmail,
   sendResumeWhatsApp,
   sendResumeNotify,
+  nudgeEmailCopy,
+  sendNudgeEmail,
   nudgeEmailSubject,
   nudgeEmailHtml,
   nudgeWhatsAppText,

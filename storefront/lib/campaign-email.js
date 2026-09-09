@@ -64,23 +64,33 @@ function buildDavidPlainEmail({ name, lines }) {
   };
 }
 
-function buildInscriptionNudgeEmail({ name, url, paidDossier = false }) {
+function buildInscriptionNudgeEmail({ name, url, paidDossier = false, kind } = {}) {
   const link = String(url || '').trim();
-  const lines = paidDossier
-    ? [
-        'C’est David. Petit mot pour toi.',
-        '',
-        'Le règlement est bon. Il reste juste le dossier.',
-        '',
-        'C’est ici :',
-        link,
-      ]
-    : [
-        'C’est David. Petit mot pour toi.',
-        '',
-        'Tu n’as pas fini. Reprends ici :',
-        link,
-      ];
+  let lines;
+  if (kind === 'pay') {
+    lines = [
+      'C’est David. Petit mot pour toi.',
+      '',
+      'Il ne reste plus qu’à payer. C’est ici :',
+      link,
+    ];
+  } else if (paidDossier) {
+    lines = [
+      'C’est David. Petit mot pour toi.',
+      '',
+      'Le règlement est bon. Il reste juste le dossier.',
+      '',
+      'C’est ici :',
+      link,
+    ];
+  } else {
+    lines = [
+      'C’est David. Petit mot pour toi.',
+      '',
+      'Tu n’as pas fini. Reprends ici :',
+      link,
+    ];
+  }
   return buildDavidPlainEmail({ name, lines });
 }
 
