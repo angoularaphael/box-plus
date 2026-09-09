@@ -8,7 +8,7 @@ const {
 } = require('./welcome-knowledge');
 const { resolvePersona } = require('./counselor-personas');
 const { buildKnowledge, GYMS, detectGyms, PLANNING_HUB } = require('./bc-knowledge');
-const { matchWelcomeFaq, matchPlanningFollowup } = require('./welcome-faq');
+const { matchWelcomeFaq, matchPlanningFollowup, isClubOpeningHours } = require('./welcome-faq');
 
 const KNOWLEDGE = `
 Tu es David, conseiller virtuel Boxing Center (Toulouse). Tu aides les adhérents sur le parcours « Gérer mon abonnement ».
@@ -436,6 +436,7 @@ const PLANNING_ASK =
 
 function matchPlanningRedirect(text, persona) {
   const t = String(text || '');
+  if (isClubOpeningHours(t)) return null;
   if (!PLANNING_ASK.test(t)) return null;
   if (/\bessai\b|10\s*€/i.test(t) && !/planning|horaire/i.test(t)) return null;
 
@@ -476,7 +477,7 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
   }
 
   /* « Brésilien » contient « résili » : ne pas traiter le JJB comme une résiliation. */
-  if (/(?<![A-Za-zÀ-ÿ])r[ée]sili|annul.*abo|arr[êe]ter.*abo|arreter.*abo/i.test(lastUser)) {
+  if (/(?<![A-Za-zÀ-ÿ])r[ée]sil|annul.*abo|arr[êe]ter.*abo|arreter.*abo/i.test(lastUser)) {
     const variants = persona.id === 'fabien' ? REDIRECT_DAVID_VOUS : REDIRECT_DAVID;
     let reply = pickVariant(variants);
     if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
