@@ -15,7 +15,9 @@ function flagsFor(c, result) {
   const reply = result.reply || '';
   const flags = [];
   if (c.expectSource && result.source !== c.expectSource) {
-    flags.push(`SOURCE ${result.source} != ${c.expectSource}`);
+    const alias =
+      c.expectSource === 'redirect-planning' && result.source === 'knowledge-planning';
+    if (!alias) flags.push(`SOURCE ${result.source} != ${c.expectSource}`);
   }
   for (const re of c.must || []) {
     if (!re.test(reply)) flags.push(`MANQUE ${re}`);

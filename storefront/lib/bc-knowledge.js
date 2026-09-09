@@ -33,7 +33,7 @@ const GYMS = {
     manager: 'Mehdi',
     url: 'https://boxe-toulouse.com/',
     planningUrl: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/',
-    match: /minimes|barri[eè]re\s*de\s*paris|fenouillet/i,
+    match: /minimes?\b|barri[eè]re\s*de\s*paris|fenouillet/i,
     planningKey: 'planning-minimes',
   },
   ramonville: {
@@ -43,7 +43,7 @@ const GYMS = {
     manager: 'Pascal',
     url: 'https://mmatoulouse.com/',
     planningUrl: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/',
-    match: /ramonville|saint[-\s]?agne|des\s+ormes/i,
+    match: /ramonvilles?|saint[-\s]?agne|des\s+ormes/i,
     planningKey: 'planning-ramonville',
   },
   'st-cyprien': {
@@ -73,7 +73,7 @@ const GYMS = {
     manager: 'Sébastien',
     url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/',
     planningUrl: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/',
-    match: /[eé]tats[-\s]?unis|lalande|33\s?b/i,
+    match: /[eé]tats?[-\s]?unis|lalande|33\s?b/i,
     planningKey: 'planning-etats-unis',
   },
 };

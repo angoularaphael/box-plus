@@ -60,16 +60,34 @@ function pickAvoid(list, lastBot) {
 
 const KIDS_PLANNING_GYMS = ['minimes', 'ramonville', 'st-cyprien', 'portet'];
 
-function kidsPlanningIntent(text, lastBot) {
+function kidsPlanningIntent(text, lastBot, messages) {
   const t = String(text || '');
   const last = String(lastBot || '');
+  const recent = (Array.isArray(messages) ? messages : [])
+    .slice(-8)
+    .map((m) => String(m.content || m.text || ''))
+    .join(' ');
+  const blob = `${t}\n${last}\n${recent}`;
   const now =
     /baby\s*boxe|b[ée]b[ée]|\b(fils|fille|enfant|enfants|gamin|gamins|gamines?|mineur|petits?)\b|\b([3-6])\s*ans\b|[ée]ducative/i.test(
       t
     );
   const before =
-    /Baby Boxe|Boxe Éducative|educative|\b3 ans\b|7–11|12–16|cours enfants|pieds-poings 3/i.test(last);
-  return now || before;
+    /Baby Boxe|Boxe Éducative|educative|\b3 ans\b|7–11|12–16|cours enfants|pieds-poings 3|ton petit|inscrire/i.test(
+      `${last} ${recent}`
+    );
+  return now || before || (/enfant|fils|fille|Baby Boxe/i.test(blob) && /planning|salle|club|horaire/i.test(t));
+}
+
+function lastChosenGymId(messages) {
+  const list = Array.isArray(messages) ? messages : [];
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const m = list[i];
+    if (m.role !== 'user' && m.role !== 'member') continue;
+    const ids = detectGyms(m.content || m.text || '');
+    if (ids.length === 1) return ids[0];
+  }
+  return null;
 }
 
 function gymMdLink(id) {
@@ -77,11 +95,15 @@ function gymMdLink(id) {
   return `[${g.label}](${g.planningUrl})`;
 }
 
-function matchKidsPlanning(text, lastBot, persona) {
+function matchKidsPlanning(text, lastBot, persona, messages) {
   const t = String(text || '');
-  if (!kidsPlanningIntent(t, lastBot)) return null;
+  if (!kidsPlanningIntent(t, lastBot, messages)) return null;
 
-  const ids = detectGyms(t);
+  let ids = detectGyms(t);
+  if (ids.length !== 1) {
+    const remembered = lastChosenGymId(messages);
+    if (remembered) ids = [remembered];
+  }
   if (ids.length === 1) {
     const id = ids[0];
     const g = GYMS[id];
@@ -140,7 +162,7 @@ function matchPlanningFollowup(text, lastBot, persona) {
   };
 }
 
-function matchNamedGymFollowup(text, lastBot, persona) {
+function matchNamedGymFollowup(text, lastBot, persona, messages) {
   const t = String(text || '').trim();
   const last = String(lastBot || '');
   if (!t || !last) return null;
@@ -167,7 +189,12 @@ function matchNamedGymFollowup(text, lastBot, persona) {
 
   const id = ids[0];
   const g = GYMS[id];
-  const managerCtx = /manager|responsable|Mehdi|Pascal|Dadi|Valentin|S[ée]bastien/i.test(last);
+
+  if (kidsPlanningIntent(t, last, messages) || /Baby Boxe|3 ans|enfant|petit|inscrire/i.test(last)) {
+    return matchKidsPlanning(`planning ${g.label}`, last, persona, messages);
+  }
+
+  const managerCtx = /\bmanagers?\b|responsable(s)? de salle/i.test(last);
   if (managerCtx && !/planning|horaire|cr[ée]neau|baby/i.test(t)) {
     return {
       reply: `Le manager de **${g.label}**, c’est **${g.manager}**. Adresse : ${g.address}.`,
@@ -175,15 +202,11 @@ function matchNamedGymFollowup(text, lastBot, persona) {
     };
   }
 
-  if (kidsPlanningIntent(t, last)) {
-    return matchKidsPlanning(`planning ${g.label}`, last, persona);
-  }
-
   const choosing =
-    /salle|planning|horaire|laquelle|Minimes|Ramonville|Portet|Cyprien|[ée]tats|Baby Boxe|quartier|tous les plannings|voir le planning/i.test(
+    /salle|club|planning|horaire|laquelle|Minimes|Ramonville|Portet|Cyprien|[ée]tats|Baby Boxe|quartier|tous les plannings|voir le planning/i.test(
       last
     );
-  if (!choosing && !/^(et |alors )?(minimes|ramonville|portet|st[-\s]?cyprien|saint[-\s]?cyprien|cyprien|[eé]tats)/i.test(t)) {
+  if (!choosing && !/^(et |alors )?(minimes?|ramonville|portet|st[-\s]?cyprien|saint[-\s]?cyprien|cyprien|[eé]tats)/i.test(t)) {
     return null;
   }
 
@@ -260,6 +283,14 @@ function matchWelcomeFaq(text, { persona, lastBot } = {}) {
   }
 
   if (enfant) {
+    const ages = [...String(t).matchAll(/\b([1-9]|1[0-6])\s*ans\b/gi)].map((m) => Number(m[1]));
+    if (ages.some((n) => n < 3) && ages.some((n) => n >= 3 && n <= 6)) {
+      return {
+        reply:
+          'Moins de **3 ans** : trop jeune. Dès **3 ans** (donc 4 ans) : **Baby Boxe**, approche ludique — pas la boxe anglaise adulte.',
+        source: 'faq-v4',
+      };
+    }
     const band = kidsAgeBand(t);
     if (band === 'too-young') {
       return {
@@ -759,6 +790,8 @@ module.exports = {
   matchPlanningFollowup,
   matchKidsPlanning,
   matchNamedGymFollowup,
+  lastChosenGymId,
+  kidsPlanningIntent,
   isClubOpeningHours,
   similarityScore,
 };

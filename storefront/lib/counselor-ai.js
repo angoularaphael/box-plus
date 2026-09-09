@@ -7,11 +7,14 @@ const {
   pickVariant,
 } = require('./welcome-knowledge');
 const { resolvePersona } = require('./counselor-personas');
-const { buildKnowledge, GYMS, detectGyms, fallbackFromKnowledge, planningContext, wantsKids } = require('./bc-knowledge');
+const { buildKnowledge, GYMS, detectGyms, fallbackFromKnowledge, planningContext, wantsKids, PLANNING_HUB } = require('./bc-knowledge');
 const {
   matchWelcomeFaq,
   matchPlanningFollowup,
+  matchKidsPlanning,
   matchNamedGymFollowup,
+  lastChosenGymId,
+  kidsPlanningIntent,
   isClubOpeningHours,
 } = require('./welcome-faq');
 
@@ -410,13 +413,17 @@ function cleanWelcomeReply(content, fallback) {
 const PLANNING_ASK =
   /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours/i;
 
-function planningFromKnowledge(text, persona, lastBot) {
+function planningFromKnowledge(text, persona, lastBot, messages) {
   const t = String(text || '');
   const vous = persona && persona.id === 'fabien';
-  const ids = detectGyms(t);
+  let ids = detectGyms(t);
+  if (ids.length !== 1) {
+    const remembered = lastChosenGymId(messages);
+    if (remembered) ids = [remembered];
+  }
   const kidsCtx =
     wantsKids(t) ||
-    /Baby Boxe|Boxe Éducative|educative|\b3 ans\b|7–11|12–16|cours enfants|pieds-poings 3/i.test(String(lastBot || ''));
+    kidsPlanningIntent(t, lastBot, messages);
   const block = planningContext(t) || '';
   const all = block
     .split('\n')
@@ -474,8 +481,8 @@ function planningFromKnowledge(text, persona, lastBot) {
   }
   return {
     reply: vous
-      ? 'Quelle salle vous arrange ? **Minimes**, **Portet**, **Ramonville**, **Saint-Cyprien** ou **États-Unis** ? Je vous donne alors les créneaux (jour, heure, coach).'
-      : 'Quelle salle te va ? **Minimes**, **Portet**, **Ramonville**, **Saint-Cyprien** ou **États-Unis** ? Je te donne ensuite les créneaux (jour, heure, coach).',
+      ? `Pour le **planning**, quelle salle vous arrange ? **Minimes**, **Portet**, **Ramonville**, **Saint-Cyprien** ou **États-Unis** ? Ou [tous les plannings](${PLANNING_HUB}).`
+      : `Pour le **planning**, quelle salle te va ? **Minimes**, **Portet**, **Ramonville**, **Saint-Cyprien** ou **États-Unis** ? Ou [tous les plannings](${PLANNING_HUB}).`,
     source: 'knowledge-planning',
   };
 }
@@ -499,7 +506,7 @@ function welcomeFallbackReply(lastUser, lastBot, persona) {
     if (hours) return hours;
   }
   if (PLANNING_ASK.test(lastUser) && !(/\bessai\b|10\s*€/i.test(lastUser) && !/planning|horaire/i.test(lastUser))) {
-    return planningFromKnowledge(lastUser, persona, lastBot);
+    return planningFromKnowledge(lastUser, persona, lastBot, []);
   }
   const kidsReply = fallbackFromKnowledge(lastUser, { vous: persona && persona.id === 'fabien' });
   if (kidsReply) {
@@ -554,6 +561,17 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     return { ...planningFollow, persona: persona.id };
   }
 
+  const gymFollow = matchNamedGymFollowup(lastUser, lastBot, persona, messages);
+  if (gymFollow) {
+    return { ...gymFollow, persona: persona.id };
+  }
+
+  if (PLANNING_ASK.test(lastUser) && !isClubOpeningHours(lastUser)) {
+    if (!(/\bessai\b|10\s*€/i.test(lastUser) && !/planning|horaire/i.test(lastUser))) {
+      return { ...planningFromKnowledge(lastUser, persona, lastBot, messages), persona: persona.id };
+    }
+  }
+
   /* « Brésilien » contient « résili » : ne pas traiter le JJB comme une résiliation. */
   if (/(?<![A-Za-zÀ-ÿ])r[ée]sil|annul.*abo|arr[êe]ter.*abo|arreter.*abo/i.test(lastUser)) {
     const variants = persona.id === 'fabien' ? REDIRECT_DAVID_VOUS : REDIRECT_DAVID;
@@ -569,9 +587,9 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     return { reply: managerReply, source: 'managers' };
   }
 
-  const gymFollow = matchNamedGymFollowup(lastUser, lastBot, persona);
-  if (gymFollow) {
-    return { ...gymFollow, persona: persona.id };
+  const faqHit = matchWelcomeFaq(lastUser, { persona, lastBot });
+  if (faqHit) {
+    return { ...faqHit, persona: persona.id };
   }
 
   const fallback = pickVariant(persona.fallbacks);
@@ -607,6 +625,13 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
       { maxTokens: 320, temperature: 0.75 }
     );
     let reply = cleanWelcomeReply(content, fallback);
+
+    if (/\d{1,2}\s*h\s*\d{2}/.test(reply) && (PLANNING_ASK.test(lastUser) || kidsPlanningIntent(lastUser, lastBot, messages))) {
+      const alt =
+        matchKidsPlanning(lastUser, lastBot, persona, messages) ||
+        planningFromKnowledge(lastUser, persona, lastBot, messages);
+      if (alt) return { ...alt, persona: persona.id, source: 'guard-planning' };
+    }
 
     if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
       const alt = matchWelcomeFaq(lastUser, { persona, lastBot }) || welcomeFallbackReply(lastUser, lastBot, persona);

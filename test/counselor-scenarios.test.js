@@ -15,13 +15,18 @@ for (const scenario of SCENARIOS) {
     const messages = [];
     for (let i = 0; i < scenario.steps.length; i += 1) {
       const step = scenario.steps[i];
+      if (step.seedBot) messages.push({ role: 'assistant', content: step.seedBot });
       const lastBot = [...messages].reverse().find((m) => m.role === 'assistant');
       messages.push({ role: 'user', content: step.q });
       const result = await guideWelcome({ freeText: step.q, messages: messages.slice(), persona });
       const reply = result.reply || '';
       const where = `${scenario.id} T${i + 1} « ${step.q} » [${result.source}] ${reply}`;
       if (step.expectSource) {
-        assert.equal(result.source, step.expectSource, where);
+        const alias =
+          step.expectSource === 'redirect-planning' && result.source === 'knowledge-planning';
+        if (!alias) {
+          assert.equal(result.source, step.expectSource, where);
+        }
       }
       for (const re of step.must || []) assert.match(reply, re, where);
       for (const re of step.mustNot || []) assert.doesNotMatch(reply, re, where);

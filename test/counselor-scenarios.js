@@ -211,6 +211,37 @@ module.exports = [
     ],
   },
   {
+    id: 'screenshot-fils-3-ans-minimes-pas-manager',
+    persona: 'chloe',
+    steps: [
+      step('Mon fils a 3 ans et veut boxer', { must: [/Baby Boxe/i], failIf: [/\d{1,2}h\d{2}/] }),
+      step('Minimes', {
+        must: [/Minimes/, /planning/i, /minimes/i],
+        mustNot: [/Le manager de \*\*Minimes\*\*/],
+        failIf: [/Le manager de/],
+      }),
+      step('Le planning', {
+        must: [/Minimes|minimes/i, /planning/i],
+        mustNot: [/Quelle salle te va/],
+      }),
+      step('Minime', { must: [/Minimes|minimes/i] }),
+    ],
+  },
+  {
+    id: 'screenshot-groq-mehdi-puis-minimes',
+    persona: 'chloe',
+    steps: [
+      {
+        q: 'Minimes',
+        seedBot:
+          'Baby Boxe accueille les enfants dès **3 ans**: cours ludiques. à **Saint-Cyprien** 14h15–15h00 avec le coach **Mehdi B.** Dis-moi dans quel club tu souhaites inscrire ton petit ?',
+        must: [/Minimes/, /planning/i],
+        failIf: [/Le manager de/],
+        mustNot: [/dis-moi juste ce que tu cherches/i],
+      },
+    ],
+  },
+  {
     id: 're-enchaîne-planning-salles',
     persona: 'chloe',
     steps: [

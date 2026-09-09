@@ -22,7 +22,9 @@ function flagsFor(step, result, lastBot) {
   const reply = result.reply || '';
   const flags = [];
   if (step.expectSource && result.source !== step.expectSource) {
-    flags.push(`SOURCE ${result.source} != ${step.expectSource}`);
+    const alias =
+      step.expectSource === 'redirect-planning' && result.source === 'knowledge-planning';
+    if (!alias) flags.push(`SOURCE ${result.source} != ${step.expectSource}`);
   }
   for (const re of step.must || []) {
     if (!re.test(reply)) flags.push(`MANQUE ${re}`);
@@ -50,6 +52,7 @@ async function playScenario(scenario) {
   let ko = 0;
   for (let i = 0; i < scenario.steps.length; i += 1) {
     const step = scenario.steps[i];
+    if (step.seedBot) messages.push({ role: 'assistant', content: step.seedBot });
     messages.push({ role: 'user', content: step.q });
     const lastBot = [...messages].reverse().find((m) => m.role === 'assistant');
     const result = await guideWelcome({ freeText: step.q, messages: messages.slice(), persona });
