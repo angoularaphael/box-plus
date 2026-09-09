@@ -5,7 +5,37 @@
  */
 
 const twilio = require('twilio');
-const { toE164, toGsmSafe } = require('./whatsapp-bot');
+const { toWhatsAppPhone } = require('./whatsapp-bot');
+
+function toE164(raw) {
+  const digits = toWhatsAppPhone(raw);
+  if (!digits) return null;
+  return digits.startsWith('+') ? digits : `+${digits}`;
+}
+
+function toGsmSafe(text) {
+  return String(text || '')
+    .replace(/€/g, 'euros')
+    .replace(/[‘’‚‛‹›]/g, "'")
+    .replace(/[“”„«»]/g, '"')
+    .replace(/[—–]/g, '-')
+    .replace(/œ/g, 'oe')
+    .replace(/Œ/g, 'OE')
+    .replace(/ê/g, 'e')
+    .replace(/Ê/g, 'E')
+    .replace(/î/g, 'i')
+    .replace(/Î/g, 'I')
+    .replace(/ô/g, 'o')
+    .replace(/Ô/g, 'O')
+    .replace(/â/g, 'a')
+    .replace(/Â/g, 'A')
+    .replace(/\*/g, '')
+    .replace(/~/g, '-')
+    .replace(/[🚀🔥💥⏳🥊🚨]/g, '')
+    .replace(/ +/g, ' ')
+    .replace(/ +\n/g, '\n')
+    .trim();
+}
 
 let _client = null;
 
