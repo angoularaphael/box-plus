@@ -21,6 +21,8 @@ const V4_TEXT = fs.readFileSync(V4_PATH, 'utf8').replace(/\r\n/g, '\n');
  * SALLES — détection de la question (adresses = section 3 de la V4)
  * ------------------------------------------------------------------ */
 
+const PLANNING_HUB = 'https://boxingcenter.fr/salle-de-sport-toulouse/';
+
 const GYMS = {
   minimes: {
     label: 'Minimes',
@@ -28,6 +30,7 @@ const GYMS = {
     address: '12 rue de Fenouillet, 31200 Toulouse',
     manager: 'Mehdi',
     url: 'https://boxe-toulouse.com/',
+    planningUrl: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/',
     match: /minimes|barri[eè]re\s*de\s*paris|fenouillet/i,
     planningKey: 'planning-minimes',
   },
@@ -37,6 +40,7 @@ const GYMS = {
     address: '33 rue des Ormes, 31520 Ramonville-Saint-Agne',
     manager: 'Pascal',
     url: 'https://mmatoulouse.com/',
+    planningUrl: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/',
     match: /ramonville|saint[-\s]?agne|des\s+ormes/i,
     planningKey: 'planning-ramonville',
   },
@@ -46,6 +50,7 @@ const GYMS = {
     address: '11 rue Sainte-Lucie, 31300 Toulouse',
     manager: 'Dadi',
     url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/',
+    planningUrl: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/',
     match: /st[-\s]?cyprien|saint[-\s]?cyprien|sainte[-\s]?lucie|fer\s+[àa]\s+cheval/i,
     planningKey: 'planning-saint-cyprien',
   },
@@ -55,6 +60,7 @@ const GYMS = {
     address: "61 route d'Espagne, 31120 Portet-sur-Garonne",
     manager: 'Valentin',
     url: 'https://boxing-center-portet.fr/',
+    planningUrl: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/',
     match: /portet|route\s+d['’]espagne/i,
     planningKey: 'planning-portet',
   },
@@ -64,6 +70,7 @@ const GYMS = {
     address: '388 avenue des États-Unis, 31200 Toulouse',
     manager: 'Sébastien',
     url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/',
+    planningUrl: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/',
     match: /[eé]tats[-\s]?unis|lalande|33\s?b/i,
     planningKey: 'planning-etats-unis',
   },
@@ -337,6 +344,7 @@ module.exports = {
   SECTIONS,
   PLANNINGS,
   GYM_INDEX,
+  PLANNING_HUB,
   V4_PATH,
   detectGyms,
   planningContext,

@@ -80,9 +80,41 @@ test('guideWelcome renvoie le conseiller retenu', async () => {
   assert.equal(d.persona, 'chloe');
 });
 
-test('Jiu-Jitsu Brésilien n’est pas traité comme une résiliation', async () => {
+test('une question horaire envoie vers la page planning de la salle', async () => {
   const r = await guideWelcome({
     freeText: 'horaire du Jiu-Jitsu Brésilien lundi à États-Unis',
+    messages: [],
+    persona: 'chloe',
+  });
+  assert.equal(r.source, 'redirect-planning');
+  assert.match(r.reply, /voir le planning/);
+  assert.match(r.reply, /etats-unis/i);
+});
+
+test('sans salle, le planning renvoie vers la page de tous les plannings', async () => {
+  const r = await guideWelcome({
+    freeText: 'je veux voir le planning',
+    messages: [],
+    persona: 'fabien',
+  });
+  assert.equal(r.source, 'redirect-planning');
+  assert.match(r.reply, /tous les plannings/);
+  assert.match(r.reply, /salle-de-sport-toulouse/);
+  assert.match(r.reply, /vous|consultez/i);
+});
+
+test('une séance d’essai n’est pas traitée comme une demande de planning', async () => {
+  const r = await guideWelcome({
+    freeText: 'je veux une séance d’essai à 10 €',
+    messages: [],
+    persona: 'chloe',
+  });
+  assert.notEqual(r.source, 'redirect-planning', r.reply);
+});
+
+test('Jiu-Jitsu Brésilien n’est pas traité comme une résiliation', async () => {
+  const r = await guideWelcome({
+    freeText: 'c’est quoi le Jiu-Jitsu Brésilien',
     messages: [],
     persona: 'chloe',
   });

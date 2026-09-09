@@ -7,7 +7,7 @@ const {
   pickVariant,
 } = require('./welcome-knowledge');
 const { resolvePersona } = require('./counselor-personas');
-const { buildKnowledge } = require('./bc-knowledge');
+const { buildKnowledge, GYMS, detectGyms, PLANNING_HUB } = require('./bc-knowledge');
 
 const KNOWLEDGE = `
 Tu es David, conseiller virtuel Boxing Center (Toulouse). Tu aides les adhérents sur le parcours « Gérer mon abonnement ».
@@ -428,10 +428,44 @@ function welcomeFallbackReply(lastUser, lastBot, persona) {
   return { reply: pickVariant(generic), source: 'template' };
 }
 
+const PLANNING_ASK =
+  /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours/i;
+
+function matchPlanningRedirect(text, persona) {
+  const t = String(text || '');
+  if (!PLANNING_ASK.test(t)) return null;
+  if (/\bessai\b|10\s*€/i.test(t) && !/planning|horaire/i.test(t)) return null;
+
+  const vous = persona && persona.id === 'fabien';
+  const ids = detectGyms(t);
+  if (ids.length === 1) {
+    const g = GYMS[ids[0]];
+    const link = `[voir le planning](${g.planningUrl})`;
+    return {
+      reply: vous
+        ? `Le planning de **${g.label}** est sur la page de la salle : ${link}.`
+        : `Le planning de **${g.label}**, c’est ici : ${link}.`,
+      source: 'redirect-planning',
+    };
+  }
+  const hub = `[tous les plannings](${PLANNING_HUB})`;
+  return {
+    reply: vous
+      ? `Le plus simple : consultez ${hub}. Dites-moi la salle (Minimes, Ramonville, St-Cyprien, Portet ou États-Unis) pour le lien direct.`
+      : `Le plus simple : ouvre ${hub}. Dis-moi ta salle (Minimes, Ramonville, St-Cyprien, Portet ou États-Unis) pour le lien direct.`,
+    source: 'redirect-planning',
+  };
+}
+
 async function guideWelcome({ freeText, messages = [], persona: personaId } = {}) {
   const persona = resolvePersona(personaId);
   const lastUser = lastMemberMessage(messages, freeText);
   const lastBot = lastAssistantMessage(messages);
+
+  const planningRedirect = matchPlanningRedirect(lastUser, persona);
+  if (planningRedirect) {
+    return { ...planningRedirect, persona: persona.id };
+  }
 
   /* « Brésilien » contient « résili » : ne pas traiter le JJB comme une résiliation. */
   if (/(?<![A-Za-zÀ-ÿ])r[ée]sili|annul.*abo|arr[êe]ter.*abo|arreter.*abo/i.test(lastUser)) {
