@@ -127,7 +127,7 @@ function cleanReply(content, fallback) {
   let reply = String(content || '')
     .replace(/^```[\w]*\n?|```$/g, '')
     .replace(/^(bonjour|bonsoir|salut)[\s,!.:;-]*/i, '')
-    .replace(/\benviron\s+29(?:,99)?\s*€/gi, '29 €')
+    .replace(/\benviron\s+29\s*€/gi, '29 €')
     .replace(/je (peux|vais|lance|lance\s+la)\s+suspend/gi, 'votre manager peut suspend')
     .replace(/on (peut|va)\s+suspend/gi, 'votre manager peut suspend')
     .trim();
@@ -317,8 +317,8 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
 }
 
 const WELCOME_FALLBACKS = [
-  'Je peux t’aider sur les offres **29 €** / **259 €**, les 5 salles, l’essai, les CGV ou le règlement — dis-moi juste ce que tu cherches.',
-  'Offres, salles, essai ou docs légaux : je te guide. Tu veux partir sur quoi en premier ?',
+  'Je peux t’aider sur les offres **29,99 €** / **259 €**, les 5 salles, l’essai ou le règlement — dis-moi juste ce que tu cherches.',
+  'Offres, salles, essai ou docs : je te guide. Tu veux partir sur quoi en premier ?',
   'Dis-moi ce qui t’intéresse — formule, salle, séance d’essai ou formalités — et je te réponds direct.',
 ];
 
@@ -340,14 +340,14 @@ const REDIRECT_DAVID_VOUS = [
 
 const FAQ_VARIANTS = {
   offer29: [
-    'L’offre à **29 €** / 4 semaines : 1ʳᵉ échéance CB ou PayPal, puis prélèvement, **sans engagement** ni préavis. Accès aux **5 salles** et toutes les disciplines.',
-    '**29 €** toutes les 4 semaines, sans engagement : tu paies la 1ʳᵉ fois (CB/PayPal), puis prélèvement. Multi-salles + toutes disciplines.',
-    'Formule flexible : **29 €** / 4 sem., résiliable sans préavis. Accès libre aux 5 clubs Boxing Center.',
+    'L’offre promo sans engagement : **29,99 € toutes les 4 semaines** (28 jours, pas un mois). Cours illimités, accès aux salles de l’offre, résiliation sous réserve du délai technique de **72 h**.',
+    '**29,99 €** / 4 semaines, sans engagement de durée. Ce n’est pas un prélèvement mensuel : 4 semaines = 28 jours.',
+    'Formule flexible : **29,99 €** toutes les 4 semaines, cours illimités. L’ancienne grille affichait environ 44,99 €.',
   ],
   offer259: [
-    'L’offre à **259 €** / 12 mois : **1×** par carte ou PayPal, ou **4× sans frais** : **64,75 €** PayPal ou CB (64,75 € aujourd’hui par CB puis RIB pour les 3 autres). Accès illimité aux 5 salles.',
-    '**259 €** pour 12 mois. En 4× PayPal : montant total, échéancier PayPal si éligible. En 4× CB : 64,75 € aujourd’hui puis RIB.',
-    'Saison à **259 €** : un an d’accès 5 salles. 1× carte/PayPal, ou 4× sans frais PayPal ou CB (64,75 € + RIB).',
+    'L’offre année : **259 € / 12 mois** (prix normal affiché 400 €). C’est l’option la plus économique si tu pratiques toute l’année.',
+    '**259 €** pour 12 mois, cours illimités et accès aux salles de l’offre — plus avantageux que le 29,99 € / 4 semaines sur la durée.',
+    'Saison à **259 €** : un an, cours illimités. À prendre si tu sais que tu vas t’entraîner sur l’année.',
   ],
   gyms: [
     '5 salles : **Minimes**, **Ramonville**, **St-Cyprien**, **Portet**, **États-Unis**. Accès **du lundi au samedi, 10h–21h30**. Managers : Mehdi, Pascal, Dadi, Valentin, Sébastien.',
@@ -370,9 +370,9 @@ const FAQ_VARIANTS = {
     'Pas de remboursement badge à la résiliation : tu conserves le badge, le prélèvement badge correspond à la fourniture/activation.',
   ],
   longTerm: [
-    'Sur **12 mois**, le plus économique reste **259 €** (1× ou 4× sans frais) — bien moins cher que 29 € / 4 sem. sur la durée. Je te conseille cette formule si tu es sûr(e) de t’entraîner.',
-    'Pour le **long terme**, prends **259 € / 12 mois** : meilleur prix annuel. Le **29 € / 4 sem.** convient si tu veux rester **sans engagement**.',
-    'Mon conseil économique : **259 €** pour l’année. Le 29 € / 4 sem., c’est la flexibilité — plus coûteux sur 12 mois.',
+    'Sur **12 mois**, le plus économique reste **259 €** — bien moins cher que **29,99 € / 4 sem.** sur la durée. Je te conseille cette formule si tu es sûr(e) de t’entraîner.',
+    'Pour le **long terme**, prends **259 € / 12 mois** : meilleur prix annuel. Le **29,99 € / 4 sem.** convient si tu veux rester **sans engagement**.',
+    'Mon conseil économique : **259 €** pour l’année. Le 29,99 € / 4 sem., c’est la flexibilité — plus coûteux sur 12 mois.',
   ],
 };
 
@@ -422,7 +422,7 @@ function welcomeFallbackReply(lastUser, lastBot, persona) {
   if (/moins cher|économ|long terme|longue dur[eé]e|sur la dur[eé]e|meilleur prix/i.test(lastUser)) {
     return { reply: pick('longTerm'), source: 'faq' };
   }
-  if (/essai|10\s*€|d[eé]butant/i.test(lastUser)) {
+  if (/essai|10\s*€/i.test(lastUser)) {
     return { reply: pick('trial'), source: 'faq' };
   }
   return { reply: pickVariant(generic), source: 'template' };
@@ -448,13 +448,6 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     return { reply: managerReply, source: 'managers' };
   }
 
-  if (/badge.*(rembours|rendre|restitu)|rembours.*badge/i.test(lastUser)) {
-    return { reply: pickVariant(FAQ_VARIANTS.badgeRefund), source: 'faq-badge' };
-  }
-  if (/moins cher|économ|long terme|longue dur[eé]e|sur la dur[eé]e|meilleur prix/i.test(lastUser)) {
-    return { reply: pickVariant(FAQ_VARIANTS.longTerm), source: 'faq-longterm' };
-  }
-
   const fallback = pickVariant(persona.fallbacks);
   if (!isAiEnabled()) {
     return { ...welcomeFallbackReply(lastUser, lastBot, persona), persona: persona.id };
@@ -464,14 +457,14 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     const transcript = buildTranscript(messages, freeText).replace(/David:/g, `${persona.name}:`);
     const { content } = await chatCompletion(
       [
-        /* Base validée du 18/08/2026 : socle commun + planning de la salle concernée. */
+        /* Base V4 uniquement : pas le catalogue boutique. */
         { role: 'system', content: buildKnowledge(`${lastUser}\n${freeText || ''}`) },
-        /* Même base de connaissances pour tous : seule la voix change. */
         { role: 'system', content: persona.tone },
         {
           role: 'user',
           content: [
-            'Réponds au visiteur boutique. Réponse directe, factuelle, sans formule de fin. Si managers : noms exacts de la base.',
+            'Réponds au visiteur de boxingcenter.fr à partir de la base V4 seulement. Réponse directe, factuelle, sans formule de fin.',
+            'Aucun tarif, horaire, coach ou offre hors de cette base. Le 29,99 € / 4 semaines de la V4 ne doit pas être arrondi à 29 €.',
             'Si la question porte sur un horaire : uniquement des créneaux présents dans les plannings fournis, avec le coach. Aucun créneau inventé.',
             'Rédige une réponse utile et **différente** de ta précédente (autre angle / autre formulation).',
             `Reste dans la voix de ${persona.name} : les faits ne changent pas, la façon de les dire oui.`,

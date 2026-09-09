@@ -3,8 +3,8 @@
 /**
  * Conseillers d'accueil (Chloe / Fabien / Nassim) — couche managers.
  *
- * Les faits vivent désormais dans `bc-knowledge.js` (base validée du 18/08/2026,
- * source documentaire : word_press/info_bot/). Ce module ne garde que :
+ * Les faits vivent désormais dans `bc-knowledge.js` (document V4, 18/08/2026).
+ * Ce module ne garde que :
  *   - MANAGERS : les responsables de salle en présentiel (utilisé aussi par gym-pickup) ;
  *   - matchManagerFromText : réponse directe à « qui est le manager de X ? » ;
  *   - WELCOME_KNOWLEDGE : socle sans planning, conservé pour compatibilité.

@@ -126,6 +126,7 @@ window.BCChloe = (function () {
               }
             } else {
               const payload = {
+                persona: 'chloe',
                 free_text: msg,
                 messages: history
                   .filter((h) => h.role === 'user' || h.role === 'bot')

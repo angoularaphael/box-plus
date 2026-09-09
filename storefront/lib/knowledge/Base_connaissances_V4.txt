@@ -1,0 +1,982 @@
+BASE DE CONNAISSANCES – AGENTS IA BOXING CENTER
+Version de travail : 18/08/2026
+Objet : contenu opérationnel destiné aux agents IA du site Boxing Center
+Périmètre des plannings intégrés : Toulouse Minimes / Barrière de Paris, Ramonville-Saint-Agne, Toulouse Saint-Cyprien, Toulouse États-Unis.
+Périmètre des fiches salles fourni : Minimes, Portet-sur-Garonne, Ramonville, Saint-Cyprien, États-Unis.
+
+======================================================================
+1. RÈGLES PRIORITAIRES DE L’AGENT IA
+======================================================================
+
+1.1. Positionnement commercial
+L’agent IA Boxing Center a une mission d’information ET de conversion commerciale.
+Il doit :
+- rassurer les débutants, les personnes peu ou pas sportives et les personnes qui reprennent une activité ;
+- expliquer que la très grande majorité des cours collectifs sont accessibles aux débutants ;
+- rappeler que les coachs adaptent les exercices, l’intensité et les consignes au niveau du pratiquant ;
+- orienter vers une séance d’essai quand la personne hésite ;
+- proposer la formule d’abonnement la plus cohérente avec le besoin du prospect ;
+- mettre en avant les offres promotionnelles en cours lorsqu’elles sont applicables ;
+- éviter toute pression excessive, promesse irréaliste ou affirmation non vérifiée.
+
+1.2. Règle générale d’accessibilité
+Sauf mention explicite « compétiteurs », « compétition », « confirmés » ou restriction d’âge/sexe :
+- les cours collectifs Boxing Center sont à présenter comme accessibles à tous les niveaux ;
+- les débutants sont acceptés ;
+- les personnes non sportives ou en reprise peuvent commencer en adaptant l’intensité ;
+- hommes et femmes sont acceptés dans les cours mixtes ;
+- les coachs peuvent adapter les exercices et l’intensité pour des raisons de sécurité.
+
+Les cours identifiés « compétiteurs » sont réservés à un public confirmé / compétiteur et ne doivent pas être proposés comme cours de découverte à un débutant.
+
+1.3. Interprétation obligatoire des libellés planning
+- « ASSO MMA » = « MMA tous niveaux – débutants acceptés ».
+- « ASSO MMA ENFANTS 10/16 ans » = « MMA enfants / ados 10 à 16 ans ».
+- « ANGLAISE » = Boxe Anglaise.
+- « BOXE PIEDS POINGS » = cours de boxe pieds-poings / striking, à rapprocher des contenus Boxe Thaï / Kick Boxing / K1 selon le contexte du planning.
+- « BOXE THAI / K1 » = Boxe Thaïlandaise / Kick Boxing K1.
+- « LADY PUNCH » = activité 100 % féminine mêlant boxe anglaise et pieds-poings sur sacs.
+- « BOXING LADY » = préparation physique spécifique boxe, 100 % féminine.
+- « ACCÈS LIBRE » = créneau d’entraînement autonome ; ce n’est pas un cours collectif encadré et aucun coach de cours ne doit être inventé.
+- « BOXE ÉDUCATIVE COMPÉTITEURS » et « BOXE COMPÉTITEURS » = public confirmé / compétiteur.
+
+1.4. Règle sur les plannings
+Les horaires ci-dessous sont issus des plannings de rentrée 2026 transmis.
+L’agent doit donner :
+- la salle ;
+- le jour ;
+- l’heure de début ;
+- l’heure de fin ;
+- le cours ;
+- le coach ;
+- le public concerné lorsque nécessaire.
+
+Ne jamais déduire un cours absent du planning.
+Lorsqu’un cours est simultané à un autre dans la même salle, conserver les deux lignes.
+
+======================================================================
+2. CONTENU DES DISCIPLINES – EXPLICATIONS À DONNER AUX PROSPECTS
+======================================================================
+
+2.1. MMA – Mixed Martial Arts
+Description agent :
+Le MMA combine plusieurs dimensions du combat : techniques de frappe debout, lutte, amenées au sol, contrôle au sol et soumissions. Les cours Boxing Center sont encadrés et progressifs. Les cours « MMA » et « ASSO MMA » du planning sont accessibles aux débutants comme aux pratiquants confirmés, sauf mention explicite d’un groupe compétiteur.
+
+Argument rassurant :
+« Vous pouvez commencer le MMA sans expérience préalable. Le coach adapte les exercices à votre niveau et vous fait progresser étape par étape. »
+
+Objectifs :
+- apprendre les fondamentaux du striking, de la lutte et du sol ;
+- améliorer coordination, cardio, technique et confiance ;
+- progresser du loisir jusqu’à la compétition pour ceux qui le souhaitent.
+
+2.2. Boxe Anglaise
+Description agent :
+Discipline de percussion utilisant principalement les poings, avec travail de garde, déplacements, esquives, coordination, enchaînements, technique sur sacs / pattes d’ours et, lorsque la séance le prévoit, travail avec partenaire.
+
+Accessibilité :
+Les cours loisirs sont adaptés aux débutants et aux pratiquants confirmés. Les groupes « compétiteurs » sont réservés aux boxeurs confirmés engagés dans une logique de compétition.
+
+Argument rassurant :
+« Il n’est pas nécessaire d’avoir déjà boxé. Les débutants apprennent d’abord la garde, les déplacements et les coups de base, avec une intensité progressive. »
+
+2.3. Boxe Thaïlandaise / Muay Thaï / K1 / Boxe Pieds-Poings
+Description agent :
+Cours de combat debout axés sur les techniques de percussion. La Boxe Thaï utilise poings, pieds, genoux et coudes ; les cours K1 / pieds-poings travaillent principalement les enchaînements de frappes, déplacements, défenses et condition physique selon le cadre de la séance.
+
+Accessibilité :
+Accessible aux débutants et confirmés, sauf cours explicitement compétiteurs.
+
+Argument rassurant :
+« Vous pouvez venir sans expérience : le coach vous apprend les bases et adapte les exercices avant d’aller vers des enchaînements plus techniques. »
+
+2.4. Boxe Éducative – Enfants / Ados
+Baby Boxe dès 3 ans :
+Approche ludique et éducative des bases de la boxe. L’objectif est la motricité, la coordination, l’équilibre, l’écoute des consignes et le plaisir de bouger. La recherche d’efficacité des coups n’est pas l’objectif.
+
+Boxe Éducative 7–11 ans :
+Apprentissage progressif des mouvements de base, coordination, équilibre, discipline, respect des règles, partage et entraide.
+
+Boxe Éducative 12–16 ans :
+Progression technique adaptée aux adolescents, avec apprentissage structuré de la boxe, développement physique et respect des consignes.
+
+Boxe Éducative Compétiteurs :
+Groupe réservé aux jeunes ayant le niveau et l’orientation compétition requis.
+
+2.5. Boxing Lady
+Description agent :
+Cours 100 % féminin de préparation physique spécifique boxe. Les séances prennent souvent la forme de circuits courts et dynamiques associant cardio-training, renforcement musculaire et mouvements inspirés de la boxe, généralement sans opposition.
+
+Public :
+Femmes de tous niveaux, y compris débutantes et personnes en reprise sportive.
+
+2.6. Lady Punch
+Description agent :
+Cours 100 % féminin combinant boxe anglaise et techniques pieds-poings sur sacs de frappe. Travail d’enchaînements, cardio, coordination, renforcement musculaire et technique, dans un cadre sécurisé.
+
+Public :
+Femmes de tous niveaux.
+
+2.7. HYROX
+Description agent :
+Entraînement hybride combinant endurance et force, avec alternance de course et d’exercices fonctionnels. Les séances développent cardio, force fonctionnelle, endurance musculaire et capacité à gérer un effort prolongé.
+
+Public :
+Mixte et accessible à tous les niveaux. L’intensité est adaptable.
+
+2.8. Open Sparring
+Description agent :
+Séance encadrée de mises de gants / opposition destinée à perfectionner le sparring. Les partenaires sont choisis en tenant compte du gabarit, de l’expérience et du niveau. La séance débute par un échauffement et reste sous contrôle du coach.
+
+Important :
+Même si la page présente l’Open Sparring comme adaptable, l’agent doit éviter de le recommander comme première séance à une personne totalement débutante. Pour une découverte, proposer d’abord un cours technique loisir ou une séance d’essai adaptée.
+
+2.9. Boxing Camp
+Description agent :
+Cours associant les fondamentaux de la boxe à une préparation physique complète inspirée des méthodes d’entraînement des boxeurs : fractionné sur sacs, corde à sauter, shadow boxing, cardio et renforcement musculaire. Il n’est pas nécessaire de faire de l’opposition.
+
+Public :
+Tous niveaux, débutants inclus.
+
+2.10. Cross Training
+Description agent :
+Entraînement fonctionnel en circuits alternés sollicitant cardio, force, puissance, agilité, athlétisme, coordination et mental. Les exercices peuvent venir du fitness, de la gymnastique, de l’athlétisme ou du travail de force.
+
+Public :
+Tous niveaux, avec adaptation des charges et de l’intensité.
+
+2.11. Grappling
+Description agent :
+Discipline de lutte au sol sans frappes, centrée sur les projections, contrôles, transitions et soumissions. Elle permet de découvrir le combat au sol dans un cadre progressif.
+
+Public :
+Débutants et confirmés. Bonne option pour une personne souhaitant apprendre le combat au sol sans recevoir de coups.
+
+2.12. Jiu-Jitsu Brésilien (JJB)
+Description agent :
+Art de combat au sol fondé sur le contrôle, les transitions, leviers et soumissions, sans frappes. Les cours sont progressifs et peuvent se pratiquer selon l’organisation du club en gi ou no-gi.
+
+Public :
+Débutants et confirmés.
+
+2.13. Savate / Boxe Française
+Description agent :
+Sport de combat pieds-poings utilisant des techniques de poings et de coups de pied codifiées, avec travail de déplacements, précision, enchaînements, défense et condition physique.
+
+Public :
+Tous niveaux sauf groupe explicitement compétiteur.
+
+2.14. Boxing HIIT
+Description opérationnelle :
+Cours de haute intensité inspiré du boxing fitness, alternant séquences de frappe / mouvements de boxe et exercices cardio ou de renforcement sur des intervalles courts.
+
+Public :
+Tous niveaux lorsque le planning ne mentionne pas de restriction ; l’intensité doit être adaptée par le coach.
+Note : aucune page discipline dédiée « Boxing HIIT » n’a été fournie dans le brief initial ; cette description est une formulation opérationnelle cohérente avec le concept Boxing Fitness / entraînement fractionné.
+
+======================================================================
+3. SALLES – INFORMATIONS PRATIQUES ET POSITIONNEMENT
+======================================================================
+
+3.1. Toulouse Minimes / Barrière de Paris
+Adresse : 12 rue de Fenouillet, 31200 Toulouse.
+Repères : environ 5 minutes du métro ligne B – Barrière de Paris ; sortie rocade n°31 – Les Minimes.
+Positionnement :
+- salle historique Boxing Center ;
+- forte identité Boxe Anglaise ;
+- 3 rings de boxe ;
+- sacs de frappe ;
+- musculation, charges libres, Cross Training ;
+- espace cardio ;
+- cours loisirs et compétiteurs ;
+- Boxing Lady / Lady Punch, Boxing Camp, Boxe Éducative, accès libre.
+
+Horaires généraux indiqués sur la page salle : lundi au samedi, 10h00–21h30.
+
+3.2. Portet-sur-Garonne
+Adresse : 61 route d’Espagne, 31120 Portet-sur-Garonne.
+Positionnement :
+- très grande salle ;
+- espace Cross Training d’environ 400 m² ;
+- espace boxe d’environ 500 m² ;
+- ring olympique, tatamis, panneaux MMA, nombreux sacs de frappe ;
+- Boxe Anglaise, Boxe Française / Savate, Kick Boxing / K1, MMA, Grappling, Boxe Éducative, Lady Kick, Boxing Lady, préparation physique, musculation / fitness.
+
+Horaires généraux indiqués sur la page salle : lundi au samedi, 10h00–21h30.
+
+Le planning Portet 2026–2027 est désormais intégré à la présente base dans la section 8 bis.
+
+3.3. Ramonville-Saint-Agne
+Adresse : 33 rue des Ormes, 31520 Ramonville-Saint-Agne.
+Positionnement :
+- complexe sports de combat sur deux niveaux ;
+- étage musculation / cardio ;
+- espaces libres et collectifs ;
+- octogone de 7 m ;
+- ring de boxe olympique ;
+- espace extérieur protégé d’environ 300 m² ;
+- Boxe Anglaise, Boxe Éducative, Baby Boxe, Boxe Pieds-Poings, Boxing Lady, Kick Boxing, Grappling, Boxing Camp, Hyrox.
+
+Horaires généraux indiqués sur la page salle : lundi au samedi, 10h00–21h30.
+
+3.4. Toulouse Saint-Cyprien
+Adresse : 11 rue Sainte-Lucie, 31300 Toulouse.
+Repère : proximité du rond-point du Fer à Cheval.
+Positionnement :
+- salle de centre-ville ;
+- musculation et cardio ;
+- ring, tatamis et sacs de frappe ;
+- Boxe Anglaise, Boxe Thaï/K1, Kick Boxing ;
+- Boxing Lady, Baby Boxe, Boxe Éducative ;
+- Boxing Camp, Cross Training, HYROX ;
+- accès libre.
+
+Horaires généraux indiqués sur la page salle : lundi au samedi, 10h00–21h30.
+
+3.5. Toulouse États-Unis
+Adresse : 388 avenue des États-Unis, 31200 Toulouse.
+Repère : proximité de la sortie de périphérique 33b « Lalande ».
+Positionnement :
+- salle XXL d’environ 1 200 m² ;
+- 3 zones d’environ 400 m² ;
+- espace striking et travail au sol / grappling avec cage et tatamis ;
+- espace boxe avec rings de compétition et tapis ;
+- espace préparation physique avec musculation, cardio, Cross Training, sacs de frappe ;
+- Boxe Anglaise, Boxe Pieds-Poings, MMA, Grappling, JJB, Cross Training, HYROX, Boxing Fitness.
+
+Horaires généraux indiqués sur la page salle : lundi au samedi, 10h00–21h30.
+
+======================================================================
+4. COACHS – REPÈRES UTILES POUR L’AGENT
+======================================================================
+
+Les associations cours/coach du planning priment sur toute présentation générale.
+
+Coachs disposant d’informations explicites sur le site :
+- Mehdi Boutlelis : coach référent Boxe Anglaise à Toulouse Minimes ; encadre loisir et compétition ; expérience de compétiteur de haut niveau.
+- Dadi Boutlelis : spécialiste Boxe Anglaise ; encadre loisir et compétiteurs ; intervient notamment à Saint-Cyprien.
+- Brice Durail : sports de combat et préparation physique ; enseigne notamment Boxe Thaï, Boxe Anglaise, HYROX, Boxing Camp et Cross Training.
+- Jérôme Di Gregorio : ancien combattant professionnel ; expertise striking / sports de combat ; intervient notamment à Ramonville.
+- Zouhir Boumenir : spécialiste du travail au sol, ceinture noire de Jiu-Jitsu Brésilien ; pédagogie progressive en Grappling / JJB / MMA.
+- Valentin Tapia / Valentin Guth dans le planning : entraîneur de Boxe Anglaise expérimenté. Le planning utilise le nom « Valentin Guth » ; conserver ce libellé dans la réponse sur les horaires.
+- Sonia : coach BPJEPS, spécialisée notamment dans les sports pieds-poings, Boxing Lady et Boxing Camp.
+- Renaud Chavaudra : coach référent pieds-poings à Toulouse États-Unis, expérience Full Contact / Kick-Boxing.
+
+Autres noms présents dans les plannings transmis :
+David, Clément, Chloé, Faez, Farouk, Hicham, Tawee, Yannis Chouet.
+Pour ces personnes, cette base garantit uniquement les rattachements de cours indiqués dans les plannings ci-dessous. Ne pas inventer de diplôme, palmarès ou biographie non documentés.
+
+Personnes indiquées comme « commercial » ou « alternant » dans les légendes :
+- Remus : commercial (Minimes).
+- Pascal : commercial (Ramonville).
+- Dadi / Tawee : mention « commercial » dans la légende Saint-Cyprien ; cette mention ne doit pas conduire à attribuer automatiquement un cours à ce code couleur.
+- Faez : alternant (Minimes).
+
+
+COACHS PORTET-SUR-GARONNE – SAISON 2026/2027
+
+- Valentin Tapia : Head Coach et responsable sportif. Disciplines : Boxe Anglaise loisirs, Boxe Éducative, Boxe compétiteurs. Double diplôme BPJEPS Boxe Anglaise et sports de contact. Son visuel le présente comme référent du débutant au compétiteur.
+- Samuel Pinto : Coach Kick Boxing / K1, Boxe Française, Kick enfants / ados, Lady Boxing et préparation physique. Vice-champion d’Europe et du Monde en Boxe Française, combattant semi-pro en Kick Boxing. Double licence STAPS : entraînement sportif et activité physique adaptée.
+- Nicolas Tramaçon : Coach Grappling & MMA. Formation BPJEPS sport de contact, ceinture noire en travail au sol. Profil orienté technique, discipline et progression.
+- Enzo Pioppo : Coach Grappling & MMA. BMF 2 Pancrace, ceinture noire Luta Livre. Palmarès indiqué : vice-champion d’Europe, champion du monde ceinture marron, champion de France.
+- Mourad : Coach Boxe Anglaise enfants / ados.
+- Ingrid : Coach Kick Boxing enfants / ados.
+
+RÈGLE D’ATTRIBUTION POUR LE PLANNING PORTET :
+Le planning Portet transmis ne comporte pas de code couleur nominatif par coach. Les rattachements ci-dessous sont donc réalisés à partir des disciplines explicitement indiquées sur les visuels coachs :
+- Boxe Anglaise adultes / loisirs / amateurs et pros / Boxe Éducative confirmés : Valentin Tapia.
+- Boxe Française / Kick-K1 adultes / Lady Kick / Boxing Lady / préparation physique : Samuel Pinto.
+- Boxe Anglaise / Boxe Éducative enfants et ados : Mourad.
+- Kick enfants / ados : Ingrid.
+- Sparring Anglaise et Kick : co-encadrement de référence Valentin Tapia + Samuel Pinto.
+- Baby Boxe dès 3 ans : encadrement collectif par Valentin Tapia, Mourad et Ingrid. Ces coachs interviennent fréquemment à plusieurs sur ce cours afin d’assurer un meilleur encadrement des enfants.
+- Nicolas Tramaçon et Enzo Pioppo sont les référents Grappling / MMA ; aucune séance Grappling ou MMA n’apparaît toutefois sur le planning Portet provisoire transmis ici.
+
+======================================================================
+5. PLANNING 2026–2027 – TOULOUSE MINIMES / BARRIÈRE DE PARIS
+======================================================================
+
+CODE COULEUR DU PLANNING :
+- Rouge : Mehdi B.
+- Bleu : Remus (commercial).
+- Orange : David.
+- Noir : Clément.
+- Gris : Chloé.
+- Jaune : Faez (alternant).
+
+LUNDI
+- 10h00–12h00 | ACCÈS LIBRE | pas de coach de cours à attribuer.
+- 12h40–13h20 | BOXING CAMP | Coach : Mehdi B. | Tous niveaux, débutants acceptés.
+- 13h20–18h00 | ACCÈS LIBRE | pas de coach de cours à attribuer.
+- 18h00–19h30 | BOXE COMPÉTITEURS | Coach : Mehdi B. | Réservé public confirmé / compétiteur.
+- 18h30–19h30 | BOXING LADY | Coach : Chloé | 100 % féminin, tous niveaux.
+- 19h40–21h00 | BOXE ANGLAISE LOISIRS | Coach : Mehdi B. | Tous niveaux, débutants acceptés.
+
+MARDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h40–13h20 | BOXE ANGLAISE LOISIRS | Coach : Mehdi B. | Tous niveaux.
+- 13h20–18h00 | ACCÈS LIBRE.
+- 18h00–19h30 | BOXE COMPÉTITEURS | Coach : Mehdi B. | Réservé confirmé / compétiteur.
+- 18h30–19h30 | BOXING CAMP | Coach : Clément | Tous niveaux.
+- 19h40–21h00 | BOXE ANGLAISE LOISIRS | Coach : Mehdi B. | Tous niveaux.
+
+MERCREDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h40–13h20 | BOXE ANGLAISE LOISIRS | Coach : Mehdi B. | Tous niveaux.
+- 13h20–15h00 | ACCÈS LIBRE.
+- 15h00–16h00 | BOXE ÉDUCATIVE ENFANTS 7–11 ans | Coach : Mehdi B.
+- 16h00–17h00 | BOXE ÉDUCATIVE ADOS 12–16 ans | Coach : Mehdi B.
+- 17h00–18h30 | BOXE ÉDUCATIVE COMPÉTITEURS | Coach : Mehdi B. | Réservé jeunes compétiteurs / confirmés.
+- 18h30–19h30 | BOXING LADY | Coach : David | 100 % féminin, tous niveaux.
+- 19h40–21h00 | BOXE PIEDS-POINGS | Coach : David | Tous niveaux.
+
+JEUDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h40–13h20 | BOXE ANGLAISE LOISIRS | Coach : Mehdi B. | Tous niveaux.
+- 13h20–18h00 | ACCÈS LIBRE.
+- 18h00–19h30 | BOXE COMPÉTITEURS | Coach : Mehdi B. | Réservé confirmé / compétiteur.
+- 18h30–19h30 | BOXING CAMP | Coach : David | Tous niveaux.
+- 19h40–21h00 | BOXE ANGLAISE LOISIRS | Coach : Mehdi B. | Tous niveaux.
+
+VENDREDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h40–13h20 | BOXING CAMP | Coach : Mehdi B. | Tous niveaux.
+- 13h20–18h00 | ACCÈS LIBRE.
+- 18h00–19h30 | BOXE COMPÉTITEURS | Coach : Mehdi B. | Réservé confirmé / compétiteur.
+- 19h40–21h00 | BOXE ANGLAISE LOISIRS | Coach : Mehdi B. | Tous niveaux.
+
+SAMEDI
+- 10h00–11h00 | ACCÈS LIBRE.
+- 11h00–12h00 | BOXING CAMP | Coach : Mehdi B. | Tous niveaux.
+- 12h40–14h15 | ACCÈS LIBRE.
+- 14h15–15h00 | BABY BOXE DÈS 3 ANS | Coach : Mehdi B.
+- 15h00–16h00 | BOXE ÉDUCATIVE ENFANTS 7–11 ans | Coach : Mehdi B.
+- 16h00–17h00 | BOXE ÉDUCATIVE ADOS 12–16 ans | Coach : Mehdi B.
+- 17h00–18h30 | BOXE ÉDUCATIVE COMPÉTITEURS | Coach : Mehdi B. | Réservé jeunes compétiteurs / confirmés.
+- 18h30–19h30 | OPEN SPARRING | Coach : Mehdi B. | Séance d’opposition encadrée.
+
+======================================================================
+6. PLANNING 2026–2027 – RAMONVILLE-SAINT-AGNE
+======================================================================
+
+CODE COULEUR DU PLANNING :
+- Gris : Valentin Guth.
+- Orange : Jérôme.
+- Rouge : Sonia.
+- Vert : Farouk.
+- Bleu : Pascal (commercial).
+- Jaune : Hicham.
+
+LUNDI
+- 12h40–13h20 | BOXING CAMP | Coach : Sonia | Tous niveaux.
+- 18h00–18h40 | LADY PUNCH | Coach : Sonia | 100 % féminin.
+- 18h40–19h40 | BOXE PIEDS-POINGS | Coach : Sonia | Tous niveaux.
+- 19h45–21h15 | BOXE ANGLAISE LOISIRS | Coach : Farouk | Tous niveaux.
+
+MARDI
+- 12h40–13h20 | BOXE ANGLAISE | Coach : Hicham | Tous niveaux.
+- 18h40–19h40 | GRAPPLING | Coach : Jérôme | Tous niveaux.
+- 19h45–21h15 | MMA TOUS NIVEAUX (libellé planning : ASSO MMA) | Coach : Jérôme | Débutants acceptés.
+
+MERCREDI
+- 12h40–13h20 | BOXING CAMP | Coach : Hicham | Tous niveaux.
+- 15h00–16h00 | BOXE ÉDUCATIVE 7–11 ans | Coach : Valentin Guth.
+- 16h00–17h00 | BOXE ÉDUCATIVE 12–16 ans | Coach : Valentin Guth.
+- 18h45–20h15 | BOXE ANGLAISE | Coach : Farouk | Tous niveaux.
+Note : ce créneau porte lui-même la mention « 18H45 / 20H15 » dans le planning ; utiliser cet horaire spécifique plutôt que les lignes horaires générales du tableau.
+
+JEUDI
+- 12h40–13h20 | BOXE PIEDS-POINGS | Coach : Sonia | Tous niveaux.
+- 18h40–19h40 | BOXING CAMP | Coach : Jérôme | Tous niveaux.
+- 19h45–21h15 | MMA TOUS NIVEAUX (libellé planning : ASSO MMA) | Coach : Jérôme | Débutants acceptés.
+
+VENDREDI
+- 12h40–13h20 | BOXE ANGLAISE | Coach : Hicham | Tous niveaux.
+- 18h00–18h40 | LADY PUNCH | Coach : Sonia | 100 % féminin.
+- 18h40–19h40 | BOXE PIEDS-POINGS | Coach : Sonia | Tous niveaux.
+- 19h45–21h15 | BOXE ANGLAISE LOISIRS | Coach : Farouk | Tous niveaux.
+
+SAMEDI
+- 11h00–12h00 | BOXING CAMP | Coach : Valentin Guth | Tous niveaux.
+- 14h15–15h00 | BABY BOXE DÈS 3 ANS | Coach : Valentin Guth.
+- 15h00–16h00 | BOXE ÉDUCATIVE 7–11 ans | Coach : Valentin Guth.
+- 16h00–17h00 | BOXE ÉDUCATIVE 12–16 ans | Coach : Valentin Guth.
+
+======================================================================
+7. PLANNING 2026–2027 – TOULOUSE SAINT-CYPRIEN
+======================================================================
+
+CODE COULEUR DU PLANNING :
+- Violet : Brice.
+- Rouge : Dadi.
+- Bleu : Dadi / Tawee (mention « commercial » dans la légende).
+- Orange : Tawee.
+
+LUNDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h40–13h20 | BOXING CAMP | Coach : Dadi | Tous niveaux.
+- 14h15–18h15 | ACCÈS LIBRE.
+- 18h20–19h00 | BOXING CAMP | Coach : Brice | Tous niveaux.
+- 19h00–20h00 | CROSS TRAINING | Coach : Brice | Tous niveaux.
+- 20h00–21h15 | BOXE ANGLAISE | Coach : Dadi | Tous niveaux.
+
+MARDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h40–13h20 | BOXE THAÏ / K1 | Coach : Tawee | Tous niveaux.
+- 14h15–18h15 | ACCÈS LIBRE.
+- 18h20–19h00 | LADY PUNCH | Coach : Dadi | 100 % féminin.
+- 19h00–20h00 | GRAPPLING | Coach : Brice | Tous niveaux.
+- 20h00–21h15 | BOXE THAÏ / K1 | Coach : Brice | Tous niveaux.
+
+MERCREDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h40–13h20 | BOXE ANGLAISE | Coach : Dadi | Tous niveaux.
+- 13h20–15h00 | ACCÈS LIBRE.
+- 15h00–16h00 | BOXE ÉDUCATIVE 7–11 ans | Coach : Dadi.
+- 16h00–17h00 | BOXE ÉDUCATIVE 12–16 ans | Coach : Dadi.
+- 17h00–18h15 | BOXE ÉDUCATIVE COMPÉTITEURS | Coach : Dadi | Réservé jeunes compétiteurs / confirmés.
+- 18h20–19h00 | HYROX | Coach : Brice | Tous niveaux.
+- 19h00–20h00 | CROSS TRAINING | Coach : Brice | Tous niveaux.
+- 20h00–21h15 | BOXE ANGLAISE | Coach : Dadi | Tous niveaux.
+
+JEUDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h40–13h20 | BOXE THAÏ / K1 | Coach : Tawee | Tous niveaux.
+- 14h15–18h15 | ACCÈS LIBRE.
+- 18h20–19h00 | LADY PUNCH | Coach : Dadi | 100 % féminin.
+- 19h00–20h00 | GRAPPLING | Coach : Brice | Tous niveaux.
+- 20h00–21h15 | BOXE THAÏ / K1 | Coach : Brice | Tous niveaux.
+
+VENDREDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h40–13h20 | BOXE ANGLAISE | Coach : Dadi | Tous niveaux.
+- 14h15–18h15 | ACCÈS LIBRE.
+- 18h20–19h00 | BOXING CAMP | Coach : Dadi | Tous niveaux.
+- 19h00–20h00 | BOXE THAÏ / K1 | Coach : Tawee | Tous niveaux.
+- 20h00–21h15 | BOXE ANGLAISE | Coach : Dadi | Tous niveaux.
+
+SAMEDI
+- 10h00–11h00 | ACCÈS LIBRE.
+- 11h00–12h00 | BOXING CAMP | Coach : Dadi | Tous niveaux.
+- 12h40–14h15 | ACCÈS LIBRE.
+- 14h15–15h00 | BABY BOXE DÈS 3 ANS | Coach : Dadi.
+- 15h00–16h00 | BOXE ÉDUCATIVE 7–11 ans | Coach : Dadi.
+- 16h00–17h00 | BOXE ÉDUCATIVE 12–16 ans | Coach : Dadi.
+- 17h00–18h15 | BOXE ÉDUCATIVE COMPÉTITEURS | Coach : Dadi | Réservé jeunes compétiteurs / confirmés.
+- 18h20–20h00 | BOXE THAÏ / K1 | Coach : Brice | Tous niveaux.
+
+
+======================================================================
+8 BIS. PLANNING PROVISOIRE 2026–2027 – PORTET-SUR-GARONNE
+======================================================================
+
+Légende du planning :
+- Lady : rose.
+- Compétition : rouge.
+- École / Jeunes : bleu clair.
+- Préparation physique : vert.
+- Sparring Anglaise & Kick : bleu / orange.
+- Pieds-Poings / Kick : orange.
+- Boxe Anglaise : bleu.
+- Accès libre : gris foncé.
+Case libre = salle ouverte, accès badge, entraînement libre.
+
+LUNDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h30–13h30 | BOXE ANGLAISE | Coach référent : Valentin Tapia | Tous niveaux, débutants acceptés.
+- 14h00–18h00 | ACCÈS LIBRE.
+- 18h00–19h00 | BOXE ÉDUCATIVE CONFIRMÉS | Coach référent : Valentin Tapia | Public confirmé.
+- 19h00–21h30 | BOXE AMATEURS ET PROS | Coach référent : Valentin Tapia | Réservé boxeurs confirmés / compétition.
+
+MARDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h30–13h30 | PRÉPARATION PHYSIQUE | Coach référent : Samuel Pinto | Tous niveaux avec adaptation de l’intensité.
+- 14h00–18h00 | ACCÈS LIBRE.
+- 18h00–19h00 | LADY KICK | Coach référent : Samuel Pinto | 100 % féminin, tous niveaux.
+- 19h00–20h00 | KICK / K1 | Coach référent : Samuel Pinto | Tous niveaux, débutants acceptés.
+- 20h00–21h30 | BOXE ANGLAISE LOISIRS | Coach référent : Valentin Tapia | Tous niveaux, débutants acceptés.
+
+MERCREDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h30–13h30 | KICK / K1 | Coach référent : Samuel Pinto | Tous niveaux, débutants acceptés.
+- 14h00–15h00 | KICK ENFANTS | Coach référent : Ingrid | Public enfants.
+- 15h00–16h00 | KICK ADOS | Coach référent : Ingrid | Public adolescents.
+- 16h00–17h00 | BOXE ÉDUCATIVE 7–11 ans | Coach référent : Mourad.
+- 17h00–18h00 | BOXE ÉDUCATIVE 12–16 ans | Coach référent : Mourad.
+- 18h00–19h00 | BOXING LADY | Coach référent : Samuel Pinto | 100 % féminin, tous niveaux.
+- 19h00–20h00 | PRÉPARATION PHYSIQUE | Coach référent : Samuel Pinto | Tous niveaux.
+- 20h00–21h30 | KICK / K1 | Coach référent : Samuel Pinto | Tous niveaux, débutants acceptés.
+
+JEUDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h30–13h30 | BOXE ANGLAISE | Coach référent : Valentin Tapia | Tous niveaux.
+- 14h00–18h00 | ACCÈS LIBRE.
+- 18h00–19h00 | LADY KICK | Coach référent : Samuel Pinto | 100 % féminin.
+- 19h00–20h00 | KICK / K1 | Coach référent : Samuel Pinto | Tous niveaux.
+- 20h00–21h30 | BOXE ANGLAISE LOISIRS | Coach référent : Valentin Tapia | Tous niveaux.
+
+VENDREDI
+- 10h00–12h00 | ACCÈS LIBRE.
+- 12h30–13h30 | SPARRING ANGLAISE ET KICK | Référents : Valentin Tapia + Samuel Pinto | Séance d’opposition encadrée, à ne pas recommander comme première séance à un débutant complet.
+- 14h00–18h00 | ACCÈS LIBRE.
+- 18h00–19h00 | BOXE AMATEURS ET PROS | Coach référent : Valentin Tapia | Réservé boxeurs confirmés / compétition.
+- 19h00–21h30 | SPARRING ANGLAISE ET KICK | Référents : Valentin Tapia + Samuel Pinto | Public ayant déjà des bases techniques.
+
+SAMEDI
+- 10h00–11h00 | BOXE FRANÇAISE | Coach référent : Samuel Pinto | Tous niveaux.
+- 10h00–11h00 | KICK ENFANTS | Coach référent : Ingrid | Public enfants.
+- 11h00–12h00 | PRÉPARATION PHYSIQUE | Coach référent : Samuel Pinto | Tous niveaux.
+- 11h00–12h00 | KICK ADOS | Coach référent : Ingrid | Public adolescents.
+- 12h30–13h30 | BOXE ANGLAISE | Coach référent : Valentin Tapia | Tous niveaux.
+- 14h00–15h00 | ACCÈS LIBRE.
+- 15h00–16h00 | BABY BOXE DÈS 3 ANS | Coachs : Valentin Tapia, Mourad et Ingrid | Encadrement collectif renforcé ; plusieurs coachs peuvent intervenir simultanément afin d’accompagner au mieux les enfants.
+- 16h00–17h00 | BOXE ÉDUCATIVE 7–11 ans | Coach référent : Mourad.
+- 17h00–18h00 | BOXE ÉDUCATIVE 12–16 ans | Coach référent : Mourad.
+- 18h00–21h30 | ACCÈS LIBRE.
+
+IMPORTANT :
+Le planning est explicitement présenté comme « PLANNING PROVISOIRE ». L’agent IA doit pouvoir le signaler si un utilisateur demande si les horaires sont définitifs.
+
+======================================================================
+8. PLANNING 2026–2027 – TOULOUSE ÉTATS-UNIS
+======================================================================
+
+La salle États-Unis possède 3 zones / plannings distincts :
+A. Salle Boxe
+B. Salle MMA / Sol
+C. Salle Boxing Fitness
+
+----------------------------------------------------------------------
+8.A. ÉTATS-UNIS – SALLE BOXE
+----------------------------------------------------------------------
+
+CODE COULEUR :
+- Vert : Renaud.
+- Orange : David.
+- Rouge : Valentin Guth.
+
+LUNDI
+- 12h40–13h20 | BOXE PIEDS-POINGS | Coach : Renaud | Tous niveaux.
+- 18h30–19h40 | BOXE PIEDS-POINGS | Coach : Renaud | Tous niveaux.
+- 19h50–21h15 | BOXE ANGLAISE | Coach : Renaud | Tous niveaux.
+
+MARDI
+- 12h40–13h20 | BOXE ANGLAISE | Coach : Renaud | Tous niveaux.
+- 18h30–19h40 | BOXE ANGLAISE | Coach : Renaud | Tous niveaux.
+- 19h50–21h15 | BOXE PIEDS-POINGS | Coach : Renaud | Tous niveaux.
+
+MERCREDI
+- 12h40–13h20 | BOXE PIEDS-POINGS | Coach : Renaud | Tous niveaux.
+- 15h00–16h00 | BOXE PIEDS-POINGS 7–11 ans | Coach : Renaud.
+- 16h00–17h00 | BOXE PIEDS-POINGS 12–16 ans | Coach : Renaud.
+- 18h30–19h40 | BOXE PIEDS-POINGS | Coach : Renaud | Tous niveaux.
+- 19h50–21h15 | BOXE ANGLAISE | Coach : Renaud | Tous niveaux.
+
+JEUDI
+- 12h40–13h20 | BOXE ANGLAISE | Coach : Valentin Guth | Tous niveaux.
+- 18h30–19h40 | BOXE ANGLAISE | Coach : Renaud | Tous niveaux.
+- 19h50–21h15 | BOXE PIEDS-POINGS | Coach : Renaud | Tous niveaux.
+
+VENDREDI
+- 18h30–19h40 | BOXE PIEDS-POINGS | Coach : David | Tous niveaux.
+- 19h50–21h15 | BOXE ANGLAISE | Coach : David | Tous niveaux.
+
+SAMEDI
+- 11h00–12h00 | BOXE ANGLAISE | Coach : Renaud | Tous niveaux.
+- 14h15–15h00 | BOXE PIEDS-POINGS 3–6 ans | Coach : Renaud.
+- 15h00–16h00 | BOXE PIEDS-POINGS 7–11 ans | Coach : Renaud.
+- 16h00–17h00 | BOXE PIEDS-POINGS 12–16 ans | Coach : Renaud.
+
+----------------------------------------------------------------------
+8.B. ÉTATS-UNIS – SALLE MMA / SOL
+----------------------------------------------------------------------
+
+CODE COULEUR :
+- Bleu : Zouhir.
+
+LUNDI
+- 18h20–19h30 | JIU-JITSU BRÉSILIEN | Coach : Zouhir | Tous niveaux.
+- 19h40–21h00 | MMA TOUS NIVEAUX (libellé planning : ASSO MMA) | Coach : Zouhir | Débutants acceptés.
+
+MARDI
+- 18h20–19h30 | GRAPPLING | Coach : Zouhir | Tous niveaux.
+- 19h40–21h00 | MMA TOUS NIVEAUX (libellé planning : ASSO MMA) | Coach : Zouhir | Débutants acceptés.
+
+MERCREDI
+- 18h00–19h00 | MMA ENFANTS / ADOS 10–16 ans (libellé : ASSO MMA ENFANTS) | Coach : Zouhir.
+- 19h40–21h00 | GRAPPLING | Coach : Zouhir | Tous niveaux.
+
+JEUDI
+- 18h20–19h30 | GRAPPLING | Coach : Zouhir | Tous niveaux.
+- 19h40–21h00 | MMA TOUS NIVEAUX (libellé planning : ASSO MMA) | Coach : Zouhir | Débutants acceptés.
+
+VENDREDI
+- 18h20–19h30 | JIU-JITSU BRÉSILIEN | Coach : Zouhir | Tous niveaux.
+- 19h40–21h00 | MMA TOUS NIVEAUX (libellé planning : ASSO MMA) | Coach : Zouhir | Débutants acceptés.
+
+SAMEDI
+- 18h00–19h00 | MMA ENFANTS / ADOS 10–16 ans (libellé : ASSO MMA ENFANTS) | Coach : Zouhir.
+
+----------------------------------------------------------------------
+8.C. ÉTATS-UNIS – SALLE BOXING FITNESS
+----------------------------------------------------------------------
+
+CODE COULEUR :
+- Vert : Clément.
+- Orange : David.
+- Rouge : Valentin Guth.
+- Violet / pourpre : Yannis Chouet.
+
+ATTRIBUTIONS YANNIS CHOUET CONFIRMÉES PAR LA DIRECTION :
+- lundi 12h40–13h20 : HYROX ;
+- lundi 18h40–19h20 : HYROX ;
+- lundi 19h30–20h30 : CROSS TRAINING ;
+- mercredi 18h40–19h20 : LADY PUNCH ;
+- mercredi 19h30–20h30 : CROSS TRAINING ;
+- jeudi 12h40–13h20 : CROSS TRAINING ;
+- jeudi 18h40–19h20 : HYROX ;
+- jeudi 19h30–20h30 : BOXING HIIT.
+
+LUNDI
+- 12h40–13h20 | HYROX | Coach : Yannis Chouet | Tous niveaux.
+- 18h40–19h20 | HYROX | Coach : Yannis Chouet | Tous niveaux.
+- 19h30–20h30 | CROSS TRAINING | Coach : Yannis Chouet | Tous niveaux.
+
+MARDI
+- 12h40–13h20 | BOXING HIIT | Coach : David | Tous niveaux.
+- 18h40–19h20 | LADY PUNCH | Coach : David | 100 % féminin.
+- 19h30–20h30 | BOXING HIIT | Coach : David | Tous niveaux.
+
+MERCREDI
+- 18h40–19h20 | LADY PUNCH | Coach : Yannis Chouet | 100 % féminin.
+- 19h30–20h30 | CROSS TRAINING | Coach : Yannis Chouet | Tous niveaux.
+
+JEUDI
+- 12h40–13h20 | CROSS TRAINING | Coach : Yannis Chouet | Tous niveaux.
+- 18h40–19h20 | HYROX | Coach : Yannis Chouet | Tous niveaux.
+- 19h30–20h30 | BOXING HIIT | Coach : Yannis Chouet | Tous niveaux.
+
+VENDREDI
+- 12h40–13h20 | BOXING HIIT | Coach : David | Tous niveaux.
+- 18h40–19h20 | LADY PUNCH | Coach : Valentin Guth | 100 % féminin.
+- 19h30–20h30 | BOXING HIIT | Coach : Valentin Guth | Tous niveaux.
+
+SAMEDI
+- 11h00–12h00 | CROSS TRAINING | Coach : Clément | Tous niveaux.
+
+======================================================================
+9. TARIFS, FORMULES ET OFFRES COMMERCIALES
+======================================================================
+
+9.1. Offre promotionnelle sans engagement
+Tarif confirmé par la direction : 29,99 € / 4 semaines, soit un prélèvement tous les 28 jours.
+Ancien tarif affiché : environ 44 / 44,99 €.
+Caractéristiques mises en avant :
+- sans engagement de durée ;
+- cours illimités toutes disciplines ;
+- accès illimité aux salles incluses dans l’offre ;
+- accès libre musculation / cardio / Cross Training selon formule ;
+- résiliation sans préavis contractuel supplémentaire, sous réserve du délai technique de 72 h avant la prochaine échéance.
+
+Règle agent :
+Annoncer clairement : « offre promo à 29,99 € toutes les 4 semaines ». Ne jamais présenter cette périodicité comme un prélèvement mensuel : 4 semaines = 28 jours.
+
+9.2. Offre promotionnelle année complète
+Prix promotionnel : 259 € / 12 mois.
+Prix normal affiché : 400 €.
+Caractéristiques :
+- paiement de la formule annuelle ;
+- cours illimités toutes disciplines ;
+- accès aux salles incluses dans l’offre ;
+- la boutique présente 259 € comme l’option la plus économique sur 12 mois.
+
+9.3. Formules standards adultes – informations de référence
+Le site présente notamment :
+- abonnement sans engagement avec prélèvement toutes les 4 semaines ;
+- formules payées comptant 3 mois, 6 mois ou 12 mois ;
+- offre étudiant ;
+- cours enfants / ados ;
+- coaching individuel ;
+- séance d’essai.
+
+Les conditions exactes, tarifs et nombres de salles peuvent évoluer : pour une vente, le prix affiché au moment de la commande sur la boutique est la référence contractuelle.
+
+9.4. Badge
+Pour les abonnements sans engagement concernés, les CGV indiquent un badge d’accès facturé 34,99 € TTC sauf offre particulière.
+Le badge correspond à la fourniture et à l’activation du moyen d’accès ; ce n’est pas une caution et il n’est pas remboursé du seul fait de la résiliation, sauf disposition légale impérative.
+
+======================================================================
+10. SÉANCE D’ESSAI
+======================================================================
+
+Prix de référence actuellement trouvé sur la boutique : 10 € TTC.
+
+La séance d’essai permet :
+- de choisir la salle ;
+- de choisir l’activité ;
+- de choisir la séance selon le planning ;
+- de tester le concept avant de s’abonner.
+
+Le site FAQ indique que le matériel peut être prêté pour la séance d’essai.
+La fiche boutique indique qu’une décharge / document de responsabilité doit être téléchargé, signé et remis au personnel.
+
+Conseil commercial de l’agent :
+- débutant combat : recommander Boxe Anglaise loisirs, Boxe Pieds-Poings, Boxe Thaï/K1, MMA tous niveaux ou Grappling selon l’envie ;
+- remise en forme : recommander Boxing Camp, Cross Training, HYROX ou Boxing HIIT ;
+- femme souhaitant un cadre 100 % féminin : recommander Boxing Lady ou Lady Punch ;
+- enfant : orienter vers la tranche d’âge correspondante.
+
+======================================================================
+11. INSCRIPTION ET PRISE D’ABONNEMENT
+======================================================================
+
+11.1. Inscription
+La souscription est principalement réalisable en ligne via la boutique Boxing Center.
+Le client :
+- choisit son offre ;
+- renseigne ses informations ;
+- prend connaissance des documents contractuels ;
+- effectue le paiement ;
+- accepte électroniquement les documents demandés.
+
+La confirmation de souscription est adressée par voie électronique.
+
+11.2. Documents contractuels
+Avant validation, le client doit pouvoir prendre connaissance :
+- des Conditions Générales de Vente et d’Abonnement ;
+- du Règlement intérieur ;
+- du document relatif à l’état de santé / aptitude lorsqu’il est applicable.
+
+11.3. Activation
+Sous réserve du paiement, de la validation du dossier et des formalités requises, l’accès peut être activé à compter du lendemain de la validation de l’inscription en ligne.
+
+11.4. Mineurs
+L’inscription d’un mineur nécessite les autorisations requises du représentant légal.
+Le représentant légal doit fournir les informations et validations nécessaires.
+Pour une licence ou une compétition, les règles médicales et administratives spécifiques s’appliquent.
+
+======================================================================
+12. RÉSILIATION – RÈGLE IMPÉRATIVE POUR L’AGENT IA
+======================================================================
+
+12.1. Ce que l’agent doit dire
+La résiliation d’un abonnement sans engagement doit être effectuée UNIQUEMENT via le parcours en ligne prévu à cet effet :
+« Gérer mon abonnement » → « Résilier mon abonnement ».
+
+Consigne interne communiquée :
+Orienter l’adhérent vers le formulaire de la page « Gérer mon abo » et l’agent DAVID lorsque ce parcours est proposé sur le site.
+
+L’agent IA conversationnel ne doit pas :
+- prétendre résilier lui-même un abonnement ;
+- accepter une résiliation par simple message ;
+- promettre qu’un coach, un commercial ou une salle peut enregistrer oralement la demande ;
+- demander au client de simplement prévenir son coach.
+
+12.2. Validation de la demande
+La demande devient définitive lorsque le client valide électroniquement sa résiliation.
+Boxing Center confirme ensuite électroniquement la réception et la date effective de fin d’abonnement.
+
+12.3. Délai technique de 72 heures
+Pour empêcher une prochaine échéance de prélèvement :
+- la résiliation doit être enregistrée plus de 72 heures avant la date prévue du prochain prélèvement ;
+- si elle est enregistrée 72 heures ou moins avant l’échéance, celle-ci peut rester due et être prélevée ;
+- le client conserve alors son accès pendant la nouvelle période de 4 semaines ;
+- la résiliation prend effet à la fin de cette dernière période sans nouvelle demande.
+
+12.4. Période déjà payée
+La résiliation prend effet à l’issue de la période déjà payée correspondant à la dernière échéance valable.
+Pas de remboursement au prorata d’une période de 4 semaines déjà commencée et payée, sauf obligation légale contraire.
+
+12.5. Formules payées comptant
+Les formules à durée déterminée payées comptant (ex. 3, 6 ou 12 mois) sont conclues pour une durée ferme.
+Elles prennent fin à leur terme.
+Sous réserve du droit légal de rétractation applicable, elles ne sont pas résiliables avant terme pour simple changement d’avis, manque de disponibilité ou non-utilisation.
+
+12.6. Droit de rétractation
+Pour un contrat conclu à distance, le consommateur dispose en principe d’un délai légal de 14 jours à compter de la conclusion du contrat, selon les conditions prévues par les CGV et la réglementation.
+
+======================================================================
+13. SANTÉ, CERTIFICAT MÉDICAL ET SÉCURITÉ
+======================================================================
+
+13.1. Certificat médical
+Réponse simple de l’agent :
+« Pour une pratique loisir, le certificat médical n’est pas systématiquement obligatoire. Pour les compétiteurs / licenciés, ou lorsqu’une règle fédérale ou réglementaire l’impose, un justificatif médical peut être nécessaire. »
+
+Ne pas répondre « jamais obligatoire ».
+
+13.2. Responsabilité du pratiquant
+L’adhérent déclare que son état de santé est compatible avec l’activité.
+En cas de doute médical, il doit solliciter un professionnel de santé.
+
+En cas de douleur inhabituelle, malaise, trouble respiratoire, symptôme cardiaque, vertige, perte de connaissance ou blessure significative :
+- arrêter la séance ;
+- prévenir immédiatement un coach ou un membre du personnel ;
+- consulter un professionnel de santé lorsque la situation le justifie avant reprise.
+
+13.3. Protections et consignes
+Le pratiquant doit respecter les consignes du coach et utiliser les protections demandées selon l’activité : bandages, gants, protège-dents, casque, coquille / protection pelvienne, protège-tibias, etc.
+
+13.4. Retard
+Un retard important peut entraîner un refus de participation si l’échauffement ou les consignes de sécurité sont déjà passés.
+Le règlement indique qu’un retard supérieur à environ 10 minutes peut être considéré comme incompatible avec la participation ; la décision appartient au coach.
+
+13.5. Sparring
+L’intensité doit être adaptée au niveau, au gabarit et à l’expérience du partenaire.
+Le coach peut interrompre immédiatement une opposition pour raison de sécurité.
+
+======================================================================
+14. RÈGLEMENT INTÉRIEUR – POINTS UTILES À CONNAÎTRE
+======================================================================
+
+- Le badge / QR code / moyen d’accès est personnel et incessible.
+- Il est interdit de laisser entrer volontairement une personne sans droit d’accès valide.
+- Une tenue de sport propre et adaptée est obligatoire.
+- Les équipements doivent être utilisés conformément aux consignes.
+- Les bijoux / accessoires pouvant blesser doivent être retirés avant la pratique.
+- Comportement respectueux obligatoire ; violences hors exercices autorisés, menaces, harcèlement, bizutage et comportements discriminatoires interdits.
+- Interdiction de pratiquer sous l’emprise de l’alcool ou de stupéfiants.
+- Il est interdit de fumer ou vapoter dans les locaux.
+- Les vestiaires et casiers doivent être utilisés de façon responsable ; chacun doit sécuriser ses effets personnels.
+- Toute photographie / vidéo d’une personne identifiable doit respecter sa vie privée, avec vigilance absolue dans les vestiaires et sanitaires.
+
+======================================================================
+15. FAQ COMMERCIALE ET PRATIQUE – RÉPONSES À UTILISER
+======================================================================
+
+Q : Vos cours sont-ils adaptés aux débutants ?
+R : Oui. La grande majorité de nos cours collectifs sont accessibles aux débutants. Les coachs adaptent les exercices et l’intensité au niveau de chacun. Seuls les cours explicitement indiqués « compétiteurs » / « compétition » sont réservés à un public confirmé.
+
+Q : Je ne suis pas sportif / je reprends après une longue pause, est-ce adapté ?
+R : Oui. Vous pouvez commencer progressivement. Le coach adapte l’intensité et vous aide à évoluer à votre rythme. Une séance d’essai est une bonne façon de découvrir le club sans pression.
+
+Q : Les femmes peuvent-elles participer ?
+R : Oui. Les cours mixtes sont ouverts aux femmes et aux hommes. Boxing Center propose également des activités 100 % féminines : Boxing Lady et Lady Punch.
+
+Q : À partir de quel âge les enfants sont-ils admis ?
+R : Dès 3 ans avec la Baby Boxe. La Baby Boxe est accessible aux enfants à partir de 3 ans. Des groupes 7–11 ans et 12–16 ans sont également proposés selon les salles et les plannings.
+
+Q : Faut-il obligatoirement un certificat médical ?
+R : Pour la pratique loisir, il n’est pas systématiquement exigé. Il peut être nécessaire pour les compétiteurs, licenciés ou lorsqu’une obligation réglementaire / fédérale l’impose.
+
+Q : Les salles sont-elles chauffées ou climatisées ?
+R : Non. Les salles ne sont pas chauffées ou climatisées, mais elles sont correctement isolées afin de conserver des températures adaptées et supportables pendant les entraînements.
+
+Q : Prévoyez-vous des travaux de rénovation ou des renouvellements de matériel ?
+R : Oui. La direction réalise chaque saison des travaux de rénovation, notamment dans les sanitaires et vestiaires, ainsi que des opérations de renouvellement du matériel de boxe, Cross Training, musculation et cardio.
+
+Q : Les salles disposent-elles de douches et vestiaires ?
+R : Oui. Des douches individuelles ainsi que des vestiaires hommes et femmes sont disponibles.
+
+Q : Y a-t-il des casiers ?
+R : Oui. Des casiers sont disponibles. Les effets personnels restent sous la responsabilité de leur propriétaire selon le règlement intérieur.
+
+Q : Puis-je essayer avant de m’abonner ?
+R : Oui. Une séance d’essai peut être réservée en ligne. Le tarif de référence actuellement affiché est de 10 €. Vous pouvez choisir une salle et une activité correspondant au planning.
+
+Q : Le matériel est-il fourni pour l’essai ?
+R : La FAQ Boxing Center indique que du matériel peut être prêté pour la séance d’essai. Pour une pratique régulière, il est recommandé de disposer de son propre équipement et des protections adaptées.
+
+Q : Faut-il réserver les cours collectifs ?
+R : Les offres du site indiquent un accès aux cours collectifs en illimité et sans réservation pour les formules concernées. Vérifier néanmoins les conditions particulières de l’offre souscrite et toute règle exceptionnelle communiquée par le club.
+
+Q : Puis-je accéder à plusieurs salles ?
+R : Oui si la formule souscrite le prévoit. Les offres promotionnelles actuelles mettent en avant l’accès illimité aux salles incluses dans l’offre.
+
+Q : Comment résilier ?
+R : Pour un abonnement sans engagement, la demande doit être faite en ligne via « Gérer mon abonnement » puis « Résilier mon abonnement », et, selon le parcours actuel du site, via le formulaire / agent DAVID. Une demande orale à un coach ou à l’accueil ne remplace pas cette procédure.
+
+Q : La résiliation est-elle immédiate ?
+R : Elle prend effet à la fin de la période déjà payée. Pour éviter le prochain prélèvement, la demande doit être enregistrée plus de 72 heures avant l’échéance concernée.
+
+Q : Si je n’utilise pas mon abonnement, suis-je remboursé ?
+R : Non, la simple non-utilisation ne donne pas droit à un remboursement ou à une prolongation, sous réserve des droits légaux applicables.
+
+Q : Quelle offre promouvoir en priorité actuellement ?
+R : Deux offres promotionnelles sont mises en avant : 29,99 € / 4 semaines sans engagement et 259 € pour 12 mois. L’agent doit présenter les deux et aider le prospect à choisir selon son besoin de flexibilité ou d’économie annuelle.
+
+======================================================================
+16. SCRIPTS COMMERCIAUX COURTS POUR L’AGENT
+======================================================================
+
+Prospect débutant :
+« Oui, vous pouvez tout à fait commencer chez Boxing Center sans avoir déjà pratiqué. La majorité des cours sont tous niveaux et le coach adapte l’intensité. Si vous souhaitez tester avant de vous engager, je peux vous orienter vers une séance d’essai et le créneau le plus adapté. »
+
+Prospect peu sportif :
+« Ce n’est pas un problème. Vous pouvez démarrer progressivement : le coach adapte les exercices à votre condition et vous augmentez l’intensité au fil des séances. Pour une reprise, Boxing Camp, Cross Training adapté, HYROX ou un cours technique débutant peuvent très bien convenir selon votre objectif. »
+
+Prospect femme :
+« Tous nos cours mixtes sont ouverts aux femmes, et nous proposons aussi des cours 100 % féminins comme Boxing Lady et Lady Punch. Je peux vous donner les prochains créneaux dans la salle qui vous arrange. »
+
+Prospect hésitant entre disciplines :
+« Si vous cherchez surtout la technique de frappe, je vous orienterais vers Boxe Anglaise ou Boxe Thaï/K1. Pour un sport complet avec debout et sol, le MMA est adapté, y compris aux débutants. Si vous préférez le combat au sol sans frappes, le Grappling est une très bonne option. Pour la remise en forme, Boxing Camp, Cross Training, HYROX ou Boxing HIIT sont les plus adaptés. »
+
+Prospect sensible au prix :
+« Nous avons actuellement deux offres fortes : une formule sans engagement à 29,99 € toutes les 4 semaines et une année complète à 259 €. La première privilégie la flexibilité ; la seconde est la plus avantageuse si vous savez que vous allez pratiquer sur l’année. »
+
+======================================================================
+17. POINTS DE VIGILANCE / DONNÉES À VALIDER AVANT MISE EN PRODUCTION
+======================================================================
+
+1. Nombre de salles :
+Le brief fourni pour ce document cite 5 implantations (Minimes, Portet, Ramonville, St-Cyprien, États-Unis), alors que plusieurs pages actuelles du site peuvent mentionner d’autres implantations. Cette base reste centrée sur le périmètre fourni.
+
+2. Planning Portet :
+Le planning Portet transmis est indiqué comme PROVISOIRE. Les horaires sont intégrés, mais l’agent doit pouvoir préciser qu’ils peuvent encore évoluer.
+
+3. Baby Boxe Portet :
+Le créneau Baby Boxe dès 3 ans est encadré par Valentin Tapia, Mourad et Ingrid. Ils peuvent intervenir à plusieurs simultanément sur ce cours afin d’assurer un encadrement renforcé et adapté aux jeunes enfants.
+
+4. États-Unis Fitness / Yannis Chouet :
+Les créneaux de Yannis sont désormais confirmés directement par la direction et ne sont plus à considérer comme ambigus.
+
+5. Offre promotionnelle :
+Le tarif à utiliser est 29,99 € toutes les 4 semaines, soit tous les 28 jours. Ne jamais parler d’un prélèvement mensuel.
+
+6. Horaires d’ouverture / accès 7j/7 :
+Les pages des salles indiquent généralement « lundi au samedi 10h00–21h30 », alors que certaines offres d’abonnement parlent d’accès « 7j/7 ». L’agent doit éviter d’inventer des horaires du dimanche : si la question porte précisément sur un accès dominical, renvoyer vers l’information d’accès la plus récente de la salle / du contrat souscrit.
+
+======================================================================
+18. SOURCES UTILISÉES POUR CONSTRUIRE CETTE BASE
+======================================================================
+
+DOCUMENTS INTERNES TRANSMIS
+- Barrière de Paris projet Coachs planning rentrée 2026 V1.pdf / .ods
+- Ramonville projet planning Coachs rentrée 2026.pdf / .ods
+- St Cyprien projet planning Coachs rentrée 2026.pdf / .ods
+- ETATS UNIS projet planning Coachs rentrée 2026.pdf / .ods
+- Planning Portet Provisoire.jpeg
+- Visuels équipe coachs Portet saison 2026/2027 : Samuel Pinto, Nicolas Tramaçon, Mourad, Ingrid, Enzo Pioppo, Valentin Tapia
+- CONDITIONS GÉNÉRALES DE VENTE ET D’ABONNEMENT – version applicable à compter du 01/08/2026
+- RÈGLEMENT INTÉRIEUR 2026
+- DÉCLARATION RELATIVE À L’ÉTAT DE SANTÉ ET À L’APTITUDE À LA PRATIQUE SPORTIVE
+
+PAGES DISCIPLINES
+- https://boxingcenter.fr/club-de-mma-toulouse/
+- https://boxingcenter.fr/mma-toulouse/
+- https://boxingcenter.fr/cours-de-mma-a-toulouse/
+- https://boxingcenter.fr/club-de-boxe-anglaise-toulouse/
+- https://boxingcenter.fr/boxe-thai-muay-thai-et-kick-boxing-toulouse/
+- https://boxingcenter.fr/activites-sportives-boxe-toulouse/boxe-educative/
+- https://boxingcenter.fr/activites-sportives-boxe-toulouse/entrainement-boxing-lady/
+- https://boxingcenter.fr/activites-sportives-boxe-toulouse/hyrox-toulouse/
+- https://boxingcenter.fr/activites-sportives-boxe-toulouse/open-sparring/
+- https://boxingcenter.fr/activites-sportives-boxe-toulouse/boxing-camp/
+- https://boxingcenter.fr/activites-sportives-boxe-toulouse/cross-training/
+- https://boxingcenter.fr/activites-sportives-boxe-toulouse/le-grappling-toulouse/
+- https://boxingcenter.fr/activites-sportives-boxe-toulouse/savate-et-boxe-francaise-toulouse/
+
+PAGES SALLES
+- https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/
+- https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-portet-sur-garonne-2/
+- https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/
+- https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/
+- https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/
+
+TARIFS / ESSAIS / FAQ
+- https://boxingcenter.fr/nos-formules/
+- https://boutique.boxingcenter.fr/offres-speciales
+- https://boutique.boxingcenter.fr/seance-essai
+- https://boxingcenter.fr/faq/
+
+FIN DE LA BASE DE CONNAISSANCES
