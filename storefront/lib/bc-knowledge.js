@@ -217,10 +217,7 @@ const ALWAYS = ['regles', 'tarifs', 'vigilance'];
 const ON_DEMAND = [
   {
     key: 'disciplines',
-    test: new RegExp(
-      `discipline|pratiqu|d[ée]butant|niveau|sport|entra[îi]n|apprendre|essayer|commencer|maigrir|forme|self[-\\s]?d[ée]fense|combat|${DISCIPLINE_INTENT.source}`,
-      'i'
-    ),
+    test: /c['’]est quoi|discipline|d[ée]butant|niveau|apprendre|commencer|self[-\s]?d[ée]fense|diff[ée]rence entre|pratiqu/i,
   },
   { key: 'salles', test: /salle|adresse|o[uù]\s+(est|se trouve)|parking|m[ée]tro|quartier|proche|implant/i },
   {
@@ -239,13 +236,35 @@ const ON_DEMAND = [
   { key: 'scripts', test: /h[ée]sit|pas sportif|reprend|sensible au prix|budget|lequel choisir/i },
 ];
 
-function selectSections(text) {
+const PROMPT_BUDGET = 11000;
+const DROP_ORDER = [
+  'disciplines',
+  'scripts',
+  'faq',
+  'coachs',
+  'salles',
+  'essai',
+  'inscription',
+  'sante',
+  'reglement',
+];
+
+function selectSectionKeys(text) {
   const t = String(text || '');
+  const gyms = detectGyms(t);
+  const skipDisciplines = gyms.length > 0 && PLANNING_INTENT.test(t);
   const keys = [...ALWAYS];
   for (const { key, test } of ON_DEMAND) {
+    if (key === 'disciplines' && skipDisciplines) continue;
     if (test.test(t) && !keys.includes(key)) keys.push(key);
   }
-  return keys.map((k) => SECTIONS[k]).filter(Boolean);
+  return keys;
+}
+
+function selectSections(text) {
+  return selectSectionKeys(text)
+    .map((k) => SECTIONS[k])
+    .filter(Boolean);
 }
 
 const STYLE_RULES = `
@@ -280,14 +299,22 @@ Mission : informer avec exactitude ET donner envie de venir.
 
 function buildKnowledge(userText) {
   const planning = planningContext(userText);
-  return [
-    IDENTITY,
-    ...selectSections(userText),
-    planning ? `# PLANNINGS (extraits V4 — seuls horaires autorisés)\n${planning}` : '',
-    STYLE_RULES,
-  ]
-    .filter(Boolean)
-    .join('\n\n');
+  const planningBlock = planning
+    ? `# PLANNINGS (extraits V4 — seuls horaires autorisés)\n${planning}`
+    : '';
+  let keys = selectSectionKeys(userText);
+  const wrap = (sectionKeys) =>
+    [IDENTITY, ...sectionKeys.map((k) => SECTIONS[k]).filter(Boolean), planningBlock, STYLE_RULES]
+      .filter(Boolean)
+      .join('\n\n');
+  let out = wrap(keys);
+  for (const drop of DROP_ORDER) {
+    if (out.length <= PROMPT_BUDGET) break;
+    if (!keys.includes(drop)) continue;
+    keys = keys.filter((k) => k !== drop);
+    out = wrap(keys);
+  }
+  return out;
 }
 
 module.exports = {

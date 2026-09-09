@@ -68,3 +68,11 @@ test('le planning Minimes V4 garde Boxing Camp le samedi à 11h', () => {
   assert.match(PLANNINGS.minimes, /11h00–12h00/);
   assert.match(PLANNINGS.minimes, /BOXING CAMP/i);
 });
+
+test('une question horaire Minimes reste sous le budget du modèle', () => {
+  const k = buildKnowledge('Boxing Camp mardi Minimes, c’est à quelle heure et avec qui ?');
+  assert.ok(k.length <= 11000, `prompt trop long: ${k.length}`);
+  assert.match(k, /18h30–19h30/);
+  assert.match(k, /BOXING CAMP/i);
+  assert.match(k, /Clément|Clement/);
+});
