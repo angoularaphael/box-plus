@@ -43,7 +43,7 @@ const GYMS = {
     manager: 'Pascal',
     url: 'https://mmatoulouse.com/',
     planningUrl: 'https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-ramonville/',
-    match: /ramonvilles?|saint[-\s]?agne|des\s+ormes/i,
+    match: /ramonv(?:ille|ile)s?|saint[-\s]?agne|des\s+ormes/i,
     planningKey: 'planning-ramonville',
   },
   'st-cyprien': {

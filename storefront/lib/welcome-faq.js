@@ -364,6 +364,16 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
         source: 'faq-v4',
       };
     }
+    if (band === 'baby') {
+      return {
+        reply: voice(
+          persona,
+          'À cet âge, le cours adapté est la **Baby Boxe dès 3 ans (3–6 ans)**. Elle est proposée à Minimes, Ramonville, Saint-Cyprien et Portet ; aux États-Unis, l’équivalent est le pieds-poings 3–6 ans. Tu vises quelle salle ?',
+          'À cet âge, le cours adapté est la **Baby Boxe dès 3 ans (3–6 ans)**. Elle est proposée à Minimes, Ramonville, Saint-Cyprien et Portet ; aux États-Unis, l’équivalent est le pieds-poings 3–6 ans. Quelle salle vous convient ?'
+        ),
+        source: 'faq-v4',
+      };
+    }
     if (band === 'edu-7') {
       return {
         reply: pickAvoid(
@@ -416,7 +426,7 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
 
   const gymIds = detectGyms(t);
   const adresseAsk =
-    /adresse|o[uù] (est|se trouve)|c['’]est o[uù]|trouver la salle|comment (y )?aller|o[uù] c['’]est|la salle est o[uù]|o[uù] exactement/i.test(
+    /adresse|o[uù] (est|se trouve)|c['’]est o[uù]|trouver la salle|comment (y )?aller|o[uù] c['’]est|(?:la salle|elle|il) (?:est|se trouve) o[uù]|o[uù] exactement/i.test(
       t
     );
   /* « Et la salle est où exactement ? » : la salle nommée deux tours plus haut. */
@@ -484,6 +494,14 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
         ],
         lastBot
       ),
+      source: 'faq-v4',
+    };
+  }
+
+  if (/\bmma\b/i.test(t) && /grappling|lutte au sol/i.test(t)) {
+    return {
+      reply:
+        'Le **MMA** combine **frappes debout**, lutte et travail au sol. Le **Grappling** se concentre sur le **sol, les contrôles et les soumissions, sans frappes**. Les deux acceptent les débutants sur les créneaux tous niveaux.',
       source: 'faq-v4',
     };
   }
