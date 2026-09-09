@@ -58,6 +58,66 @@ function pickAvoid(list, lastBot) {
   return best;
 }
 
+const KIDS_PLANNING_GYMS = ['minimes', 'ramonville', 'st-cyprien', 'portet'];
+
+function kidsPlanningIntent(text, lastBot) {
+  const t = String(text || '');
+  const last = String(lastBot || '');
+  const now =
+    /baby\s*boxe|b[ée]b[ée]|\b(fils|fille|enfant|enfants|gamin|gamins|gamines?|mineur|petits?)\b|\b([3-6])\s*ans\b|[ée]ducative/i.test(
+      t
+    );
+  const before =
+    /Baby Boxe|Boxe Éducative|educative|\b3 ans\b|7–11|12–16|cours enfants|pieds-poings 3/i.test(last);
+  return now || before;
+}
+
+function gymMdLink(id) {
+  const g = GYMS[id];
+  return `[${g.label}](${g.planningUrl})`;
+}
+
+function matchKidsPlanning(text, lastBot, persona) {
+  const t = String(text || '');
+  if (!kidsPlanningIntent(t, lastBot)) return null;
+
+  const ids = detectGyms(t);
+  if (ids.length === 1) {
+    const id = ids[0];
+    const g = GYMS[id];
+    const link = `[voir le planning](${g.planningUrl})`;
+    if (id === 'etats-unis') {
+      return {
+        reply: voice(
+          persona,
+          `Aux **États-Unis**, les 3–6 ans c’est **Boxe pieds-poings** (pas la Baby Boxe). Planning : ${link}.`,
+          `Aux **États-Unis**, les 3–6 ans correspondent à la **Boxe pieds-poings** (pas la Baby Boxe). Planning : ${link}.`
+        ),
+        source: 'redirect-planning',
+      };
+    }
+    return {
+      reply: voice(
+        persona,
+        `Le planning **Baby Boxe / éducative** de **${g.label}** : ${link}.`,
+        `Le planning **Baby Boxe / éducative** de **${g.label}** se trouve ici : ${link}.`
+      ),
+      source: 'redirect-planning',
+    };
+  }
+
+  const eu = GYMS['etats-unis'];
+  const variants = [
+    voice(
+      persona,
+      `Pour la **Baby Boxe dès 3 ans**, ouvre la salle : ${KIDS_PLANNING_GYMS.map(gymMdLink).join(' · ')} (Portet = samedi). Aux **États-Unis**, c’est pieds-poings 3–6 ans : [${eu.label}](${eu.planningUrl}).`,
+      `Pour la **Baby Boxe dès 3 ans** : ${KIDS_PLANNING_GYMS.map(gymMdLink).join(' · ')} (Portet = samedi). Aux **États-Unis**, pieds-poings 3–6 ans : [${eu.label}](${eu.planningUrl}).`
+    ),
+    `**Baby Boxe** = Minimes, Ramonville, Saint-Cyprien, Portet. Liens directs : ${KIDS_PLANNING_GYMS.map(gymMdLink).join(' · ')}. États-Unis = pieds-poings 3–6 ans, pas Baby Boxe.`,
+  ];
+  return { reply: pickAvoid(variants, lastBot), source: 'redirect-planning' };
+}
+
 function matchPlanningFollowup(text, lastBot, persona) {
   const t = String(text || '').trim();
   if (
@@ -633,6 +693,7 @@ function matchWelcomeFaq(text, { persona, lastBot } = {}) {
 module.exports = {
   matchWelcomeFaq,
   matchPlanningFollowup,
+  matchKidsPlanning,
   isClubOpeningHours,
   similarityScore,
 };

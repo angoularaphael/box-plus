@@ -8,7 +8,7 @@ const {
 } = require('./welcome-knowledge');
 const { resolvePersona } = require('./counselor-personas');
 const { buildKnowledge, GYMS, detectGyms, PLANNING_HUB } = require('./bc-knowledge');
-const { matchWelcomeFaq, matchPlanningFollowup, isClubOpeningHours } = require('./welcome-faq');
+const { matchWelcomeFaq, matchPlanningFollowup, matchKidsPlanning, isClubOpeningHours } = require('./welcome-faq');
 
 const KNOWLEDGE = `
 Tu es David, conseiller virtuel Boxing Center (Toulouse). Tu aides les adhérents sur le parcours « Gérer mon abonnement ».
@@ -434,11 +434,14 @@ function welcomeFallbackReply(lastUser, lastBot, persona) {
 const PLANNING_ASK =
   /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours/i;
 
-function matchPlanningRedirect(text, persona) {
+function matchPlanningRedirect(text, persona, lastBot) {
   const t = String(text || '');
   if (isClubOpeningHours(t)) return null;
   if (!PLANNING_ASK.test(t)) return null;
   if (/\bessai\b|10\s*€/i.test(t) && !/planning|horaire/i.test(t)) return null;
+
+  const kidsPlan = matchKidsPlanning(t, lastBot, persona);
+  if (kidsPlan) return kidsPlan;
 
   const vous = persona && persona.id === 'fabien';
   const ids = detectGyms(t);
@@ -471,7 +474,7 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     return { ...planningFollow, persona: persona.id };
   }
 
-  const planningRedirect = matchPlanningRedirect(lastUser, persona);
+  const planningRedirect = matchPlanningRedirect(lastUser, persona, lastBot);
   if (planningRedirect) {
     return { ...planningRedirect, persona: persona.id };
   }

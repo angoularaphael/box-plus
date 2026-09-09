@@ -268,6 +268,34 @@ module.exports = [
     expectSource: 'redirect-planning',
   },
   {
+    id: 'planning-apres-3-ans',
+    q: 'Je veux les plannings',
+    messages: follow(
+      'Oui, il y a bien des cours enfants : **Baby Boxe dès 3 ans**, puis **7–11 ans** et **12–16 ans**. Un mineur s’inscrit en ligne avec le parent.',
+      'Je veux les plannings'
+    ),
+    must: [/Minimes/, /Ramonville/, /Portet/, /minimes|ramonville|portet/i],
+    mustNot: [/Le plus simple : ouvre/],
+    expectSource: 'redirect-planning',
+  },
+  {
+    id: 'planning-baby-boxe-pas-clone',
+    q: 'Je veux les plannings de la baby boxe',
+    messages: follow(
+      'Le plus simple : ouvre [tous les plannings](https://boxingcenter.fr/salle-de-sport-toulouse/). Dis-moi ta salle (Minimes, Ramonville, St-Cyprien, Portet ou États-Unis) pour le lien direct.',
+      'Je veux les plannings de la baby boxe'
+    ),
+    must: [/Baby Boxe/i, /Minimes/, /salle-de-boxe-toulouse-minimes/],
+    mustNot: [/Le plus simple : ouvre/],
+    expectSource: 'redirect-planning',
+  },
+  {
+    id: 'planning-baby-minimes',
+    q: 'planning baby boxe Minimes',
+    must: [/Minimes/, /voir le planning/, /minimes/i],
+    expectSource: 'redirect-planning',
+  },
+  {
     id: 'planning-ouvrir',
     q: 'l’ouvrir',
     messages: follow(
