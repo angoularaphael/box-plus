@@ -13,6 +13,25 @@ const OVERRIDES_FILE = path.join(ROOT, 'storefront', 'products-overrides.json');
 const VISIBLE_PRODUCTS_FILE = path.join(ROOT, 'config', 'storefront-visible-products.json');
 const STATIC_FILE = path.join(ROOT, 'storefront', 'products.json');
 
+/* Identifiants stables issus du dernier catalogue Deciplus complet.
+   Ils permettent au catalogue statique de rester vendable si une synchro
+   partielle (validation KO) est déposée dans catalog-live.json. */
+const STATIC_DECIPLUS_IDS = {
+  'offre-duo': 104,
+  'offre-promo-9': 101,
+  'offre-promo-adulte': 102,
+  'offre-promo-etudiant': 103,
+  'offre-saison': 106,
+  'boxe-educative': 45,
+  'baby-boxe': 93,
+  'etudiants-4-semaines': 89,
+  '44-99-4-semaines': 88,
+  'comptant-12-mois': 22,
+  'comptant-6-mois': 91,
+  'comptant-3-mois': 92,
+  'offre-ete': 105,
+};
+
 function loadVisibleDeciplusTitles() {
   try {
     const data = loadJson('config/storefront-visible-products.json', { optional: true });
@@ -49,11 +68,25 @@ const REQUIRED_DECIPLUS_TITLES = loadVisibleDeciplusTitles()
     ];
 
 function loadStaticProducts() {
+  let products;
   try {
-    return require('../products.json');
+    products = require('../products.json');
   } catch {
-    return loadJson('storefront/products.json', { optional: true }) || [];
+    products = loadJson('storefront/products.json', { optional: true }) || [];
   }
+  return products.map((product) => {
+    const deciplusId = product.deciplus_id || STATIC_DECIPLUS_IDS[product.id];
+    if (!deciplusId) return product;
+    return {
+      ...product,
+      deciplus_id: deciplusId,
+      deciplus_product_search:
+        product.deciplus_product_search || buildDeciplusProductSearch(product.name, deciplusId),
+      deciplus_price: product.deciplus_price ?? Number(product.price_cents || 0) / 100,
+      type: product.type || 'abo',
+      synced: false,
+    };
+  });
 }
 
 function slugify(title) {
@@ -106,7 +139,9 @@ function mapDeciplusItem(item) {
     pay_today_label: stripeEuros === 0 ? 'Gratuit' : formatEuros(stripeEuros),
     deciplus_price: deciplusDisplayEuros,
     price_subtitle: hasContractTotal ? `${formatEuros(stripeEuros)} — première échéance` : null,
-    deciplus_total_note: null,
+    deciplus_total_note: hasContractTotal
+      ? `Total contrat Deciplus : ${formatEuros(deciplusDisplayEuros)}`
+      : null,
     installments_note: hasContractTotal
       ? '1ʳᵉ échéance par carte · prélèvement sans engagement'
       : null,
@@ -267,11 +302,24 @@ function getStoreProducts({ preferLive = true } = {}) {
   };
 
   if (preferLive && runtimeCatalog?.products?.length) {
-    return wrap(runtimeCatalog);
+    const runtime = wrap(runtimeCatalog);
+    if (validateSync(runtime.products).ok) return runtime;
+    logWarn('Catalogue runtime incomplet — repli statique', {
+      count: runtime.count,
+      missing: validateSync(runtime.products).missing,
+    });
   }
   if (preferLive) {
     const live = loadSyncedCatalog();
-    if (live?.products?.length) return wrap(live);
+    if (live?.products?.length) {
+      const wrapped = wrap(live);
+      const validation = validateSync(wrapped.products);
+      if (validation.ok) return wrapped;
+      logWarn('Catalogue live incomplet — repli statique', {
+        count: wrapped.count,
+        missing: validation.missing,
+      });
+    }
   }
   const staticProducts = enrichStorefrontProducts(loadStaticProducts());
   if (!staticProducts.length && process.env.VERCEL) {

@@ -487,7 +487,13 @@ async function processSaleJob(page, order, jobMeta = {}) {
     }
     // Toujours rechercher une fiche strictement concordante avant création.
     // Un crash entre la création Deciplus et le checkpoint ne doit jamais créer un second membre.
-    if (order.force_new_member !== true) order.force_new_member = false;
+    /* Canonicaliser l'option sans rétablir l'ancien défaut dangereux :
+       seule la valeur explicite true autorise une création forcée. */
+    if (order.force_new_member === true) {
+      order.force_new_member = order.force_new_member !== false;
+    } else {
+      order.force_new_member = false;
+    }
     memberResult = await findOrCreateMember(page, order, gymConfig);
     mark('member');
 

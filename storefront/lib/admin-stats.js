@@ -386,6 +386,9 @@ function hasDeciplusFiche(order = {}) {
 }
 
 const DISPATCH_IN_PROGRESS_MS = Number(process.env.BOXPLUS_DISPATCH_IN_PROGRESS_MS || 2 * 60 * 1000);
+const LEGACY_DISPATCH_IN_PROGRESS_MS = Number(
+  process.env.BOXPLUS_LEGACY_DISPATCH_IN_PROGRESS_MS || 20 * 60 * 1000
+);
 
 function dispatchInProgress(order = {}, now = Date.now()) {
   const dr = order.dispatch_result || {};
@@ -393,7 +396,12 @@ function dispatchInProgress(order = {}, now = Date.now()) {
   if (dr.queued === false && dr.reason) return false;
   const at = Date.parse(order.dispatched_at || '');
   if (!Number.isFinite(at)) return false;
-  if (now - at >= DISPATCH_IN_PROGRESS_MS) return false;
+  /* Les anciens envois n'ont pas de dispatch_result. Ils pouvaient rester
+     légitimement en file plusieurs minutes : conserver leur fenêtre historique
+     de 20 min. Les nouveaux jobs explicitement queued expirent après 2 min,
+     ce qui permet au bouton admin de les relancer rapidement s'ils sont bloqués. */
+  const maxAge = Object.keys(dr).length ? DISPATCH_IN_PROGRESS_MS : LEGACY_DISPATCH_IN_PROGRESS_MS;
+  if (now - at >= maxAge) return false;
   if (order.deciplus_member_id || order.deciplus_sale_id) return false;
   const st = String(order.bot_status || '').toLowerCase();
   if (st === 'success' || st === 'manual_ok' || st === 'manual_coach') return false;

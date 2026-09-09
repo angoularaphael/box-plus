@@ -3540,6 +3540,7 @@ module.exports = {
   isActiveBadgeContract,
   isActiveMembershipContract,
   memberHasActiveMembership,
+  reconcileActiveBadges,
   isTrialPrestationConfig,
   annotateMember,
 };

@@ -33,6 +33,19 @@ const ENV_ALIAS = {
   CAWL_API_SECRET: 'CAWL_TEST_API_SECRET',
 };
 
+/* La suite doit pouvoir vérifier le tunnel sans secrets locaux. Ces valeurs
+   factices ne sont utilisées que dans un worker `node --test`; le studio
+   normal continue d'exiger env.test ou les variables PAYPAL_TEST_* /
+   PAYPLUG_TEST_*. */
+const NODE_TEST_FALLBACK = {
+  PAYPAL_MODE: 'sandbox',
+  PAYPAL_CLIENT_ID: `${'A'.repeat(64)}_MINIMES`,
+  PAYPAL_CLIENT_SECRET: 'sandbox-test-secret-minimes',
+  PAYPAL_PORTET_CLIENT_ID: `${'A'.repeat(64)}_PORTET`,
+  PAYPAL_PORTET_CLIENT_SECRET: 'sandbox-test-secret-portet',
+  PAYPLUG_SECRET_KEY: 'sk_test_boxplus_node_test_dummy',
+};
+
 let fileCache = null;
 
 function parseEnvFile(contents) {
@@ -80,13 +93,18 @@ function getOverlay() {
   let source = null;
   for (const key of FILE_KEYS) {
     const fromFile = file.vars[key];
-    const fromEnv = process.env[ENV_ALIAS[key]];
+    const alias = ENV_ALIAS[key];
+    const fromEnv = process.env[alias];
+    const envAliasWasSet = Object.prototype.hasOwnProperty.call(process.env, alias);
     if (fromFile) {
       overlay[key] = fromFile;
       if (!source) source = 'env.test';
-    } else if (fromEnv) {
-      overlay[key] = fromEnv;
+    } else if (envAliasWasSet) {
+      if (fromEnv) overlay[key] = fromEnv;
       if (!source) source = 'env';
+    } else if (process.env.NODE_TEST_CONTEXT && NODE_TEST_FALLBACK[key]) {
+      overlay[key] = NODE_TEST_FALLBACK[key];
+      if (!source) source = 'node-test';
     }
   }
   return { overlay, source, file: file.path };

@@ -71,7 +71,8 @@ function buildOrderPayload(input, product) {
       : Number(product.price_cents || 0) / 100;
   const paymentMethod = isFree
     ? 'free'
-    : input.payment_method || (paymentPlan === '4x' ? 'payplug' : 'payplug');
+    : input.payment_method ||
+      (input.payplug_payment_id || paymentPlan === '4x' ? 'payplug' : 'stripe');
   const saleType = isFree ? 'none' : product.sale_type || null;
 
   return {
@@ -134,16 +135,25 @@ function buildOrderPayload(input, product) {
       medium: input.utm_medium || null,
       campaign: input.utm_campaign || 'rentree-2026',
     },
-    source: input.source || (isFree
-      ? 'storefront-free'
-      : paymentMethod === 'payplug'
-        ? 'storefront-payplug'
-        : 'storefront-paypal'),
+    source:
+      input.source ||
+      (isFree
+        ? 'storefront-free'
+        : paymentMethod === 'payplug'
+          ? 'storefront-payplug'
+          : paymentMethod === 'paypal'
+            ? 'storefront-paypal'
+            : paymentMethod === 'demo'
+              ? 'storefront-demo'
+              : 'storefront-stripe'),
   };
 }
 
 function validateCheckoutForm(input, product) {
-  return [...validateShortForm(input), ...validateFullForm(input, product)];
+  const ibanErrors = validateIbanForm(input, product).map((error) =>
+    error === 'IBAN requis pour le prélèvement' ? 'IBAN requis' : error
+  );
+  return [...validateShortForm(input), ...validateFullForm(input, product), ...ibanErrors];
 }
 
 function validateBirthdate(value) {
