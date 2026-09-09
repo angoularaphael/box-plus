@@ -104,6 +104,12 @@ function kidsPlanningIntent(text, lastBot, messages) {
   return sticky && (shortFollow || planningFollow || gymPick);
 }
 
+const ADDRESS_ASK =
+  /adresse|o[uù]\s+(est|se trouve)|c['’]est o[uù]|trouver la salle|comment (y )?aller|o[uù] c['’]est|o[uù] exactement|(?:la salle|elle|il)\s+(?:est|se trouve)\s+o[uù]|elle est o[uù]|^(?:et\s+)?(?:o[uù]|ou)\s*\??\.?$|cette\s+sal[le]e?\b/i;
+
+const PRIOR_COURSE_ASK =
+  /baby\s*boxe|babi\s*box|boxe\s*[ée]ducative|box(?:ing|in)\s*camp|boxing\s*lady|lady\s*punch|lady\s*kick|\bjjb\b|jiu[-\s]?jitsu|\bmma\b|grappling|hyrox|\bhiit\b|cross|sparring|boxe\s+anglaise|kick|k1|savate|pieds[-\s]?poings/i;
+
 function lastChosenGymId(messages) {
   const list = Array.isArray(messages) ? messages : [];
   for (let i = list.length - 1; i >= 0; i -= 1) {
@@ -112,7 +118,35 @@ function lastChosenGymId(messages) {
     const ids = detectGyms(m.content || m.text || '');
     if (ids.length === 1) return ids[0];
   }
+  /* Le bot peut poser la salle (« JJB uniquement aux États-Unis ») sans que
+     le visiteur l’ait écrite : « où ? » doit quand même viser cette salle. */
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const m = list[i];
+    if (m.role !== 'assistant') continue;
+    const ids = detectGyms(m.content || m.text || '');
+    if (ids.length === 1) return ids[0];
+  }
   return null;
+}
+
+function lastMentionedGymIds(messages, lastBot) {
+  const fromBot = detectGyms(lastBot || '');
+  if (fromBot.length) return fromBot;
+  const list = Array.isArray(messages) ? messages : [];
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const m = list[i];
+    if (m.role !== 'assistant') continue;
+    const ids = detectGyms(m.content || m.text || '');
+    if (ids.length) return ids;
+  }
+  return [];
+}
+
+function addressLines(ids) {
+  return ids
+    .map((id) => GYMS[id])
+    .filter(Boolean)
+    .map((g) => `**${g.label}** : ${g.address}`);
 }
 
 function gymMdLink(id) {
@@ -227,8 +261,19 @@ function matchNamedGymFollowup(text, lastBot, persona, messages) {
   }
 
   if (kidsPlanningIntent(t, last, messages)) {
-    const kids = matchKidsPlanning(t, last, persona, messages);
-    if (kids) return kids;
+    /* Salle déjà nommée : le créneau V4 (jour, heure, coach) doit
+       répondre, pas un lien générique « Baby Boxe / éducative ». */
+    return null;
+  }
+
+  /* « MMA jeudi à Ramonville » puis « à États-Unis plutôt » : garder le cours,
+     pas un lien d’adresse. */
+  const priorCourse = (Array.isArray(messages) ? messages : []).some((m) => {
+    if (m.role !== 'user' && m.role !== 'member') return false;
+    return PRIOR_COURSE_ASK.test(String(m.content || m.text || ''));
+  });
+  if (priorCourse && /\d{1,2}h\d{2}|aucun cr[ée]neau/i.test(last) && !ADDRESS_ASK.test(t)) {
+    return null;
   }
 
   const managerCtx = /\bmanagers?\b|responsable(s)? de salle/i.test(last);
@@ -425,22 +470,28 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
   }
 
   const gymIds = detectGyms(t);
-  const adresseAsk =
-    /adresse|o[uù] (est|se trouve)|c['’]est o[uù]|trouver la salle|comment (y )?aller|o[uù] c['’]est|(?:la salle|elle|il) (?:est|se trouve) o[uù]|o[uù] exactement/i.test(
-      t
-    );
+  const adresseAsk = ADDRESS_ASK.test(t);
   /* « Et la salle est où exactement ? » : la salle nommée deux tours plus haut. */
   const adresseGym = gymIds.length === 1 ? gymIds[0] : adresseAsk ? lastChosenGymId(messages) : null;
-  if (adresseGym && adresseAsk) {
-    const g = GYMS[adresseGym];
-    return {
-      reply: voice(
-        persona,
-        `**${g.label}** : ${g.address}. Le planning est ici : [voir le planning](${g.planningUrl}).`,
-        `**${g.label}** se trouve au ${g.address}. Planning : [voir le planning](${g.planningUrl}).`
-      ),
-      source: 'faq-v4',
-    };
+  if (adresseAsk) {
+    if (adresseGym) {
+      const g = GYMS[adresseGym];
+      return {
+        reply: voice(persona, `**${g.label}** : ${g.address}.`, `**${g.label}** se trouve au ${g.address}.`),
+        source: 'faq-v4',
+      };
+    }
+    const mentioned = lastMentionedGymIds(messages, lastBot);
+    if (mentioned.length) {
+      const lines = addressLines(mentioned);
+      return {
+        reply:
+          lines.length === 1
+            ? lines[0] + '.'
+            : `Les salles dont on vient de parler :\n• ${lines.join('\n• ')}`,
+        source: 'faq-v4',
+      };
+    }
   }
 
   if (
@@ -498,7 +549,15 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
     };
   }
 
-  if (/\bmma\b/i.test(t) && /grappling|lutte au sol/i.test(t)) {
+  if (/diff[ée]rence/i.test(t) && /cours|disciplines?|entre/i.test(t) && !/\bmma\b/i.test(t) && !/grappling/i.test(t)) {
+    return {
+      reply:
+        'En bref : **Baby Boxe dès 3 ans** (3–6 ans, ludique), **Boxe éducative** 7–11 puis 12–16 ans, **loisirs / tous niveaux** pour débuter adulte, **compétiteurs** uniquement si tu es déjà confirmé. Le **MMA** mélange frappes et sol ; le **Grappling** reste au sol, **sans frappes**.',
+      source: 'faq-v4',
+    };
+  }
+
+  if (/\bmma\b/i.test(t) && /grappling|lutte au sol|diff[ée]rence/i.test(t)) {
     return {
       reply:
         'Le **MMA** combine **frappes debout**, lutte et travail au sol. Le **Grappling** se concentre sur le **sol, les contrôles et les soumissions, sans frappes**. Les deux acceptent les débutants sur les créneaux tous niveaux.',
@@ -510,8 +569,8 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
     return {
       reply: pickAvoid(
         [
-          'Le **Jiu-Jitsu Brésilien (JJB)** : combat **au sol**, contrôle, leviers, soumissions, **sans frappes**. Débutants OK. C’est à **États-Unis** (Zouhir). Pour l’horaire : [voir le planning](https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/).',
-          '**JJB** = sol, sans coups. Uniquement à la salle **États-Unis**. Lien planning de la salle : [voir le planning](https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-etats-unis/).',
+          'Le **Jiu-Jitsu Brésilien (JJB)** : combat **au sol**, contrôle, leviers, soumissions, **sans frappes**. Débutants OK. Uniquement à **États-Unis** (Zouhir).',
+          '**JJB** = sol, sans coups. Uniquement à la salle **États-Unis**, avec Zouhir.',
         ],
         lastBot
       ),
@@ -950,4 +1009,5 @@ module.exports = {
   isAdultPivot,
   isClubOpeningHours,
   similarityScore,
+  ADDRESS_ASK,
 };

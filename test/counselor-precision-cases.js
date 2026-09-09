@@ -17,7 +17,15 @@ module.exports = [
       },
       {
         q: 'Aux Minimes.',
-        must: [fact('salle', /Minimes/i)],
+        must: [
+          fact('salle', /Minimes/i),
+          fact('jour', /samedi/i),
+          fact('début', /14h15/i),
+          fact('fin', /15h00/i),
+          fact('cours', /Baby Boxe/i),
+          fact('coach', /Mehdi B\./i),
+        ],
+        mustNot: [fact('cours voisin', /ÉDUCATIVE|EDUCATIVE|7\s*[–-]\s*11|12\s*[–-]\s*16/i)],
       },
       {
         q: "C'est quand ?",
@@ -82,7 +90,8 @@ module.exports = [
       },
       {
         q: 'La boxe anglaise loisirs, je suis débutant je peux ?',
-        must: [fact('niveau', /débutant|tous niveaux/i), fact('cours', /boxe anglaise loisirs/i)],
+        must: [fact('niveau', /débutant|tous niveaux/i), fact('cours', /boxe anglaise loisirs/i), fact('lundi', /Lundi 19h40/i)],
+        mustNot: [fact('autre jour', /Mardi|Mercredi|Jeudi|Vendredi|Samedi/i)],
       },
       {
         q: 'Qui est le coach ?',
@@ -334,6 +343,7 @@ module.exports = [
       {
         q: 'Et leurs horaires ?',
         must: [fact('grappling', /18h40[–-]19h40/i), fact('mma', /19h45[–-]21h15/i)],
+        mustNot: [fact('autre coach', /Hicham/i), fact('midi parasite', /12h40/i)],
       },
     ],
   },
@@ -425,6 +435,143 @@ module.exports = [
           fact('frappes', /frappe/i),
           fact('sol', /sol|soumission/i),
         ],
+      },
+      {
+        q: "C'est quoi la différence entre les cours ?",
+        must: [fact('baby', /Baby Boxe/i), fact('éducative', /éducative|educative/i), fact('loisirs', /loisir|tous niveaux/i)],
+      },
+    ],
+  },
+  {
+    id: 'cinq-ans-quand-sans-salle',
+    persona: 'chloe',
+    steps: [
+      {
+        q: 'Je cherche un cours pour mon fils de 5 ans.',
+        must: [fact('cours', /Baby Boxe/i)],
+      },
+      {
+        q: "C'est quand ?",
+        must: [fact('jour', /samedi/i), fact('début Minimes', /14h15/i)],
+        mustNot: [fact('éducative parasite', /7\s*[–-]\s*11|12\s*[–-]\s*16/i)],
+      },
+    ],
+  },
+  {
+    id: 'jjb-contexte-salle-bot',
+    persona: 'chloe',
+    steps: [
+      {
+        q: 'Je veux faire du JJB',
+        must: [fact('discipline', /JJB|Jiu-Jitsu/i), fact('salle', /États-Unis|Etats-Unis/i)],
+        mustNot: [fact('autre salle', /Portet|Minimes|Ramonville|Saint-Cyprien/i)],
+      },
+      {
+        q: "c'est quand ?",
+        must: [
+          fact('salle', /États-Unis|Etats-Unis/i),
+          fact('lundi', /18h20[–-]19h00/i),
+          fact('mercredi', /19h40[–-]21h00/i),
+          fact('coach', /Zouhir/i),
+        ],
+        mustNot: [fact('grappling parasite', /GRAPPLING/i)],
+      },
+      {
+        q: 'où ?',
+        must: [fact('adresse', /388 avenue des États-Unis|388 avenue des Etats-Unis/i), fact('ville', /31200 Toulouse/i)],
+        mustNot: [fact('menu générique', /Offres, salles|dis-moi juste/i)],
+      },
+    ],
+  },
+  {
+    id: 'gym-switch-mma-etats-unis',
+    persona: 'fabien',
+    steps: [
+      {
+        q: 'MMA jeudi à Ramonville',
+        must: [fact('horaire', /19h45[–-]21h15/i), fact('coach', /Jérôme/i)],
+      },
+      {
+        q: 'à États-Unis plutôt',
+        must: [
+          fact('nouvelle salle', /États-Unis|Etats-Unis/i),
+          fact('cours', /MMA/i),
+          fact('horaire', /19h40[–-]21h00/i),
+          fact('coach', /Zouhir/i),
+        ],
+        mustNot: [fact('ancienne salle', /Ramonville/i), fact('ancien horaire', /19h45/i), fact('lien seul', /se trouve au/i)],
+      },
+      {
+        q: 'et vendredi ?',
+        must: [fact('salle', /États-Unis|Etats-Unis/i), fact('cours', /MMA/i), fact('horaire', /19h40[–-]21h00/i), fact('coach', /Zouhir/i)],
+        mustNot: [fact('jjb parasite', /JIU-JITSU|JJB/i), fact('ancienne salle', /Ramonville/i)],
+      },
+    ],
+  },
+  {
+    id: 'fautes-boxing-camp',
+    persona: 'nassim',
+    steps: [
+      {
+        q: 'boxin camp minime mardi',
+        must: [fact('salle', /Minimes/i), fact('cours', /BOXING CAMP/i), fact('horaire', /18h30[–-]19h30/i), fact('coach', /Clément/i)],
+        mustNot: [fact('autres cours', /BOXE ANGLAISE|BOXE COMPÉTITEURS|COMPETITEURS/i)],
+      },
+      {
+        q: 'c kan ?',
+        must: [fact('horaire', /18h30[–-]19h30/i), fact('cours', /BOXING CAMP/i)],
+      },
+      {
+        q: 'ki coach ?',
+        must: [fact('coach', /Clément/i)],
+        mustNot: [fact('mauvais coach', /Mehdi/i)],
+      },
+      {
+        q: 'ou ?',
+        must: [fact('adresse', /12 rue de Fenouillet/i), fact('ville', /31200 Toulouse/i)],
+      },
+    ],
+  },
+  {
+    id: 'acces-libre-polarite',
+    persona: 'chloe',
+    steps: [
+      {
+        q: 'Quels cours samedi Minimes, sans accès libre ?',
+        must: [fact('boxing camp', /BOXING CAMP/i), fact('baby', /BABY BOXE/i)],
+        mustNot: [fact('accès libre', /ACC[ÈE]S LIBRE/i)],
+      },
+      {
+        q: 'Uniquement les accès libres mardi Minimes ?',
+        must: [fact('matin', /10h00[–-]12h00.*ACC[ÈE]S LIBRE/is), fact('après-midi', /13h20[–-]18h00.*ACC[ÈE]S LIBRE/is)],
+        mustNot: [fact('cours encadré', /BOXE ANGLAISE|BOXING CAMP|BOXE COMPÉTITEURS|COMPETITEURS/i)],
+      },
+    ],
+  },
+  {
+    id: 'grappling-mercredi-etats-unis',
+    persona: 'chloe',
+    steps: [
+      {
+        q: 'Grappling mercredi États-Unis : quelle heure et quel coach ?',
+        must: [fact('absence', /aucun|pas de|rien/i), fact('discipline', /Grappling/i), fact('jour', /mercredi/i)],
+        mustNot: [fact('horaire inventé', /\d{1,2}h\d{2}[–-]\d{1,2}h\d{2}.*GRAPPLING/is)],
+      },
+    ],
+  },
+  {
+    id: 'boxing-camp-niveau',
+    persona: 'fabien',
+    steps: [
+      {
+        q: 'Boxing Camp mardi Minimes : est-ce tous niveaux ?',
+        must: [
+          fact('horaire', /18h30[–-]19h30/i),
+          fact('coach', /Clément/i),
+          fact('niveau', /Tous niveaux/i),
+          fact('cours', /BOXING CAMP/i),
+        ],
+        mustNot: [fact('autres cours', /BOXE ANGLAISE|BOXE COMPÉTITEURS|COMPETITEURS/i)],
       },
     ],
   },
