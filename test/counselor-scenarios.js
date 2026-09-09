@@ -1,0 +1,247 @@
+'use strict';
+
+/**
+ * Conversations visiteur : chaque scénario enchaîne plusieurs tours
+ * (l’historique est conservé, comme le widget du site).
+ */
+
+const NO_MENU =
+  /dis-moi juste ce que tu cherches|Offres, salles, essai|partir sur quoi en premier|Balance ta question|Que souhaitez-vous savoir \?|À votre disposition pour comparer/i;
+
+const NEVER = [
+  /64,75/,
+  /jamais obligatoire/i,
+  /ouverts 7j\/7(?! »)/i,
+  /dimanche 10h/i,
+  /dès 2 ans/i,
+];
+
+function step(q, extra = {}) {
+  return { q, mustNot: [NO_MENU], failIf: NEVER, ...extra };
+}
+
+module.exports = [
+  {
+    id: 'parent-3-ans-fil-screenshot',
+    persona: 'chloe',
+    steps: [
+      step('J’ai un enfant de 3 ans qui veut boxer', { must: [/Baby Boxe/i, /3 ans/] }),
+      step('Je veux les plannings', {
+        must: [/Minimes/, /Ramonville/, /Portet/],
+        mustNot: [/Le plus simple : ouvre/],
+        expectSource: 'redirect-planning',
+      }),
+      step('Je veux les plannings de la baby boxe', {
+        must: [/Baby Boxe/i, /Minimes/, /salle-de-boxe-toulouse-minimes/],
+        mustNot: [/Le plus simple : ouvre/],
+      }),
+      step('Minimes', {
+        must: [/Minimes/, /planning|Fenouillet/i],
+      }),
+      step('l’ouvrir', { must: [/minimes/i], expectSource: 'redirect-planning' }),
+    ],
+  },
+  {
+    id: 'parent-3-ans-salle-puis-planning',
+    persona: 'chloe',
+    steps: [
+      step('J’ai un fils de 3 ans comment faire pour l’inscrire ?', { must: [/Baby Boxe/i] }),
+      step('Et c’est dans quelle salle ?', { must: [/Minimes/, /Ramonville/, /Portet/] }),
+      step('Je veux les horaires', {
+        must: [/Minimes|Ramonville|Portet/],
+        mustNot: [/Le plus simple : ouvre/],
+      }),
+      step('Ramonville', { must: [/Ramonville/i] }),
+    ],
+  },
+  {
+    id: 'parent-relance-enfants-trois-fois',
+    persona: 'chloe',
+    steps: [
+      step('Ya pas de cours pour les enfants ?', { must: [/Baby Boxe/i] }),
+      step('Ya pas de cours pour les enfants ?', { must: [/Baby Boxe|Minimes|7–11/i], notClone: true }),
+      step('Et les petits de 3 ans alors ?', { must: [/Baby Boxe/i, /3 ans/], notClone: true }),
+    ],
+  },
+  {
+    id: 'ages-chaines',
+    persona: 'nassim',
+    steps: [
+      step('Mon bébé a 2 ans', { must: [/3 ans/], failIf: [/dès 2 ans/i] }),
+      step('OK il aura 3 ans en janvier, on fait comment ?', { must: [/Baby Boxe|en ligne/i] }),
+      step('Et à 8 ans ce sera quoi ?', { must: [/7–11|7-11|Éducative|educative/i] }),
+    ],
+  },
+  {
+    id: 'ado-puis-adulte',
+    persona: 'chloe',
+    steps: [
+      step('Ado de 14 ans', { must: [/12–16|12-16/i] }),
+      step('Et pour moi je débute', { must: [/tous niveaux|débutant/i] }),
+      step('C’est combien l’abo ?', { must: [/29,99/, /259/] }),
+    ],
+  },
+  {
+    id: 'debutant-essai-tarif-clim',
+    persona: 'fabien',
+    steps: [
+      step('Je n’ai jamais boxé, c’est possible ?', {
+        must: [/vous|souhaitez/i],
+        mustNot: [/\btu\b|\bton\b/i],
+      }),
+      step('Je veux essayer avant', { must: [/10\s*€/], mustNot: [/\btu\b|\bton\b/i] }),
+      step('C’est 29 euros par mois ?', { must: [/29,99/, /4 semaines|28 jours/i] }),
+      step('Les salles sont climatisées ?', { must: [/pas climatis|ne sont pas/i] }),
+    ],
+  },
+  {
+    id: 'femme-lady-planning',
+    persona: 'chloe',
+    steps: [
+      step('Les femmes peuvent participer ?', { must: [/Boxing Lady|Lady Punch/i] }),
+      step('Lady Punch c’est où ?', { must: [/Ramonville|Cyprien|États-Unis|Etats-Unis/i] }),
+      step('horaires Ramonville', {
+        must: [/ramonville/i, /voir le planning/],
+        expectSource: 'redirect-planning',
+      }),
+      step('l’ouvrir', { must: [/ramonville/i] }),
+    ],
+  },
+  {
+    id: 'jjb-pas-resil-puis-planning',
+    persona: 'chloe',
+    steps: [
+      step('c’est quoi le Jiu-Jitsu Brésilien', {
+        must: [/sol|sans frappe/i],
+        mustNot: [/David.*72/],
+      }),
+      step('JJB aux États-Unis c’est quel horaire ?', {
+        must: [/etats-unis/i, /voir le planning/],
+        expectSource: 'redirect-planning',
+      }),
+      step('et comment je résilie', { must: [/David|72/i], expectSource: 'redirect-david' }),
+    ],
+  },
+  {
+    id: 'ouverture-vs-planning',
+    persona: 'chloe',
+    steps: [
+      step('Vous êtes ouverts le dimanche ?', { must: [/samedi|dimanche/i], failIf: [/ouverts 7j/i] }),
+      step('Quels sont vos horaires d’ouverture ?', { must: [/10h/, /21h30/], mustNot: [/tous les plannings/] }),
+      step('je veux voir le planning', {
+        must: [/tous les plannings/],
+        expectSource: 'redirect-planning',
+      }),
+      step('Saint-Cyprien', { must: [/Cyprien|cyprien/i] }),
+    ],
+  },
+  {
+    id: 'tarif-badge-resil',
+    persona: 'chloe',
+    steps: [
+      step('Quelle offre promouvoir en priorité ?', { must: [/29,99/, /259/] }),
+      step('le badge est remboursé ?', { must: [/badge/i, /rembours|propri/i] }),
+      step('je veux résilier mon abonnement', { must: [/David|72/], expectSource: 'redirect-david' }),
+      step('si je n’utilise pas je suis remboursé ?', { must: [/non-utilisation|rembours/i] }),
+    ],
+  },
+  {
+    id: 'salles-adresses-managers',
+    persona: 'chloe',
+    steps: [
+      step('Vous avez quelles salles ?', { must: [/Minimes/, /Portet/] }),
+      step('C’est où Minimes ?', { must: [/Fenouillet/i] }),
+      step('C’est qui le manager ?', { must: [/Mehdi/i] }),
+      step('et Portet', { must: [/Valentin|Portet/i] }),
+    ],
+  },
+  {
+    id: 'disciplines-enchainées',
+    persona: 'nassim',
+    steps: [
+      step('Vous faites du MMA ?', { must: [/MMA/i] }),
+      step('et du grappling', { must: [/sol|sans frappe/i], notClone: true }),
+      step('HYROX ?', { must: [/HYROX/i] }),
+      step('savate', { must: [/Portet/i] }),
+    ],
+  },
+  {
+    id: 'club-pratique',
+    persona: 'chloe',
+    steps: [
+      step('Il y a des douches ?', { must: [/douche/i] }),
+      step('et des casiers', { must: [/casier/i] }),
+      step('on peut fumer', { must: [/interdit/i] }),
+      step('filmer dans les vestiaires ?', { must: [/vestiaire/i], failIf: [/oui.*vestiaire/i] }),
+    ],
+  },
+  {
+    id: 'switch-enfant-vers-abo-vers-dimanche',
+    persona: 'chloe',
+    steps: [
+      step('cours pour les enfants', { must: [/Baby Boxe/i] }),
+      step('c’est combien', { must: [/29,99/, /259/] }),
+      step('vous ouvrez dimanche matin', { must: [/samedi|dimanche/i] }),
+      step('planning baby boxe', { must: [/Minimes/, /Baby Boxe/i], mustNot: [/Le plus simple : ouvre/] }),
+    ],
+  },
+  {
+    id: 'essai-pas-confondu-planning',
+    persona: 'chloe',
+    steps: [
+      step('je veux une séance d’essai à 10 €', { must: [/10\s*€/], mustNot: [/voir le planning/] }),
+      step('le matériel est prêté ?', { must: [/prêt|prêté|prete/i] }),
+      step('planning Minimes', { must: [/minimes/i, /voir le planning/] }),
+    ],
+  },
+  {
+    id: 'balma-puis-vrai-reseau',
+    persona: 'fabien',
+    steps: [
+      step('Il y a encore une salle à Balma ?', { must: [/pas dans le périmètre|n’est pas|5 salles/i] }),
+      step('donc lesquelles', { must: [/Minimes|Ramonville|Portet/i] }),
+    ],
+  },
+  {
+    id: 'competiteurs-vs-debutant',
+    persona: 'chloe',
+    steps: [
+      step('Les cours compétiteurs c’est pour qui ?', { must: [/confirm|compétit/i] }),
+      step('je débute je peux y aller ?', { must: [/tous niveaux|confirm|loisir|débutant/i] }),
+    ],
+  },
+  {
+    id: 're-enchaîne-planning-salles',
+    persona: 'chloe',
+    steps: [
+      step('planning', { must: [/plannings|planning/i] }),
+      step('Portet', { must: [/Portet|portet/i] }),
+      step('et Cyprien', { must: [/cyprien/i] }),
+      step('et États-Unis', { must: [/etats-unis|États-Unis/i] }),
+    ],
+  },
+];
+
+/** Questions factuelles : un menu générique au milieu d’un fil = faille. */
+module.exports.CHAOS_QUESTIONS = [
+  'J’ai un fils de 3 ans',
+  'Je veux les plannings',
+  'Baby Boxe',
+  'Minimes',
+  'C’est combien',
+  'Vous êtes ouverts le dimanche ?',
+  'Je n’ai jamais boxé',
+  'Séance d’essai',
+  'c’est quoi le JJB',
+  'je veux résilier',
+  'Lady Punch',
+  'horaires Ramonville',
+  'Il y a des douches ?',
+  'badge remboursé',
+  'manager de Portet',
+  'MMA',
+  '2 ans on peut inscrire',
+  'tarif étudiant',
+  'l’ouvrir',
+  'et dans quelle salle',
+];

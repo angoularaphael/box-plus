@@ -51,7 +51,7 @@ const GYMS = {
     manager: 'Dadi',
     url: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/',
     planningUrl: 'https://boxingcenter.fr/salle-de-sport-toulouse/boxing-center-salle-de-toulouse-saint-cyprien/',
-    match: /st[-\s]?cyprien|saint[-\s]?cyprien|sainte[-\s]?lucie|fer\s+[àa]\s+cheval/i,
+    match: /st[-\s]?cyprien|saint[-\s]?cyprien|sainte[-\s]?lucie|fer\s+[àa]\s+cheval|\bcyprien\b/i,
     planningKey: 'planning-saint-cyprien',
   },
   portet: {

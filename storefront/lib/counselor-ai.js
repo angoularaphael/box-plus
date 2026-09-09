@@ -8,7 +8,13 @@ const {
 } = require('./welcome-knowledge');
 const { resolvePersona } = require('./counselor-personas');
 const { buildKnowledge, GYMS, detectGyms, PLANNING_HUB } = require('./bc-knowledge');
-const { matchWelcomeFaq, matchPlanningFollowup, matchKidsPlanning, isClubOpeningHours } = require('./welcome-faq');
+const {
+  matchWelcomeFaq,
+  matchPlanningFollowup,
+  matchKidsPlanning,
+  matchNamedGymFollowup,
+  isClubOpeningHours,
+} = require('./welcome-faq');
 
 const KNOWLEDGE = `
 Tu es David, conseiller virtuel Boxing Center (Toulouse). Tu aides les adhérents sur le parcours « Gérer mon abonnement ».
@@ -492,6 +498,11 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
   const managerReply = matchManagerFromText(lastUser);
   if (managerReply) {
     return { reply: managerReply, source: 'managers' };
+  }
+
+  const gymFollow = matchNamedGymFollowup(lastUser, lastBot, persona);
+  if (gymFollow) {
+    return { ...gymFollow, persona: persona.id };
   }
 
   const faqHit = matchWelcomeFaq(lastUser, { persona, lastBot });

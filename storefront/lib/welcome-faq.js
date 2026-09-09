@@ -127,10 +127,73 @@ function matchPlanningFollowup(text, lastBot, persona) {
     return null;
   }
   const fromBot = String(lastBot || '').match(/https?:\/\/[^\s)]+/);
-  const url = fromBot ? fromBot[0] : PLANNING_HUB;
+  let url = fromBot ? fromBot[0] : '';
+  if (!url) {
+    const ids = detectGyms(lastBot);
+    if (ids.length === 1) url = GYMS[ids[0]].planningUrl;
+  }
+  url = url || PLANNING_HUB;
   const link = `[voir le planning](${url})`;
   return {
     reply: voice(persona, `C’est ici : ${link}.`, `C’est ici : ${link}.`),
+    source: 'redirect-planning',
+  };
+}
+
+function matchNamedGymFollowup(text, lastBot, persona) {
+  const t = String(text || '').trim();
+  const last = String(lastBot || '');
+  if (!t || !last) return null;
+
+  if (
+    /lesquelles|laquelle|les salles alors|donc lesquelles|et lesquelles/i.test(t) &&
+    /salle|Balma|Minimes|p[ée]rim[èe]tre|clubs?/i.test(last)
+  ) {
+    return {
+      reply: voice(
+        persona,
+        '5 salles : **Minimes**, **Ramonville**, **Saint-Cyprien**, **Portet**, **États-Unis**. Accès **lundi–samedi 10h–21h30**. Tu es de quel quartier ?',
+        'Cinq salles : **Minimes**, **Ramonville**, **Saint-Cyprien**, **Portet**, **États-Unis**. Accès **lundi–samedi 10h–21h30**. De quel secteur venez-vous ?'
+      ),
+      source: 'faq-v4',
+    };
+  }
+
+  const ids = detectGyms(t);
+  if (ids.length !== 1) return null;
+  if (/adresse|o[uù] (est|se trouve)|c['’]est o[uù]|manager|responsable/i.test(t) && t.length > 22) {
+    return null;
+  }
+
+  const id = ids[0];
+  const g = GYMS[id];
+  const managerCtx = /manager|responsable|Mehdi|Pascal|Dadi|Valentin|S[ée]bastien/i.test(last);
+  if (managerCtx && !/planning|horaire|cr[ée]neau|baby/i.test(t)) {
+    return {
+      reply: `Le manager de **${g.label}**, c’est **${g.manager}**. Adresse : ${g.address}.`,
+      source: 'managers',
+    };
+  }
+
+  if (kidsPlanningIntent(t, last)) {
+    return matchKidsPlanning(`planning ${g.label}`, last, persona);
+  }
+
+  const choosing =
+    /salle|planning|horaire|laquelle|Minimes|Ramonville|Portet|Cyprien|[ée]tats|Baby Boxe|quartier|tous les plannings|voir le planning/i.test(
+      last
+    );
+  if (!choosing && !/^(et |alors )?(minimes|ramonville|portet|st[-\s]?cyprien|saint[-\s]?cyprien|cyprien|[eé]tats)/i.test(t)) {
+    return null;
+  }
+
+  const link = `[voir le planning](${g.planningUrl})`;
+  return {
+    reply: voice(
+      persona,
+      `**${g.label}** : ${g.address}. Planning : ${link}.`,
+      `**${g.label}** se trouve au ${g.address}. Planning : ${link}.`
+    ),
     source: 'redirect-planning',
   };
 }
@@ -405,6 +468,7 @@ function matchWelcomeFaq(text, { persona, lastBot } = {}) {
             'Oui. Les cours mixtes sont ouverts aux femmes, et il y a aussi des cours **100 % féminins** : **Boxing Lady** (Minimes, Portet), **Lady Punch** (Ramonville, Saint-Cyprien, États-Unis) et **Lady Kick** (Portet). Tu préfères mixte ou 100 % féminin ?',
             'Oui. Les cours mixtes sont ouverts aux femmes, et nous proposons **Boxing Lady**, **Lady Punch** et **Lady Kick** (100 % féminin). Vous préférez mixte ou 100 % féminin ?'
           ),
+          '**Lady Punch** : Ramonville, Saint-Cyprien, États-Unis. **Boxing Lady** : Minimes et Portet. **Lady Kick** : Portet.',
         ],
         lastBot
       ),
@@ -458,7 +522,7 @@ function matchWelcomeFaq(text, { persona, lastBot } = {}) {
     };
   }
 
-  if (/d[ée]butant|jamais (box[ée]|pratiqu)|pas sportif|reprends? apr[eè]s|longue pause/i.test(t)) {
+  if (/d[ée]but(e|er|ant)|jamais (box[ée]|pratiqu)|pas sportif|reprends? apr[eè]s|longue pause/i.test(t)) {
     return {
       reply: pickAvoid(
         [
@@ -694,6 +758,7 @@ module.exports = {
   matchWelcomeFaq,
   matchPlanningFollowup,
   matchKidsPlanning,
+  matchNamedGymFollowup,
   isClubOpeningHours,
   similarityScore,
 };
