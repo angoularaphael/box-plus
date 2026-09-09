@@ -103,6 +103,41 @@ test('sans salle, le planning renvoie vers la page de tous les plannings', async
   assert.match(r.reply, /vous|consultez/i);
 });
 
+test('un enfant de 3 ans reçoit la Baby Boxe, pas un menu générique', async () => {
+  const r = await guideWelcome({
+    freeText: 'J’ai un fils de 3 ans comment faire pour l’inscrire ?',
+    messages: [],
+    persona: 'chloe',
+  });
+  assert.equal(r.source, 'faq-v4');
+  assert.match(r.reply, /Baby Boxe/i);
+  assert.match(r.reply, /3 ans/);
+  assert.doesNotMatch(r.reply, /dis-moi juste ce que tu cherches/i);
+});
+
+test('« il n’y a pas de cours enfants ? » est corrigé, pas un menu', async () => {
+  const r = await guideWelcome({
+    freeText: 'Ya pas de cours pour les enfants ?',
+    messages: [],
+    persona: 'chloe',
+  });
+  assert.equal(r.source, 'faq-v4');
+  assert.match(r.reply, /Baby Boxe|Éducative|educative/i);
+});
+
+test('l’ouvrir après un lien planning renvoie le même lien', async () => {
+  const r = await guideWelcome({
+    freeText: 'l’ouvrir',
+    messages: [
+      { role: 'assistant', content: 'Le planning de **Minimes**, c’est ici : [voir le planning](https://boxingcenter.fr/salle-de-sport-toulouse/salle-de-boxe-toulouse-minimes/).' },
+      { role: 'user', content: 'l’ouvrir' },
+    ],
+    persona: 'chloe',
+  });
+  assert.equal(r.source, 'redirect-planning');
+  assert.match(r.reply, /minimes/i);
+});
+
 test('une séance d’essai n’est pas traitée comme une demande de planning', async () => {
   const r = await guideWelcome({
     freeText: 'je veux une séance d’essai à 10 €',

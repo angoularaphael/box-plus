@@ -8,6 +8,7 @@ const {
 } = require('./welcome-knowledge');
 const { resolvePersona } = require('./counselor-personas');
 const { buildKnowledge, GYMS, detectGyms, PLANNING_HUB } = require('./bc-knowledge');
+const { matchWelcomeFaq, matchPlanningFollowup } = require('./welcome-faq');
 
 const KNOWLEDGE = `
 Tu es David, conseiller virtuel Boxing Center (Toulouse). Tu aides les adhérents sur le parcours « Gérer mon abonnement ».
@@ -392,8 +393,9 @@ function cleanWelcomeReply(content, fallback) {
 }
 
 function welcomeFallbackReply(lastUser, lastBot, persona) {
-  /* Les réponses factuelles sont communes aux conseillers — ce sont des
-     informations contractuelles. Seule la relance générique prend leur voix. */
+  const faq = matchWelcomeFaq(lastUser, { persona, lastBot });
+  if (faq) return faq;
+
   const generic = (persona && persona.fallbacks) || WELCOME_FALLBACKS;
   const pick = (key) => {
     const variants = FAQ_VARIANTS[key] || generic;
@@ -422,10 +424,11 @@ function welcomeFallbackReply(lastUser, lastBot, persona) {
   if (/moins cher|économ|long terme|longue dur[eé]e|sur la dur[eé]e|meilleur prix/i.test(lastUser)) {
     return { reply: pick('longTerm'), source: 'faq' };
   }
-  if (/essai|10\s*€/i.test(lastUser)) {
-    return { reply: pick('trial'), source: 'faq' };
+  let reply = pickVariant(generic);
+  if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
+    reply = generic.find((v) => similarityScore(v, lastBot) < 0.55) || reply;
   }
-  return { reply: pickVariant(generic), source: 'template' };
+  return { reply, source: 'template' };
 }
 
 const PLANNING_ASK =
@@ -462,6 +465,11 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
   const lastUser = lastMemberMessage(messages, freeText);
   const lastBot = lastAssistantMessage(messages);
 
+  const planningFollow = matchPlanningFollowup(lastUser, lastBot, persona);
+  if (planningFollow) {
+    return { ...planningFollow, persona: persona.id };
+  }
+
   const planningRedirect = matchPlanningRedirect(lastUser, persona);
   if (planningRedirect) {
     return { ...planningRedirect, persona: persona.id };
@@ -480,6 +488,11 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
   const managerReply = matchManagerFromText(lastUser);
   if (managerReply) {
     return { reply: managerReply, source: 'managers' };
+  }
+
+  const faqHit = matchWelcomeFaq(lastUser, { persona, lastBot });
+  if (faqHit) {
+    return { ...faqHit, persona: persona.id };
   }
 
   const fallback = pickVariant(persona.fallbacks);
@@ -515,16 +528,17 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     let reply = cleanWelcomeReply(content, fallback);
 
     if (lastBot && similarityScore(reply, lastBot) >= 0.55) {
-      const alt = welcomeFallbackReply(lastUser, lastBot, persona);
+      const alt = matchWelcomeFaq(lastUser, { persona, lastBot }) || welcomeFallbackReply(lastUser, lastBot, persona);
       reply = alt.reply;
       return { reply, source: 'dedup', persona: persona.id };
     }
 
     return { reply: reply || fallback, source: 'groq', persona: persona.id };
   } catch (err) {
+    const alt = matchWelcomeFaq(lastUser, { persona, lastBot }) || welcomeFallbackReply(lastUser, lastBot, persona);
     return {
-      ...welcomeFallbackReply(lastUser, lastBot, persona),
-      source: 'template-fallback',
+      ...alt,
+      source: alt.source === 'faq-v4' ? 'faq-v4' : 'template-fallback',
       persona: persona.id,
       error: err.message,
     };
