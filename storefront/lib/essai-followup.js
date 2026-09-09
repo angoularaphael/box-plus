@@ -294,9 +294,6 @@ async function sendCustomerNudge(
     (async (to, text) => {
       const result = await sendTransactionalSms(to, text, { source: 'essai-relance' });
       if (result.ok) return { sent: true, via: 'twilio', sid: result.sid };
-      if (result.error === 'twilio_not_configured') {
-        return sendWhatsAppMessage(to, text, { source: 'essai-relance', transactional: true });
-      }
       return { sent: false, error: result.error || 'sms_failed' };
     });
 

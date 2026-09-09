@@ -239,8 +239,14 @@ async function logoutWhatsAppBot() {
 async function sendWhatsAppMessage(phone, message, { timeoutMs = 20000, source = 'boutique', transactional = false } = {}) {
   const to = toE164(phone);
   if (!to) throw new Error('Numéro invalide');
+  if (transactional) {
+    const { sendTransactionalSms } = require('./twilio-sms');
+    const result = await sendTransactionalSms(phone, message, { source });
+    if (!result.ok) throw new Error(result.error || 'twilio_sms_failed');
+    return { sent: true, via: 'twilio', sid: result.sid, to };
+  }
   const { isAllWhatsAppPaused } = require('./whatsapp-outbound');
-  if (!transactional && isAllWhatsAppPaused()) throw new Error('Envois SMS en pause');
+  if (isAllWhatsAppPaused()) throw new Error('Envois SMS en pause');
   try {
     const result = await smsFetch('/api/messages/send', {
       method: 'POST',

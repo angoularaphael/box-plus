@@ -22,12 +22,21 @@ test('relance essai client passe par Resend, pas Brevo', () => {
   assert.doesNotMatch(src, /sendEmailViaBrevo/);
 });
 
-test('relance inscription passe par Resend David, pas Brevo', () => {
+test('relance inscription e-mail passe par Resend, pas Brevo', () => {
   const src = fs.readFileSync(path.join(__dirname, '../storefront/lib/inscription-nudge.js'), 'utf8');
   assert.match(src, /resend-send/);
   assert.match(src, /sendEmailViaResend/);
-  assert.match(src, /buildInscriptionNudgeEmail/);
   assert.doesNotMatch(src, /sendEmailViaBrevo/);
+});
+
+test('relances SMS boutique (inscription, reprise, essai) passent par Twilio, pas la gateway', () => {
+  const nudge = fs.readFileSync(path.join(__dirname, '../storefront/lib/inscription-nudge.js'), 'utf8');
+  const essai = fs.readFileSync(path.join(__dirname, '../storefront/lib/essai-followup.js'), 'utf8');
+  assert.match(nudge, /sendTransactionalSms/);
+  assert.match(essai, /sendTransactionalSms/);
+  assert.doesNotMatch(nudge, /sms-gateway/);
+  assert.doesNotMatch(nudge, /twilio_not_configured/);
+  assert.doesNotMatch(essai, /twilio_not_configured/);
 });
 
 test('mail campagne : texte David, comme Guillaume en Principal', () => {
