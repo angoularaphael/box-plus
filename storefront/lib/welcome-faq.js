@@ -109,8 +109,10 @@ const ADDRESS_ASK =
 
 function isAddressAsk(text) {
   const t = String(text || '');
-  /* « C’est où et quand ? » n’est pas une demande d’adresse seule. */
+  /* « C’est où et quand ? » / « où est-ce que je peux en faire ? » : ce n’est pas l’adresse. */
   if (/\bquand\b|horaires?|cr[ée]neaux?|quelle?\s+heure/i.test(t)) return false;
+  if (/o[uù]\s+est\s*-?\s*ce\s+que/i.test(t)) return false;
+  if (/o[uù].{0,60}(?:faire|peux|puis[- ]je|pratiqu|trouver (?:un )?cours)/i.test(t)) return false;
   return ADDRESS_ASK.test(t);
 }
 
@@ -922,7 +924,7 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
   }
 
   if (
-    /quelle offre|promo|29,99|29\s*€|29\s*euros?|259|sans engagement|c['’]est combien|combien.{0,20}co[uû]te|combien (l['’]abo|l['’]abonnement|la formule)|\btarifs?|\bprix\b|\babonnement\b|\babo\b|par mois|mensuel|4 semaines|pr[ée]l[èe]vement/i.test(
+    /quelle offre|promo|29,99|29\s*€|29\s*euros?|259|sans engagement|c['’]est combien|\bcombien\b|combien.{0,20}co[uû]te|combien (l['’]abo|l['’]abonnement|la formule)|\btarifs?|\bprix\b|\babonnement\b|\babo\b|par mois|mensuel|4 semaines|pr[ée]l[èe]vement/i.test(
       t
     )
   ) {

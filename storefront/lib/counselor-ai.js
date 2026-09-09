@@ -415,9 +415,17 @@ function cleanWelcomeReply(content, fallback) {
 }
 
 const PLANNING_ASK =
-  /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours|quels?\s+(cours|soirs?|jours?)|c['’]est\s+quand|[çc]a se passe quand|(?:il|elle|[çc]a|sa)\s+(?:commence|komance)\s+(?:quand|kan)|c\s+kan|\bkan\b|o[uù]\s+et\s+quand|quand\s+et\s+o[uù]|ce soir|ce matin|ce midi|\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b/i;
+  /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours|quels?\s+(cours|soirs?|jours?)|c['’]est\s+quand|^(?:et\s+)?quand\s*\??\.?$|[çc]a se passe quand|(?:il|elle|[çc]a|sa)\s+(?:commence|komance)\s+(?:quand|kan)|c\s+kan|\bkan\b|o[uù]\s+et\s+quand|quand\s+et\s+o[uù]|ce soir|ce matin|ce midi|\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b/i;
+
+const WHERE_CAN_I =
+  /o[uù]\s+est\s*-?\s*ce\s+que|o[uù].{0,60}(?:faire|peux|puis[- ]je|pratiqu)/i;
 
 const DEFINITION_ASK = /c['’]est quoi|kesako|diff[ée]rence/i;
+
+function isDefinitionAsk(text) {
+  /* « C’est quoi le planning… » n’est pas une définition. */
+  return DEFINITION_ASK.test(text) && !PLANNING_ASK.test(text);
+}
 
 const PLANNING_DETAIL_ASK =
   /\b(?:qui\s+(?:est\s+)?(?:le\s+)?coach|qui\s+coach|ki\s+coach|coachs?|quel(?:le)?\s+niveau|c['’]est quel niveau|[àa]\s+quelle\s+heure\s+(?:[çc]a|il|elle)?\s*commence|[çc]a\s+(?:commence|komance)\s+(?:quand|kan)|le cours pour|d[ée]butant|je peux|leurs?\s+horaires?|et\s+(?:le|la|du|de la)\s+(?:mma|grappling|baby|boxe|kick|jjb|jiu|hyrox|cours))/i;
@@ -674,6 +682,17 @@ function emptyPlanningReply({ topicRule, coachRule, ids, requestedDay, requested
   const part = requestedPart ? ` ${requestedPart}` : '';
   const provisoire = ids[0] === 'portet' ? ' Planning Portet **provisoire**.' : '';
   let reply = `Aucun créneau${subject} publié${loc}${day}${part}.${provisoire}`;
+  if (ids[0] === 'etats-unis' && topicRule && /Baby Boxe/i.test(topicRule.label)) {
+    const euKids = planningEntries(planningContext('États-Unis') || '', 'etats-unis').filter((e) =>
+      /pieds[-\s]?poings\s*3/i.test(e.cours)
+    );
+    if (euKids[0]) {
+      const e = euKids[0];
+      const jour = e.day ? e.day.charAt(0).toUpperCase() + e.day.slice(1) : '';
+      const coachBit = e.details.join(' · ').replace(/\.$/, '');
+      reply = `Aux **États-Unis**, il n’y a pas de Baby Boxe : les **3–6 ans** font **Boxe pieds-poings** (${jour} ${e.horaire} · ${coachBit}).`;
+    }
+  }
   const alt = topicSlotLines(topicRule, ids[0]);
   if (alt.length) {
     reply += ` Les créneaux publiés :\n• ${alt.join('\n• ')}`;
@@ -684,8 +703,9 @@ function emptyPlanningReply({ topicRule, coachRule, ids, requestedDay, requested
 function planningFromKnowledge(text, persona, lastBot, messages) {
   const t = String(text || '');
   const vous = persona && persona.id === 'fabien';
+  const widenGymSearch = WHERE_CAN_I.test(t);
   let ids = detectGyms(t);
-  if (ids.length === 0) {
+  if (ids.length === 0 && !widenGymSearch) {
     const remembered = lastChosenGymId(messages);
     if (remembered) ids = [remembered];
   }
@@ -693,7 +713,7 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
   const topicRule =
     topicFromText(t) || (isAdultPivot(t) ? null : inherited.topic);
   const explicitDay = /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b/i.exec(t);
-  let requestedDay = explicitDay ? explicitDay[1].toLowerCase() : inherited.day;
+  let requestedDay = explicitDay ? explicitDay[1].toLowerCase() : widenGymSearch ? null : inherited.day;
   const explicitPart = /\b(soir|matin|midi)\b/i.exec(t);
   const requestedPart = explicitPart ? explicitPart[1].toLowerCase() : inherited.part;
   if (!requestedDay && /\bce\s+(?:soir|matin|midi)\b/i.test(t)) requestedDay = weekdayFrParis();
@@ -715,6 +735,10 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
     return planningEntries(block, id);
   });
   let entries = topicRule ? all.filter((entry) => topicRule.course.test(entry.cours)) : all;
+  /* « Baby Boxe aux États-Unis » : pas de Baby Boxe, seulement pieds-poings 3–6 ans. */
+  if (/baby\s*boxe|babi\s*box/i.test(t) && ids.includes('etats-unis')) {
+    entries = entries.filter((entry) => /baby\s*boxe/i.test(entry.cours));
+  }
   if (coachRule) {
     entries = entries.filter((entry) =>
       coachRule.pattern.test(`${entry.cours} ${entry.details.join(' ')}`)
@@ -861,7 +885,7 @@ function welcomeFallbackReply(lastUser, lastBot, persona, messages = []) {
     return reply;
   };
   if (
-    /^(?:et\s+)?(?:qui\s+(?:est\s+)?(?:le\s+)?coach|qui\s+coach|c['’]est quel niveau|quel niveau)\s*\??$/i.test(
+    /^(?:et\s+)?(?:qui\s+(?:est\s+)?(?:le\s+)?coach|qui\s+coach|(?:le\s+)?coachs?|c['’]est quel niveau|quel niveau)\s*\??$/i.test(
       lastUser.trim()
     )
   ) {
@@ -914,6 +938,14 @@ function welcomeFallbackReply(lastUser, lastBot, persona, messages = []) {
       source: 'faq',
     };
   }
+  const namedGyms = detectGyms(lastUser);
+  if (namedGyms.length === 1 && lastUser.trim().split(/\s+/).length <= 4 && !lastBot) {
+    const g = GYMS[namedGyms[0]];
+    return {
+      reply: `**${g.label}** : ${g.address}.`,
+      source: 'faq',
+    };
+  }
   if (/salle|minimes|ramonville|portet|cyprien|[eé]tats/i.test(lastUser)) {
     return { reply: pick('gyms'), source: 'faq' };
   }
@@ -944,9 +976,10 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
   const kidsGymReady =
     kidsPlanningIntent(lastUser, lastBot, messages) &&
     (detectGyms(lastUser).length === 1 || Boolean(lastChosenGymId(messages)));
+  const inheritedEarly = inheritedPlanningContext(lastUser, messages);
   const topicSlotsAsk =
     Boolean(topicFromText(lastUser)) &&
-    !DEFINITION_ASK.test(lastUser) &&
+    !isDefinitionAsk(lastUser) &&
     (PLANNING_ASK.test(lastUser) ||
       detectGyms(lastUser).length > 0 ||
       /\bquand\b|horaire|quelle?\s+heure|o[uù]\s+et\s+quand|quand\s+et\s+o[uù]|\bje veux\b|il y a (?:du |de la |des )?/i.test(
@@ -954,21 +987,28 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
       ));
   const wantsPlanning =
     !isAddressAsk(lastUser) &&
+    !isDefinitionAsk(lastUser) &&
     !MONEY_ASK.test(lastUser) &&
     !/\bprix\b|tarifs?|combien|fiche tarif/i.test(lastUser) &&
     (PLANNING_ASK.test(lastUser) ||
       topicSlotsAsk ||
+      (WHERE_CAN_I.test(lastUser) && Boolean(inheritedEarly.topic)) ||
       contextualPlanningDetail ||
       kidsGymReady ||
       (isPlanningFollowup(lastUser) &&
-        /\d{1,2}h\d{2}|aucun cr[ée]neau/i.test(String(lastBot || ''))));
+        /\d{1,2}h\d{2}|aucun cr[ée]neau/i.test(String(lastBot || ''))) ||
+      (Boolean(inheritedEarly.topic) &&
+        (/\b(?:qui\s+(?:est\s+)?(?:le\s+)?coach|qui\s+coach|ki\s+coach|(?:le\s+)?coachs?|quel(?:le)?\s+niveau)\b/i.test(
+          lastUser
+        ) ||
+          /^(?:et\s+)?quand\s*\??\.?$/i.test(lastUser.trim()))));
 
   const planningFollow = matchPlanningFollowup(lastUser, lastBot, persona);
   if (planningFollow) {
     return { ...planningFollow, persona: persona.id };
   }
 
-  const inheritedTopic = inheritedPlanningContext(lastUser, messages).topic;
+  const inheritedTopic = inheritedEarly.topic;
   const contextualGymSwitch =
     detectGyms(lastUser).length === 1 &&
     Boolean(inheritedTopic) &&
