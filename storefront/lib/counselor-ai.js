@@ -411,7 +411,12 @@ function cleanWelcomeReply(content, fallback) {
 }
 
 const PLANNING_ASK =
-  /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours/i;
+  /planning|horaires?|cr[ée]neaux?|quelle?\s+heure|emploi du temps|programme des cours|quels?\s+(soirs?|jours?)|c['’]est quand|[çc]a se passe quand|\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b/i;
+
+/* « c'est quand » et un jour de semaine parlent aussi d'argent ou d'arrêt
+   d'abonnement : dans ces deux cas, ce n'est pas une question de planning. */
+const MONEY_ASK = /pr[ée]l[èe]v|pr[ée]lev|[ée]ch[ée]ance|factur|paiement|rembours|prorata/i;
+const RESIL_ASK = /(?<![A-Za-zÀ-ÿ])r[ée]sil|annul.*abo|arr[êe]ter.*abo|arreter.*abo/i;
 
 const KID_LINE = /baby boxe|d[èe]s 3 ans|3\s*[–-]\s*6|7\s*[–-]\s*11|12\s*[–-]\s*16|10\s*[–-]\s*16|enfants|ados/i;
 
@@ -500,7 +505,6 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
   if (/\bmma\b/i.test(t)) topic.push(/\bmma\b/i);
   if (/grappling/i.test(t)) topic.push(/grappling/i);
   if (/hyrox/i.test(t)) topic.push(/hyrox/i);
-  if (kidsCtx) topic.push(/baby|[ée]ducative|enfants|ados|dès 3|pieds-poings/i);
   if (/lady punch/i.test(t)) topic.push(/lady punch/i);
   if (/boxing lady/i.test(t)) topic.push(/boxing lady/i);
   if (/hiit/i.test(t)) topic.push(/hiit/i);
@@ -513,7 +517,7 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
   /* Un parent veut le créneau de SA tranche d'âge, pas les 6 premiers cours
      enfants de la salle — sinon la Baby Boxe du samedi passe à la trappe. */
   if (kidsCtx) {
-    const kidEntries = all.filter((e) => KID_LINE.test(e.cours));
+    const kidEntries = (entries.length ? entries : all).filter((e) => KID_LINE.test(e.cours));
     const bandRe = kidsBandRe(`${t} ${recentMemberText(messages)}`);
     const banded = bandRe ? kidEntries.filter((e) => bandRe.test(e.cours)) : [];
     if (banded.length) entries = banded;
@@ -521,10 +525,12 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
   }
   /* Le jour est un en-tête du planning, pas un mot de la ligne : sans cette
      lecture par jour, « Ramonville le mardi » ressortait avec le lundi. */
+  let dayMiss = '';
   if (dayRe) {
     const day = new RegExp(dayRe[1], 'i');
     const onDay = entries.filter((e) => day.test(e.day));
     if (onDay.length) entries = onDay;
+    else if (entries.length) dayMiss = dayRe[1].toLowerCase();
   }
   /* « ACCÈS LIBRE » n'est pas un cours : hors sujet si on demande un créneau. */
   if (!/acc[eè]s libre|muscu|libre/i.test(t)) {
@@ -557,12 +563,14 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
     const g = GYMS[ids[0]];
     const facts = lines.length ? ` ${lines.join(' · ').replace(/\.$/, '')}.` : '';
     const link = `[voir le planning](${g.planningUrl})`;
+    /* Aucun créneau le jour demandé : on le dit, on ne sert pas un autre jour. */
+    const rien = dayMiss ? `Rien le **${dayMiss}** sur ce cours. ` : '';
     /* La V4 marque le planning Portet « PLANNING PROVISOIRE ». */
     const provisoire = ids[0] === 'portet' ? ' Planning Portet **provisoire**.' : '';
     return {
       reply: vous
-        ? `À **${g.label}** (${g.address}) :${facts} Le détail complet : ${link}.${provisoire}`
-        : `À **${g.label}** :${facts} Le détail : ${link}.${provisoire}`,
+        ? `${rien}À **${g.label}** (${g.address}) :${facts} Le détail complet : ${link}.${provisoire}`
+        : `${rien}À **${g.label}** :${facts} Le détail : ${link}.${provisoire}`,
       source: 'knowledge-planning',
     };
   }
@@ -653,14 +661,19 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     return { ...gymFollow, persona: persona.id };
   }
 
-  if (PLANNING_ASK.test(lastUser) && !isClubOpeningHours(lastUser)) {
+  if (
+    PLANNING_ASK.test(lastUser) &&
+    !isClubOpeningHours(lastUser) &&
+    !MONEY_ASK.test(lastUser) &&
+    !RESIL_ASK.test(lastUser)
+  ) {
     if (!(/\bessai\b|10\s*€/i.test(lastUser) && !/planning|horaire/i.test(lastUser))) {
       return { ...planningFromKnowledge(lastUser, persona, lastBot, messages), persona: persona.id };
     }
   }
 
   /* « Brésilien » contient « résili » : ne pas traiter le JJB comme une résiliation. */
-  if (/(?<![A-Za-zÀ-ÿ])r[ée]sil|annul.*abo|arr[êe]ter.*abo|arreter.*abo/i.test(lastUser)) {
+  if (RESIL_ASK.test(lastUser)) {
     const variants = persona.id === 'fabien' ? REDIRECT_DAVID_VOUS : REDIRECT_DAVID;
     let reply = pickVariant(variants);
     if (lastBot && similarityScore(reply, lastBot) >= 0.55) {

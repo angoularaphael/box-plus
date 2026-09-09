@@ -591,27 +591,33 @@ SAMEDI
 8.B. ÉTATS-UNIS – SALLE MMA / SOL
 ----------------------------------------------------------------------
 
-CODE COULEUR :
-- Bleu : Zouhir.
+LÉGENDE DU PLANNING (visuel saison 2026–2027) :
+- Bleu : École / Jeunes.
+- Jaune : Jiu-Jitsu Brésilien.
+- Vert : Grappling.
+- Violet : MMA.
+- Gris : Accès libre. Case libre = salle ouverte, accès badge, entraînement libre.
+Ce visuel n'a pas de code couleur nominatif par coach. Zouhir est le référent
+Grappling / JJB / MMA aux États-Unis (section 4).
 
 LUNDI
-- 18h20–19h30 | JIU-JITSU BRÉSILIEN | Coach : Zouhir | Tous niveaux.
+- 18h20–19h00 | JIU-JITSU BRÉSILIEN | Coach : Zouhir | Tous niveaux.
 - 19h40–21h00 | MMA TOUS NIVEAUX (libellé planning : ASSO MMA) | Coach : Zouhir | Débutants acceptés.
 
 MARDI
-- 18h20–19h30 | GRAPPLING | Coach : Zouhir | Tous niveaux.
+- 18h20–19h00 | GRAPPLING | Coach : Zouhir | Tous niveaux.
 - 19h40–21h00 | MMA TOUS NIVEAUX (libellé planning : ASSO MMA) | Coach : Zouhir | Débutants acceptés.
 
 MERCREDI
 - 18h00–19h00 | MMA ENFANTS / ADOS 10–16 ans (libellé : ASSO MMA ENFANTS) | Coach : Zouhir.
-- 19h40–21h00 | GRAPPLING | Coach : Zouhir | Tous niveaux.
+- 19h40–21h00 | JIU-JITSU BRÉSILIEN | Coach : Zouhir | Tous niveaux.
 
 JEUDI
-- 18h20–19h30 | GRAPPLING | Coach : Zouhir | Tous niveaux.
+- 18h20–19h00 | GRAPPLING | Coach : Zouhir | Tous niveaux.
 - 19h40–21h00 | MMA TOUS NIVEAUX (libellé planning : ASSO MMA) | Coach : Zouhir | Débutants acceptés.
 
 VENDREDI
-- 18h20–19h30 | JIU-JITSU BRÉSILIEN | Coach : Zouhir | Tous niveaux.
+- 18h20–19h00 | JIU-JITSU BRÉSILIEN | Coach : Zouhir | Tous niveaux.
 - 19h40–21h00 | MMA TOUS NIVEAUX (libellé planning : ASSO MMA) | Coach : Zouhir | Débutants acceptés.
 
 SAMEDI

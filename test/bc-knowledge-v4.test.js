@@ -63,7 +63,20 @@ test('un horaire États-Unis JJB vient du planning V4', () => {
   assert.match(planning, /JIU-JITSU BR[ÉE]SILIEN/i);
   assert.match(planning, /18h20/);
   assert.match(planning, /Zouhir/i);
-  assert.equal(PLANNINGS['etats-unis'].includes('18h20–19h30'), true);
+  assert.equal(PLANNINGS['etats-unis'].includes('18h20–19h00'), true);
+});
+
+/* Visuel « ÉTATS-UNIS — SALLE MMA » saison 2026-2027 transmis le 09/09. */
+test('la salle MMA États-Unis suit le visuel : 18h20–19h00 et JJB le mercredi soir', () => {
+  const mma = PLANNINGS['etats-unis'].split('8.B.')[1].split('8.C.')[0];
+  assert.equal(mma.includes('18h20–19h30'), false, 'le créneau de 18h20 finit à 19h00');
+  const mercredi = mma.split('MERCREDI')[1].split('JEUDI')[0];
+  assert.match(mercredi, /18h00–19h00 \| MMA ENFANTS \/ ADOS 10–16 ans/);
+  assert.match(mercredi, /19h40–21h00 \| JIU-JITSU BR[ÉE]SILIEN/);
+  assert.doesNotMatch(mercredi, /GRAPPLING/i, 'pas de Grappling le mercredi en salle MMA');
+  const samedi = mma.split('SAMEDI')[1];
+  assert.match(samedi, /MMA ENFANTS \/ ADOS 10–16 ans/);
+  assert.doesNotMatch(samedi, /ASSO MMA \| |GRAPPLING/i, 'samedi soir = accès libre');
 });
 
 test('le planning Minimes V4 garde Boxing Camp le samedi à 11h', () => {
@@ -89,7 +102,7 @@ test('une question horaire Minimes reste sous le budget du modèle', () => {
 test('un horaire États-Unis JJB reste sous le budget du modèle', () => {
   const k = buildKnowledge('JJB aux États-Unis le lundi, quel horaire ?');
   assert.ok(k.length <= 11000, `prompt trop long: ${k.length}`);
-  assert.match(k, /18h20–19h30/);
+  assert.match(k, /18h20–19h00/);
 });
 
 test('Reynerie pointe Saint-Cyprien', () => {

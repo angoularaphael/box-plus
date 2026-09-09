@@ -347,6 +347,23 @@ module.exports = [
     ],
   },
   {
+    id: 'v4-visiteur-salle-mma-etats-unis',
+    persona: 'chloe',
+    steps: [
+      step('Le JJB, c’est quel soir aux États-Unis ?', {
+        must: [/JIU-JITSU|JJB/i, /18h20|19h40/],
+        failIf: [/19h30/],
+      }),
+      step('Et le grappling le mercredi ?', {
+        must: [/mercredi/i],
+        mustNot: [/Mercredi \d{1,2}h\d{2} · GRAPPLING/i],
+      }),
+      step('Le MMA enfants c’est quand ?', {
+        must: [/10–16|10-16/, /18h00/],
+      }),
+    ],
+  },
+  {
     id: 'v4-visiteur-securite-et-reglement',
     persona: 'chloe',
     steps: [

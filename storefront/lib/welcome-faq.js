@@ -62,7 +62,7 @@ const KIDS_PLANNING_GYMS = ['minimes', 'ramonville', 'st-cyprien', 'portet'];
 
 /* Une question qui cite un jour, une heure ou un coach veut le créneau exact. */
 const PRECISE_PLANNING_ASK =
-  /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b|quelle?\s+heures?|quels?\s+(cr[ée]neaux?|horaires?|coachs?)|[àa]\s+quelle\s+heure/i;
+  /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b|quelle?\s+heures?|quels?\s+(cr[ée]neaux?|horaires?|coachs?|soirs?|jours?)|[àa]\s+quelle\s+heure|c['’]est quand/i;
 
 function kidsPlanningIntent(text, lastBot, messages) {
   const t = String(text || '');
