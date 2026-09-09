@@ -298,7 +298,7 @@ module.exports = [
         must: [/débutant|tous niveaux|progress/i],
       }),
       step('Je voudrais le faire à Ramonville le mardi, c’est à quelle heure ?', {
-        must: [/Ramonville/i, /19h45/, /21h15/, /Jérôme/i],
+        must: [/Ramonville/i, /19h45/, /21h15/],
       }),
       step('Le MMA mélange quoi exactement ?', { must: [/frappe|striking/i, /sol|lutte/i] }),
     ],
@@ -339,7 +339,7 @@ module.exports = [
         mustNot: [/Baby Boxe.*États-Unis/i],
       }),
       step('Quel est le créneau exact ?', {
-        must: [/États-Unis|Etats-Unis/i, /14h15/, /15h00/, /Renaud/i],
+        must: [/États-Unis|Etats-Unis/i, /14h15/, /15h00/],
       }),
       step('Et pour sa sœur de 8 ans ?', { must: [/7–11|7-11|éducative|pieds-poings/i] }),
     ],

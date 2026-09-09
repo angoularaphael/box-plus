@@ -11,7 +11,6 @@ const { buildKnowledge, GYMS, detectGyms, fallbackFromKnowledge, planningContext
 const {
   matchWelcomeFaq,
   matchPlanningFollowup,
-  matchKidsPlanning,
   matchNamedGymFollowup,
   lastChosenGymId,
   kidsPlanningIntent,
@@ -530,6 +529,20 @@ function isPlanningFollowup(text) {
   );
 }
 
+function wantsCoachName(text) {
+  return /\bcoachs?\b|ki\s+coach|qui\s+coach/i.test(String(text || ''));
+}
+
+function slotLine(entry, { includeCoach = false } = {}) {
+  const jour = entry.day ? entry.day.charAt(0).toUpperCase() + entry.day.slice(1) : '';
+  const details = includeCoach
+    ? entry.details
+    : (entry.details || []).filter((d) => !/^coachs?\s*:/i.test(d));
+  const salleMatch = String(entry.text || '').match(/\(salle [^)]+\)/);
+  const salle = salleMatch ? ` ${salleMatch[0]}` : '';
+  return `${jour} ${entry.horaire} · ${entry.cours}${details.length ? ` · ${details.join(' · ')}` : ''}${salle}`.trim();
+}
+
 function inheritedPlanningContext(text, messages) {
   const t = String(text || '');
   if (!isPlanningFollowup(t)) return { topic: null, day: null, part: '', coach: null };
@@ -653,7 +666,7 @@ function endMinutes(entry) {
   return m ? Number(m[1]) * 60 + Number(m[2]) : -1;
 }
 
-function topicSlotLines(topicRule, skipGymId) {
+function topicSlotLines(topicRule, skipGymId, includeCoach = false) {
   if (!topicRule) return [];
   const search = Object.keys(GYMS).filter((id) => id !== skipGymId);
   const all = search.flatMap((id) => {
@@ -664,14 +677,14 @@ function topicSlotLines(topicRule, skipGymId) {
   for (const e of all) {
     if (!topicRule.course.test(e.cours)) continue;
     if (/acc[èe]s libre/i.test(e.cours)) continue;
-    const line = `**${GYMS[e.gymId].label}** — ${e.text}`;
+    const line = `**${GYMS[e.gymId].label}** — ${slotLine(e, { includeCoach })}`;
     if (!lines.includes(line)) lines.push(line);
     if (lines.length === 8) break;
   }
   return lines;
 }
 
-function emptyPlanningReply({ topicRule, coachRule, ids, requestedDay, requestedPart }) {
+function emptyPlanningReply({ topicRule, coachRule, ids, requestedDay, requestedPart, includeCoach = false }) {
   const subject = topicRule
     ? ` de **${topicRule.label}**`
     : coachRule
@@ -689,11 +702,10 @@ function emptyPlanningReply({ topicRule, coachRule, ids, requestedDay, requested
     if (euKids[0]) {
       const e = euKids[0];
       const jour = e.day ? e.day.charAt(0).toUpperCase() + e.day.slice(1) : '';
-      const coachBit = e.details.join(' · ').replace(/\.$/, '');
-      reply = `Aux **États-Unis**, il n’y a pas de Baby Boxe : les **3–6 ans** font **Boxe pieds-poings** (${jour} ${e.horaire} · ${coachBit}).`;
+      reply = `Aux **États-Unis**, il n’y a pas de Baby Boxe : les **3–6 ans** font **Boxe pieds-poings** (${jour} ${e.horaire}).`;
     }
   }
-  const alt = topicSlotLines(topicRule, ids[0]);
+  const alt = topicSlotLines(topicRule, ids[0], includeCoach);
   if (alt.length) {
     reply += ` Les créneaux publiés :\n• ${alt.join('\n• ')}`;
   }
@@ -718,6 +730,7 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
   const requestedPart = explicitPart ? explicitPart[1].toLowerCase() : inherited.part;
   if (!requestedDay && /\bce\s+(?:soir|matin|midi)\b/i.test(t)) requestedDay = weekdayFrParis();
   const kidsCtx = wantsKids(t) || kidsPlanningIntent(t, lastBot, messages);
+  const includeCoach = wantsCoachName(t) || Boolean(coachFromText(t));
   const coachRule = coachFromText(t) || inherited.coach;
   const newGymNamed = detectGyms(t).length > 0;
   const followUpNoNewScope = isPlanningFollowup(t) && !explicitDay && !newGymNamed;
@@ -817,7 +830,7 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
       ids.length === 1
         ? ''
         : `**${GYMS[e.gymId].label}** ([planning](${GYMS[e.gymId].planningUrl})) — `;
-    const line = `${prefix}${e.text}`;
+    const line = `${prefix}${slotLine(e, { includeCoach })}`;
     if (!lines.includes(line)) lines.push(line);
     if (lines.length === lineCap) break;
   }
@@ -829,7 +842,7 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
     const provisoire = ids[0] === 'portet' ? ' Planning Portet **provisoire**.' : '';
     if (!lines.length) {
       if (topicRule || coachRule) {
-        return emptyPlanningReply({ topicRule, coachRule, ids, requestedDay, requestedPart });
+        return emptyPlanningReply({ topicRule, coachRule, ids, requestedDay, requestedPart, includeCoach });
       }
       const subject = '';
       const day = requestedDay ? ` le **${requestedDay}**` : '';
@@ -862,7 +875,7 @@ function planningFromKnowledge(text, persona, lastBot, messages) {
   }
 
   if (topicRule || coachRule) {
-    return emptyPlanningReply({ topicRule, coachRule, ids, requestedDay, requestedPart });
+    return emptyPlanningReply({ topicRule, coachRule, ids, requestedDay, requestedPart, includeCoach });
   }
 
   return {
@@ -1081,7 +1094,9 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
             'Parle comme une personne à l’accueil du club : naturel, utile, 2 à 4 phrases. Pas de catalogue, pas de gras partout.',
             'Aucun tarif, horaire, coach ou offre hors de cette base. Le 29,99 € / 4 semaines ne doit pas être arrondi à 29 €. Baby Boxe = 250 € la saison, éducative = 295 € la saison.',
             'Essai adulte = 10 €. Enfants : essai offert, ils ne paient pas. Pas de créneau à choisir : venir 5 minutes avant le début du cours.',
-            'Si une salle est nommée (même plus tôt dans le fil) : créneaux de CETTE salle, pris dans la base. Pas le planning adulte du soir pour un enfant. Pas la Baby Boxe si la personne dit qu’elle est adulte ou demande ce soir.',
+            'Cite le créneau demandé (jour, heure, cours, salle). Ne mélange pas Baby Boxe et éducative. Un enfant de 3–6 ans = uniquement Baby Boxe (ou pieds-poings 3–6 ans aux États-Unis).',
+            'Ne donne le nom du coach que si le visiteur le demande. Sinon, heure et cours suffisent.',
+            'Ne dump pas toute la journée ni tous les cours de la salle quand un cours ou un âge est déjà posé.',
             'Si aucune salle n’est nommée : ne cite PAS d’exemple de créneau. Demande la salle.',
             '3 à 6 ans = Baby Boxe dès 3 ans. Moins de 3 ans : trop jeune. Reynerie / Mirail = Saint-Cyprien.',
             'Les salles ne sont PAS climatisées ni chauffées.',
@@ -1098,16 +1113,14 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
     let reply = cleanWelcomeReply(content, fallback);
 
     if (
-      /\d{1,2}\s*h\s*\d{2}/.test(reply) &&
       !isAdultPivot(lastUser) &&
       (PLANNING_ASK.test(lastUser) ||
-        kidsPlanningIntent(lastUser, lastBot, messages) ||
-        /\b(fils|fille|enfant|enfants|gamin|baby)\b|\b([3-6])\s*ans\b/i.test(lastUser))
+        (detectGyms(lastUser).length === 1 && kidsPlanningIntent(lastUser, lastBot, messages)))
     ) {
-      const alt =
-        planningFromKnowledge(lastUser, persona, lastBot, messages) ||
-        matchKidsPlanning(lastUser, lastBot, persona, messages);
-      if (alt) return { ...alt, persona: persona.id, source: 'guard-planning' };
+      const alt = planningFromKnowledge(lastUser, persona, lastBot, messages);
+      if (alt && /\d{1,2}h\d{2}|aucun cr[ée]neau|pas de Baby Boxe/i.test(alt.reply)) {
+        return { ...alt, persona: persona.id, source: 'guard-planning' };
+      }
     }
 
     return { reply: reply || fallback, source: 'groq', persona: persona.id };

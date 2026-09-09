@@ -186,14 +186,8 @@ function matchKidsPlanning(text, lastBot, persona, messages) {
         source: 'redirect-planning',
       };
     }
-    return {
-      reply: voice(
-        persona,
-        `Ok, aux **${g.label}** le planning Baby Boxe / éducative est là : ${link}.`,
-        `Le planning **Baby Boxe / éducative** de **${g.label}** se trouve ici : ${link}.`
-      ),
-      source: 'redirect-planning',
-    };
+    /* Salle connue : le créneau V4, pas un lien « Baby Boxe / éducative ». */
+    return null;
   }
 
   const eu = GYMS['etats-unis'];

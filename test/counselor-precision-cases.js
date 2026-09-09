@@ -23,9 +23,8 @@ module.exports = [
           fact('début', /14h15/i),
           fact('fin', /15h00/i),
           fact('cours', /Baby Boxe/i),
-          fact('coach', /Mehdi B\./i),
         ],
-        mustNot: [fact('cours voisin', /ÉDUCATIVE|EDUCATIVE|7\s*[–-]\s*11|12\s*[–-]\s*16/i)],
+        mustNot: [fact('cours voisin', /ÉDUCATIVE|EDUCATIVE|7\s*[–-]\s*11|12\s*[–-]\s*16/i), fact('coach non demandé', /Coach\s*:/i)],
       },
       {
         q: "C'est quand ?",
@@ -64,12 +63,12 @@ module.exports = [
           fact('début', /14h15/i),
           fact('fin', /15h00/i),
           fact('cours', /Baby Boxe/i),
-          fact('coach', /Mehdi B\./i),
         ],
         mustNot: [
           fact('7–11 parasite', /7\s*[–-]\s*11/i),
           fact('12–16 parasite', /12\s*[–-]\s*16/i),
           fact('compétiteurs parasite', /ÉDUCATIVE COMPÉTITEURS|EDUCATIVE COMPETITEURS/i),
+          fact('coach non demandé', /Coach\s*:/i),
         ],
       },
     ],
@@ -115,7 +114,6 @@ module.exports = [
           fact('salle', /Ramonville/i),
           fact('grappling', /18h40[–-]19h40.*GRAPPLING/is),
           fact('mma', /19h45[–-]21h15.*MMA TOUS NIVEAUX/is),
-          fact('coach', /Jérôme/i),
         ],
         mustNot: [fact('midi parasite', /12h40[–-]13h20/i), fact('mauvais jour', /Lundi|Mercredi|Jeudi|Vendredi/i)],
       },
@@ -237,10 +235,8 @@ module.exports = [
         must: [
           fact('Ramonville', /Ramonville/i),
           fact('horaire Ramonville', /19h45[–-]21h15/i),
-          fact('coach Ramonville', /Jérôme/i),
           fact('États-Unis', /États-Unis|Etats-Unis/i),
           fact('horaire États-Unis', /19h40[–-]21h00/i),
-          fact('coach États-Unis', /Zouhir/i),
         ],
         mustNot: [fact('autre salle', /Portet|Minimes|Saint-Cyprien/i)],
       },
@@ -289,7 +285,7 @@ module.exports = [
     steps: [
       {
         q: 'Baby Boxe samedi aux Minimes ?',
-        must: [fact('salle', /Minimes/i), fact('horaire', /14h15[–-]15h00/i), fact('coach', /Mehdi B\./i)],
+        must: [fact('salle', /Minimes/i), fact('horaire', /14h15[–-]15h00/i)],
         mustNot: [fact('cours voisin', /7\s*[–-]\s*11|12\s*[–-]\s*16/i)],
       },
       {
@@ -298,9 +294,8 @@ module.exports = [
           fact('nouvelle salle', /Ramonville/i),
           fact('même jour', /samedi/i),
           fact('horaire', /14h15[–-]15h00/i),
-          fact('coach', /Valentin Guth/i),
         ],
-        mustNot: [fact('ancienne salle', /Minimes/i), fact('ancien coach', /Mehdi/i)],
+        mustNot: [fact('ancienne salle', /Minimes/i), fact('coach non demandé', /Coach\s*:/i)],
       },
       {
         q: 'Elle est où ?',
@@ -314,7 +309,7 @@ module.exports = [
     steps: [
       {
         q: 'Le MMA mardi soir à Ramonville ?',
-        must: [fact('cours', /MMA/i), fact('horaire', /19h45[–-]21h15/i), fact('coach', /Jérôme/i)],
+        must: [fact('cours', /MMA/i), fact('horaire', /19h45[–-]21h15/i)],
       },
       {
         q: 'Il commence quand ?',
@@ -356,8 +351,6 @@ module.exports = [
         must: [
           fact('compétiteurs', /18h00[–-]19h30.*BOXE COMPÉTITEURS/is),
           fact('boxing lady', /18h30[–-]19h30.*BOXING LADY/is),
-          fact('coach Mehdi', /Mehdi B\./i),
-          fact('coach Chloé', /Chloé/i),
         ],
         mustNot: [fact('pas encore commencé', /19h40[–-]21h00/i)],
       },
@@ -479,7 +472,6 @@ module.exports = [
           fact('discipline', /JJB|Jiu-Jitsu/i),
           fact('salle', /États-Unis|Etats-Unis/i),
           fact('horaire', /18h20[–-]19h00/i),
-          fact('coach', /Zouhir/i),
         ],
         mustNot: [fact('autre salle', /Portet|Minimes|Ramonville|Saint-Cyprien/i)],
       },
@@ -489,7 +481,6 @@ module.exports = [
           fact('salle', /États-Unis|Etats-Unis/i),
           fact('lundi', /18h20[–-]19h00/i),
           fact('mercredi', /19h40[–-]21h00/i),
-          fact('coach', /Zouhir/i),
         ],
         mustNot: [fact('grappling parasite', /GRAPPLING/i)],
       },
@@ -506,7 +497,7 @@ module.exports = [
     steps: [
       {
         q: 'MMA jeudi à Ramonville',
-        must: [fact('horaire', /19h45[–-]21h15/i), fact('coach', /Jérôme/i)],
+        must: [fact('horaire', /19h45[–-]21h15/i)],
       },
       {
         q: 'à États-Unis plutôt',
@@ -514,13 +505,12 @@ module.exports = [
           fact('nouvelle salle', /États-Unis|Etats-Unis/i),
           fact('cours', /MMA/i),
           fact('horaire', /19h40[–-]21h00/i),
-          fact('coach', /Zouhir/i),
         ],
         mustNot: [fact('ancienne salle', /Ramonville/i), fact('ancien horaire', /19h45/i), fact('lien seul', /se trouve au/i)],
       },
       {
         q: 'et vendredi ?',
-        must: [fact('salle', /États-Unis|Etats-Unis/i), fact('cours', /MMA/i), fact('horaire', /19h40[–-]21h00/i), fact('coach', /Zouhir/i)],
+        must: [fact('salle', /États-Unis|Etats-Unis/i), fact('cours', /MMA/i), fact('horaire', /19h40[–-]21h00/i)],
         mustNot: [fact('jjb parasite', /JIU-JITSU|JJB/i), fact('ancienne salle', /Ramonville/i)],
       },
     ],
@@ -531,7 +521,7 @@ module.exports = [
     steps: [
       {
         q: 'boxin camp minime mardi',
-        must: [fact('salle', /Minimes/i), fact('cours', /BOXING CAMP/i), fact('horaire', /18h30[–-]19h30/i), fact('coach', /Clément/i)],
+        must: [fact('salle', /Minimes/i), fact('cours', /BOXING CAMP/i), fact('horaire', /18h30[–-]19h30/i)],
         mustNot: [fact('autres cours', /BOXE ANGLAISE|BOXE COMPÉTITEURS|COMPETITEURS/i)],
       },
       {
@@ -586,7 +576,6 @@ module.exports = [
         q: 'Boxing Camp mardi Minimes : est-ce tous niveaux ?',
         must: [
           fact('horaire', /18h30[–-]19h30/i),
-          fact('coach', /Clément/i),
           fact('niveau', /Tous niveaux/i),
           fact('cours', /BOXING CAMP/i),
         ],
@@ -605,8 +594,6 @@ module.exports = [
           fact('cyprien horaire', /18h20[–-]19h00/i),
           fact('etats-unis', /États-Unis|Etats-Unis/i),
           fact('etats horaire', /18h40[–-]19h20/i),
-          fact('coach Brice', /Brice/i),
-          fact('coach Yannis', /Yannis/i),
         ],
         mustNot: [fact('lien à la place des heures', /Pour l['’]horaire|Lien planning/i)],
       },
