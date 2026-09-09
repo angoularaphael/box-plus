@@ -715,13 +715,15 @@ Le badge correspond à la fourniture et à l’activation du moyen d’accès ; 
 10. SÉANCE D’ESSAI
 ======================================================================
 
-Prix de référence actuellement trouvé sur la boutique : 10 € TTC.
+Adultes : 10 € TTC (prix de référence boutique).
+Enfants : la séance d’essai est offerte. Ils ne paient pas.
 
 La séance d’essai permet :
 - de choisir la salle ;
 - de choisir l’activité ;
-- de choisir la séance selon le planning ;
 - de tester le concept avant de s’abonner.
+
+Il n’y a PAS de créneau à réserver ni à choisir dans le planning. Le client vient 5 minutes avant le début du cours (adulte : activité choisie ; enfant : tranche d’âge).
 
 Le site FAQ indique que le matériel peut être prêté pour la séance d’essai.
 La fiche boutique indique qu’une décharge / document de responsabilité doit être téléchargé, signé et remis au personnel.
@@ -730,7 +732,7 @@ Conseil commercial de l’agent :
 - débutant combat : recommander Boxe Anglaise loisirs, Boxe Pieds-Poings, Boxe Thaï/K1, MMA tous niveaux ou Grappling selon l’envie ;
 - remise en forme : recommander Boxing Camp, Cross Training, HYROX ou Boxing HIIT ;
 - femme souhaitant un cadre 100 % féminin : recommander Boxing Lady ou Lady Punch ;
-- enfant : orienter vers la tranche d’âge correspondante.
+- enfant : essai offert ; orienter vers la tranche d’âge correspondante ; venir 5 minutes avant le début du cours.
 
 ======================================================================
 11. INSCRIPTION ET PRISE D’ABONNEMENT
@@ -878,7 +880,7 @@ Q : Y a-t-il des casiers ?
 R : Oui. Des casiers sont disponibles. Les effets personnels restent sous la responsabilité de leur propriétaire selon le règlement intérieur.
 
 Q : Puis-je essayer avant de m’abonner ?
-R : Oui. Une séance d’essai peut être réservée en ligne. Le tarif de référence actuellement affiché est de 10 €. Vous pouvez choisir une salle et une activité correspondant au planning.
+R : Oui. Adultes : 10 €, réservation en ligne (salle et activité). Il n’y a pas de créneau à choisir : venez 5 minutes avant le début du cours. Pour un enfant, la séance d’essai est offerte.
 
 Q : Le matériel est-il fourni pour l’essai ?
 R : La FAQ Boxing Center indique que du matériel peut être prêté pour la séance d’essai. Pour une pratique régulière, il est recommandé de disposer de son propre équipement et des protections adaptées.

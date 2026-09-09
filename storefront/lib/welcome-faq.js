@@ -324,7 +324,8 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
     return { reply: pickAvoid([salles], lastBot), source: 'faq-v4' };
   }
 
-  if (enfant) {
+  /* Essai : ne pas recoller le script Baby/éducative — l’essai enfants est offert. */
+  if (enfant && !/essai|essayer|tester|10\s*€|10\s*euros?/i.test(t)) {
     const ages = [...String(t).matchAll(/\b([1-9]|1[0-6])\s*ans\b/gi)].map((m) => Number(m[1]));
 
     /* États-Unis n'a pas de Baby Boxe : les 3–6 ans y font pieds-poings. */
@@ -749,13 +750,34 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
   }
 
   if (/essai|essayer|tester|10\s*€|10\s*euros?/i.test(t)) {
+    const kidsEssai =
+      !isAdultPivot(t) &&
+      (/\b(fils|fille|enfant|enfants|gamin|gamines?|gamins|baby\s*boxe|ados?|mineur|petits?)\b/i.test(t) ||
+        /b[ée]b[ée]/i.test(t) ||
+        /\b([3-9]|1[0-6])\s*ans\b/i.test(t) ||
+        /[ée]ducative/i.test(t));
+    if (kidsEssai) {
+      return {
+        reply: pickAvoid(
+          [
+            voice(
+              persona,
+              'Pour un **enfant**, la séance d’essai est **offerte** — il ne paie pas. Tu choisis la salle et l’activité (Baby ou éducative selon l’âge). **Pas de créneau à réserver** : il suffit d’arriver **5 minutes avant** le début du cours.',
+              'Pour un **enfant**, la séance d’essai est **offerte** — il ne paie pas. Vous choisissez la salle et l’activité. **Pas de créneau à réserver** : il suffit d’arriver **5 minutes avant** le début du cours.'
+            ),
+          ],
+          lastBot
+        ),
+        source: 'faq-v4',
+      };
+    }
     return {
       reply: pickAvoid(
         [
           voice(
             persona,
-            'Oui : séance d’essai à **10 €**, en ligne. Tu choisis la salle et l’activité. Du matériel peut être prêté pour l’essai.',
-            'Oui : séance d’essai à **10 €**, réservable en ligne. Vous choisissez la salle et l’activité. Du matériel peut être prêté pour l’essai.'
+            'Oui : séance d’essai à **10 €**, en ligne. Tu choisis la salle et l’activité. **Pas de créneau à réserver** : tu viens **5 minutes avant** le début du cours. Du matériel peut être prêté. Pour un enfant, l’essai est **offert**.',
+            'Oui : séance d’essai à **10 €**, réservable en ligne. Vous choisissez la salle et l’activité. **Pas de créneau à réserver** : venez **5 minutes avant** le début du cours. Du matériel peut être prêté. Pour un enfant, l’essai est **offert**.'
           ),
         ],
         lastBot

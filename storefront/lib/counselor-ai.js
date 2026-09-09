@@ -382,9 +382,9 @@ const FAQ_VARIANTS = {
     '**Baby Boxe dès 3 ans**, éducative **7–11** puis **12–16**. Ce n’est pas le cours adulte. Tu vises quelle salle ?',
   ],
   trial: [
-    'Les **débutants** sont les bienvenus. Réserve une **séance d’essai à 10 €** en ligne : un coach t’accueille, pas besoin d’expérience ni de gros matériel.',
-    'Pas d’expérience requise — réserve un **essai à 10 €** en ligne, un coach te prend en charge. Tu arrives en tenue, c’est tout.',
-    'Essai possible avant de t’engager : **10 €** la séance, inscription courte en ligne, ambiance loisir, débutants OK.',
+    'Les **débutants** sont les bienvenus. Réserve une **séance d’essai à 10 €** en ligne : salle et activité, **pas de créneau** — tu viens **5 minutes avant** le début du cours. Pour un enfant, l’essai est **offert**.',
+    'Pas d’expérience requise — **essai à 10 €** en ligne, un coach t’accueille. Tu arrives **5 minutes avant** le cours, sans créneau à réserver. Enfant : essai **offert**.',
+    'Essai possible avant de t’engager : **10 €** (adulte), inscription courte. **Pas de créneau** : viens **5 minutes avant** le début. Pour un enfant, c’est **offert**.',
   ],
   badgeRefund: [
     'Non — le **badge (~34,99 €) n’est pas remboursé** si tu résilies : c’est **ton** support d’accès (pas une caution du club).',
@@ -642,12 +642,14 @@ function welcomeFallbackReply(lastUser, lastBot, persona, messages = []) {
   if (PLANNING_ASK.test(lastUser) && !(/\bessai\b|10\s*€/i.test(lastUser) && !/planning|horaire/i.test(lastUser))) {
     return planningFromKnowledge(lastUser, persona, lastBot, messages);
   }
-  const kidsReply = fallbackFromKnowledge(lastUser, { vous: persona && persona.id === 'fabien' });
-  if (kidsReply) {
-    return { reply: kidsReply, source: 'knowledge-kids' };
-  }
-  if (/enfant|fils|fille|gamin|baby|bébé|[ée]ducative|\d+\s*ans/i.test(lastUser)) {
-    return { reply: pick('kidsBaby'), source: 'faq' };
+  if (!/essai|essayer|tester|10\s*€/i.test(lastUser)) {
+    const kidsReply = fallbackFromKnowledge(lastUser, { vous: persona && persona.id === 'fabien' });
+    if (kidsReply) {
+      return { reply: kidsReply, source: 'knowledge-kids' };
+    }
+    if (/enfant|fils|fille|gamin|baby|bébé|[ée]ducative|\d+\s*ans/i.test(lastUser)) {
+      return { reply: pick('kidsBaby'), source: 'faq' };
+    }
   }
   const faq = matchWelcomeFaq(lastUser, { persona, lastBot, messages });
   if (faq) return faq;
@@ -751,6 +753,7 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
             'Si le sujet change, tu changes. Tu ne recolles pas un ancien script.',
             'Parle comme une personne à l’accueil du club : naturel, utile, 2 à 4 phrases. Pas de catalogue, pas de gras partout.',
             'Aucun tarif, horaire, coach ou offre hors de cette base. Le 29,99 € / 4 semaines ne doit pas être arrondi à 29 €. Baby Boxe = 250 € la saison, éducative = 295 € la saison.',
+            'Essai adulte = 10 €. Enfants : essai offert, ils ne paient pas. Pas de créneau à choisir : venir 5 minutes avant le début du cours.',
             'Si une salle est nommée (même plus tôt dans le fil) : créneaux de CETTE salle, pris dans la base. Pas le planning adulte du soir pour un enfant. Pas la Baby Boxe si la personne dit qu’elle est adulte ou demande ce soir.',
             'Si aucune salle n’est nommée : ne cite PAS d’exemple de créneau. Demande la salle.',
             '3 à 6 ans = Baby Boxe dès 3 ans. Moins de 3 ans : trop jeune. Reynerie / Mirail = Saint-Cyprien.',

@@ -411,6 +411,7 @@ GARDE-FOUS — ne jamais les contredire :
 - Cours collectifs : illimités et sans réservation pour les formules concernées.
 - Dimanche : ne pas inventer d'horaires. Pages salles = lundi au samedi, 10h00–21h30.
 - Cours « compétiteurs » : public confirmé uniquement, jamais une découverte pour un débutant.
+- Essai adulte : 10 €. Enfants : essai offert, ils ne paient pas. Pas de créneau à choisir : venir 5 minutes avant le début du cours.
 `.trim();
 
 function buildKnowledge(userText) {

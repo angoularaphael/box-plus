@@ -164,7 +164,14 @@ module.exports = [
   {
     id: 'essai',
     q: 'Je peux essayer avant de m’abonner ?',
-    must: [/10\s*€|10€/],
+    must: [/10\s*€|10€/, /5\s*min/],
+    mustNot: [/selon le planning/i],
+  },
+  {
+    id: 'essai-enfants-offert',
+    q: 'Mon fils de 8 ans peut essayer ?',
+    must: [/offert|gratuit/i, /5\s*min/],
+    mustNot: [/10\s*€/, NO_MENU],
   },
   {
     id: 'materiel-essai',
@@ -362,7 +369,7 @@ module.exports = [
   {
     id: 'essai-pas-planning',
     q: 'je veux une séance d’essai à 10 €',
-    must: [/10\s*€/],
+    must: [/10\s*€/, /5\s*min/],
     mustNot: [/voir le planning/],
   },
   {

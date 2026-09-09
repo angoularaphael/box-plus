@@ -84,6 +84,16 @@ test('le planning Minimes V4 garde Boxing Camp le samedi à 11h', () => {
   assert.match(PLANNINGS.minimes, /BOXING CAMP/i);
 });
 
+test('essai V4 : adultes 10 €, enfants offert, pas de créneau', () => {
+  assert.match(SECTIONS.essai, /offerte/i);
+  assert.match(SECTIONS.essai, /5 minutes/i);
+  assert.doesNotMatch(SECTIONS.essai, /choisir la séance selon le planning/i);
+  const k = buildKnowledge('Je peux essayer avant de m’abonner ?');
+  assert.match(k, /10 €/);
+  assert.match(k, /offerte/i);
+  assert.match(k, /5 minutes/i);
+});
+
 test('les garde-fous V4 sont toujours injectés', () => {
   const k = buildKnowledge('bonjour');
   assert.match(k, /PAS chauffées et PAS climatisées/i);

@@ -114,7 +114,7 @@ module.exports = [
         must: [/vous|souhaitez/i],
         mustNot: [/\btu\b|\bton\b/i],
       }),
-      step('Je veux essayer avant', { must: [/10\s*€/], mustNot: [/\btu\b|\bton\b/i] }),
+      step('Je veux essayer avant', { must: [/10\s*€/, /5\s*min/], mustNot: [/\btu\b|\bton\b/i] }),
       step('C’est 29 euros par mois ?', { must: [/29,99/, /4 semaines|28 jours/i] }),
       step('Les salles sont climatisées ?', { must: [/pas climatis|ne sont pas/i] }),
     ],
@@ -214,7 +214,7 @@ module.exports = [
     id: 'essai-pas-confondu-planning',
     persona: 'chloe',
     steps: [
-      step('je veux une séance d’essai à 10 €', { must: [/10\s*€/], mustNot: [/voir le planning/] }),
+      step('je veux une séance d’essai à 10 €', { must: [/10\s*€/, /5\s*min/], mustNot: [/voir le planning/] }),
       step('le matériel est prêté ?', { must: [/prêt|prêté|prete/i] }),
       step('planning Minimes', { must: [/minimes/i, /voir le planning/] }),
     ],
@@ -348,7 +348,7 @@ module.exports = [
     id: 'v4-visiteur-essai-puis-offre',
     persona: 'nassim',
     steps: [
-      step('Je veux tester avant de m’engager, ça coûte combien ?', { must: [/10\s*€/] }),
+      step('Je veux tester avant de m’engager, ça coûte combien ?', { must: [/10\s*€/, /5\s*min/] }),
       step('Pour l’essai, vous prêtez les gants ?', { must: [/prêt|matériel/i] }),
       step('Si ça me plaît, quelles sont les deux promos ?', {
         must: [/29,99/, /4 semaines|28 jours/i, /259/, /12 mois/i],
