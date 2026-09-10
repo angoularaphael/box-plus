@@ -231,6 +231,7 @@ const {
   listPaidOrdersSinceAsync,
   listFreeTrialOrdersPageAsync,
   deleteOrderAsync,
+  archiveOrderAsync,
   toAdminSummary,
   sortAdminOrders,
 } = require('./lib/order-lifecycle');
@@ -2614,6 +2615,23 @@ function createApp() {
       );
       require('fs').createReadStream(result.filepath).pipe(res);
     } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/admin/orders/:id/archive', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const order = await loadOrderAsync(req.params.id);
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      const archived = req.body?.archived !== false;
+      await archiveOrderAsync(req.params.id, { archived });
+      logInfo(archived ? 'Inscription archivée (admin)' : 'Inscription restaurée (admin)', {
+        order_id: req.params.id,
+      });
+      res.json({ ok: true, order_id: req.params.id, archived });
+    } catch (err) {
+      logError('Archivage inscription admin', { order_id: req.params.id, error: err.message });
       res.status(500).json({ ok: false, error: err.message });
     }
   });

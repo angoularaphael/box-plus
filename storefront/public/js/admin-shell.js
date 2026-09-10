@@ -62,6 +62,7 @@
   const SECTIONS = [
     { id: "aujourdhui", label: "Aujourd’hui", ico: "M3 12h4l3 8 4-16 3 8h4" },
     { id: "inscriptions", label: "Inscriptions", ico: "M4 5h16M4 12h16M4 19h10", onglet: "contracts" },
+    { id: "archives", label: "Archives", ico: "M4 7h16v13H4zM8 3h8v4H8z", onglet: "archives" },
     { id: "offres-perso", label: "Offres personnalisées", ico: "M12 3v18M8 8h8M8 16h5", onglet: "customOffers" },
     { id: "coachings", label: "Coachings", ico: "M12 6v6l4 2M12 22a10 10 0 110-20 10 10 0 010 20z", onglet: "coachings" },
     { id: "ventes", label: "Ventes", ico: "M4 19V9m5 10V5m5 14v-7m5 7V8", onglet: "stats" },
@@ -251,6 +252,7 @@
   }
   /** Le bouton « Actualiser » doit VRAIMENT actualiser : il vide le cache. */
   function oublierCommandes() { cacheCommandes = null; }
+  window.oublierCommandes = oublierCommandes;
 
   const LIB_ETAPE = { 1: "Offre", 2: "Salle", 3: "Identité", 4: "Paiement", 5: "IBAN", 6: "Dossier", 7: "Signature", 8: "Confirmé" };
 
@@ -283,7 +285,10 @@
        rentré, l'accès bloqué, puis les dossiers signés non transmis.
        Les VERIFY / CANCEL / COACH n'ont pas de vrai paiement : exclus. */
     const inscriptions = commandes.filter(
-      (o) => o.action !== "coaching_booking" && !String(o.order_id || "").startsWith("COACH-")
+      (o) =>
+        !o.archived &&
+        o.action !== "coaching_booking" &&
+        !String(o.order_id || "").startsWith("COACH-")
     );
     const coachings = commandes.filter(
       (o) => o.action === "coaching_booking" || String(o.order_id || "").startsWith("COACH-")
@@ -891,7 +896,7 @@
     /* La route d'arrivée : on respecte le fragment s'il en porte un
        (les anciens liens /admin/#contracts doivent continuer de marcher). */
     const frag = (location.hash || "").replace("#", "");
-    const vieuxVersNeuf = { contracts: "inscriptions", customOffers: "offres-perso", stats: "ventes", offers: "catalogue", materiel: "catalogue", coachings: "coachings", whatsapp: "whatsapp" };
+    const vieuxVersNeuf = { contracts: "inscriptions", archives: "archives", customOffers: "offres-perso", stats: "ventes", offers: "catalogue", materiel: "catalogue", coachings: "coachings", whatsapp: "whatsapp" };
     const destination = SECTIONS.some((s) => s.id === frag) ? frag : (vieuxVersNeuf[frag] || "aujourdhui");
     aller(destination);
     /* La pastille d'alerte ne doit pas dependre de la page d'arrivee : on

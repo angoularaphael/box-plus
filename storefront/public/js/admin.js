@@ -372,7 +372,7 @@
   }
 
   function showTab(name) {
-    ['tabOffers', 'tabMateriel', 'tabContracts', 'tabFreeTrials', 'tabCustomOffers', 'tabCoachings', 'tabStats', 'tabWhatsapp'].forEach((id) => {
+    ['tabOffers', 'tabMateriel', 'tabContracts', 'tabArchives', 'tabFreeTrials', 'tabCustomOffers', 'tabCoachings', 'tabStats', 'tabWhatsapp'].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.hidden = id !== `tab${name.charAt(0).toUpperCase()}${name.slice(1)}`;
     });
@@ -380,6 +380,7 @@
       btn.classList.toggle('active', btn.dataset.tab === name);
     });
     if (name === 'contracts') loadOrders();
+    if (name === 'archives') loadOrders().then(() => renderArchives());
     if (name === 'freeTrials') loadFreeTrials(freeTrialsPage);
     if (name === 'coachings') loadCoachings();
     if (name === 'materiel') {
@@ -407,6 +408,8 @@
     showTab('materiel');
   } else if (location.hash === '#stats') {
     showTab('stats');
+  } else if (location.hash === '#archives') {
+    showTab('archives');
   }
 
   async function ensureAuth() {
@@ -628,6 +631,7 @@
         .filter((e) => e && e !== '—' && e.includes('@'))
     );
     return orders.filter((o) => {
+      if (o.archived) return false;
       if (isCoachingOrder(o)) return false;
       const hasVisibleContent = [o.name, o.email, o.product].some(
         (v) => String(v || '').trim() && String(v || '').trim() !== '—'
@@ -790,6 +794,122 @@
     });
   }
 
+  function filteredArchives() {
+    const q = (document.getElementById('archivesSearch')?.value || '').toLowerCase().trim();
+    return orders.filter((o) => {
+      if (!o.archived || isCoachingOrder(o)) return false;
+      if (!q) return true;
+      const hay = `${o.order_id} ${o.name} ${o.email} ${o.product} ${o.gym || ''} ${o.gym_label || gymLabel(o.gym)}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  async function archiveOrder(id, btn, archived = true) {
+    const msg = document.getElementById(archived ? 'ordersMsg' : 'archivesMsg');
+    const label = archived ? 'archiver' : 'restaurer';
+    if (!confirm(`${archived ? 'Archiver' : 'Restaurer'} l'inscription ${id} ?`)) return;
+    if (btn) btn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}/archive`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: headers(true),
+        body: JSON.stringify({ archived }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Erreur');
+      const row = orders.find((o) => o.order_id === id);
+      if (row) {
+        row.archived = archived;
+        row.archived_at = archived ? new Date().toISOString() : null;
+      }
+      renderOrders();
+      renderArchives();
+      if (typeof window.oublierCommandes === 'function') window.oublierCommandes();
+      if (msg) {
+        msg.textContent = archived ? `Inscription ${id} archivée.` : `Inscription ${id} restaurée.`;
+        msg.className = 'form-msg ok';
+      }
+      if (typeof window.panToast === 'function') {
+        window.panToast(archived ? `Inscription ${id} archivée` : `Inscription ${id} restaurée`, 'ok');
+      }
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message;
+        msg.className = 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function renderArchives() {
+    const tbody = document.getElementById('archivesBody');
+    if (!tbody) return;
+    const list = sortOrdersForDisplay(filteredArchives());
+    const countEl = document.getElementById('archivesCount');
+    if (countEl) {
+      countEl.textContent =
+        list.length === orders.filter((o) => o.archived).length
+          ? `${list.length} inscription(s) archivée(s)`
+          : `${list.length} sur ${orders.filter((o) => o.archived).length} archivée(s)`;
+    }
+    if (!list.length) {
+      tbody.innerHTML =
+        '<tr><td colspan="7" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription archivée</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list
+      .map(
+        (o) => `
+      <tr>
+        <td><code style="font-size:11px">${escapeHtml(o.order_id)}</code></td>
+        <td>${escapeHtml(o.name)}</td>
+        <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>
+        <td>${escapeHtml(o.product)}</td>
+        <td>${escapeHtml(o.gym_label || gymLabel(o.gym))}</td>
+        <td style="font-size:12px">${formatDate(o.archived_at || o.updated_at)}</td>
+        <td>
+          <button type="button" class="btn sm restore-order" data-id="${escapeHtml(o.order_id)}">Restaurer</button>
+          <button type="button" class="btn sm secondary del-order" data-id="${escapeHtml(o.order_id)}" title="Supprimer définitivement">Supprimer</button>
+        </td>
+      </tr>`
+      )
+      .join('');
+    tbody.querySelectorAll('.restore-order').forEach((btn) => {
+      btn.onclick = () => archiveOrder(btn.dataset.id, btn, false);
+    });
+    tbody.querySelectorAll('.del-order').forEach((btn) => {
+      btn.onclick = async () => {
+        const id = btn.dataset.id;
+        const msg = document.getElementById('archivesMsg');
+        if (!confirm(`Supprimer définitivement l'inscription ${id} ?`)) return;
+        btn.disabled = true;
+        try {
+          const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: headers(false),
+          });
+          const data = await res.json();
+          if (!data.ok) throw new Error(data.error || 'Erreur');
+          orders = orders.filter((o) => o.order_id !== id);
+          renderArchives();
+          if (msg) {
+            msg.textContent = `Inscription ${id} supprimée.`;
+            msg.className = 'form-msg ok';
+          }
+        } catch (err) {
+          if (msg) {
+            msg.textContent = err.message;
+            msg.className = 'form-msg err';
+          }
+          btn.disabled = false;
+        }
+      };
+    });
+  }
+
   function renderOrders() {
     const tbody = document.getElementById('ordersBody');
     const list = sortOrdersForDisplay(filteredOrders());
@@ -849,7 +969,7 @@
               ? `<button type="button" class="btn sm pay-order" data-id="${escapeHtml(o.order_id)}">Payer</button>`
               : ''
           }
-          <button type="button" class="btn sm secondary del-order" data-id="${escapeHtml(o.order_id)}" title="Supprimer">✕</button>
+          <button type="button" class="btn sm secondary archive-order" data-id="${escapeHtml(o.order_id)}" title="Archiver">Archiver</button>
           ${
             o.portet_kids
               ? `<button type="button" class="btn sm dossier-order" data-id="${escapeHtml(o.order_id)}">Dossier ${
@@ -877,34 +997,8 @@
       btn.onclick = () => generateResumeLink(btn.dataset.id, btn, 'pay');
     });
 
-    tbody.querySelectorAll('.del-order').forEach((btn) => {
-      btn.onclick = async () => {
-        const id = btn.dataset.id;
-        const msg = document.getElementById('ordersMsg');
-        if (!confirm(`Supprimer l'inscription ${id} ? Cette action est irréversible.`)) return;
-        btn.disabled = true;
-        try {
-          const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
-            method: 'DELETE',
-            credentials: 'include',
-            headers: headers(false),
-          });
-          const data = await res.json();
-          if (!data.ok) throw new Error(data.error || 'Erreur');
-          orders = orders.filter((o) => o.order_id !== id);
-          renderOrders();
-          if (msg) {
-            msg.textContent = `Inscription ${id} supprimée.`;
-            msg.className = 'form-msg ok';
-          }
-        } catch (err) {
-          if (msg) {
-            msg.textContent = err.message;
-            msg.className = 'form-msg err';
-          }
-          btn.disabled = false;
-        }
-      };
+    tbody.querySelectorAll('.archive-order').forEach((btn) => {
+      btn.onclick = () => archiveOrder(btn.dataset.id, btn);
     });
 
     tbody.querySelectorAll('.dossier-order').forEach((btn) => {
@@ -2513,6 +2607,8 @@
   });
 
   document.getElementById('refreshOrdersBtn').onclick = loadOrders;
+  document.getElementById('refreshArchivesBtn')?.addEventListener('click', () => loadOrders().then(() => renderArchives()));
+  document.getElementById('archivesSearch')?.addEventListener('input', renderArchives);
   document.getElementById('customOfferForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.currentTarget;

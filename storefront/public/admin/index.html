@@ -27,6 +27,7 @@
         <button type="button" class="admin-tab active" data-tab="offers">Offres</button>
         <button type="button" class="admin-tab" data-tab="materiel">Matériel</button>
         <button type="button" class="admin-tab" data-tab="contracts">Contrats & inscriptions</button>
+        <button type="button" class="admin-tab" data-tab="archives">Archives</button>
         <button type="button" class="admin-tab" data-tab="freeTrials">Séances d’essai gratuites</button>
         <button type="button" class="admin-tab" data-tab="customOffers">Offres personnalisées</button>
         <button type="button" class="admin-tab" data-tab="coachings">Réservations coaching</button>
@@ -637,6 +638,39 @@
           </table>
         </div>
         <p id="ordersCount" class="admin-section-foot"></p>
+        </div>
+      </section>
+
+      <section id="tabArchives" hidden>
+        <div class="admin-section">
+          <div class="admin-section-head">
+            <div>
+              <h2 class="admin-section-title">Archives</h2>
+              <p class="admin-section-desc">Inscriptions retirées de la liste active. Les données restent en base — restaurez ou supprimez définitivement.</p>
+            </div>
+          </div>
+          <div class="admin-toolbar">
+            <input type="search" id="archivesSearch" placeholder="Rechercher nom, email, référence…" class="admin-search" />
+            <button type="button" class="btn sm" id="refreshArchivesBtn">Actualiser</button>
+          </div>
+          <p class="form-msg" id="archivesMsg"></p>
+          <div style="overflow-x:auto;margin-top:12px">
+            <table class="admin-table" id="archivesTable">
+              <thead>
+                <tr>
+                  <th>Référence</th>
+                  <th>Adhérent</th>
+                  <th>Email</th>
+                  <th>Offre</th>
+                  <th>Salle</th>
+                  <th>Archivée le</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="archivesBody"></tbody>
+            </table>
+          </div>
+          <p id="archivesCount" class="admin-section-foot"></p>
         </div>
       </section>
 

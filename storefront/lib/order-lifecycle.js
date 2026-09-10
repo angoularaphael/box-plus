@@ -419,6 +419,16 @@ function listAllOrders() {
     );
 }
 
+async function archiveOrderAsync(orderId, { archived = true } = {}) {
+  const order = await loadOrderAsync(orderId);
+  if (!order) return null;
+  if (archived) order.archived_at = new Date().toISOString();
+  else delete order.archived_at;
+  order.updated_at = new Date().toISOString();
+  await saveOrderAsync(order);
+  return order;
+}
+
 async function deleteOrderAsync(orderId) {
   initDirs();
   const { DOCS_DIR } = require('./contract-pdf');
@@ -583,6 +593,8 @@ function toAdminSummary(order) {
           : 'Boutique',
     created_at: order.created_at,
     updated_at: order.updated_at,
+    archived: Boolean(order.archived_at),
+    archived_at: order.archived_at || null,
     can_resume:
       !isAction &&
       !order.signature?.signed_at &&
@@ -715,6 +727,7 @@ module.exports = {
   listPaidOrdersSinceAsync,
   listFreeTrialOrdersPageAsync,
   deleteOrderAsync,
+  archiveOrderAsync,
   memberDisplayName,
   toAdminSummary,
   sortAdminOrders,

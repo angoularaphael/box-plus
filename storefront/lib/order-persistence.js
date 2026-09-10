@@ -180,6 +180,7 @@ function buildOrderSummary(order) {
     bot_error: order.bot_error || null,
     reliability: order.reliability || null,
     manual_migration: Boolean(order.manual_migration),
+    archived_at: order.archived_at || null,
     essai_followup_status: order.essai_followup_status || null,
     essai_followup_at: order.essai_followup_at || null,
     essai_followup_check_queued_at: order.essai_followup_check_queued_at || null,
