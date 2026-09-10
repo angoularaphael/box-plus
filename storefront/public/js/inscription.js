@@ -128,7 +128,7 @@
   function aventureAfterPayStep() {
     return productRequiresIban(state.order || { product_snapshot: state.product }) &&
       state.order?.payment?.status === 'paid' &&
-      !state.order?.payment?.iban
+      orderNeedsIban(state.order)
       ? 5
       : 6;
   }
@@ -569,13 +569,16 @@
     return false;
   }
 
-  /** IBAN encore manquant — pour bloquer l'avancée vers le dossier. */
+  /** IBAN valide (format + clés RIB/IBAN) — pas seulement « quelque chose de saisi ». */
+  function orderHasValidIban(order) {
+    const iban = order?.payment?.iban || order?.customer_full?.iban;
+    if (!iban || String(iban).includes('•')) return false;
+    return typeof frenchIbanError === 'function' ? frenchIbanError(iban) == null : false;
+  }
+
+  /** IBAN encore manquant ou invalide — pour bloquer l'avancée vers le dossier. */
   function orderNeedsIban(order) {
-    return (
-      productRequiresIban(order) &&
-      !order?.payment?.iban &&
-      !order?.payment?.has_iban
-    );
+    return productRequiresIban(order) && !orderHasValidIban(order);
   }
 
   function paymentLogosHtml(kind) {
@@ -2049,13 +2052,19 @@
     document.getElementById('ibanForm').onsubmit = async (e) => {
       e.preventDefault();
       const iban = document.getElementById('iban').value;
-      const compact = String(iban || '').replace(/\s+/g, '').toUpperCase();
-      if (!compact.startsWith('FR')) {
-        setMsg(ibanFrMessage, 'err');
-        return;
-      }
-      if (compact.length !== 27) {
-        setMsg('Un IBAN français compte 27 caractères (ex. FR76 3000 6000 0112 3456 7890 189).', 'err');
+      const ibanErr =
+        typeof frenchIbanError === 'function'
+          ? frenchIbanError(iban)
+          : !String(iban || '')
+              .replace(/\s+/g, '')
+              .toUpperCase()
+              .startsWith('FR')
+            ? ibanFrMessage
+            : String(iban || '').replace(/\s+/g, '').length !== 27
+              ? 'Un IBAN français compte 27 caractères (ex. FR76 3000 6000 0112 3456 7890 189).'
+              : null;
+      if (ibanErr) {
+        setMsg(ibanErr, 'err');
         return;
       }
       setMsg('Enregistrement…');
@@ -2475,7 +2484,7 @@
       });
       const data = await res.json();
       if (!data.ok) {
-        if (data.error === 'iban_required') {
+        if (data.error === 'iban_required' || data.error === 'iban_invalid') {
           setMsg(orderErrorMessage(data), 'err');
           goToStep(5);
           return;

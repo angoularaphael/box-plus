@@ -3,7 +3,7 @@
  */
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeIban, isValidFrenchIban, frenchIbanError } = require('../lib/iban');
+const { normalizeIban, isValidFrenchIban, frenchIbanError, sanitizeFrenchIban } = require('../lib/iban');
 
 const SAMPLES = [
   { iban: 'FR76 3000 1007 9412 3456 7890 185', label: 'BNP Paribas' },
@@ -36,5 +36,13 @@ describe('French IBAN / RIB', () => {
 
   it('normalizes spaces', () => {
     assert.strictEqual(normalizeIban('fr 51 2004 1010 1610 1152 8d03 754'), 'FR5120041010161011528D03754');
+  });
+
+  it('sanitizeFrenchIban rejette un IBAN incomplet (cas Kabore)', () => {
+    assert.strictEqual(sanitizeFrenchIban('FR7613506100008518444605'), null);
+  });
+
+  it('sanitizeFrenchIban conserve un IBAN valide', () => {
+    assert.strictEqual(sanitizeFrenchIban('FR76 3000 1007 9412 3456 7890 185'), 'FR7630001007941234567890185');
   });
 });

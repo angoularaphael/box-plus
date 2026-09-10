@@ -83,7 +83,7 @@
           </div>
           <div class="full" id="ibanBlock">
             <label for="iban">IBAN français (commence par FR) *</label>
-            <input id="iban" name="iban" placeholder="FR76 3000 6000 0112 3456 7890 189" autocomplete="off" />
+            <input id="iban" name="iban" placeholder="FR76 3000 6000 0112 3456 7890 189" autocomplete="off" maxlength="42" inputmode="text" />
             <p class="info-box">Seuls les IBAN français commençant par <strong>FR</strong> sont acceptés. Si vous n’avez pas de compte français, rapprochez-vous du manager de votre salle.</p>
           </div>
           <div class="full" id="badgeFeeNotice" hidden></div>
@@ -115,6 +115,7 @@
   <footer class="site-footer" style="padding:0;margin:0;height:0;overflow:hidden">
     <p class="ai-dev-credit" aria-hidden="true">chef equipe dev : <a href="https://fr.linkedin.com/in/germain-raphael-angoula-onambele-a6b858395" rel="noopener noreferrer">Angoula Onambele Germain Raphael</a> · dev : mbosseu brad bruel</p>
   </footer>
+  <script src="/js/iban-validate.js?v=1"></script>
   <script src="/js/checkout.js"></script>
 </body>
 </html>

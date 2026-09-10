@@ -139,6 +139,13 @@ async function submitCheckout(endpoint) {
 
   const body = formData(form);
   body.product_id = currentProduct.id;
+  if (currentProduct.requires_iban && body.iban && typeof frenchIbanError === 'function') {
+    const ibanErr = frenchIbanError(body.iban);
+    if (ibanErr) {
+      showMsg(ibanErr, false);
+      return;
+    }
+  }
   showMsg('Traitement…', true);
 
   const buttons = form.querySelectorAll('button');

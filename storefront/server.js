@@ -3018,7 +3018,12 @@ function createApp() {
         product
       );
       if (errors.length) return res.status(400).json({ ok: false, errors });
-      const updated = await updateIbanAsync(order.order_id, req.body.iban);
+      let updated;
+      try {
+        updated = await updateIbanAsync(order.order_id, req.body.iban);
+      } catch (err) {
+        return res.status(400).json({ ok: false, error: 'iban_invalid', message: err.message, errors: [err.message] });
+      }
       res.json({ ok: true, step: updated.step });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
@@ -3534,14 +3539,33 @@ function createApp() {
       }
 
       const plan = full.billing_plan || order.payment?.billing_plan;
-      const ibanReady = Boolean(String(full.iban || '').trim() || order.payment?.iban);
-      if (!aventureOrder && requiresIbanForPlan(product, plan) && !ibanReady) {
+      const { frenchIbanError, sanitizeFrenchIban } = require('../lib/iban');
+      const ibanNorm = sanitizeFrenchIban(full.iban);
+      const ibanRequired =
+        !aventureOrder && requiresIbanForPlan(product, plan, order.payment?.payment_plan);
+
+      if (ibanRequired && !ibanNorm) {
+        const msg = String(full.iban || '').trim()
+          ? frenchIbanError(full.iban) || 'IBAN français invalide'
+          : 'Indiquez d\'abord votre IBAN pour le prélèvement.';
         return res.status(400).json({
           ok: false,
-          error: 'iban_required',
-          message: 'Indiquez d\'abord votre IBAN pour le prélèvement.',
+          error: String(full.iban || '').trim() ? 'iban_invalid' : 'iban_required',
+          message: msg,
+          errors: [msg],
         });
       }
+      if (String(full.iban || '').trim() && !ibanNorm) {
+        const msg = frenchIbanError(full.iban) || 'IBAN français invalide';
+        return res.status(400).json({
+          ok: false,
+          error: 'iban_invalid',
+          message: msg,
+          errors: [msg],
+        });
+      }
+      if (ibanNorm) full.iban = ibanNorm;
+      else delete full.iban;
 
       // Date de naissance saisie au dossier → customer_short
       if (!full.birthdate) full.birthdate = order.customer_short?.birthdate || null;

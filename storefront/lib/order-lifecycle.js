@@ -222,11 +222,16 @@ function markPaymentPaid(orderId, paymentData) {
 async function markPaymentPaidAsync(orderId, paymentData) {
   const order = await loadOrderAsync(orderId);
   if (!order) return null;
+  const { sanitizeFrenchIban } = require('../../lib/iban');
+  const cleanPayment = { ...paymentData };
+  if (cleanPayment.iban != null) {
+    cleanPayment.iban = sanitizeFrenchIban(cleanPayment.iban);
+  }
   order.payment = {
     ...order.payment,
-    ...paymentData,
+    ...cleanPayment,
     status: 'paid',
-    paid_at: order.payment?.paid_at || paymentData.paid_at || new Date().toISOString(),
+    paid_at: order.payment?.paid_at || cleanPayment.paid_at || new Date().toISOString(),
   };
   advanceOrder(order, STATES.PAID);
   const paidAt = Date.parse(order.payment.paid_at);
@@ -282,8 +287,12 @@ async function markPaymentFailedAsync(orderId, paymentData = {}) {
 async function updateIbanAsync(orderId, iban) {
   const order = await loadOrderAsync(orderId);
   if (!order) return null;
-  const { normalizeIban } = require('../../lib/iban');
-  const clean = normalizeIban(iban);
+  const { normalizeIban, frenchIbanError, sanitizeFrenchIban } = require('../../lib/iban');
+  const clean = sanitizeFrenchIban(iban);
+  if (!clean) {
+    const err = frenchIbanError(iban) || 'IBAN français invalide';
+    throw new Error(err);
+  }
   order.payment = { ...(order.payment || {}), iban: clean };
   order.customer_full = { ...(order.customer_full || {}), iban: clean };
   const { isBalmaRetourOrder } = require('../../lib/balma');
@@ -299,12 +308,25 @@ function updateFullProfile(orderId, customer_full) {
 async function updateFullProfileAsync(orderId, customer_full) {
   const order = await loadOrderAsync(orderId);
   if (!order) return null;
-  order.customer_full = {
+  const { sanitizeFrenchIban } = require('../../lib/iban');
+  const ibanCandidate =
+    customer_full.iban != null && String(customer_full.iban).trim()
+      ? customer_full.iban
+      : order.customer_full?.iban || order.payment?.iban;
+  const cleanIban = sanitizeFrenchIban(ibanCandidate);
+  const nextFull = {
     ...(order.customer_full || {}),
     ...customer_full,
     gym: customer_full.gym || order.customer_full?.gym,
-    iban: customer_full.iban || order.customer_full?.iban || order.payment?.iban,
   };
+  if (cleanIban) {
+    nextFull.iban = cleanIban;
+    order.payment = { ...(order.payment || {}), iban: cleanIban };
+  } else {
+    delete nextFull.iban;
+    if (ibanCandidate) delete order.payment?.iban;
+  }
+  order.customer_full = nextFull;
   if (customer_full.photo_path) {
     order.documents = { ...(order.documents || {}), photo: customer_full.photo_path };
   }
