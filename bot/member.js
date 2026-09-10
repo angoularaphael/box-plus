@@ -1088,6 +1088,22 @@ async function fillMemberForm(page, customer, gymConfig, order) {
       `Impossible de fixer la salle Deciplus ${gymConfig.deciplus_label || gymConfig.key || '?'} sur la fiche membre`
     );
   }
+
+  const guardian = customer.guardian || order?.customer?.guardian || order?.customer_full?.guardian;
+  if (guardian && (guardian.phone || guardian.first_name || guardian.last_name || guardian.email)) {
+    const { guardianAdminNote } = require('../lib/portet-inscription');
+    const gPhone = phoneForDeciplus(guardian.phone);
+    if (gPhone) {
+      await fillFirst(ctx, sel.telurgence || 'input[name="telurgence"]', gPhone);
+    }
+    const adminNote = guardianAdminNote(guardian);
+    if (adminNote) {
+      await fillFirst(ctx, sel.info_admin || 'textarea[name="info_admin"]', adminNote);
+    }
+    logInfo('Tuteur renseigné sur fiche Deciplus', {
+      guardian_name: [guardian.first_name, guardian.last_name].filter(Boolean).join(' ') || null,
+    });
+  }
 }
 
 /**

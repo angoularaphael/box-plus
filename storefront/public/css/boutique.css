@@ -1050,6 +1050,27 @@ input:focus, select:focus, textarea:focus {
   margin: 4px 0 10px;
 }
 
+.portet-recap {
+  background: #f7f4ee;
+  border: 1px solid var(--bc-border, #e4e7ed);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 0 0 18px;
+}
+.portet-recap__title {
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--bc-navy, #20254b);
+}
+.portet-recap ul {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.55;
+}
+.portet-docs-download .btn {
+  margin: 0 0 4px;
+}
+
 /* ——— Gérer mon abonnement ——— */
 .manage-page {
   max-width: 880px;

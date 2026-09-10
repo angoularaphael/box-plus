@@ -104,6 +104,53 @@ async function uploadImageBuffer({
   };
 }
 
+async function uploadRawBuffer({
+  buffer,
+  mime = 'application/pdf',
+  filename = 'document.pdf',
+  publicId,
+} = {}) {
+  const { cloud, apiKey, apiSecret } = cloudinaryCredentials();
+  if (!cloud || !apiKey || !apiSecret) {
+    throw new Error('cloudinary_not_configured');
+  }
+  if (!buffer || !buffer.length) throw new Error('empty_file');
+
+  const timestamp = Math.floor(Date.now() / 1000);
+  const id = publicId || `boxplus/id-docs/${Date.now()}`;
+  const toSign = {
+    overwrite: 'true',
+    public_id: id,
+    timestamp,
+  };
+  const signature = signParams(toSign, apiSecret);
+  const form = new FormData();
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  form.append('file', new Blob([bytes], { type: mime }), filename);
+  form.append('api_key', apiKey);
+  form.append('timestamp', String(timestamp));
+  form.append('signature', signature);
+  form.append('public_id', id);
+  form.append('overwrite', 'true');
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/raw/upload`, {
+    method: 'POST',
+    body: form,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) {
+    const message = data.error?.message || `cloudinary_http_${res.status}`;
+    throw new Error(message);
+  }
+  return {
+    public_id: data.public_id,
+    url: data.secure_url || data.url,
+    secure_url: data.secure_url || data.url,
+    bytes: data.bytes,
+    format: data.format,
+  };
+}
+
 function photoPublicId(order) {
   const docs = order?.documents || {};
   if (docs.photo_public_id) return String(docs.photo_public_id);
@@ -195,6 +242,7 @@ module.exports = {
   signParams,
   imageUrl,
   uploadImageBuffer,
+  uploadRawBuffer,
   downloadImageBuffer,
   hydrateOrderMedia,
 };

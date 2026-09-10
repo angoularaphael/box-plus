@@ -102,6 +102,7 @@ function buildOrderPayload(input, product) {
       country: input.country || 'FR',
       emergency_contact: input.emergency_contact || null,
       medical_info: input.medical_info || null,
+      guardian: input.guardian || null,
     },
     photo_path: input.photo_path || null,
     photo_base64: input.photo_base64 || null,
@@ -222,12 +223,11 @@ function validatePaymentForm(input, product) {
 function validateIbanForm(input, product = {}) {
   const errors = [];
   const billingPlan = normalizeBillingPlan(input.billing_plan, product);
-  if (requiresIbanForPlan(product, billingPlan, input.payment_plan)) {
-    if (!input.iban) errors.push('IBAN requis pour le prélèvement');
-    else {
-      const ibanErr = frenchIbanError(input.iban);
-      if (ibanErr) errors.push(ibanErr);
-    }
+  const needsIban = requiresIbanForPlan(product, billingPlan, input.payment_plan);
+  if (needsIban && !input.iban) errors.push('IBAN requis pour le prélèvement');
+  if (input.iban) {
+    const ibanErr = frenchIbanError(input.iban);
+    if (ibanErr) errors.push(ibanErr);
   }
   return errors;
 }
@@ -275,8 +275,11 @@ function buildOrderFromLifecycle(order, product) {
       stripe_session_id: order.payment?.stripe_session_id,
       stripe_subscription_id: order.payment?.stripe_subscription_id,
       payplug_payment_id: order.payment?.payplug_payment_id,
-      emergency_contact: full.emergency_contact,
+      emergency_contact:
+        full.emergency_contact ||
+        require('../../lib/portet-inscription').guardianEmergencyContact(full.guardian),
       medical_info: full.medical_info,
+      guardian: full.guardian || null,
       photo_path: photoPath,
       photo_base64: photoBase64,
       photo_url: photoUrl,

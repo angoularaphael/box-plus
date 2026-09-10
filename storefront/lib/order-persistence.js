@@ -158,6 +158,12 @@ function buildOrderSummary(order) {
           order.documents?.photo_filename ||
           order.documents?.photo_url
       ),
+      id_document_url: order.documents?.id_document_url || null,
+      has_id_document: Boolean(
+        order.documents?.id_document ||
+          order.documents?.id_document_url ||
+          order.documents?.id_document_filename
+      ),
     },
     dispatched_at: order.dispatched_at || null,
     sales_bot: order.sales_bot || null,

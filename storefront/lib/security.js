@@ -135,6 +135,14 @@ function redactOrderForClient(order) {
       has_photo: true,
     };
   }
+  if (safe.documents?.id_document_url || safe.documents?.id_document) {
+    safe.documents = {
+      ...(safe.documents || {}),
+      id_document: true,
+      id_document_url: Boolean(order.documents?.id_document_url || order.documents?.id_document),
+      has_id_document: true,
+    };
+  }
   if (safe.signature?.image_base64) {
     safe.signature = { ...safe.signature, image_base64: true };
   }
@@ -227,6 +235,17 @@ function looksLikeAllowedImage(buf, mime) {
   return false;
 }
 
+function looksLikePdf(buf) {
+  if (!buf || buf.length < 5) return false;
+  return buf.slice(0, 5).toString('ascii') === '%PDF-';
+}
+
+function idDocumentExtForMime(mime) {
+  const kind = String(mime || '').toLowerCase();
+  if (kind === 'application/pdf') return '.pdf';
+  return photoExtForMime(kind);
+}
+
 function publicServerError() {
   return 'Une erreur est survenue';
 }
@@ -251,6 +270,8 @@ module.exports = {
   applySecurityHeaders,
   photoExtForMime,
   looksLikeAllowedImage,
+  looksLikePdf,
+  idDocumentExtForMime,
   publicServerError,
   PHOTO_MIME_EXT,
 };

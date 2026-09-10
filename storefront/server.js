@@ -55,6 +55,14 @@ const {
   productNeedsAutoBadge,
 } = require('../lib/billing-plan');
 const {
+  isPortetGym,
+  isPortetKidsFlow,
+  isPortetCawl4xRib,
+  normalizeGuardian,
+  validateGuardian,
+  guardianEmergencyContact,
+} = require('../lib/portet-inscription');
+const {
   createFourTimesPayment,
   createHostedPayment,
   retrievePayment,
@@ -119,6 +127,8 @@ const {
   applySecurityHeaders,
   photoExtForMime,
   looksLikeAllowedImage,
+  looksLikePdf,
+  idDocumentExtForMime,
   publicServerError,
 } = require('./lib/security');
 const {
@@ -205,6 +215,7 @@ const {
   verifyAccess,
   updateShortProfile,
   updateGymAsync,
+  patchCustomerFullAsync,
   updateIbanAsync,
   markPaymentPaid,
   markPaymentFailed,
@@ -366,8 +377,29 @@ function makeUploader(subdir) {
   });
 }
 
+function makeIdUploader() {
+  return multer({
+    storage: multer.diskStorage({
+      destination: (_req, _file, cb) => {
+        cb(null, getUploadDir('id-docs'));
+      },
+      filename: (req, file, cb) => {
+        const ext = idDocumentExtForMime(file.mimetype) || '.jpg';
+        const id = sanitizeOrderId(req.params.id) || 'upload';
+        cb(null, `${id}-id-${Date.now()}${ext}`);
+      },
+    }),
+    fileFilter: (_req, file, cb) => {
+      if (idDocumentExtForMime(file.mimetype)) return cb(null, true);
+      cb(new Error('invalid_id_document_type'));
+    },
+    limits: { fileSize: 6 * 1024 * 1024 },
+  });
+}
+
 const upload = makeUploader('ribs');
 const uploadPhoto = makeUploader('photos');
+const uploadIdDocument = makeIdUploader();
 
 function stripeForGym(gym) {
   try {
@@ -2552,7 +2584,15 @@ function createApp() {
     if (!order) order = await loadMaterielOrderAsync(id);
     if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
     const { access_token, ...safe } = order;
-    res.json({ ok: true, order: safe });
+    const { dossierStatus, isPortetKidsOrder } = require('../lib/portet-inscription');
+    res.json({
+      ok: true,
+      order: {
+        ...safe,
+        portet_kids: isPortetKidsOrder(order),
+        dossier_status: dossierStatus(order),
+      },
+    });
   });
 
   app.get('/api/admin/orders/:id/contract.pdf', async (req, res) => {
@@ -2881,6 +2921,7 @@ function createApp() {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
       const product = findProduct(order.product_id) || order.product_snapshot;
+      const gym = String(req.body.gym || order.customer_full?.gym || '').trim();
       const short = {
         first_name: req.body.first_name,
         last_name: req.body.last_name,
@@ -2889,6 +2930,21 @@ function createApp() {
         birthdate: req.body.birthdate || order.customer_short?.birthdate || null,
       };
       const errors = validateShortForm(short, { requireBirthdate: true, product });
+      if (isPortetKidsFlow(gym, product)) {
+        const guardian = normalizeGuardian({
+          first_name: req.body.guardian_first_name || req.body.guardian?.first_name,
+          last_name: req.body.guardian_last_name || req.body.guardian?.last_name,
+          phone: req.body.guardian_phone || req.body.guardian?.phone || short.phone,
+          email: req.body.guardian_email || req.body.guardian?.email || short.email,
+        });
+        errors.push(...validateGuardian(guardian));
+        if (!req.body.address) errors.push('Adresse requise');
+        if (!req.body.postal_code) errors.push('Code postal requis');
+        if (!req.body.city) errors.push('Ville requise');
+        if (req.body.postal_code && !/^\d{5}$/.test(String(req.body.postal_code).trim())) {
+          errors.push('Code postal invalide');
+        }
+      }
       if (errors.length) return res.status(400).json({ ok: false, errors });
       if (!order.customer_full?.gym && !req.body.gym) {
         return res.status(400).json({ ok: false, errors: ['Choisissez d\'abord votre salle'] });
@@ -2896,7 +2952,22 @@ function createApp() {
       if (req.body.gym) await updateGymAsync(order.order_id, req.body.gym);
       const friend = sanitizeFriend(req.body.referral_friend || req.body.friend);
       if (friend) await attachReferralFriendAsync(order.order_id, friend);
-      const updated = await updateShortProfile(order.order_id, short);
+      let updated = await updateShortProfile(order.order_id, short);
+      if (isPortetKidsFlow(gym, product)) {
+        const guardian = normalizeGuardian({
+          first_name: req.body.guardian_first_name || req.body.guardian?.first_name,
+          last_name: req.body.guardian_last_name || req.body.guardian?.last_name,
+          phone: req.body.guardian_phone || req.body.guardian?.phone || short.phone,
+          email: req.body.guardian_email || req.body.guardian?.email || short.email,
+        });
+        updated = await patchCustomerFullAsync(order.order_id, {
+          address: String(req.body.address || '').trim(),
+          postal_code: String(req.body.postal_code || '').trim(),
+          city: String(req.body.city || '').trim(),
+          guardian,
+          emergency_contact: guardianEmergencyContact(guardian),
+        });
+      }
       await syncInscriptionClient(updated).catch((err) =>
         logError('Sync client inscription (identity)', { order_id: order.order_id, error: err.message })
       );
@@ -3047,6 +3118,114 @@ function createApp() {
         path: req.file.filename,
         stored: Boolean(documents.photo_url || documents.photo),
         cloudinary: Boolean(documents.photo_url),
+      });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.post('/api/orders/:id/id-document', (req, res, next) => {
+    uploadIdDocument.single('id_document')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({
+          ok: false,
+          error: 'invalid_id_document_type',
+          message: 'Envoyez une copie JPEG, PNG, WebP ou PDF (max 6 Mo).',
+        });
+      }
+      next();
+    });
+  }, async (req, res) => {
+    try {
+      const token = req.body.token || req.query.token;
+      const order = await loadOrderOrRecover(req.params.id, {
+        token,
+        stripe,
+        findProduct,
+      });
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      if (!verifyAccess(order, token)) {
+        return res.status(403).json({ ok: false, error: 'forbidden' });
+      }
+      const gym = order.customer_full?.gym;
+      const product = findProduct(order.product_id) || order.product_snapshot;
+      if (!isPortetKidsFlow(gym, product)) {
+        return res.status(400).json({
+          ok: false,
+          error: 'id_document_not_required',
+          message: 'La pièce d’identité n’est demandée que pour les inscriptions enfants Portet.',
+        });
+      }
+      if (!req.file) return res.status(400).json({ ok: false, error: 'id_document_required' });
+
+      const { isCloudinaryConfigured, uploadImageBuffer, uploadRawBuffer } = require('./lib/cloudinary');
+      let buf;
+      try {
+        buf = fs.readFileSync(req.file.path);
+      } catch (readErr) {
+        return res.status(400).json({ ok: false, error: 'id_document_unreadable', message: readErr.message });
+      }
+      const isPdf = looksLikePdf(buf) || req.file.mimetype === 'application/pdf';
+      if (!isPdf && !looksLikeAllowedImage(buf, req.file.mimetype)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {
+          /* ignore */
+        }
+        return res.status(400).json({
+          ok: false,
+          error: 'invalid_id_document_type',
+          message: 'Envoyez une copie JPEG, PNG, WebP ou PDF.',
+        });
+      }
+
+      const documents = {
+        ...(order.documents || {}),
+        id_document: req.file.path,
+        id_document_filename: req.file.filename,
+      };
+
+      if (isCloudinaryConfigured()) {
+        try {
+          const publicId = `boxplus/id-docs/${order.order_id}`;
+          const uploaded = isPdf
+            ? await uploadRawBuffer({
+                buffer: buf,
+                mime: 'application/pdf',
+                filename: req.file.filename || 'piece-identite.pdf',
+                publicId,
+              })
+            : await uploadImageBuffer({
+                buffer: buf,
+                mime: req.file.mimetype || 'image/jpeg',
+                filename: req.file.filename || 'piece-identite.jpg',
+                publicId,
+              });
+          documents.id_document_url = uploaded.url || uploaded.secure_url;
+          documents.id_document_public_id = uploaded.public_id;
+        } catch (cloudErr) {
+          logError('Upload pièce identité Cloudinary', { order_id: order.order_id, error: cloudErr.message });
+          return res.status(502).json({
+            ok: false,
+            error: 'cloudinary_failed',
+            message: 'Impossible d’enregistrer la pièce d’identité. Réessayez dans un instant.',
+          });
+        }
+      } else if (process.env.VERCEL) {
+        return res.status(503).json({
+          ok: false,
+          error: 'cloudinary_not_configured',
+          message: 'Stockage document indisponible.',
+        });
+      }
+
+      order.documents = documents;
+      await saveOrderAsync(order);
+      res.json({
+        ok: true,
+        id_document: true,
+        stored: Boolean(documents.id_document_url || documents.id_document),
+        cloudinary: Boolean(documents.id_document_url),
       });
     } catch (err) {
       res.status(500).json({ ok: false, error: err.message });
@@ -3404,6 +3583,22 @@ function createApp() {
           error: 'photo_required',
           message: 'Ajoutez une photo pour votre badge / fiche membre.',
         });
+      }
+
+      if (
+        isPortetKidsFlow(full.gym || order.customer_full?.gym, product) &&
+        !order.documents?.id_document &&
+        !order.documents?.id_document_url
+      ) {
+        return res.status(400).json({
+          ok: false,
+          error: 'id_document_required',
+          message: 'Ajoutez une copie de la pièce d’identité.',
+        });
+      }
+
+      if (order.customer_full?.guardian && !full.guardian) {
+        full.guardian = order.customer_full.guardian;
       }
 
       if (order.documents?.photo) full.photo_path = order.documents.photo;
@@ -3818,14 +4013,25 @@ function createApp() {
         });
       }
       let preferredCheckout =
-        payMethod === 'cawl' || display.portetViaCawl
-          ? 'cawl'
-          : payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
-            ? 'paypal'
+        payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
+          ? 'paypal'
+          : payMethod === 'cawl' || display.portetViaCawl
+            ? 'cawl'
             : 'card';
-      const portetFourXPaypal =
-        gymNorm === 'portet' && paymentPlan === '4x' && display.portetPaypal4x === true;
-      if (portetFourXPaypal) preferredCheckout = 'paypal';
+      const portetCawl4xRib = isPortetCawl4xRib({
+        gym: gymNorm,
+        paymentPlan,
+        billingPlan: payMethod === 'paypal' ? 'paypal' : 'rib',
+        payMethod,
+        preferredCheckout,
+      });
+      if (gymNorm === 'portet' && paymentPlan === '4x') {
+        if (payMethod === 'paypal' && display.portetPaypal4x === true) {
+          preferredCheckout = 'paypal';
+        } else if (display.portetViaCawl && payMethod !== 'paypal') {
+          preferredCheckout = 'cawl';
+        }
+      }
       if (display.portetViaPaypal && !display.portetViaCawl) preferredCheckout = 'paypal';
       if (preferredCheckout === 'cawl' && !display.show_cawl) {
         return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
@@ -3843,13 +4049,17 @@ function createApp() {
 
       order.payment = {
         ...(order.payment || {}),
-        billing_plan: billingPlan || (preferredCheckout === 'paypal' ? 'paypal' : billingPlan),
+        billing_plan: portetCawl4xRib
+          ? 'rib'
+          : billingPlan || (preferredCheckout === 'paypal' ? 'paypal' : billingPlan),
         payment_plan: paymentPlan,
         preferred_checkout: preferredCheckout,
+        cawl_4x_prelevement: portetCawl4xRib || undefined,
         iban: order.payment?.iban || null,
         badge_timing: badgeTiming,
         badge_method: badgeMethod,
       };
+      if (portetCawl4xRib) order.requires_iban = true;
       if (badgeOn || giftBadge) {
         order.badge_timing = badgeTiming;
         order.badge_method = badgeMethod;
@@ -3897,7 +4107,7 @@ function createApp() {
         });
       }
 
-      // ——— CAWL Portet (carte + 4× Oney) ———
+      // ——— CAWL Portet (carte 1×, ou 4× = 1/4 CB puis RIB — pas Oney) ———
       if (preferredCheckout === 'cawl') {
         if (!isCawlEnabled()) {
           return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
@@ -3912,6 +4122,10 @@ function createApp() {
             ? { email: order.customer_short?.email || aventurePspEmail(order) }
             : {}),
         };
+        const cawl4xRib = isPortetGym(gymNorm) && planLabel === '4x';
+        const amountCents = cawl4xRib
+          ? Math.round(Number(product.price_cents || 0) / 4)
+          : Number(product.price_cents || 0);
         try {
           const hosted = await createCawlHostedCheckout({
             order: {
@@ -3919,11 +4133,17 @@ function createApp() {
               customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
             },
             product,
-            amountCents: product.price_cents,
+            amountCents,
             baseUrl,
-            paymentPlan: planLabel === '4x' ? '4x' : 'once',
+            paymentPlan: 'once',
             customerOverrides,
-            metadata: { order_id: order.order_id, gym, payment_plan: planLabel },
+            metadata: {
+              order_id: order.order_id,
+              gym,
+              payment_plan: planLabel,
+              billing_plan: cawl4xRib ? 'rib' : '',
+              cawl_4x_prelevement: cawl4xRib ? '1' : '',
+            },
           });
           if (!hosted.redirectUrl) {
             return res.status(502).json({ ok: false, error: 'cawl_url_missing' });
@@ -3943,6 +4163,8 @@ function createApp() {
             method: 'cawl',
             preferred_checkout: 'cawl',
             payment_plan: planLabel === '4x' ? '4x' : 'once',
+            billing_plan: cawl4xRib ? 'rib' : order.payment?.billing_plan || null,
+            cawl_4x_prelevement: cawl4xRib || undefined,
             cawl_hosted_checkout_ids: rememberPreviousCawlId(order.payment, hosted.hostedCheckoutId),
             cawl_hosted_checkout_id: hosted.hostedCheckoutId,
             cawl_return_mac: hosted.returnMac || null,
@@ -3950,10 +4172,11 @@ function createApp() {
             error: null,
             failure: null,
           };
+          if (cawl4xRib) order.requires_iban = true;
           await saveOrderAsync(order);
           return res.json({
             ok: true,
-            mode: planLabel === '4x' ? 'cawl_4x' : 'cawl',
+            mode: cawl4xRib ? 'cawl_4x_prelevement' : 'cawl',
             url: hosted.redirectUrl,
             hosted_checkout_id: hosted.hostedCheckoutId,
           });
@@ -5371,8 +5594,13 @@ function createApp() {
       !amountsMatch(paidCents, full);
     const paid = await markPaymentPaid(order.order_id, {
       method: 'cawl',
-      payment_plan: asFourX ? '4x' : order.payment?.payment_plan || 'once',
-      billing_plan: order.payment?.billing_plan || null,
+      payment_plan: asFourX || order.payment?.payment_plan === '4x' ? '4x' : order.payment?.payment_plan || 'once',
+      billing_plan:
+        order.payment?.cawl_4x_prelevement ||
+        (order.payment?.payment_plan === '4x' && order.payment?.billing_plan === 'rib')
+          ? 'rib'
+          : order.payment?.billing_plan || null,
+      cawl_4x_prelevement: order.payment?.cawl_4x_prelevement || undefined,
       cawl_hosted_checkout_ids: hist,
       cawl_hosted_checkout_id: hostedCheckoutId,
       cawl_payment_id: cawlPaymentId(session) || order.payment?.cawl_payment_id || null,
@@ -5380,6 +5608,14 @@ function createApp() {
       error: null,
       failure: null,
     });
+    if (
+      paid &&
+      (paid.payment?.cawl_4x_prelevement ||
+        (paid.payment?.payment_plan === '4x' && paid.payment?.billing_plan === 'rib'))
+    ) {
+      paid.requires_iban = true;
+      await saveOrderAsync(paid);
+    }
     return paid;
   }
 
@@ -6256,6 +6492,7 @@ function createApp() {
     '/cgv': 'cgv.html',
     '/reglement-interieur': 'reglement-interieur.html',
     '/attestation-medicale': 'attestation-medicale.html',
+    '/certificat-ffboxe': 'certificat-ffboxe.html',
     '/mon-inscription': 'mon-inscription.html',
     '/gerer-abonnement': 'gerer-abonnement.html',
     '/regulariser': 'regulariser.html',

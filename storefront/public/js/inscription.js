@@ -108,6 +108,7 @@
     shortDraft: null,
     gymDraft: null,
     photoUploaded: false,
+    idDocumentUploaded: false,
     emailWarning: null,
     dispatchError: null,
     /** Après signature : plus aucun cache / saveProgress */
@@ -190,6 +191,7 @@
       shortDraft: state.shortDraft,
       gymDraft: state.gymDraft,
       photoUploaded: state.photoUploaded,
+      idDocumentUploaded: state.idDocumentUploaded,
       customerShort: state.order?.customer_short || null,
       productSnapshot: state.product || state.order?.product_snapshot || null,
       savedAt: Date.now(),
@@ -252,6 +254,7 @@
       if (saved.shortDraft) state.shortDraft = saved.shortDraft;
       if (saved.gymDraft) state.gymDraft = saved.gymDraft;
       if (saved.photoUploaded) state.photoUploaded = true;
+      if (saved.idDocumentUploaded) state.idDocumentUploaded = true;
       if (saved.customerShort && !state.order?.customer_short) {
         state.order = state.order || {};
         state.order.customer_short = saved.customerShort;
@@ -391,6 +394,14 @@
     if (id === 'boxe-educative' || legacy === 'boxe-educative' || id === 'dp-45') return true;
     const title = String(p.name || p.display_name || '');
     return /BABY\s*BOXE/i.test(title) || /BOXE\s*[EÉ]DUCATIVE/i.test(title);
+  }
+
+  function currentGym() {
+    return String(state.order?.customer_full?.gym || state.gymDraft || '').trim().toLowerCase();
+  }
+
+  function isPortetKidsUi() {
+    return currentGym() === 'portet' && isChildOfferProduct(state.product || state.order?.product_snapshot);
   }
 
   function ageFromBirthdate(value) {
@@ -863,6 +874,13 @@
     if (state.order.documents?.photo || state.order.documents?.photo_url || state.order.documents?.has_photo) {
       state.photoUploaded = true;
     }
+    if (
+      state.order.documents?.id_document ||
+      state.order.documents?.id_document_url ||
+      state.order.documents?.has_id_document
+    ) {
+      state.idDocumentUploaded = true;
+    }
     state.step = stepFromOrder(state.order);
     return true;
   }
@@ -1114,8 +1132,10 @@
     const portetPaypal4x = !portetPaused && payFlags.portetPaypal4x === true;
     const payplug4xPrelev =
       installmentChoice && !portetViaCawl && !portetPaypal4x && payFlags.payplug4xPrelevement === true;
+    const portetCawl4xRib = installmentChoice && portetViaCawl;
     const showCard = portetViaCawl || payFlags.showCard;
     const fourPayplugAvailable = showCard && payplug4xPrelev;
+    const fourCawlRibAvailable = portetCawl4xRib;
     const savedInstallment = state.order?.payment?.payment_plan === '4x' ? '4x' : 'once';
     const showPaypalOnce = portetViaCawl ? false : payFlags.showPaypal;
     const showPaypalFour = portetViaCawl ? portetPaypal4x : payFlags.showPaypal;
@@ -1176,13 +1196,11 @@
           name: 'pay_method_4x',
           cardValue: portetViaCawl ? 'cawl' : 'payplug',
           paypalValue: 'paypal',
-          showCard: fourPayplugAvailable,
+          showCard: fourPayplugAvailable || fourCawlRibAvailable,
           showPaypal: showPaypalFour,
-          preferPaypal: !fourPayplugAvailable && showPaypalFour,
+          preferPaypal: !fourPayplugAvailable && !fourCawlRibAvailable && showPaypalFour,
           cardTitle: '4× sans frais CB puis RIB',
-          cardSmall: portetViaCawl
-            ? 'Carte bancaire'
-            : `${quart} € aujourd’hui<br>3 prochains paiements sur votre RIB`,
+          cardSmall: `${quart} € aujourd’hui<br>3 prochains paiements sur votre RIB`,
           paypalTitle: 'PayPal 4×',
           paypalSmall: '4× sans frais via PayPal (Pay Later si éligible)',
           cardLogo: 'card',
@@ -1292,8 +1310,28 @@
           </div>
         </div>`
       : '';
+    const recapKids = isPortetKidsUi()
+      ? (() => {
+          const g = state.order?.customer_full?.guardian || {};
+          const addr = [state.order?.customer_full?.address, state.order?.customer_full?.postal_code, state.order?.customer_full?.city]
+            .filter(Boolean)
+            .join(', ');
+          return `<div class="portet-recap" aria-label="Récapitulatif avant paiement">
+            <p class="portet-recap__title">Récapitulatif</p>
+            <ul>
+              <li><strong>Adhérent</strong> — ${esc(shortPay.first_name || '')} ${esc(shortPay.last_name || '')}</li>
+              <li><strong>Né(e) le</strong> — ${esc(shortPay.birthdate || '—')}</li>
+              ${addr ? `<li><strong>Adresse</strong> — ${esc(addr)}</li>` : ''}
+              <li><strong>Responsable légal</strong> — ${esc(g.first_name || '')} ${esc(g.last_name || '')}</li>
+              <li><strong>Offre</strong> — ${esc(p.display_name || p.name || '')} · ${esc(priceLabel(p))}</li>
+            </ul>
+            <p class="sub" style="margin:8px 0 0">Choisissez 1× ou 4× sans frais ci-dessous (PayPal ou CB puis RIB).</p>
+          </div>`;
+        })()
+      : '';
     stepContent.innerHTML = `
       <h1>Paiement</h1>
+      ${recapKids}
       ${
         isBalmaRetour() && (state.aventureDossierSaved || state.order?.customer_full?.address)
           ? `<div class="notice-important" style="margin:0 0 16px"><strong>Dossier enregistré</strong><p>Pas de téléphone ni d’e-mail sur la fiche Minimes — on ajoute « Balma » à ton prénom. Le club te recontacte. Tu peux aussi payer maintenant.</p></div>`
@@ -1330,20 +1368,20 @@
         const payBtn = document.getElementById('payBtn');
         const fourMethod =
           document.querySelector('input[name="pay_method_4x"]:checked')?.value ||
-          (fourPayplugAvailable ? (portetViaCawl ? 'cawl' : 'payplug') : 'paypal');
+          (fourPayplugAvailable || fourCawlRibAvailable ? (portetViaCawl ? 'cawl' : 'payplug') : 'paypal');
         if (onceBox) onceBox.style.display = plan === 'once' ? '' : 'none';
         if (fourBox) fourBox.style.display = plan === '4x' ? '' : 'none';
         if (schedule) {
           schedule.style.display = plan === '4x' ? '' : 'none';
           const scheduleMode =
-            payplug4xPrelev && fourMethod === 'payplug'
+            (payplug4xPrelev && fourMethod === 'payplug') || (portetCawl4xRib && fourMethod === 'cawl')
               ? 'payplug_prelevement'
               : fourMethod === 'paypal'
                 ? 'paypal'
                 : 'card';
           if (plan === '4x') schedule.innerHTML = buildFourXScheduleHtml(quart, scheduleMode, priceLabel(p));
         }
-        const needAddress = plan === '4x' && fourMethod === 'cawl';
+        const needAddress = plan === '4x' && fourMethod === 'cawl' && !portetCawl4xRib;
         if (addrBox) {
           addrBox.style.display = needAddress ? '' : 'none';
           addrBox.querySelectorAll('input').forEach((input) => {
@@ -1352,7 +1390,7 @@
         }
         if (payBtn) {
           payBtn.classList.remove('pay-btn--4x-cb');
-          if (plan === '4x' && payplug4xPrelev && fourMethod !== 'paypal') {
+          if (plan === '4x' && (payplug4xPrelev || portetCawl4xRib) && fourMethod !== 'paypal') {
             payBtn.classList.add('pay-btn--4x-cb');
             payBtn.innerHTML = `${quart}&nbsp;€ aujourd'hui<br><span class="pay-btn-sub">3 prochains paiements sur votre RIB</span>`;
           } else {
@@ -1399,22 +1437,16 @@
         if (body.payment_plan === '4x') {
           const fourMethod =
             document.querySelector('input[name="pay_method_4x"]:checked')?.value ||
-            (portetPaypal4x ? 'paypal' : fourPayplugAvailable ? 'payplug' : 'cawl');
+            (portetCawl4xRib ? 'cawl' : fourPayplugAvailable ? 'payplug' : 'paypal');
           const card4x = fourMethod === 'cawl' || fourMethod === 'payplug';
-          body.pay_method = portetPaypal4x
-            ? 'paypal'
-            : portetViaCawl && card4x
-              ? 'cawl'
-              : card4x
-                ? 'payplug'
-                : 'paypal';
+          body.pay_method = fourMethod === 'paypal' ? 'paypal' : portetViaCawl ? 'cawl' : card4x ? 'payplug' : 'paypal';
           body.billing_plan =
             body.pay_method === 'paypal'
               ? 'paypal'
-              : body.pay_method === 'payplug' && payplug4xPrelev
+              : (body.pay_method === 'payplug' && payplug4xPrelev) || (body.pay_method === 'cawl' && portetCawl4xRib)
                 ? 'rib'
                 : null;
-          if (card4x && portetViaCawl) {
+          if (card4x && fourMethod === 'cawl' && !portetCawl4xRib) {
             body.address = document.querySelector('#fourXAddress input[name="address"]')?.value?.trim();
             body.postal_code = document
               .querySelector('#fourXAddress input[name="postal_code"]')
@@ -1445,12 +1477,10 @@
       } else if (isPrelevement) {
         body.billing_plan = 'rib';
       }
-      if (portetViaCawl && body.payment_plan === '4x' && portetPaypal4x) {
-        body.pay_method = 'paypal';
-        body.billing_plan = 'paypal';
-      } else if (portetViaCawl) {
+      if (portetViaCawl && body.pay_method !== 'paypal') {
         body.pay_method = 'cawl';
-        if (body.billing_plan === 'paypal') {
+        if (body.payment_plan === '4x') body.billing_plan = 'rib';
+        else if (body.billing_plan === 'paypal') {
           body.billing_plan = isPrelevement ? 'rib' : null;
         }
       } else if (portetViaPaypal) {
@@ -1760,8 +1790,41 @@
       ...fromTunnel,
       ...(state.order?.customer_short || state.shortDraft || {}),
     };
+    const fullDraft = state.order?.customer_full || {};
+    const guardianDraft = fullDraft.guardian || {};
     const birthMax = new Date().toISOString().slice(0, 10);
-    stepContent.innerHTML = `
+    const portetKids = isPortetKidsUi();
+    stepContent.innerHTML = portetKids
+      ? `
+      <h1>Inscription enfant</h1>
+      <p class="form-hint">Parcours Baby / Enfants / Ados — salle de Portet. Optimisé pour téléphone.</p>
+      <form id="shortForm" class="form-grid">
+        <p class="sub full" style="margin:0">Enfant / adolescent</p>
+        ${inputOrReadonly('first_name', 'Prénom de l’enfant', 'text', short.first_name)}
+        ${inputOrReadonly('last_name', 'Nom de l’enfant', 'text', short.last_name)}
+        <div class="full"><label for="birthdate">Date de naissance *</label>
+          <input id="birthdate" name="birthdate" type="date" required
+            min="1900-01-01" max="${birthMax}"
+            value="${esc(short.birthdate || '')}" /></div>
+        <div class="full"><label for="address">Adresse *</label>
+          <input id="address" name="address" required autocomplete="street-address" value="${esc(fullDraft.address || '')}" /></div>
+        <div><label for="postal_code">Code postal *</label>
+          <input id="postal_code" name="postal_code" required inputmode="numeric" maxlength="5" pattern="\\d{5}" value="${esc(fullDraft.postal_code || '')}" /></div>
+        <div><label for="city">Ville *</label>
+          <input id="city" name="city" required value="${esc(fullDraft.city || '')}" /></div>
+        <p class="sub full" style="margin:12px 0 0">Responsable légal / tuteur</p>
+        <div><label for="guardian_first_name">Prénom *</label>
+          <input id="guardian_first_name" name="guardian_first_name" required value="${esc(guardianDraft.first_name || '')}" /></div>
+        <div><label for="guardian_last_name">Nom *</label>
+          <input id="guardian_last_name" name="guardian_last_name" required value="${esc(guardianDraft.last_name || '')}" /></div>
+        <div class="full"><label for="guardian_phone">Téléphone *</label>
+          <input id="guardian_phone" name="guardian_phone" type="tel" required value="${esc(guardianDraft.phone || short.phone || '')}" /></div>
+        <div class="full"><label for="guardian_email">E-mail *</label>
+          <input id="guardian_email" name="guardian_email" type="email" required value="${esc(guardianDraft.email || short.email || '')}" /></div>
+        <div class="full"><button type="submit" class="btn block">Continuer</button></div>
+        <div class="full">${backButton('← Retour à la salle', 2)}</div>
+      </form>`
+      : `
       <h1>Vos coordonnées</h1>
       ${
         isCustomOfferFlow()
@@ -1788,6 +1851,18 @@
       const body = Object.fromEntries(new FormData(e.target).entries());
       // Conserver une date déjà en dossier / préremplie
       if (!body.birthdate && short.birthdate) body.birthdate = short.birthdate;
+      if (portetKids) {
+        body.email = String(body.guardian_email || '').trim();
+        body.phone = String(body.guardian_phone || '').trim();
+        if (!body.address || !body.city || !/^\d{5}$/.test(String(body.postal_code || '').trim())) {
+          setMsg('Adresse complète et code postal à 5 chiffres requis.', 'err');
+          return;
+        }
+        if (!body.guardian_first_name || !body.guardian_last_name) {
+          setMsg('Nom et prénom du responsable légal requis.', 'err');
+          return;
+        }
+      }
       const phoneDigits = String(body.phone || '').replace(/\D/g, '');
       const phoneOk =
         /^0[67]\d{8}$/.test(phoneDigits) ||
@@ -1830,6 +1905,23 @@
         return;
       }
       adoptCheckoutIds(data);
+      if (portetKids && state.orderId) {
+        const idRes = await fetch(`/api/orders/${state.orderId}/identity`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...body,
+            product_id: state.productId,
+            product_snapshot: state.product || state.order?.product_snapshot,
+            ...referralFriendPayload(),
+          }),
+        });
+        const idData = await idRes.json();
+        if (!idData.ok) {
+          setMsg(orderErrorMessage(idData) || (idData.errors || []).join(', '), 'err');
+          return;
+        }
+      }
       } else {
         const res = await fetch(`/api/orders/${state.orderId}/identity`, {
           method: 'PATCH',
@@ -1877,6 +1969,21 @@
           email: body.email,
           phone: body.phone,
           birthdate: body.birthdate,
+        },
+        customer_full: {
+          ...(state.order?.customer_full || {}),
+          gym: body.gym,
+          address: body.address || state.order?.customer_full?.address,
+          postal_code: body.postal_code || state.order?.customer_full?.postal_code,
+          city: body.city || state.order?.customer_full?.city,
+          guardian: portetKids
+            ? {
+                first_name: body.guardian_first_name,
+                last_name: body.guardian_last_name,
+                phone: body.guardian_phone,
+                email: body.guardian_email,
+              }
+            : state.order?.customer_full?.guardian,
         },
         product_snapshot: state.product,
       };
@@ -1932,7 +2039,7 @@
       <form id="ibanForm" class="form-grid">
         <div class="full">
           <label for="iban">IBAN français (commence par FR) ${hasIban ? '' : '*'}</label>
-          <input id="iban" name="iban" ${hasIban ? '' : 'required'} placeholder="${hasIban ? ibanMasked : 'FR76 3000 6000 0112 3456 7890 189'}" autocomplete="off" spellcheck="false" value="${esc(existingIban)}" />
+          <input id="iban" name="iban" ${hasIban ? '' : 'required'} placeholder="${hasIban ? ibanMasked : 'FR76 3000 6000 0112 3456 7890 189'}" autocomplete="off" spellcheck="false" maxlength="42" inputmode="text" value="${esc(existingIban)}" />
           <p class="iban-fr-hint">Exemple : FR76 … — les IBAN étrangers (DE, ES, BE…) ne passent pas.</p>
         </div>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
@@ -1945,6 +2052,10 @@
       const compact = String(iban || '').replace(/\s+/g, '').toUpperCase();
       if (!compact.startsWith('FR')) {
         setMsg(ibanFrMessage, 'err');
+        return;
+      }
+      if (compact.length !== 27) {
+        setMsg('Un IBAN français compte 27 caractères (ex. FR76 3000 6000 0112 3456 7890 189).', 'err');
         return;
       }
       setMsg('Enregistrement…');
@@ -1986,6 +2097,12 @@
     const short = state.order?.customer_short || state.shortDraft || {};
     const birthMax = new Date().toISOString().slice(0, 10);
     const photoOk = state.photoUploaded || Boolean(state.order?.documents?.photo) || Boolean(state.order?.documents?.photo_base64) || Boolean(state.order?.documents?.photo_url) || Boolean(state.order?.documents?.has_photo);
+    const idOk =
+      state.idDocumentUploaded ||
+      Boolean(state.order?.documents?.id_document) ||
+      Boolean(state.order?.documents?.id_document_url) ||
+      Boolean(state.order?.documents?.has_id_document);
+    const portetKidsDossier = isPortetKidsUi();
     const size = partySize();
     const extraPeople = isCustomOfferFlow() ? Math.max(0, size - 1) : 0;
     const savedCompanions = Array.isArray(state.order?.companions) ? state.order.companions : [];
@@ -2078,6 +2195,8 @@
           <div class="photo-capture-actions">
             <label class="btn secondary photo-file-label" for="photoFile">Importer une photo</label>
             <input id="photoFile" type="file" accept="image/jpeg,image/png,image/webp,image/*" hidden />
+            <label class="btn secondary photo-file-label" for="photoCapture">Prendre une photo</label>
+            <input id="photoCapture" type="file" accept="image/*" capture="user" hidden />
             <button type="button" class="btn secondary" id="webcamBtn">Ouvrir la caméra</button>
           </div>
           <p class="field-hint" id="photoFileName" hidden></p>
@@ -2087,6 +2206,29 @@
           <button type="button" class="btn secondary" id="webcamCaptureBtn" hidden style="margin-top:8px">Capturer</button>
           <button type="button" class="btn secondary" id="webcamStopBtn" hidden style="margin-top:8px">Arrêter la caméra</button>
         </div>
+        ${
+          portetKidsDossier
+            ? `<div class="full photo-capture-block" id="idDocumentBlock">
+          <label>Pièce d’identité *</label>
+          <p class="field-hint">Ajouter une copie de la pièce d’identité : photo depuis le téléphone ou import d’un fichier (JPEG, PNG, WebP ou PDF).</p>
+          ${idOk ? '<p class="photo-already-ok">Pièce d’identité déjà enregistrée — vous pouvez en choisir une autre ci-dessous.</p>' : ''}
+          <div class="photo-capture-actions">
+            <label class="btn secondary photo-file-label" for="idFile">Ajouter une copie de la pièce d’identité</label>
+            <input id="idFile" type="file" accept="image/jpeg,image/png,image/webp,image/*,application/pdf" hidden />
+            <label class="btn secondary photo-file-label" for="idCapture">Photographier la pièce</label>
+            <input id="idCapture" type="file" accept="image/*" capture="environment" hidden />
+          </div>
+          <p class="field-hint" id="idFileName" hidden></p>
+        </div>
+        <div class="full portet-docs-download">
+          <p class="sub" style="margin:0 0 8px">Documents à télécharger</p>
+          <a class="btn secondary block" href="${LEGAL.ffboxe}" target="_blank" rel="noopener">Télécharger le certificat FFBoxe</a>
+          <p class="field-hint">À compléter et à remettre directement au club.</p>
+          <a class="btn secondary block" href="${LEGAL.reglement}" target="_blank" rel="noopener">Télécharger le règlement intérieur</a>
+          <p class="field-hint">À signer et à remettre directement au club.</p>
+        </div>`
+            : ''
+        }
         ${companionsHtml}
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
         <div class="full">${backButton(
@@ -2105,7 +2247,12 @@
     const canvas = document.getElementById('webcamCanvas');
     const snap = document.getElementById('webcamSnap');
     const fileInput = document.getElementById('photoFile');
+    const photoCapture = document.getElementById('photoCapture');
     const fileNameHint = document.getElementById('photoFileName');
+    const idFile = document.getElementById('idFile');
+    const idCapture = document.getElementById('idCapture');
+    const idFileName = document.getElementById('idFileName');
+    let idBlob = null;
 
     function showPhotoPreview(blob, label) {
       if (!blob) return;
@@ -2177,6 +2324,46 @@
       showPhotoPreview(file, file.name);
       setMsg('Photo importée — vous pouvez continuer.');
     };
+    if (photoCapture) {
+      photoCapture.onchange = async () => {
+        const file = photoCapture.files && photoCapture.files[0];
+        if (!file) return;
+        await stopWebcam();
+        showPhotoPreview(file, file.name || 'Photo');
+        setMsg('Photo capturée — vous pouvez continuer.');
+      };
+    }
+
+    function showIdPicked(file) {
+      idBlob = file;
+      if (idFileName) {
+        idFileName.hidden = false;
+        idFileName.textContent = file.name || 'Document sélectionné';
+      }
+    }
+    if (idFile) {
+      idFile.onchange = () => {
+        const file = idFile.files && idFile.files[0];
+        if (!file) return;
+        const okType =
+          file.type.startsWith('image/') || file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+        if (!okType) {
+          setMsg('Pièce d’identité : image ou PDF.', 'err');
+          idFile.value = '';
+          return;
+        }
+        showIdPicked(file);
+        setMsg('Pièce d’identité importée — vous pouvez continuer.');
+      };
+    }
+    if (idCapture) {
+      idCapture.onchange = () => {
+        const file = idCapture.files && idCapture.files[0];
+        if (!file) return;
+        showIdPicked(file);
+        setMsg('Pièce d’identité photographiée — vous pouvez continuer.');
+      };
+    }
 
     document.getElementById('webcamStopBtn').onclick = () => stopWebcam();
     // Bouton stop masqué — la caméra s'arrête automatiquement après capture
@@ -2204,6 +2391,27 @@
       } else if (!photoOk && !isBalmaRetour()) {
         setMsg('Importez une photo ou prenez-en une avec la caméra avant de continuer.', 'err');
         return;
+      }
+
+      if (portetKidsDossier) {
+        if (idBlob) {
+          const fdId = new FormData();
+          fdId.append('id_document', idBlob, idBlob.name || 'piece-identite.jpg');
+          fdId.append('token', state.token);
+          const idRes = await fetch(`/api/orders/${state.orderId}/id-document`, {
+            method: 'POST',
+            body: fdId,
+          });
+          const idData = await idRes.json();
+          if (!idData.ok) {
+            setMsg(orderErrorMessage(idData) || 'Échec envoi de la pièce d’identité', 'err');
+            return;
+          }
+          state.idDocumentUploaded = true;
+        } else if (!idOk) {
+          setMsg('Ajoutez une copie de la pièce d’identité avant de continuer.', 'err');
+          return;
+        }
       }
 
       await stopWebcam();
@@ -2295,6 +2503,7 @@
     cgv: '/cgv',
     reglement: '/reglement-interieur',
     medical: '/attestation-medicale',
+    ffboxe: '/certificat-ffboxe',
   };
 
   function initSignaturePad(canvas) {

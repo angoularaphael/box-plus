@@ -351,13 +351,14 @@ test('studio sans CAWL_TEST_* ne mélange pas le PSPID live avec preprod', () =>
   }
 });
 
-test('inscription 4× Portet envoie PayPal, pas CAWL Oney', () => {
+test('inscription 4× Portet : PayPal ou CAWL+RIB, pas Oney forcé', () => {
   const fs = require('fs');
   const path = require('path');
   const js = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'public', 'js', 'inscription.js'), 'utf8');
   assert.match(js, /portetPaypal4x/);
-  assert.match(js, /portetViaCawl && body\.payment_plan === '4x' && portetPaypal4x/);
-  assert.match(js, /body\.pay_method = 'paypal'/);
+  assert.match(js, /portetCawl4xRib/);
+  assert.match(js, /body\.pay_method = 'cawl'/);
+  assert.doesNotMatch(js, /portetViaCawl && body\.payment_plan === '4x' && portetPaypal4x/);
 });
 
 test('payload 4× CAWL force Oney 5112, pas la page carte', () => {

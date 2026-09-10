@@ -850,6 +850,13 @@
               : ''
           }
           <button type="button" class="btn sm secondary del-order" data-id="${escapeHtml(o.order_id)}" title="Supprimer">✕</button>
+          ${
+            o.portet_kids
+              ? `<button type="button" class="btn sm dossier-order" data-id="${escapeHtml(o.order_id)}">Dossier ${
+                  o.dossier_status?.complete ? 'complet' : 'incomplet'
+                }</button>`
+              : ''
+          }
         </td>
       </tr>`
       )
@@ -899,6 +906,68 @@
         }
       };
     });
+
+    tbody.querySelectorAll('.dossier-order').forEach((btn) => {
+      btn.onclick = () => openPortetDossier(btn.dataset.id);
+    });
+  }
+
+  async function openPortetDossier(id) {
+    const overlay = document.getElementById('dossierOverlay');
+    const bodyEl = document.getElementById('dossierBody');
+    if (!overlay || !bodyEl) return;
+    overlay.hidden = false;
+    bodyEl.innerHTML = '<p>Chargement…</p>';
+    try {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
+        credentials: 'include',
+        headers: headers(false),
+      });
+      const data = await res.json();
+      if (!data.ok || !data.order) throw new Error(data.error || 'Introuvable');
+      const o = data.order;
+      const short = o.customer_short || {};
+      const full = o.customer_full || {};
+      const g = full.guardian || {};
+      const pay = o.payment || {};
+      const docs = o.documents || {};
+      let status = o.dossier_status;
+      if (!status) {
+        const missing = [];
+        if (!g.first_name) missing.push('tuteur');
+        if (!docs.photo && !docs.photo_url && !docs.has_photo) missing.push('photo');
+        if (!docs.id_document && !docs.id_document_url && !docs.has_id_document) missing.push('piece_identite');
+        status = { complete: missing.length === 0, label: missing.length === 0 ? 'complet' : 'incomplet' };
+      }
+      const paid = pay.amount != null ? `${pay.amount} €` : '—';
+      const plan = pay.payment_plan === '4x' ? '4×' : '1×';
+      const photo = docs.photo_url
+        ? `<a href="${escapeHtml(docs.photo_url)}" target="_blank" rel="noopener"><img src="${escapeHtml(docs.photo_url)}" alt="Photo" /></a>`
+        : docs.has_photo || docs.photo
+          ? '<p>Photo enregistrée</p>'
+          : '<p>Photo manquante</p>';
+      const idDoc = docs.id_document_url
+        ? `<a class="btn sm" href="${escapeHtml(docs.id_document_url)}" target="_blank" rel="noopener">Voir la pièce d’identité</a>`
+        : docs.has_id_document || docs.id_document
+          ? '<p>Pièce d’identité enregistrée</p>'
+          : '<p>Pièce d’identité manquante</p>';
+      bodyEl.innerHTML = `
+        <p><span class="badge ${status.complete ? 'ok' : 'pending'}">${escapeHtml(status.label || '—')}</span></p>
+        <dl class="dossier-dl">
+          <div><dt>Adhérent</dt><dd>${escapeHtml([short.first_name, short.last_name].filter(Boolean).join(' ') || '—')}</dd></div>
+          <div><dt>Naissance</dt><dd>${escapeHtml(short.birthdate || '—')}</dd></div>
+          <div><dt>Adresse</dt><dd>${escapeHtml([full.address, full.postal_code, full.city].filter(Boolean).join(', ') || '—')}</dd></div>
+          <div><dt>Responsable légal</dt><dd>${escapeHtml([g.first_name, g.last_name].filter(Boolean).join(' ') || '—')}</dd></div>
+          <div><dt>Téléphone</dt><dd>${escapeHtml(g.phone || short.phone || '—')}</dd></div>
+          <div><dt>E-mail</dt><dd>${escapeHtml(g.email || short.email || '—')}</dd></div>
+          <div><dt>Offre</dt><dd>${escapeHtml(o.product_snapshot?.display_name || o.product_snapshot?.name || '—')}</dd></div>
+          <div><dt>Montant / mode</dt><dd>${escapeHtml(String(paid))} · ${escapeHtml(plan)} · ${escapeHtml(pay.method || '—')}</dd></div>
+        </dl>
+        <div class="dossier-media">${photo}${idDoc}</div>
+      `;
+    } catch (err) {
+      bodyEl.innerHTML = `<p class="form-msg err">${escapeHtml(err.message)}</p>`;
+    }
   }
 
   function setCatalogMsg(text, type) {
@@ -2428,6 +2497,14 @@
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
     location.replace('/admin/login');
   };
+
+  const dossierOverlay = document.getElementById('dossierOverlay');
+  document.getElementById('dossierCloseBtn')?.addEventListener('click', () => {
+    if (dossierOverlay) dossierOverlay.hidden = true;
+  });
+  dossierOverlay?.addEventListener('click', (e) => {
+    if (e.target.id === 'dossierOverlay') dossierOverlay.hidden = true;
+  });
 
   document.getElementById('productEditForm')?.addEventListener('submit', saveProductEditor);
   document.getElementById('pe_close')?.addEventListener('click', closeProductEditor);

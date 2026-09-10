@@ -85,6 +85,12 @@ function buildRowVariants(fields) {
     contact_urgence: fields.contact_urgence,
     info_medicale: fields.info_medicale,
     offre: fields.offre,
+    tuteur_prenom: fields.tuteur_prenom,
+    tuteur_nom: fields.tuteur_nom,
+    tuteur_telephone: fields.tuteur_telephone,
+    tuteur_email: fields.tuteur_email,
+    photo_url: fields.photo_url,
+    id_document_url: fields.id_document_url,
   });
   return [
     extended,
@@ -183,6 +189,12 @@ function clientFieldsFromOrder(order) {
     contact_urgence: full.emergency_contact || null,
     info_medicale: full.medical_info || null,
     offre: product.display_name || product.name || null,
+    tuteur_prenom: full.guardian?.first_name || null,
+    tuteur_nom: full.guardian?.last_name || null,
+    tuteur_telephone: full.guardian?.phone || null,
+    tuteur_email: full.guardian?.email || null,
+    photo_url: order.documents?.photo_url || null,
+    id_document_url: order.documents?.id_document_url || null,
     source: 'boxplus',
   };
 }

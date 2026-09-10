@@ -46,6 +46,7 @@ function initDirs() {
   ensureDir(UPLOADS_DIR);
   ensureDir(path.join(UPLOADS_DIR, 'ribs'));
   ensureDir(path.join(UPLOADS_DIR, 'photos'));
+  ensureDir(path.join(UPLOADS_DIR, 'id-docs'));
   ensureDir(path.join(UPLOADS_DIR, 'signatures'));
 }
 
@@ -199,6 +200,18 @@ async function updateGymAsync(orderId, gym) {
   if (!order) return null;
   order.customer_full = { ...(order.customer_full || {}), gym };
   order.step = Math.max(order.step || 1, STEPS.IDENTITY);
+  return saveOrderAsync(order);
+}
+
+/** Merge customer_full without advancing to signature (identité Portet enfants). */
+async function patchCustomerFullAsync(orderId, patch = {}) {
+  const order = await loadOrderAsync(orderId);
+  if (!order) return null;
+  const next = { ...(order.customer_full || {}), ...patch };
+  if (patch.guardian && typeof patch.guardian === 'object') {
+    next.guardian = { ...(order.customer_full?.guardian || {}), ...patch.guardian };
+  }
+  order.customer_full = next;
   return saveOrderAsync(order);
 }
 
@@ -568,6 +581,31 @@ function toAdminSummary(order) {
     bot_error: order.bot_error || null,
     skip_bot: Boolean(order.skip_bot),
     manual_migration: Boolean(order.manual_migration),
+    portet_kids: (() => {
+      try {
+        return require('../../lib/portet-inscription').isPortetKidsOrder(order);
+      } catch {
+        return false;
+      }
+    })(),
+    dossier_status: (() => {
+      try {
+        return require('../../lib/portet-inscription').dossierStatus(order);
+      } catch {
+        return null;
+      }
+    })(),
+    has_photo: Boolean(
+      order.documents?.photo ||
+        order.documents?.photo_url ||
+        order.documents?.photo_filename ||
+        order.documents?.has_photo
+    ),
+    has_id_document: Boolean(
+      order.documents?.id_document ||
+        order.documents?.id_document_url ||
+        order.documents?.has_id_document
+    ),
   };
 }
 
@@ -638,6 +676,7 @@ module.exports = {
   updateShortProfile,
   updateShortProfileAsync,
   updateGymAsync,
+  patchCustomerFullAsync,
   markPaymentPaid,
   markPaymentFailed,
   updateIbanAsync,

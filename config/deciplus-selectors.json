@@ -34,6 +34,7 @@
     "utm_campaign": "input[name=\"utm_campaign\"]",
     "info_compta": "input[name=\"info_compta\"]",
     "info_admin": "textarea[name=\"info_admin\"]",
+    "telurgence": "input[name=\"telurgence\"]",
     "idz": "select[name=\"idz\"]",
     "submit": "form[name=\"db1_form\"] input[type=\"submit\"][value=\"Valider\"], input[type=\"submit\"].albut_dw[value=\"Valider\"], input[type=\"submit\"][value=\"Valider\"]"
   },
