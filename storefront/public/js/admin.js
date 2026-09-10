@@ -716,8 +716,9 @@
 
   function filteredCoachings() {
     const q = (document.getElementById('coachingsSearch')?.value || '').toLowerCase().trim();
-    if (!q) return coachings;
     return coachings.filter((o) => {
+      if (o.archived) return false;
+      if (!q) return true;
       const hay = `${o.order_id} ${o.name} ${o.email} ${o.phone} ${o.gym} ${o.activity} ${o.product} ${o.slot}`.toLowerCase();
       return hay.includes(q);
     });
@@ -761,53 +762,49 @@
         <td>${escapeHtml(o.slot || '—')}</td>
         <td>${status}</td>
         <td>
-          <button type="button" class="btn sm secondary del-coach" data-id="${escapeHtml(o.order_id)}" title="Supprimer">✕</button>
+          <button type="button" class="btn sm secondary archive-coach" data-id="${escapeHtml(o.order_id)}" title="Archiver">Archiver</button>
         </td>
       </tr>`;
       })
       .join('');
 
-    tbody.querySelectorAll('.del-coach').forEach((btn) => {
-      btn.onclick = async () => {
-        const id = btn.dataset.id;
-        if (!confirm(`Supprimer la réservation ${id} ?`)) return;
-        btn.disabled = true;
-        try {
-          const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}`, {
-            method: 'DELETE',
-            credentials: 'include',
-            headers: headers(false),
-          });
-          const data = await res.json();
-          if (!data.ok) throw new Error(data.error || 'Erreur');
-          coachings = coachings.filter((o) => o.order_id !== id);
-          renderCoachings();
-        } catch (err) {
-          const msg = document.getElementById('coachingsMsg');
-          if (msg) {
-            msg.textContent = err.message;
-            msg.className = 'form-msg err';
-          }
-          btn.disabled = false;
-        }
-      };
+    tbody.querySelectorAll('.archive-coach').forEach((btn) => {
+      btn.onclick = () => archiveOrder(btn.dataset.id, btn);
     });
   }
 
   function filteredArchives() {
     const q = (document.getElementById('archivesSearch')?.value || '').toLowerCase().trim();
     return orders.filter((o) => {
-      if (!o.archived || isCoachingOrder(o)) return false;
+      if (!o.archived) return false;
       if (!q) return true;
-      const hay = `${o.order_id} ${o.name} ${o.email} ${o.product} ${o.gym || ''} ${o.gym_label || gymLabel(o.gym)}`.toLowerCase();
+      const hay = `${o.order_id} ${o.name} ${o.email} ${o.product} ${o.gym || ''} ${o.gym_label || gymLabel(o.gym)} ${o.activity || ''}`.toLowerCase();
       return hay.includes(q);
     });
   }
 
+  function syncArchivedOrder(id, archived) {
+    const at = archived ? new Date().toISOString() : null;
+    let row = orders.find((o) => o.order_id === id);
+    const coachingRow = coachings.find((o) => o.order_id === id);
+    if (!row && coachingRow) {
+      row = { ...coachingRow };
+      orders.push(row);
+    }
+    if (row) {
+      row.archived = archived;
+      row.archived_at = at;
+    }
+    if (coachingRow) {
+      coachingRow.archived = archived;
+      coachingRow.archived_at = at;
+    }
+  }
+
   async function archiveOrder(id, btn, archived = true) {
     const msg = document.getElementById(archived ? 'ordersMsg' : 'archivesMsg');
-    const label = archived ? 'archiver' : 'restaurer';
-    if (!confirm(`${archived ? 'Archiver' : 'Restaurer'} l'inscription ${id} ?`)) return;
+    const kind = coachings.some((o) => o.order_id === id) ? 'réservation' : 'inscription';
+    if (!confirm(`${archived ? 'Archiver' : 'Restaurer'} la ${kind} ${id} ?`)) return;
     if (btn) btn.disabled = true;
     try {
       const res = await fetch(`/api/admin/orders/${encodeURIComponent(id)}/archive`, {
@@ -818,12 +815,9 @@
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Erreur');
-      const row = orders.find((o) => o.order_id === id);
-      if (row) {
-        row.archived = archived;
-        row.archived_at = archived ? new Date().toISOString() : null;
-      }
+      syncArchivedOrder(id, archived);
       renderOrders();
+      renderCoachings();
       renderArchives();
       if (typeof window.oublierCommandes === 'function') window.oublierCommandes();
       if (msg) {
@@ -866,7 +860,7 @@
         <td><code style="font-size:11px">${escapeHtml(o.order_id)}</code></td>
         <td>${escapeHtml(o.name)}</td>
         <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>
-        <td>${escapeHtml(o.product)}</td>
+        <td>${isCoachingOrder(o) ? `<span class="badge pending">Coaching</span><br>${escapeHtml(o.activity || o.product)}` : escapeHtml(o.product)}</td>
         <td>${escapeHtml(o.gym_label || gymLabel(o.gym))}</td>
         <td style="font-size:12px">${formatDate(o.archived_at || o.updated_at)}</td>
         <td>

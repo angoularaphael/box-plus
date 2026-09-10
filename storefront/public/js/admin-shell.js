@@ -291,7 +291,9 @@
         !String(o.order_id || "").startsWith("COACH-")
     );
     const coachings = commandes.filter(
-      (o) => o.action === "coaching_booking" || String(o.order_id || "").startsWith("COACH-")
+      (o) =>
+        !o.archived &&
+        (o.action === "coaching_booking" || String(o.order_id || "").startsWith("COACH-"))
     );
     const refuse = (st) => st === "past_due" || st === "failed" || st === "refused" || st === "unpaid";
     const impayes = inscriptions.filter((o) => refuse(o.payment_status) || o.access_blocked);
