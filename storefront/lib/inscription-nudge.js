@@ -35,10 +35,9 @@ function nudgeWhatsappDone(order) {
   return Boolean(order?.funnel?.nudge_whatsapp_sent_at || order?.funnel?.nudge_whatsapp_skipped_at);
 }
 
-/** SMS Twilio : une seule relance. Les e-mails restent à 3. */
-function shouldSendNudgeSms(order) {
-  if (nudgeWhatsappDone(order)) return false;
-  return nudgeAttemptCount(order) < 1;
+/** Relances SMS (« vous n’avez pas finalisé… ») coupées. Les e-mails restent à 3. */
+function shouldSendNudgeSms() {
+  return false;
 }
 
 function nudgeAttemptCount(order) {
@@ -573,16 +572,8 @@ async function sendNudgeEmail(order) {
   }
 }
 
-async function sendNudgeWhatsApp(order) {
-  const phone = customerPhone(order);
-  const { toWhatsAppPhone } = require('./whatsapp-bot');
-  const { sendTransactionalSms } = require('./twilio-sms');
-  const to = toWhatsAppPhone(phone);
-  if (!to) return { sent: false, skipped: true, reason: 'no_phone' };
-  const text = nudgeWhatsAppText(order);
-  const result = await sendTransactionalSms(phone, text, { source: 'inscription-relance' });
-  if (result.ok) return { sent: true, phone: to, via: 'twilio', sid: result.sid };
-  return { sent: false, error: result.error || 'sms_failed' };
+async function sendNudgeWhatsApp() {
+  return { sent: false, skipped: true, reason: 'sms_disabled' };
 }
 
 async function dispatchOneNudge(orderId, { force = false } = {}) {
@@ -638,39 +629,11 @@ async function sendAndMarkNudge(order) {
     });
   }
 
-  const latestForSms = (await loadOrderAsync(order.order_id)) || order;
-  if (!shouldSendNudgeSms(latestForSms)) {
-    out.whatsapp = { sent: false, skipped: true, reason: 'sms_once' };
-  } else {
-    try {
-      const wa = await sendNudgeWhatsApp(latestForSms);
-      if (wa.sent) {
-        await patchNudgeFunnel(order.order_id, { nudge_whatsapp_sent_at: new Date().toISOString() });
-        out.whatsapp = { sent: true, phone: wa.phone };
-        out.sent = true;
-      } else if (wa.skipped) {
-        await patchNudgeFunnel(order.order_id, {
-          nudge_whatsapp_skipped_at: new Date().toISOString(),
-          nudge_whatsapp_skipped: wa.reason,
-        });
-        out.whatsapp = { sent: false, skipped: true, reason: wa.reason };
-        logWarn('Relance inscription — WhatsApp ignoré', {
-          order_id: order.order_id,
-          reason: wa.reason,
-        });
-      } else {
-        out.ok = false;
-        out.whatsapp = { sent: false, error: wa.error || 'whatsapp_not_sent' };
-      }
-    } catch (err) {
-      out.ok = false;
-      out.whatsapp = { sent: false, error: err.message };
-      logWarn('Relance inscription — WhatsApp échoué', {
-        order_id: order.order_id,
-        error: err.message,
-      });
-    }
-  }
+  await patchNudgeFunnel(order.order_id, {
+    nudge_whatsapp_skipped_at: new Date().toISOString(),
+    nudge_whatsapp_skipped: 'sms_disabled',
+  });
+  out.whatsapp = { sent: false, skipped: true, reason: 'sms_disabled' };
 
   const latest = await loadOrderAsync(order.order_id);
   const delivered = Boolean(out.email.sent || out.whatsapp.sent);

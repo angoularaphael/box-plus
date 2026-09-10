@@ -56,14 +56,11 @@ test('relance inscription e-mail passe par Resend, pas Brevo', () => {
   assert.doesNotMatch(src, /sendEmailViaBrevo/);
 });
 
-test('relances SMS boutique (inscription, reprise, essai) passent par Twilio, pas la gateway', () => {
+test('relance inscription SMS (« vous n’avez pas finalisé ») coupée', () => {
   const nudge = fs.readFileSync(path.join(__dirname, '../storefront/lib/inscription-nudge.js'), 'utf8');
-  const essai = fs.readFileSync(path.join(__dirname, '../storefront/lib/essai-followup.js'), 'utf8');
-  assert.match(nudge, /sendTransactionalSms/);
-  assert.match(essai, /sendTransactionalSms/);
+  assert.match(nudge, /sms_disabled/);
+  assert.doesNotMatch(nudge, /inscription-relance/);
   assert.doesNotMatch(nudge, /sms-gateway/);
-  assert.doesNotMatch(nudge, /twilio_not_configured/);
-  assert.doesNotMatch(essai, /twilio_not_configured/);
 });
 
 test('mail campagne : texte David, comme Guillaume en Principal', () => {
