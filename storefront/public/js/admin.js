@@ -740,7 +740,9 @@
         const status =
           o.booking_status === 'sent' || o.email_sent
             ? '<span class="badge ok">Mail envoyé</span>'
-            : o.booking_status === 'queued' || o.booking_status === 'brevo_not_configured'
+            : o.booking_status === 'queued' ||
+                o.booking_status === 'brevo_not_configured' ||
+                o.booking_status === 'resend_not_configured'
               ? '<span class="badge pending">En file</span>'
               : `<span class="badge pending">${escapeHtml(o.step_label || o.booking_status || 'Reçu')}</span>`;
         return `

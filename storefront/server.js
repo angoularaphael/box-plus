@@ -2938,7 +2938,14 @@ function createApp() {
       const product = findProduct(order.product_id) || order.product_snapshot;
       const billingPlan =
         order.payment?.billing_plan || normalizeBillingPlan(req.body.billing_plan, product);
-      const errors = validateIbanForm({ iban: req.body.iban, billing_plan: billingPlan }, product);
+      const errors = validateIbanForm(
+        {
+          iban: req.body.iban,
+          billing_plan: billingPlan,
+          payment_plan: order.payment?.payment_plan || req.body.payment_plan,
+        },
+        product
+      );
       if (errors.length) return res.status(400).json({ ok: false, errors });
       const updated = await updateIbanAsync(order.order_id, req.body.iban);
       res.json({ ok: true, step: updated.step });
@@ -3477,7 +3484,9 @@ function createApp() {
           } else {
             emailWarning =
               emailResult.error ||
-              (emailResult.reason === 'smtp_not_configured'
+              (emailResult.reason === 'smtp_not_configured' ||
+              emailResult.reason === 'resend_not_configured' ||
+              emailResult.reason === 'brevo_not_configured'
                 ? 'Email non configuré'
                 : 'Email non envoyé');
           }
@@ -3628,7 +3637,9 @@ function createApp() {
         email_warning: emailResult.sent
           ? undefined
           : emailResult.error ||
-            (emailResult.reason === 'smtp_not_configured'
+            (emailResult.reason === 'smtp_not_configured' ||
+            emailResult.reason === 'resend_not_configured' ||
+            emailResult.reason === 'brevo_not_configured'
               ? 'Email non configuré'
               : 'Email non envoyé'),
         dispatch_error: dispatchError || undefined,

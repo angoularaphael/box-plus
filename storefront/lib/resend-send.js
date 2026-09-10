@@ -1,14 +1,41 @@
 'use strict';
 
 /**
- * Resend — campagnes clients (no-reply@boxingcenter.fr).
+ * Resend — factures / confirmations / campagnes (no-reply@boxingcenter.fr).
  * Pas Brevo / suzinabot : ce domaine est banni.
  * https://resend.com
  */
+const fs = require('fs');
 const API = 'https://api.resend.com/emails';
 const DEFAULT_SENDER_EMAIL = 'no-reply@boxingcenter.fr';
 const DEFAULT_SENDER_NAME = 'David';
 const DEFAULT_REPLY_TO = 'boxingcentertls@gmail.com';
+
+function toResendAttachments(attachments = []) {
+  const out = [];
+  for (const att of attachments || []) {
+    if (!att) continue;
+    const filename = att.filename || att.name || 'piece-jointe.pdf';
+    if (typeof att.content === 'string' && !att.path && !att.filepath && att.content.length >= 500) {
+      out.push({ filename, content: att.content });
+      continue;
+    }
+    let buf = null;
+    if (Buffer.isBuffer(att.content)) buf = att.content;
+    else {
+      const filepath = att.filepath || att.path;
+      if (filepath && fs.existsSync(filepath)) {
+        try {
+          buf = fs.readFileSync(filepath);
+        } catch {
+          buf = null;
+        }
+      }
+    }
+    if (buf && buf.length >= 500) out.push({ filename, content: buf.toString('base64') });
+  }
+  return out;
+}
 
 function readApiKey() {
   return String(process.env.RESEND_API_KEY || '')
@@ -62,7 +89,8 @@ async function sendEmailViaResend({
     .filter(Boolean);
   if (ccList.length) body.cc = ccList;
   if (headers && typeof headers === 'object') body.headers = headers;
-  if (Array.isArray(attachments) && attachments.length) body.attachments = attachments;
+  const files = toResendAttachments(attachments);
+  if (files.length) body.attachments = files;
   if (Array.isArray(tags) && tags.length) body.tags = tags;
 
   const res = await fetch(API, {
@@ -93,4 +121,5 @@ module.exports = {
   defaultReplyTo,
   isConfigured,
   sendEmailViaResend,
+  toResendAttachments,
 };

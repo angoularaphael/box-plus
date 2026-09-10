@@ -6,6 +6,27 @@ const fs = require('fs');
 const path = require('path');
 const { isConfigured, senderEmail, DEFAULT_SENDER_EMAIL } = require('../storefront/lib/resend-send');
 
+test('factures inscription et matériel passent par Resend, pas Brevo', () => {
+  const mailer = fs.readFileSync(path.join(__dirname, '../storefront/lib/mailer.js'), 'utf8');
+  const branding = fs.readFileSync(path.join(__dirname, '../storefront/lib/branding.js'), 'utf8');
+  assert.match(mailer, /resend-send/);
+  assert.match(mailer, /sendEmailViaResend/);
+  assert.match(mailer, /fromName: 'Boxing Center'/);
+  assert.doesNotMatch(mailer, /sendEmailViaBrevo/);
+  assert.doesNotMatch(mailer, /brevo-send/);
+  assert.match(branding, /resend-send/);
+  assert.doesNotMatch(branding, /brevo-send/);
+});
+
+test('Resend convertit les PJ fichier/buffer en base64', () => {
+  const { toResendAttachments } = require('../storefront/lib/resend-send');
+  const raw = Buffer.alloc(600, 1);
+  const files = toResendAttachments([{ filename: 'facture.pdf', content: raw }]);
+  assert.equal(files.length, 1);
+  assert.equal(files[0].filename, 'facture.pdf');
+  assert.equal(files[0].content, raw.toString('base64'));
+});
+
 test('Resend accepte un champ cc', () => {
   const src = fs.readFileSync(path.join(__dirname, '../storefront/lib/resend-send.js'), 'utf8');
   assert.match(src, /ccList/);

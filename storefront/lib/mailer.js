@@ -6,7 +6,7 @@ const {
   generateMaterielInvoicePdf,
 } = require('./invoice-pdf');
 const { generateInscriptionLegalPdfs } = require('./legal-pdf');
-const { sendEmailViaBrevo, isConfigured, defaultReplyTo } = require('./brevo-send');
+const { sendEmailViaResend, isConfigured, defaultReplyTo } = require('./resend-send');
 const { formatPickupLine } = require('./gym-pickup');
 const { CLUB_PORTET } = require('./pdf-layout');
 
@@ -234,27 +234,30 @@ async function sendConfirmationEmail(order, attachments = []) {
     logInfo('Email confirmation (mode log)', { to, order_id: order.order_id, attachments: attachmentNames });
     return {
       sent: false,
-      reason: 'brevo_not_configured',
-      error: 'Service email non configuré (BREVO_API_KEY manquant sur Vercel)',
+      reason: 'resend_not_configured',
+      error: 'Service email non configuré (RESEND_API_KEY manquant sur Vercel)',
       preview: html,
       attachments: attachmentNames,
     };
   }
 
   try {
-    const result = await sendEmailViaBrevo({
+    const result = await sendEmailViaResend({
       to,
       subject: aventureMailSubject(order),
       html,
+      fromName: 'Boxing Center',
       replyTo: defaultReplyTo(),
       attachments: mailAttachments,
       cc: portetDossierCc(order),
+      headers: { 'X-Transactional': 'true' },
+      tags: [{ name: 'category', value: 'transactional' }],
     });
     if (!result) {
       return {
         sent: false,
-        reason: 'brevo_not_configured',
-        error: 'Envoi email impossible — BREVO_API_KEY requis en production',
+        reason: 'resend_not_configured',
+        error: 'Envoi email impossible — RESEND_API_KEY requis en production',
         attachments: attachmentNames,
       };
     }
@@ -272,7 +275,7 @@ async function sendConfirmationEmail(order, attachments = []) {
       error: err.message,
       attachments: attachmentNames,
     });
-    return { sent: false, reason: 'brevo_error', error: err.message, attachments: attachmentNames };
+    return { sent: false, reason: 'resend_error', error: err.message, attachments: attachmentNames };
   }
 }
 
@@ -283,10 +286,11 @@ async function sendGdprEraseRequest(data) {
     return { sent: false };
   }
   try {
-    await sendEmailViaBrevo({
+    await sendEmailViaResend({
       to: adminEmail,
       subject: 'Demande suppression données RGPD',
       text: `Email: ${data.email}\nMessage: ${data.message || '—'}`,
+      fromName: 'Boxing Center',
       replyTo: data.email,
     });
     return { sent: true };
@@ -361,51 +365,55 @@ async function sendMaterielConfirmationEmail(order) {
 
   if (!isConfigured()) {
     logInfo('Email matériel (mode log)', { to, order_id: order.order_id });
-    return { sent: false, reason: 'brevo_not_configured', preview: html };
+    return { sent: false, reason: 'resend_not_configured', preview: html };
   }
 
   try {
     const cc = materielClubCc(order);
-    const result = await sendEmailViaBrevo({
+    const result = await sendEmailViaResend({
       to,
       subject: `Commande matériel Boxing Center — ${order.order_id}`,
       html,
+      fromName: 'Boxing Center',
       replyTo: defaultReplyTo(),
       attachments,
       cc,
+      headers: { 'X-Transactional': 'true' },
+      tags: [{ name: 'category', value: 'transactional' }],
     });
     if (!result) {
-      return { sent: false, reason: 'brevo_not_configured' };
+      return { sent: false, reason: 'resend_not_configured' };
     }
     logInfo('Email matériel envoyé', { to, cc, order_id: order.order_id, via: result.via });
     return { sent: true, via: result.via };
   } catch (err) {
     logWarn('Email matériel échoué', { order_id: order.order_id, error: err.message });
-    return { sent: false, reason: 'brevo_error', error: err.message };
+    return { sent: false, reason: 'resend_error', error: err.message };
   }
 }
 
 async function sendTestEmail(to) {
   if (!isConfigured()) {
-    return { sent: false, reason: 'brevo_not_configured' };
+    return { sent: false, reason: 'resend_not_configured' };
   }
   try {
-    const result = await sendEmailViaBrevo({
+    const result = await sendEmailViaResend({
       to,
       subject: 'Test BOXPLUS — Boxing Center',
       html: `<!DOCTYPE html><html lang="fr"><body style="font-family:Arial,sans-serif;padding:24px">
         <h1 style="color:#0B1F3A">Test email BOXPLUS</h1>
         <p>Ceci est un email de test envoyé depuis la boutique Boxing Center.</p>
-        <p style="color:#6B7280;font-size:13px">Si vous recevez ce message, l'envoi Brevo fonctionne correctement.</p>
+        <p style="color:#6B7280;font-size:13px">Si vous recevez ce message, l'envoi Resend (no-reply@boxingcenter.fr) fonctionne correctement.</p>
       </body></html>`,
+      fromName: 'Boxing Center',
       replyTo: defaultReplyTo(),
     });
-    if (!result) return { sent: false, reason: 'brevo_not_configured' };
+    if (!result) return { sent: false, reason: 'resend_not_configured' };
     logInfo('Email test envoyé', { to, via: result.via });
     return { sent: true, via: result.via };
   } catch (err) {
     logWarn('Email test échoué', { to, error: err.message });
-    return { sent: false, reason: 'brevo_error', error: err.message };
+    return { sent: false, reason: 'resend_error', error: err.message };
   }
 }
 
@@ -448,20 +456,23 @@ async function sendUnpaidSubscriptionEmail(
 
   if (!isConfigured()) {
     logInfo('Email impayé (mode log)', { to, order_id: order.order_id });
-    return { sent: false, reason: 'brevo_not_configured', preview: html };
+    return { sent: false, reason: 'resend_not_configured', preview: html };
   }
 
   try {
-    const result = await sendEmailViaBrevo({
+    const result = await sendEmailViaResend({
       to,
       subject: accessBlocked
         ? 'Accès suspendu — échec de paiement Boxing Center'
         : 'Action requise — échec de paiement Boxing Center',
       html,
+      fromName: 'Boxing Center',
       replyTo: defaultReplyTo(),
+      headers: { 'X-Transactional': 'true' },
+      tags: [{ name: 'category', value: 'transactional' }],
     });
     if (adminTo && adminTo !== to && (adminAlert || failCount >= 3 || accessBlocked)) {
-      await sendEmailViaBrevo({
+      await sendEmailViaResend({
         to: adminTo,
         subject: `[CB refusée / bloquée] ${short.email || order.order_id} — ${failCount} échec(s)`,
         html: `<p>Échec recouvrement Stripe après ${failCount} tentative(s).</p>
@@ -469,15 +480,16 @@ async function sendUnpaidSubscriptionEmail(
           <p>Client : ${short.first_name || ''} ${short.last_name || ''} — ${to}</p>
           <p>Commande : ${order.order_id}</p>
           <p>Offre : ${product.display_name || product.name || ''}</p>`,
+        fromName: 'Boxing Center',
         replyTo: defaultReplyTo(),
       }).catch(() => null);
     }
-    if (!result) return { sent: false, reason: 'brevo_not_configured' };
+    if (!result) return { sent: false, reason: 'resend_not_configured' };
     logInfo('Email impayé envoyé', { to, order_id: order.order_id, failCount, accessBlocked });
-    return { sent: true };
+    return { sent: true, via: result.via };
   } catch (err) {
     logWarn('Email impayé échoué', { to, order_id: order.order_id, error: err.message });
-    return { sent: false, reason: 'brevo_error', error: err.message };
+    return { sent: false, reason: 'resend_error', error: err.message };
   }
 }
 
@@ -501,17 +513,18 @@ async function sendCustomOfferClubEmail(order) {
       order_id: order.order_id,
       subject: recap.subject,
     });
-    return { sent: false, reason: 'brevo_not_configured', to: recap.to, preview: recap.html };
+    return { sent: false, reason: 'resend_not_configured', to: recap.to, preview: recap.html };
   }
   try {
-    const result = await sendEmailViaBrevo({
+    const result = await sendEmailViaResend({
       to: recap.to,
       subject: recap.subject,
       html: recap.html,
       text: recap.text,
+      fromName: 'Boxing Center',
       replyTo,
     });
-    if (!result) return { sent: false, reason: 'brevo_not_configured', to: recap.to };
+    if (!result) return { sent: false, reason: 'resend_not_configured', to: recap.to };
     logInfo('Email offre perso club envoyé', {
       to: recap.to,
       order_id: order.order_id,
@@ -520,7 +533,7 @@ async function sendCustomOfferClubEmail(order) {
     return { sent: true, via: result.via, to: recap.to };
   } catch (err) {
     logWarn('Email offre perso club échoué', { order_id: order.order_id, error: err.message });
-    return { sent: false, reason: 'brevo_error', error: err.message, to: recap.to };
+    return { sent: false, reason: 'resend_error', error: err.message, to: recap.to };
   }
 }
 
