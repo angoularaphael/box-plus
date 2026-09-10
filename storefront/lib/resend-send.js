@@ -44,6 +44,7 @@ async function sendEmailViaResend({
   attachments,
   tags,
   fromName,
+  cc,
 }) {
   if (!to) throw new Error('Destinataire email manquant');
   if (!isConfigured()) throw new Error('RESEND_API_KEY manquant');
@@ -56,6 +57,10 @@ async function sendEmailViaResend({
     html: html || undefined,
     reply_to: replyTo || defaultReplyTo(),
   };
+  const ccList = (Array.isArray(cc) ? cc : [cc])
+    .map((e) => String(e || '').trim())
+    .filter(Boolean);
+  if (ccList.length) body.cc = ccList;
   if (headers && typeof headers === 'object') body.headers = headers;
   if (Array.isArray(attachments) && attachments.length) body.attachments = attachments;
   if (Array.isArray(tags) && tags.length) body.tags = tags;

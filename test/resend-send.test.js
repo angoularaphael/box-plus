@@ -6,6 +6,12 @@ const fs = require('fs');
 const path = require('path');
 const { isConfigured, senderEmail, DEFAULT_SENDER_EMAIL } = require('../storefront/lib/resend-send');
 
+test('Resend accepte un champ cc', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../storefront/lib/resend-send.js'), 'utf8');
+  assert.match(src, /ccList/);
+  assert.match(src, /body\.cc = ccList/);
+});
+
 test('Resend : expéditeur campagne = no-reply@boxingcenter.fr', () => {
   const prev = process.env.RESEND_SENDER_EMAIL;
   delete process.env.RESEND_SENDER_EMAIL;
