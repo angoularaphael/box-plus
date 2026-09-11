@@ -31,7 +31,8 @@ const AUTH_DIR = process.env.WA_AUTH_DIR
   : path.join(__dirname, 'auth_info_baileys');
 const MAX_RECONNECT_ATTEMPTS = 8;
 const QR_REUSE_MS = 18000;
-const BUILD = 'wa-send-6';
+const BUILD = 'wa-send-6-verify-1';
+const { attachEmailVerify } = require('./verify-emails');
 const BATCH_SIZE = Math.max(1, parseInt(process.env.WA_BATCH_SIZE || '10', 10) || 10);
 const SEND_GAP_MS = Math.max(0, parseInt(process.env.WA_SEND_GAP_MS || '8000', 10) || 8000);
 const BATCH_REST_MS = Math.max(
@@ -43,6 +44,13 @@ const DEFAULT_RESTRICTED_UNTIL = '2026-08-30T08:00:00+02:00';
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '32kb' }));
+attachEmailVerify(app, {
+  secret: SITE_API_SECRET,
+  dataDir: process.env.EMAIL_VERIFY_DIR
+    || (process.env.WA_AUTH_DIR
+      ? path.dirname(path.resolve(process.env.WA_AUTH_DIR))
+      : path.join(__dirname, 'data')),
+});
 
 const silentLogger = pino({ level: 'silent' });
 

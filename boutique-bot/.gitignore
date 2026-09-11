@@ -1,3 +1,7 @@
 node_modules/
 auth_info_baileys/
 .env
+data/
+*.csv
+*.sqlite
+email-verify-cache.jsonl
