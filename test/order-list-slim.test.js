@@ -28,6 +28,14 @@ const fatOrder = {
   updated_at: '2026-08-17T10:00:00.000Z',
 };
 
+test('buildOrderSummary conserve archived_at', () => {
+  const summary = buildOrderSummary({
+    ...fatOrder,
+    archived_at: '2026-09-11T07:40:00.000Z',
+  });
+  assert.equal(summary.archived_at, '2026-09-11T07:40:00.000Z');
+});
+
 test('buildOrderSummary n’embarque ni photo ni signature en base64', () => {
   const summary = buildOrderSummary(fatOrder);
   const json = JSON.stringify(summary);
@@ -77,4 +85,38 @@ test('reconstructOrderFromListRow privilégie summary', () => {
   });
   assert.equal(order.documents.photo_base64, undefined);
   assert.equal(order.payment.status, 'paid');
+});
+
+test('reconstructOrderFromListRow conserve archived_at (liste slim Supabase)', () => {
+  const archivedAt = '2026-09-11T07:40:00.000Z';
+  const order = reconstructOrderFromListRow({
+    order_id: 'BC-ARCH',
+    access_token: 'tok-arch',
+    updated_at: archivedAt,
+    step: 8,
+    payment: { status: 'paid' },
+    archived_at: archivedAt,
+  });
+  assert.equal(order.archived_at, archivedAt);
+
+  const quoted = reconstructOrderFromListRow({
+    order_id: 'BC-ARCH-JSON',
+    archived_at: JSON.stringify(archivedAt),
+  });
+  assert.equal(quoted.archived_at, archivedAt);
+
+  const { toAdminSummary } = require('../storefront/lib/order-lifecycle');
+  const summary = toAdminSummary(order);
+  assert.equal(summary.archived, true);
+  assert.equal(summary.archived_at, archivedAt);
+});
+
+test('la liste slim sélectionne archived_at depuis le payload', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const src = fs.readFileSync(
+    path.join(__dirname, '..', 'storefront', 'lib', 'order-persistence.js'),
+    'utf8'
+  );
+  assert.match(src, /archived_at:payload->archived_at/);
 });

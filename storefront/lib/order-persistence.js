@@ -287,6 +287,7 @@ function reconstructOrderFromListRow(row) {
     bot_error: rowValue(row, 'bot_error', 'payload->bot_error') || null,
     reliability: stripHeavyFields(rowValue(row, 'reliability', 'payload->reliability') || {}),
     manual_migration: Boolean(rowValue(row, 'manual_migration', 'payload->manual_migration')),
+    archived_at: rowValue(row, 'archived_at', 'payload->archived_at') || null,
     created_at: rowValue(row, 'created_at', 'payload->created_at') || row.created_at || null,
     updated_at: row.updated_at || rowValue(row, 'payload->updated_at') || null,
   };
@@ -340,6 +341,7 @@ const SLIM_SELECT = [
   'reliability:payload->reliability',
   'manual_migration:payload->manual_migration',
   'blade_addon:payload->addons->blade',
+  'archived_at:payload->archived_at',
 ].join(',\n');
 
 async function fetchAllPages(makeQuery) {
