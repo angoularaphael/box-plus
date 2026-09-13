@@ -289,37 +289,11 @@ function wrapCommercialEmail({ kicker, title, inner }) {
 }
 
 function resumeEmailSubject(order, { kind } = {}) {
-  if (wantsPayCta(order, { kind })) {
-    return 'Votre inscription Boxing Center — il ne reste plus qu’à payer';
-  }
-  const step = STEP_LABELS[resumeStep(order)] || 'inscription';
-  return `Reprenez votre inscription Boxing Center (étape ${step})`;
+  return nudgeEmailCopy(order, { kind }).subject;
 }
 
 function resumeEmailHtml(order, { kind } = {}) {
-  const info = describeResume(order, { kind });
-  const pay = wantsPayCta(order, { kind });
-  const url = info.url;
-  const hello = firstName(order) ? `Bonjour ${escapeHtml(firstName(order))},` : 'Bonjour,';
-  const offer = escapeHtml(productLabel(order));
-  const gym = escapeHtml(gymLabel(order.customer_full?.gym) || '');
-  const step = escapeHtml(info.step_label || 'inscription');
-  const inner = pay
-    ? `<p>${hello}</p>
-    <p>Votre inscription <strong>${offer}</strong>${gym ? ` à <strong>${gym}</strong>` : ''} est presque terminée. Il ne reste plus qu’à <strong>régler en ligne</strong> pour débloquer l’accès aux 5 salles.</p>
-    <p>Cliquez sur le bouton ci-dessous : vous arrivez <strong>directement sur la page de paiement</strong>. Choisissez <strong>carte bancaire</strong> ou <strong>PayPal</strong> — cela prend moins d’une minute.</p>
-    ${ctaButton(url, 'Payer maintenant')}
-    <p style="font-size:14px;color:#334155">Votre place vous attend. Plus vous validez tôt, plus vite vous pouvez enfiler les gants.</p>`
-    : `<p>${hello}</p>
-    <p>Vous avez commencé votre inscription <strong>${offer}</strong>${gym ? ` à <strong>${gym}</strong>` : ''} et vous vous êtes arrêté à l’étape <strong>${step}</strong>.</p>
-    <p>Un clic suffit pour reprendre <strong>exactement là où vous en étiez</strong> — sans tout recommencer.</p>
-    ${ctaButton(url, 'Reprendre mon inscription')}
-    <p style="font-size:14px;color:#334155">Les coachs et les 5 salles Boxing Center sont prêts. On vous attend.</p>`;
-  return wrapCommercialEmail({
-    kicker: 'Boxing Center — Inscription',
-    title: pay ? 'Il ne reste plus qu’à payer' : 'Reprenez là où vous en étiez',
-    inner,
-  });
+  return nudgeEmailCopy(order, { kind }).html;
 }
 
 function nudgeEmailSubject() {
@@ -334,26 +308,7 @@ function nudgeResumeUrl(order) {
 }
 
 function nudgeEmailHtml(order) {
-  const hello = firstName(order) ? `Bonjour ${escapeHtml(firstName(order))},` : 'Bonjour,';
-  const url = nudgeResumeUrl(order);
-  const step = escapeHtml(STEP_LABELS[resumeStep(order)] || 'inscription');
-  const paidDossier = isPaidIncomplete(order) && resumeStep(order) >= STEPS.IBAN;
-  const inner = paidDossier
-    ? `<p>${hello}</p>
-    <p>Vous n’avez <strong>pas finalisé</strong> votre inscription. Votre règlement est bien reçu, mais il reste <strong>le dossier et la signature</strong> (environ 2 minutes). Tant que ce n’est pas validé, <strong>vous n’êtes pas encore inscrit en salle</strong>.</p>
-    <p>Cliquez sur le bouton : vous reprenez directement à l’étape restante.</p>
-    ${ctaButton(url, 'Finaliser mon inscription')}
-    <p style="font-size:14px;color:#334155">Sans cette validation, les coachs ne vous verront pas sur la feuille d’émargement.</p>`
-    : `<p>${hello}</p>
-    <p>Vous n’avez <strong>pas finalisé</strong> votre inscription Boxing Center — vous êtes encore à l’étape <strong>${step}</strong>.</p>
-    <p>Un clic suffit pour reprendre exactement là où vous en étiez, sans tout recommencer.</p>
-    ${ctaButton(url, 'Finaliser mon inscription')}
-    <p style="font-size:14px;color:#334155">Sans cette validation, votre inscription n’est pas enregistrée en salle.</p>`;
-  return wrapCommercialEmail({
-    kicker: 'Boxing Center — Inscription à finaliser',
-    title: 'Vous n’avez pas finalisé votre inscription',
-    inner,
-  });
+  return nudgeEmailCopy(order).html;
 }
 
 function nudgeWhatsAppText(order) {
@@ -407,9 +362,10 @@ async function sendResumeEmail(order, { kind = 'resume', to } = {}) {
     const result = await sendEmailViaResend({
       to: dest,
       subject: copy.subject,
-      html: undefined,
+      html: copy.html,
       text: copy.emailText,
       fromName: copy.fromName,
+      replyTo: copy.replyTo,
       tags: TRANSACTIONAL_EMAIL_TAGS,
       headers: TRANSACTIONAL_EMAIL_HEADERS,
     });
@@ -499,6 +455,7 @@ async function sendResumeNotify(order, { kind = 'resume', email = true, sms = tr
 }
 
 function summarizeNudge(order) {
+  const copy = nudgeEmailCopy(order);
   return {
     order_id: order.order_id,
     gym: order.customer_full?.gym || 'minimes',
@@ -511,8 +468,8 @@ function summarizeNudge(order) {
     deadline_at: completeDeadlineAt(order),
     step: order.step,
     product_name: order.product_snapshot?.display_name || order.product_snapshot?.name || '',
-    email_subject: nudgeEmailSubject(),
-    email_html: nudgeEmailHtml(order),
+    email_subject: copy.subject,
+    email_html: copy.html,
     whatsapp_text: nudgeWhatsAppText(order),
   };
 }
@@ -559,9 +516,10 @@ async function sendNudgeEmail(order) {
     const result = await sendEmailViaResend({
       to: item.email,
       subject: copy.subject,
-      html: undefined,
+      html: copy.html,
       text: copy.emailText,
       fromName: copy.fromName,
+      replyTo: copy.replyTo,
       tags: TRANSACTIONAL_EMAIL_TAGS,
       headers: TRANSACTIONAL_EMAIL_HEADERS,
     });
