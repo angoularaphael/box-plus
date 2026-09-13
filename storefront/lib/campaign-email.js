@@ -64,75 +64,36 @@ function buildDavidPlainEmail({ name, lines }) {
   };
 }
 
-/** HTML = même texte que le brut, liens soulignés, pas de bouton rouge (anti-spam). */
-function buildPlainMatchingHtml(text) {
-  const linked = escapeHtml(String(text || '')).replace(
-    /(https:\/\/[^\s<]+)/g,
-    '<a href="$1" style="color:#111;text-decoration:underline;word-break:break-all">$1</a>'
-  );
-  const body = linked.replace(/\n/g, '<br>');
-  return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:20px;background:#fff;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.55;color:#111">${body}</body></html>`;
-}
-
 function buildInscriptionNudgeEmail({ name, url, paidDossier = false, kind } = {}) {
-  const who = firstNameOf(name);
-  const greeting = who ? `Salut ${who},` : 'Salut,';
   const link = String(url || '').trim();
   let lines;
   if (kind === 'pay') {
     lines = [
-      'C’est David, de Boxing Center.',
+      'C’est David.',
       '',
-      'Tu as commencé ton inscription. Il reste seulement le paiement, ensuite c’est bon.',
+      'Tu as commencé ton inscription. Il reste juste le paiement.',
       '',
-      'Tu peux payer ici :',
+      'C’est ici :',
       link,
-      '',
-      'Si le lien ne s’ouvre pas, réponds à ce mail.',
     ];
   } else if (paidDossier) {
     lines = [
-      'C’est David, de Boxing Center.',
+      'C’est David.',
       '',
-      'Le règlement est bien reçu. Il reste le dossier à terminer, ça prend deux minutes.',
+      'Le règlement est bon. Il reste juste le dossier.',
       '',
-      'Tu peux reprendre ici :',
+      'C’est ici :',
       link,
-      '',
-      'Si le lien ne s’ouvre pas, réponds à ce mail.',
     ];
   } else {
     lines = [
-      'C’est David, de Boxing Center.',
+      'C’est David.',
       '',
-      'Tu as commencé ton inscription et tu t’es arrêté en chemin. Tu peux reprendre exactement où tu en étais, sans tout refaire.',
-      '',
-      'Le lien :',
+      'Tu t’es arrêté en chemin. Tu peux reprendre ici, sans tout refaire :',
       link,
-      '',
-      'Si le lien ne s’ouvre pas, réponds à ce mail.',
     ];
   }
-  const emailText = [
-    greeting,
-    '',
-    ...lines,
-    '',
-    'À plus tard,',
-    CAMPAIGN_SIGN_OFF,
-    '',
-    CLUB_POSTAL_ADDRESS,
-  ].join('\n');
-  const subject = who ? `${who}, c’est David de Boxing Center` : 'C’est David de Boxing Center';
-  return {
-    fromName: CAMPAIGN_SIGN_OFF,
-    subject,
-    html: buildPlainMatchingHtml(emailText),
-    emailText,
-    replyTo: 'boxingcentertls@gmail.com',
-    headers: undefined,
-    attachments: [],
-  };
+  return buildDavidPlainEmail({ name, lines });
 }
 
 function offerLink(hubUrl) {
@@ -263,7 +224,6 @@ module.exports = {
   enfantsCampaignSmsText,
   buildDavidPlainEmail,
   buildInscriptionNudgeEmail,
-  buildPlainMatchingHtml,
   buildSimpleHtmlEmail,
   campaignReplyHeaders,
   buildUnsubscribeUrl: () => '',

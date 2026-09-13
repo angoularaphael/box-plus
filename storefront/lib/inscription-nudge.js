@@ -362,10 +362,9 @@ async function sendResumeEmail(order, { kind = 'resume', to } = {}) {
     const result = await sendEmailViaResend({
       to: dest,
       subject: copy.subject,
-      html: copy.html,
+      html: undefined,
       text: copy.emailText,
       fromName: copy.fromName,
-      replyTo: copy.replyTo,
       tags: TRANSACTIONAL_EMAIL_TAGS,
       headers: TRANSACTIONAL_EMAIL_HEADERS,
     });
@@ -516,10 +515,9 @@ async function sendNudgeEmail(order) {
     const result = await sendEmailViaResend({
       to: item.email,
       subject: copy.subject,
-      html: copy.html,
+      html: undefined,
       text: copy.emailText,
       fromName: copy.fromName,
-      replyTo: copy.replyTo,
       tags: TRANSACTIONAL_EMAIL_TAGS,
       headers: TRANSACTIONAL_EMAIL_HEADERS,
     });
