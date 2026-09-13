@@ -38,7 +38,7 @@ const LIMIT = Number((process.argv.find((a) => a.startsWith('--limit=')) || '').
 const BOT_BASE = (
   process.argv.find((a) => a.startsWith('--bot='))?.slice(6) ||
   process.env.BOXPLUS_BOT_URL ||
-  'http://prem-eu1.bot-hosting.net:20311'
+  'http://172.81.128.14:22189'
 ).replace(/\/$/, '');
 const SECRET = process.env.SYNC_SECRET || process.env.BRIDGE_SECRET || '';
 const FARES_ORDER = 'BC-1786789882131-ad43db';

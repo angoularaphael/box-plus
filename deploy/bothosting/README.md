@@ -1,6 +1,6 @@
 # BotHosting — index.js + .env (comme KataBump)
 
-**URL :** `http://prem-eu1.bot-hosting.net:20311`  
+**URL :** `http://172.81.128.14:22189`  
 **Vendeur Deciplus :** Raphaël (`BOT_ID=raphael`) — Eddy est sur `prem-eu2:21871`.
 
 Le bot Raphaël transfère automatiquement à Eddy une vente qui échoue après
@@ -49,7 +49,7 @@ Au 1er lancement, `index.js` va :
 ## Étape 4 — Vercel
 
 ```
-BOXPLUS_BOT_URL=http://prem-eu1.bot-hosting.net:20311
+BOXPLUS_BOT_URL=http://172.81.128.14:22189
 BOXPLUS_BOT_URL_SALES_2=http://prem-eu2.bot-hosting.net:21871
 BOXPLUS_BOT_URL_OPS=http://prem-eu2.bot-hosting.net:21268
 SYNC_SECRET=boxplus-bc-2026-test
@@ -60,7 +60,7 @@ Redeploy Vercel.
 ## Étape 5 — Test
 
 ```
-http://prem-eu1.bot-hosting.net:20311/health
+http://172.81.128.14:22189/health
 ```
 
 ## Logs OK
@@ -69,7 +69,7 @@ http://prem-eu1.bot-hosting.net:20311/health
 [BOXPLUS bootstrap] .env OK
 [BOXPLUS bootstrap] Clone https://github.com/...
 [BOXPLUS bootstrap] Installation Playwright: chromium-headless-shell
-[BOXPLUS] Bot HTTP ingest → :20311
+[BOXPLUS] Bot HTTP ingest → :22189
 [BOXPLUS] Bot Deciplus démarré
 ```
 

@@ -77,6 +77,18 @@ function playwrightReady(basePath) {
   return fs.readdirSync(basePath).some((n) => /chromium|headless/i.test(n));
 }
 
+function playwrightCli(botDir) {
+  return path.join(botDir, 'node_modules', 'playwright', 'cli.js');
+}
+
+function runPlaywrightInstall(botDir, variant) {
+  const cli = playwrightCli(botDir);
+  if (!fs.existsSync(cli)) {
+    throw new Error('playwright/cli.js absent — npm install a echoue ?');
+  }
+  run(`node "${cli}" install ${variant}`, botDir);
+}
+
 function installPlaywright(botDir) {
   const base = process.env.PLAYWRIGHT_BROWSERS_PATH;
   const already = playwrightReady(base);
@@ -85,7 +97,7 @@ function installPlaywright(botDir) {
     for (const variant of ['chromium-headless-shell', 'chromium']) {
       try {
         log(`Installation Playwright: ${variant}`);
-        run(`npx playwright install ${variant}`, botDir);
+        runPlaywrightInstall(botDir, variant);
         if (playwrightReady(base)) break;
       } catch (err) {
         log(`Echec ${variant}: ${err.message || err}`);
@@ -96,12 +108,6 @@ function installPlaywright(botDir) {
   }
   if (!playwrightReady(base)) {
     throw new Error('Playwright non installe — verifie df -h (disque plein ?)');
-  }
-  try {
-    log('Installation Playwright: ffmpeg');
-    run('npx playwright install ffmpeg', botDir);
-  } catch (err) {
-    log(`ffmpeg optionnel: ${err.message || err}`);
   }
 }
 
@@ -134,7 +140,7 @@ function ensureBotRepo() {
 }
 
 ensureBotRepo();
-run('npm install --omit=dev --no-fund --no-audit', BOT_DIR);
+run('npm install --omit=dev --no-fund --no-audit --ignore-scripts', BOT_DIR);
 installPlaywright(BOT_DIR);
 
 const depsFile = path.join(BOT_DIR, 'lib', 'playwright-host-deps.js');
