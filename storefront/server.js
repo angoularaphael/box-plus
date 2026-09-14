@@ -2367,9 +2367,11 @@ function createApp() {
       const sent = await sendResumeWhatsApp(order, { kind });
       if (!sent.sent) {
         const message =
-          sent.error === 'no_phone'
-            ? 'Pas de numéro de téléphone sur ce dossier'
-            : sent.error || 'SMS non envoyé';
+          sent.error === 'sms_disabled'
+            ? 'Les SMS de confirmation / reprise d’inscription sont désactivés. Utilisez l’e-mail.'
+            : sent.error === 'no_phone'
+              ? 'Pas de numéro de téléphone sur ce dossier'
+              : sent.error || 'SMS non envoyé';
         return res.status(400).json({ ok: false, error: sent.error || 'sms_failed', message });
       }
       const info = describeResume(order, { kind });
@@ -2466,7 +2468,7 @@ function createApp() {
       });
     }
     const wantEmail = req.body?.email !== false;
-    const wantSms = req.body?.sms !== false;
+    const wantSms = false;
     try {
       const out = await sendResumeNotify(order, { kind, email: wantEmail, sms: wantSms });
       const info = describeResume(order, { kind });
@@ -2552,7 +2554,7 @@ function createApp() {
       }
       try {
         const kind = canPayOrder(order) ? 'pay' : 'resume';
-        const out = await sendResumeNotify(order, { kind, email: true, sms: true });
+        const out = await sendResumeNotify(order, { kind, email: true, sms: false });
         results.push({
           order_id: id,
           ok: Boolean(out.ok),

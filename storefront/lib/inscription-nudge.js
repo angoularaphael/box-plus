@@ -398,19 +398,11 @@ function resumeWhatsAppText(order, { kind } = {}) {
   );
 }
 
-async function sendResumeWhatsApp(order, { kind = 'resume' } = {}) {
-  const { toWhatsAppPhone } = require('./whatsapp-bot');
-  const { sendTransactionalSms } = require('./twilio-sms');
-  const raw = customerPhone(order);
-  const dest = toWhatsAppPhone(raw);
-  if (!dest) return { sent: false, error: 'no_phone' };
-  const text = resumeWhatsAppText(order, { kind });
-  const result = await sendTransactionalSms(raw, text, { source: 'inscription-reprise' });
-  if (result.ok) return { sent: true, to: dest, via: 'twilio', sid: result.sid };
-  return { sent: false, error: result.error || 'sms_failed' };
+async function sendResumeWhatsApp() {
+  return { sent: false, skipped: true, reason: 'sms_disabled', error: 'sms_disabled' };
 }
 
-async function sendResumeNotify(order, { kind = 'resume', email = true, sms = true } = {}) {
+async function sendResumeNotify(order, { kind = 'resume', email = true, sms = false } = {}) {
   const out = { email: null, sms: null };
   if (email) {
     try {

@@ -61,6 +61,8 @@ test('relance inscription SMS (« vous n’avez pas finalisé ») coupée', () =
   assert.match(nudge, /sms_disabled/);
   assert.doesNotMatch(nudge, /inscription-relance/);
   assert.doesNotMatch(nudge, /sms-gateway/);
+  assert.doesNotMatch(nudge, /inscription-reprise/);
+  assert.match(nudge, /async function sendResumeWhatsApp\(\)/);
 });
 
 test('mail campagne : texte David, comme Guillaume en Principal', () => {

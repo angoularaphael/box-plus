@@ -125,16 +125,6 @@
             ? `<button type="button" class="btn sm secondary" id="resumeSendBtn">Envoyer par e-mail</button>`
             : ''
         }
-        ${
-          data.phone
-            ? `<button type="button" class="btn sm secondary" id="resumeSmsBtn">Envoyer par SMS</button>`
-            : ''
-        }
-        ${
-          (data.email && data.email !== '—') || data.phone
-            ? `<button type="button" class="btn sm" id="resumeBothBtn">Envoyer mail + SMS</button>`
-            : ''
-        }
       </div>`;
     const input = document.getElementById('resumeLinkUrl');
     input?.focus();
@@ -145,8 +135,6 @@
       if (btn) btn.textContent = ok ? 'Copié' : 'Sélectionnez le lien';
     });
     document.getElementById('resumeSendBtn')?.addEventListener('click', () => sendResumeEmail(data));
-    document.getElementById('resumeSmsBtn')?.addEventListener('click', () => sendResumeSms(data));
-    document.getElementById('resumeBothBtn')?.addEventListener('click', () => sendResumeBoth(data));
   }
 
   async function sendResumeEmail(data) {
