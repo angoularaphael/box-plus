@@ -124,17 +124,25 @@ function drawProHeader(doc, { title, date, ref, club }) {
   const width = contentWidth(doc);
   const top = doc.page.margins.top;
   const issuer = club || CLUB;
+  const titleColW = width * 0.62;
 
-  doc.fontSize(22).fillColor(NAVY).font('Helvetica-Bold').text(title, left, top, { width: width * 0.62 });
-  doc.fontSize(10).fillColor(MUTED).font('Helvetica').text(formatDateFr(date), left, doc.y + 4);
+  doc.fontSize(22).fillColor(NAVY).font('Helvetica-Bold');
+  doc.text(title, left, top, { width: titleColW, lineGap: 2 });
+  let y = doc.y + 8;
+
+  doc.fontSize(10).fillColor(MUTED).font('Helvetica');
+  doc.text(formatDateFr(date), left, y, { width: titleColW });
+  y = doc.y + 4;
+
   if (ref) {
-    doc.fontSize(9).fillColor(MUTED).text(`Réf. ${ref}`, left, doc.y + 2);
+    doc.fontSize(9).fillColor(MUTED).text(`Réf. ${ref}`, left, y, { width: titleColW, lineGap: 1 });
+    y = doc.y + 4;
   }
 
   const logoW = 72;
   drawIssuerMark(doc, issuer, { x: left + width - logoW, y: top, width: logoW, fontSize: 10 });
 
-  doc.y = Math.max(doc.y, top + 78) + 12;
+  doc.y = Math.max(y, top + 78) + 12;
 }
 
 function drawPartyColumn(doc, x, y, width, heading, rows) {
@@ -389,14 +397,19 @@ function drawProHeaderCompact(doc, { title, date, ref, club }) {
   const width = contentWidth(doc);
   const top = doc.page.margins.top;
   const issuer = club || CLUB;
+  const titleColW = width * 0.65;
 
-  doc.fontSize(16).fillColor(NAVY).font('Helvetica-Bold').text(title, left, top, { width: width * 0.65 });
+  doc.fontSize(16).fillColor(NAVY).font('Helvetica-Bold');
+  doc.text(title, left, top, { width: titleColW, lineGap: 1 });
+  let y = doc.y + 6;
+
   doc.fontSize(8).fillColor(MUTED).font('Helvetica');
-  doc.text(`${formatDateFr(date)}${ref ? `  ·  Réf. ${ref}` : ''}`, left, doc.y + 2);
+  doc.text(`${formatDateFr(date)}${ref ? `  ·  Réf. ${ref}` : ''}`, left, y, { width: titleColW, lineGap: 1 });
+  y = doc.y + 4;
 
   const logoW = 52;
   drawIssuerMark(doc, issuer, { x: left + width - logoW, y: top, width: logoW, fontSize: 9 });
-  doc.y = Math.max(doc.y, top + 56) + 6;
+  doc.y = Math.max(y, top + 56) + 6;
 }
 
 function drawDetailTableCompact(doc, opts) {

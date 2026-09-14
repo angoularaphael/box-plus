@@ -313,9 +313,9 @@ function renderCoachingInvoice(doc, order) {
 
   const club = clubForOrder(order);
   drawProHeader(doc, {
-    title: `Facture ${invoiceNo}`,
+    title: 'Facture coaching',
     date: invoiceDate,
-    ref: order.order_id,
+    ref: invoiceNo,
     club,
   });
 
