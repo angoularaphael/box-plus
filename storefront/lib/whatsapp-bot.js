@@ -109,6 +109,23 @@ function toGsmSafe(text) {
     .trim();
 }
 
+function foldSms(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function isOffreDuoReferralSms(message) {
+  const m = foldSms(message);
+  return m.includes('offre duo') && m.includes('grace a');
+}
+
+function isAllowedBoutiqueSms(message, source) {
+  if (String(source || '') === 'offre-duo-ami') return true;
+  return isOffreDuoReferralSms(message);
+}
+
 async function smsGatewayToken(timeoutMs = 18000) {
   if (cachedToken && Date.now() - cachedTokenAt < 50 * 60 * 1000) return cachedToken;
   const email = smsAdminEmail();
@@ -239,6 +256,9 @@ async function logoutWhatsAppBot() {
 async function sendWhatsAppMessage(phone, message, { timeoutMs = 20000, source = 'boutique', transactional = false } = {}) {
   const to = toE164(phone);
   if (!to) throw new Error('Numéro invalide');
+  if (!isAllowedBoutiqueSms(message, source)) {
+    throw new Error('sms_disabled');
+  }
   if (transactional) {
     const { sendTransactionalSms } = require('./twilio-sms');
     const result = await sendTransactionalSms(phone, message, { source });
@@ -246,7 +266,7 @@ async function sendWhatsAppMessage(phone, message, { timeoutMs = 20000, source =
     return { sent: true, via: 'twilio', sid: result.sid, to };
   }
   const { isAllWhatsAppPaused } = require('./whatsapp-outbound');
-  if (isAllWhatsAppPaused()) throw new Error('Envois SMS en pause');
+  if (String(source) !== 'offre-duo-ami' && isAllWhatsAppPaused()) throw new Error('Envois SMS en pause');
   try {
     const result = await smsFetch('/api/messages/send', {
       method: 'POST',
@@ -276,4 +296,6 @@ module.exports = {
   logoutWhatsAppBot,
   sendWhatsAppMessage,
   clearWhatsAppOutboundQueue,
+  isOffreDuoReferralSms,
+  isAllowedBoutiqueSms,
 };

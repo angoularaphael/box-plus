@@ -37,6 +37,18 @@ describe('referral-notify', () => {
     assert.match(copy.text, /offre\/29/);
   });
 
+  it('le SMS ami offre duo reste identifiable (grâce à + offre duo)', () => {
+    const copy = buildReferralCopy({
+      friendPrenom: 'Léa',
+      referrerFirst: 'Hugo',
+      referrerLast: 'Durand',
+    });
+    const { isOffreDuoReferralSms, isAllowedBoutiqueSms } = require('../storefront/lib/whatsapp-bot');
+    assert.equal(isOffreDuoReferralSms(copy.text), true);
+    assert.equal(isAllowedBoutiqueSms(copy.text, 'offre-duo-ami'), true);
+    assert.equal(isAllowedBoutiqueSms('Reprenez votre inscription', 'boutique'), false);
+  });
+
   it('formats French mobile for WhatsApp', () => {
     assert.equal(toWhatsAppPhone('06 12 34 56 78'), '33612345678');
     assert.equal(toWhatsAppPhone('+33 6 12 34 56 78'), '33612345678');
