@@ -2332,16 +2332,23 @@
       if (botErrorsBody) {
         botErrorsBody.innerHTML = botErrors.length
           ? botErrors
-              .map((b) => `
+              .map((b) => {
+                const phone = String(b.phone || '').trim();
+                const tel = phone.replace(/[^\d+]/g, '');
+                const phoneCell = phone
+                  ? `<a href="tel:${escapeHtml(tel)}" style="color:var(--bc-cta);font-weight:600;white-space:nowrap">${escapeHtml(phone)}</a>`
+                  : '—';
+                return `
             <tr>
               <td style="font-weight:600">${escapeHtml(b.name || b.order_id)}</td>
+              <td>${phoneCell}</td>
               <td>${escapeHtml(gymLabel(b.gym) || b.gym || '—')}</td>
               <td>${b.paid_at ? new Date(b.paid_at).toLocaleString('fr-FR') : '—'}</td>
               <td>${b.signed ? 'Signé' : 'Non signé'}</td>
               <td>${escapeHtml(botCategoryLabel[b.category] || b.category || '—')}</td>
               <td title="${escapeHtml(b.bot_error || '')}">${escapeHtml(b.bot_error || b.bot_status || 'Erreur bot')}</td>
-            </tr>`
-              )
+            </tr>`;
+              })
               .join('')
           : '';
       }

@@ -126,6 +126,14 @@ function orderDisplayName(order = {}) {
   return name || short.email || full.email || cust.email || '—';
 }
 
+function orderPhone(order = {}) {
+  const short = order.customer_short || {};
+  const full = order.customer_full || {};
+  const cust = order.customer || {};
+  const phone = short.phone || full.phone || cust.phone || order.phone || '';
+  return String(phone).trim();
+}
+
 function paidBladeAddon(order = {}) {
   const blade = order?.addons?.blade;
   if (!blade || String(blade.status || '').toLowerCase() !== 'paid') return null;
@@ -529,6 +537,7 @@ function botErrorRows(orders = [], { fromMonth = '', toMonth = '' } = {}) {
     rows.push({
       order_id: o.order_id,
       name: orderDisplayName(o),
+      phone: orderPhone(o),
       gym: gymSlugFromOrder(o),
       paid_at: paidAt,
       signed: Boolean(o.signature?.signed_at),
