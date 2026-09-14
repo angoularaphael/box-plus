@@ -3,7 +3,7 @@
 /**
  * 1) Mail demande RIB aux prélèvements bloqués SANS mandat (sauf Etogo).
  * 2) Résilie les contrats Impayé AVEC RIB (mandat) — hors Balma.
- *    Clique « Résilier » (jamais « Annuler la vente »).
+ *    Clique « Résilier » sur abo et badge (jamais « Annuler la vente »).
  *    Politique SEPA (lib/sepa-unpaid-policy.js) :
  *    AM04 + MD01 → 3 impayés ; MD06/MS02/MS03/AC04/JSON → immédiat ;
  *    AC01 + RC01 → mail RIB au 1er impayé, résil au 2e ; AC06 → résil au 2e ;

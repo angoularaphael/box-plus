@@ -114,14 +114,16 @@ test('fiche sans e-mail ni téléphone → immédiat', () => {
   assert.equal(one.why, 'missing_contact');
 });
 
-test('résiliation impayés : jamais Annuler la vente (neverVoid)', () => {
+test('résiliation impayés : Résilier abo + badge, jamais Annuler la vente', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/cancel-sale.js'), 'utf8');
   assert.match(src, /neverVoid/);
-  assert.doesNotMatch(src, /allowStarted:\s*true/);
+  assert.match(src, /!contract\.isBadge/);
+  assert.doesNotMatch(src, /badge_voided/);
   const script = require('fs').readFileSync(
     require('path').join(__dirname, '../scripts/mail-rib-and-resiliate-unpaid.js'),
     'utf8'
   );
   assert.match(script, /neverVoid:\s*true/);
+  assert.match(script, /abo et badge/i);
   assert.doesNotMatch(script, /forceVoid/);
 });
