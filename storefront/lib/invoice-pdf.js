@@ -285,6 +285,85 @@ function renderMaterielInvoice(doc, order) {
   drawPageFooter(doc, club);
 }
 
+const COACHING_SESSION_PRICE_CENTS = 5500;
+
+function isCoachingOrder(order = {}) {
+  return order.action === 'coaching_booking' || String(order.order_id || '').startsWith('COACH-');
+}
+
+function coachingSessionPriceCents(order = {}) {
+  const fromSnap = Number(order.product_snapshot?.price_cents);
+  if (Number.isFinite(fromSnap) && fromSnap > 0) return fromSnap;
+  const fromPay = Number(order.payment?.amount_cents);
+  if (Number.isFinite(fromPay) && fromPay > 0) return fromPay;
+  return COACHING_SESSION_PRICE_CENTS;
+}
+
+function renderCoachingInvoice(doc, order) {
+  const customer = order.customer || order.customer_short || {};
+  const invoiceDate = order.created_at || order.updated_at;
+  const invoiceNo = `FAC-${order.order_id}`;
+  const priceCents = coachingSessionPriceCents(order);
+  const priceHt = Math.round(priceCents / 1.2);
+  const activityLabel = order.activity_label || order.product_snapshot?.name || 'Coaching individuel';
+  const gymLabel = GYM_LABELS[order.gym] || order.gym || '—';
+  const slotLabel = order.slot_label || order.slot || '—';
+  const dateLabel = order.booking_date ? formatDateFr(order.booking_date) : '—';
+  const paid = order.payment?.status === 'paid';
+
+  const club = clubForOrder(order);
+  drawProHeader(doc, {
+    title: `Facture ${invoiceNo}`,
+    date: invoiceDate,
+    ref: order.order_id,
+    club,
+  });
+
+  drawTwoParties(doc, clubEmitterRows(club), invoiceRecipientRows(customer));
+
+  drawSectionHeading(doc, 'Détail de la prestation');
+  drawDetailTable(doc, {
+    columns: [
+      { key: 'type', label: 'Type', width: 0.1 },
+      { key: 'description', label: 'Description', width: 0.42 },
+      { key: 'unit', label: 'PU HT', width: 0.16, align: 'right' },
+      { key: 'qty', label: 'Qté', width: 0.08, align: 'center' },
+      { key: 'vat', label: 'TVA', width: 0.08, align: 'center' },
+      { key: 'total', label: 'Total HT', width: 0.16, align: 'right' },
+    ],
+    rows: [
+      {
+        type: 'Coach.',
+        description: `${activityLabel}\n${gymLabel} · ${dateLabel} · ${slotLabel}`,
+        unit: formatEuros(priceHt),
+        qty: '1',
+        vat: '20 %',
+        total: formatEuros(priceHt),
+        height: 40,
+      },
+    ],
+    subtotalRows: [
+      { label: 'Total HT', value: formatEuros(priceHt) },
+      { label: 'TVA (20 %)', value: formatEuros(priceCents - priceHt) },
+    ],
+    totalLabel: 'Total TTC',
+    totalValue: formatEuros(priceCents),
+  });
+
+  drawConditions(doc, [
+    { label: 'Salle', value: gymLabel },
+    { label: 'Date de séance', value: dateLabel },
+    { label: 'Créneau', value: slotLabel },
+    {
+      label: 'Mode de règlement',
+      value: paid ? paymentLabel(order) : 'À régler en salle avant la séance',
+    },
+    { label: 'Statut', value: paid ? 'Paiement acquitté' : 'Réservation confirmée — paiement en attente' },
+  ]);
+
+  drawPageFooter(doc, club);
+}
+
 async function writePdf(renderFn, order, suffix) {
   ensureDocsDir();
   const filename = `facture-${suffix}.pdf`;
@@ -305,14 +384,14 @@ function inscriptionInvoiceFilename(order) {
   return `facture-${order.order_id}.pdf`;
 }
 
-function streamInscriptionInvoicePdf(order, res) {
+function streamInvoicePdf(order, res, renderFn) {
   const filename = order.documents?.invoice_filename || inscriptionInvoiceFilename(order);
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
   const doc = new PDFDocument({ margin: 48, size: 'A4', bufferPages: true });
   doc.pipe(res);
   try {
-    renderInscriptionInvoice(doc, order);
+    renderFn(doc, order);
   } catch (err) {
     try {
       doc.end();
@@ -324,6 +403,14 @@ function streamInscriptionInvoicePdf(order, res) {
   doc.end();
 }
 
+function streamInscriptionInvoicePdf(order, res) {
+  return streamInvoicePdf(order, res, renderInscriptionInvoice);
+}
+
+function streamCoachingInvoicePdf(order, res) {
+  return streamInvoicePdf(order, res, renderCoachingInvoice);
+}
+
 async function generateInscriptionInvoicePdf(order) {
   return writePdf(renderInscriptionInvoice, order, order.order_id);
 }
@@ -333,9 +420,14 @@ async function generateMaterielInvoicePdf(order) {
 }
 
 module.exports = {
+  COACHING_SESSION_PRICE_CENTS,
   generateInscriptionInvoicePdf,
   generateMaterielInvoicePdf,
   streamInscriptionInvoicePdf,
+  streamCoachingInvoicePdf,
   inscriptionInvoiceFilename,
+  isCoachingOrder,
+  coachingSessionPriceCents,
   renderInscriptionInvoice,
+  renderCoachingInvoice,
 };

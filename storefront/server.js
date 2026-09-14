@@ -249,6 +249,8 @@ const {
   generateInscriptionInvoicePdf,
   generateMaterielInvoicePdf,
   streamInscriptionInvoicePdf,
+  streamCoachingInvoicePdf,
+  isCoachingOrder,
 } = require('./lib/invoice-pdf');
 const { upsertClientFromInscription, upsertMaterielClient, upsertLeadClient } = require('./lib/client-sync');
 const { insertTunnelLead, tunnelFromProductId } = require('./lib/tunnel-lead');
@@ -273,7 +275,8 @@ const {
 
 function streamOrderFacturePdf(order, res) {
   try {
-    streamInscriptionInvoicePdf(order, res);
+    if (isCoachingOrder(order)) streamCoachingInvoicePdf(order, res);
+    else streamInscriptionInvoicePdf(order, res);
   } catch (err) {
     logError('PDF facture', { order_id: order?.order_id, error: err.message });
     if (!res.headersSent) {
@@ -1724,7 +1727,10 @@ function createApp() {
         }
       }
 
-      const [inscriptionPaid, funnelOrders, materielOrders, visits, seance, funnelEvents] = await Promise.all([
+      const { enrichOrdersWithJobErrors } = require('./lib/admin-stats');
+      const { getSupabase } = require('./lib/supabase');
+
+      const [inscriptionPaidRaw, funnelOrders, materielOrders, visits, seance, funnelEvents] = await Promise.all([
         listPaidOrdersSinceAsync(paidSince),
         listOrdersCreatedSinceAsync(funnelSince),
         listMaterielOrdersCreatedSinceAsync(paidSince),
@@ -1736,6 +1742,10 @@ function createApp() {
         ),
         withTimeout(summarizeFunnelEvents(30), 3000, null),
       ]);
+
+      const inscriptionPaid = await enrichOrdersWithJobErrors(inscriptionPaidRaw, getSupabase()).catch(
+        () => inscriptionPaidRaw
+      );
 
       const { rows, totals } = buildMonthlySalesRows({
         inscriptionOrders: inscriptionPaid,
@@ -1790,6 +1800,8 @@ function createApp() {
         missing_deciplus_sale: extras.missing_deciplus_sale || 0,
         missing_fiches: (extras.missing_fiches || []).slice(0, 80),
         missing_fiches_count: extras.missing_fiches_count || 0,
+        bot_errors: (extras.bot_errors || []).slice(0, 120),
+        bot_errors_count: extras.bot_errors_count || 0,
         stock_rows,
         inscription_materiel,
       });

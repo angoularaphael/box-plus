@@ -45,6 +45,11 @@
     const btn = form.querySelector('button[type="submit"]');
     const body = Object.fromEntries(new FormData(form).entries());
     setMsg('Envoi de votre demande…');
+    const invoiceWrap = document.getElementById('coachingInvoiceWrap');
+    if (invoiceWrap) {
+      invoiceWrap.hidden = true;
+      invoiceWrap.innerHTML = '';
+    }
     if (btn) btn.disabled = true;
     try {
       const res = await fetch('/api/coachings/book', {
@@ -59,10 +64,21 @@
         return;
       }
       const salle = data.manager_label ? ` (${data.manager_label})` : '';
-      setMsg(
-        `Demande envoyée${salle}. Le responsable de salle va vous recontacter. Un e-mail de confirmation vous a été adressé.`,
-        'ok'
-      );
+      let okText = `Demande envoyée${salle}. Le responsable de salle va vous recontacter. Un e-mail de confirmation vous a été adressé.`;
+      if (data.invoice_url) {
+        okText += ' Vous pouvez aussi télécharger votre facture ci-dessous.';
+      }
+      setMsg(okText, 'ok');
+      const invoiceWrap = document.getElementById('coachingInvoiceWrap');
+      if (invoiceWrap) {
+        if (data.invoice_url) {
+          invoiceWrap.innerHTML = `<a class="btn secondary" href="${data.invoice_url}" target="_blank" rel="noopener">Télécharger ma facture</a>`;
+          invoiceWrap.hidden = false;
+        } else {
+          invoiceWrap.hidden = true;
+          invoiceWrap.innerHTML = '';
+        }
+      }
       form.reset();
       await loadOptions();
     } catch {

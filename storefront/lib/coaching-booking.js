@@ -3,7 +3,18 @@
 const crypto = require('crypto');
 const { sendEmailViaBrevo, isConfigured, defaultReplyTo } = require('./brevo-send');
 const { getManagerContact } = require('./membership');
+const { COACHING_SESSION_PRICE_CENTS } = require('./invoice-pdf');
+const { getStoreUrl } = require('../../lib/app-urls');
 const { logInfo, logWarn } = require('../../lib/logger');
+
+function coachingInvoicePath(orderId, accessToken) {
+  const q = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+  return `/api/orders/${encodeURIComponent(orderId)}/contract.pdf${q}`;
+}
+
+function coachingInvoiceUrl(orderId, accessToken) {
+  return `${getStoreUrl()}${coachingInvoicePath(orderId, accessToken)}`;
+}
 
 const GYMS = [
   { id: 'minimes', label: 'Minimes' },
@@ -104,7 +115,7 @@ function validateBooking(body = {}) {
   };
 }
 
-async function sendCoachingBookingEmail(booking) {
+async function sendCoachingBookingEmail(booking, { orderId, access_token } = {}) {
   const manager = getManagerContact(booking.gym);
   if (!manager?.email) return { sent: false, reason: 'no_manager' };
 
@@ -140,6 +151,10 @@ async function sendCoachingBookingEmail(booking) {
       html,
       replyTo: booking.email || defaultReplyTo(),
     });
+    const invoiceLink =
+      orderId && access_token
+        ? `<p><a href="${coachingInvoiceUrl(orderId, access_token)}" style="color:#C41E3A;font-weight:600">Télécharger votre facture</a> (séance ${(COACHING_SESSION_PRICE_CENTS / 100).toFixed(0)}&nbsp;€ TTC).</p>`
+        : '';
     // Accusé au client
     await sendEmailViaBrevo({
       to: booking.email,
@@ -147,6 +162,7 @@ async function sendCoachingBookingEmail(booking) {
       html: `<p>Bonjour ${booking.name},</p>
         <p>Nous avons bien reçu votre demande de coaching <strong>${activityLabel}</strong> à <strong>${gymLabel}</strong> le <strong>${dateLabel}</strong> (${slotLabel}).</p>
         <p>Le responsable de votre salle va vous recontacter pour confirmer.</p>
+        ${invoiceLink}
         <p>Sportivement,<br/>Boxing Center</p>`,
       replyTo: defaultReplyTo(),
     }).catch(() => null);
@@ -158,8 +174,9 @@ async function sendCoachingBookingEmail(booking) {
   }
 }
 
-async function persistCoachingBooking(booking, mail = {}) {
-  const orderId = `COACH-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+async function persistCoachingBooking(booking, mail = {}, ids = {}) {
+  const orderId = ids.orderId || `COACH-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+  const access_token = ids.access_token || crypto.randomBytes(16).toString('hex');
   const activityLabel = ACTIVITIES.find((a) => a.id === booking.activity)?.label || booking.activity;
   const slotLabel = listSlots().find((s) => s.id === booking.slot)?.label || booking.slot;
   const gymLabel = mail.manager?.label || GYMS.find((g) => g.id === booking.gym)?.label || booking.gym;
@@ -174,7 +191,7 @@ async function persistCoachingBooking(booking, mail = {}) {
     const { saveOrderAsync } = require('./order-persistence');
     await saveOrderAsync({
       order_id: orderId,
-      access_token: crypto.randomBytes(16).toString('hex'),
+      access_token,
       action: 'coaching_booking',
       booking_status: mail.sent ? 'sent' : mail.reason || 'queued',
       customer: {
@@ -201,6 +218,7 @@ async function persistCoachingBooking(booking, mail = {}) {
       product_snapshot: {
         name: `Coaching · ${activityLabel}`,
         display_name: `${activityLabel} · ${gymLabel} · ${formatFrDate(booking.date)} · ${slotLabel}`,
+        price_cents: COACHING_SESSION_PRICE_CENTS,
       },
       step: 8,
       payment: { status: 'n/a' },
@@ -210,22 +228,26 @@ async function persistCoachingBooking(booking, mail = {}) {
     });
   } catch (err) {
     logWarn('Réservation coaching non persistée', { order_id: orderId, error: err.message });
-    return { order_id: orderId, persisted: false };
+    return { order_id: orderId, access_token, persisted: false };
   }
-  return { order_id: orderId, persisted: true };
+  return { order_id: orderId, access_token, persisted: true };
 }
 
 async function bookCoaching(body = {}) {
   const check = validateBooking(body);
   if (!check.ok) return { ok: false, errors: check.errors };
-  const mail = await sendCoachingBookingEmail(check.data);
+  const orderId = `COACH-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+  const access_token = crypto.randomBytes(16).toString('hex');
+  const mail = await sendCoachingBookingEmail(check.data, { orderId, access_token });
   if (!mail.sent && mail.reason === 'brevo_error') {
     return { ok: false, errors: ['Envoi impossible pour le moment. Réessayez ou contactez votre salle.'] };
   }
-  const saved = await persistCoachingBooking(check.data, mail);
+  const saved = await persistCoachingBooking(check.data, mail, { orderId, access_token });
   return {
     ok: true,
     order_id: saved.order_id,
+    access_token: saved.access_token,
+    invoice_url: coachingInvoicePath(saved.order_id, saved.access_token),
     gym: check.data.gym,
     manager_label: mail.manager?.label || null,
     // En mode log (Brevo off), on considère quand même OK pour ne pas bloquer en local
@@ -252,4 +274,6 @@ module.exports = {
   validateBooking,
   bookCoaching,
   sendCoachingBookingEmail,
+  coachingInvoicePath,
+  coachingInvoiceUrl,
 };

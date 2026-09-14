@@ -749,7 +749,8 @@
         <td>${escapeHtml(o.booking_date || '—')}</td>
         <td>${escapeHtml(o.slot || '—')}</td>
         <td>${status}</td>
-        <td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
+          <a class="btn sm secondary" href="/api/admin/orders/${encodeURIComponent(o.order_id)}/contract.pdf" target="_blank" rel="noopener">Facture</a>
           <button type="button" class="btn sm secondary archive-coach" data-id="${escapeHtml(o.order_id)}" title="Archiver">Archiver</button>
         </td>
       </tr>`;
@@ -2313,6 +2314,43 @@
         if (wrap) wrap.hidden = false;
       }
 
+      const botErrorsWrap = document.getElementById('botErrorsWrap');
+      const botErrorsBody = document.getElementById('botErrorsBody');
+      const botErrorsSum = document.getElementById('botErrorsSummary');
+      const botErrors = data.bot_errors || [];
+      const botCategoryLabel = {
+        adresse_non_fr: 'Adresse non FR',
+        creation_membre: 'Création membre',
+        iban: 'IBAN / RIB',
+        doublon: 'Doublon',
+        ancien_abo: 'Ancien abo',
+        badge: 'Badge',
+        autre: 'Autre',
+      };
+      if (botErrorsBody) {
+        botErrorsBody.innerHTML = botErrors.length
+          ? botErrors
+              .map((b) => `
+            <tr>
+              <td style="font-weight:600">${escapeHtml(b.name || b.order_id)}</td>
+              <td>${escapeHtml(gymLabel(b.gym) || b.gym || '—')}</td>
+              <td>${b.paid_at ? new Date(b.paid_at).toLocaleString('fr-FR') : '—'}</td>
+              <td>${b.signed ? 'Signé' : 'Non signé'}</td>
+              <td>${escapeHtml(botCategoryLabel[b.category] || b.category || '—')}</td>
+              <td title="${escapeHtml(b.bot_error || '')}">${escapeHtml(b.bot_error || b.bot_status || 'Erreur bot')}</td>
+            </tr>`
+              )
+              .join('')
+          : '';
+      }
+      if (botErrorsSum) {
+        const foreignCount = botErrors.filter((b) => b.foreign_address).length;
+        botErrorsSum.textContent = botErrors.length
+          ? `${data.bot_errors_count || botErrors.length} erreur(s) bot${foreignCount ? ` · ${foreignCount} adresse(s) hors France` : ''}.`
+          : '';
+      }
+      if (botErrorsWrap) botErrorsWrap.hidden = botErrors.length === 0;
+
       const missingWrap = document.getElementById('missingFichesWrap');
       const missingBody = document.getElementById('missingFichesBody');
       const missingSum = document.getElementById('missingFichesSummary');
@@ -2321,7 +2359,6 @@
         en_cours: 'En cours (2 min)',
         bot_error: 'Erreur bot',
         envoye_sans_retour: 'Déjà traité côté bot — sync en cours',
-        bot_error: 'Erreur bot',
         jamais_envoye: 'Pas encore envoyé',
       };
       if (missingBody) {
