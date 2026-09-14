@@ -350,7 +350,16 @@ test('dispatch : 1 WhatsApp max, 2 min, Portet / St-Cyprien / Minimes', async ()
   assert.equal(out.sent, 1);
 });
 
-test('SMS Twilio une seule fois, e-mails J+0 J+1 J+2', async () => {
+test('sans sendWa, aucun SMS (Twilio retiré)', async () => {
+  const d1 = await sendCustomerNudge(essai(), 1, {
+    sendEmail: async () => ({ sent: true }),
+  });
+  assert.equal(d1.email.sent, true);
+  assert.equal(d1.whatsapp.sent, false);
+  assert.equal(d1.whatsapp.reason, 'sms_disabled');
+});
+
+test('SMS mock une seule fois, e-mails J+0 J+1 J+2', async () => {
   let sms = 0;
   const sendWa = async () => {
     sms += 1;

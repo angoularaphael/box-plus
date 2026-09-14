@@ -271,6 +271,25 @@ test('chaque vente matériel part à boxingcenter31@gmail.com, toutes salles', (
   }
 });
 
+test('sans sendWa, aucun SMS Twilio — email club seulement', async () => {
+  const order = {
+    order_id: 'MAT-notwilio',
+    order_type: 'materiel',
+    pickup_gym: 'Portet-sur-Garonne',
+    payment: { method: 'payplug', status: 'paid' },
+    customer: { first_name: 'Léa', last_name: 'Martin', phone: '0611223344' },
+    items: [{ name: 'Gants', qty: 1, line_total_cents: 1370 }],
+  };
+  const out = await notifyMaterielSale(order, {
+    sendEmail: async () => ({ sent: true, to: 'boxingcenter31@gmail.com', via: 'resend' }),
+  });
+  assert.equal(out.sent, true);
+  assert.equal(out.via, 'email');
+  assert.equal(out.whatsapp.sent, false);
+  assert.equal(out.whatsapp.reason, 'sms_disabled');
+  assert.equal(out.email.sent, true);
+});
+
 test('sans LIVE, le manager reçoit SMS + le club reçoit email', async () => {
   const prev = process.env.MATERIEL_COACH_NOTIFY_LIVE;
   delete process.env.MATERIEL_COACH_NOTIFY_LIVE;

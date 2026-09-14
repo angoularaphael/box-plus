@@ -253,17 +253,11 @@ async function logoutWhatsAppBot() {
   return { ok: true, channel: 'sms', skipped: true };
 }
 
-async function sendWhatsAppMessage(phone, message, { timeoutMs = 20000, source = 'boutique', transactional = false } = {}) {
+async function sendWhatsAppMessage(phone, message, { timeoutMs = 20000, source = 'boutique' } = {}) {
   const to = toE164(phone);
   if (!to) throw new Error('Numéro invalide');
   if (!isAllowedBoutiqueSms(message, source)) {
     throw new Error('sms_disabled');
-  }
-  if (transactional) {
-    const { sendTransactionalSms } = require('./twilio-sms');
-    const result = await sendTransactionalSms(phone, message, { source });
-    if (!result.ok) throw new Error(result.error || 'twilio_sms_failed');
-    return { sent: true, via: 'twilio', sid: result.sid, to };
   }
   const { isAllWhatsAppPaused } = require('./whatsapp-outbound');
   if (String(source) !== 'offre-duo-ami' && isAllWhatsAppPaused()) throw new Error('Envois SMS en pause');

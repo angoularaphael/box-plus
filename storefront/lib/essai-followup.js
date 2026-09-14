@@ -12,7 +12,6 @@ const { getStoreUrl } = require('../../lib/app-urls');
 const { logInfo, logWarn } = require('../../lib/logger');
 const { isMembershipContract } = require('../../lib/sale-contract-match');
 const { sendWhatsAppMessage } = require('./whatsapp-bot');
-const { sendTransactionalSms } = require('./twilio-sms');
 const { buildOfferCampaignEmail } = require('./campaign-email');
 
 const ESSAI_SINCE_MS = Date.parse('2026-08-13T00:00:00+02:00');
@@ -295,14 +294,6 @@ async function sendCustomerNudge(
   const phone = orderPhone(order) || order.customer_short?.phone || order.customer?.phone || '';
   const out = { day, email: { sent: false }, whatsapp: { sent: false }, copy };
   if (dryRun) return { ...out, dry: true };
-  const liveWa = !sendWa;
-  const waSend =
-    sendWa ||
-    (async (to, text) => {
-      const result = await sendTransactionalSms(to, text, { source: 'essai-relance' });
-      if (result.ok) return { sent: true, via: 'twilio', sid: result.sid };
-      return { sent: false, error: result.error || 'sms_failed' };
-    });
 
   if (emailTo) {
     try {
@@ -333,24 +324,19 @@ async function sendCustomerNudge(
 
   if (essaiSmsAlreadySent(order)) {
     out.whatsapp = { sent: false, skipped: true, reason: 'sms_once' };
+  } else if (!sendWa) {
+    out.whatsapp = { sent: false, skipped: true, reason: 'sms_disabled' };
   } else if (phone) {
-    const { isPromoWhatsAppPaused, isOfferPlacesSmsPaused } = require('./whatsapp-outbound');
-    if (liveWa && isOfferPlacesSmsPaused()) {
-      out.whatsapp = { sent: false, skipped: true, reason: 'offer_places_sms_paused', to: phone };
-    } else if (liveWa && isPromoWhatsAppPaused()) {
-      out.whatsapp = { sent: false, skipped: true, reason: 'promo_paused', to: phone };
-    } else {
-      try {
-        const wa = await waSend(phone, copy.text);
-        if (wa && (wa.sent === false || wa.skipped)) {
-          out.whatsapp = { sent: false, skipped: true, reason: wa.reason || 'skipped', to: phone };
-        } else {
-          out.whatsapp = { sent: true, to: phone, wa };
-        }
-      } catch (err) {
-        out.whatsapp = { sent: false, error: err.message, to: phone };
-        logWarn('WhatsApp relance essai 10 € client', { order_id: order.order_id, error: err.message });
+    try {
+      const wa = await sendWa(phone, copy.text);
+      if (wa && (wa.sent === false || wa.skipped)) {
+        out.whatsapp = { sent: false, skipped: true, reason: wa.reason || 'skipped', to: phone };
+      } else {
+        out.whatsapp = { sent: true, to: phone, wa };
       }
+    } catch (err) {
+      out.whatsapp = { sent: false, error: err.message, to: phone };
+      logWarn('WhatsApp relance essai 10 € client', { order_id: order.order_id, error: err.message });
     }
   } else {
     out.whatsapp = { sent: false, reason: 'no_phone' };

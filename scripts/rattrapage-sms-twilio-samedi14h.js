@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * Rattrapage SMS Twilio — portet_clients depuis samedi 5 sept. 14h Paris.
+ * Rattrapage SMS Twilio — INACTIF (Twilio SMS coupé).
  *   node scripts/rattrapage-sms-twilio-samedi14h.js
  *   node scripts/rattrapage-sms-twilio-samedi14h.js --dry-run
  */
