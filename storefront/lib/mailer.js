@@ -403,7 +403,7 @@ async function sendTestEmail(to) {
       html: `<!DOCTYPE html><html lang="fr"><body style="font-family:Arial,sans-serif;padding:24px">
         <h1 style="color:#0B1F3A">Test email BOXPLUS</h1>
         <p>Ceci est un email de test envoyé depuis la boutique Boxing Center.</p>
-        <p style="color:#6B7280;font-size:13px">Si vous recevez ce message, l'envoi Resend (david@boxingcenter.fr) fonctionne correctement.</p>
+        <p style="color:#6B7280;font-size:13px">Si vous recevez ce message, l'envoi Resend (no-reply@boxingcenter.fr) fonctionne correctement.</p>
       </body></html>`,
       fromName: 'Boxing Center',
       replyTo: defaultReplyTo(),

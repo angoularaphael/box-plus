@@ -2,7 +2,7 @@
 
 /**
  * Envoi test campagne 29/259.
- * Mail = Resend (david@boxingcenter.fr). WhatsApp = bot boutique.
+ * Mail = Resend (no-reply@boxingcenter.fr). WhatsApp = bot boutique.
  *
  *   node scripts/send-offer-campaign-test.js           # mail seulement
  *   node scripts/send-offer-campaign-test.js --marque linuxcam05@gmail.com
@@ -40,7 +40,7 @@ process.env.STORE_URL = 'https://boutique.boxingcenter.fr';
 process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || 'resend';
 process.env.EMAIL_UNSUBSCRIBE_BASE =
   process.env.EMAIL_UNSUBSCRIBE_BASE || 'https://manager.boxingcenter.fr';
-process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'david@boxingcenter.fr';
+process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
 process.env.RESEND_REPLY_TO = 'boxingcentertls@gmail.com';
 
 const { customerNudgeCopy } = require('../storefront/lib/essai-followup');

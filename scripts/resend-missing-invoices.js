@@ -2,14 +2,14 @@
 'use strict';
 /**
  * Rattrapage factures boutique jamais parties (email_sent vide).
- * Envoi Resend david@boxingcenter.fr + PDF facture.
+ * Envoi Resend no-reply@boxingcenter.fr + PDF facture.
  *
  *   node scripts/resend-missing-invoices.js --send
  *   node scripts/resend-missing-invoices.js --send --limit=10
  */
 require('dotenv').config();
 process.env.BOXPLUS_ORDERS_REMOTE = '1';
-process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'david@boxingcenter.fr';
+process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
 process.env.RESEND_SENDER_NAME = 'Boxing Center';
 process.env.RESEND_REPLY_TO = process.env.RESEND_REPLY_TO || 'boxingcentertls@gmail.com';
 

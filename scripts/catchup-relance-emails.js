@@ -36,7 +36,7 @@ loadEnvFile(path.join(ROOT, '..', 'gestion-manager', 'bots', 'deploy', 'email-re
 process.env.BOXPLUS_ORDERS_REMOTE = '1';
 process.env.RESEND_SENDER_NAME = process.env.RESEND_SENDER_NAME || 'David';
 process.env.RESEND_SENDER_EMAIL =
-  process.env.RESEND_SENDER_EMAIL || 'david@boxingcenter.fr';
+  process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
 delete process.env.DRY_RUN;
 
 const SEND = process.argv.includes('--send');

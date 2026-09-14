@@ -33,11 +33,11 @@ test('Resend accepte un champ cc', () => {
   assert.match(src, /body\.cc = ccList/);
 });
 
-test('Resend : expéditeur campagne = david@boxingcenter.fr', () => {
+test('Resend : expéditeur campagne = no-reply@boxingcenter.fr', () => {
   const prev = process.env.RESEND_SENDER_EMAIL;
   delete process.env.RESEND_SENDER_EMAIL;
   assert.equal(senderEmail(), DEFAULT_SENDER_EMAIL);
-  assert.equal(DEFAULT_SENDER_EMAIL, 'david@boxingcenter.fr');
+  assert.equal(DEFAULT_SENDER_EMAIL, 'no-reply@boxingcenter.fr');
   if (prev == null) delete process.env.RESEND_SENDER_EMAIL;
   else process.env.RESEND_SENDER_EMAIL = prev;
 });

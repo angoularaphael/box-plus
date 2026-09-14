@@ -1,13 +1,13 @@
 'use strict';
 
 /**
- * Resend — factures / confirmations / campagnes (david@boxingcenter.fr).
+ * Resend — factures / confirmations / campagnes (no-reply@boxingcenter.fr).
  * Pas Brevo / suzinabot : ce domaine est banni.
  * https://resend.com
  */
 const fs = require('fs');
 const API = 'https://api.resend.com/emails';
-const DEFAULT_SENDER_EMAIL = 'david@boxingcenter.fr';
+const DEFAULT_SENDER_EMAIL = 'no-reply@boxingcenter.fr';
 const DEFAULT_SENDER_NAME = 'David';
 const DEFAULT_REPLY_TO = 'boxingcentertls@gmail.com';
 
