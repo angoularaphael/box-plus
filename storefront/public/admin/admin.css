@@ -922,6 +922,12 @@ button.pan-kpi:hover {
 .flux-bar--flyer { background: #e8001c; position: absolute; bottom: 0; left: 10px; width: 10px; }
 .flux-n { font-size: 11px; font-weight: 700; color: #20254b; }
 .flux-col small { font-size: 10px; color: #5c6370; }
+.flux-legend { display: flex; flex-wrap: wrap; gap: 12px 18px; margin-top: 8px; }
+.flux-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.flux-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.flux-dot--all { background: #20254b; }
+.flux-dot--flyer { background: #e8001c; }
+.flux-dot--email { background: #1b8a4c; }
 
 .dossier-overlay {
   position: fixed;

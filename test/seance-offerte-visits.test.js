@@ -24,12 +24,16 @@ test('le backoffice compte les visites e-mail à part', () => {
   assert.equal(summary.flyer, 1);
   assert.equal(summary.other, 1);
   assert.equal(summary.days[0].email, 2);
+  assert.deepEqual(summary.other_sources, [{ name: 'Accès direct', count: 1 }]);
 });
 
 test('l’admin affiche le compteur e-mail et le lien ?src=email', () => {
   const adminJs = fs.readFileSync(path.join(__dirname, '../storefront/public/js/admin.js'), 'utf8');
   const adminHtml = fs.readFileSync(path.join(__dirname, '../storefront/public/admin/index.html'), 'utf8');
-  assert.match(adminJs, /depuis l’e-mail/);
+  assert.match(adminJs, /e-mail David/);
   assert.match(adminJs, /d\.email/);
   assert.match(adminHtml, /\?src=email/);
+  assert.match(adminHtml, /Bleu = total des visites/);
+  assert.match(adminHtml, /Rouge = Flyer QR/);
+  assert.match(adminHtml, /Vert = E-mail David/);
 });

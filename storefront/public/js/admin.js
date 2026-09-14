@@ -2230,7 +2230,13 @@
               .join('')
           : '<p class="admin-section-desc">Pas encore de visites séance offerte.</p>';
         if (fluxSummary) {
-          fluxSummary.textContent = `${flux?.total || 0} visites · ${flux?.email || 0} depuis l’e-mail · ${flux?.flyer || 0} depuis le flyer QR · ${flux?.other || 0} autres`;
+          const otherBits = (flux?.other_sources || [])
+            .map((s) => `${s.name} ${s.count}`)
+            .join(', ');
+          const otherTxt = flux?.other
+            ? ` · ${flux.other} autres${otherBits ? ` (${otherBits})` : ''}`
+            : '';
+          fluxSummary.textContent = `${flux?.total || 0} visites · ${flux?.email || 0} e-mail David · ${flux?.flyer || 0} flyer QR${otherTxt}`;
         }
         fluxWrap.hidden = false;
       }
