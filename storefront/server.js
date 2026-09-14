@@ -1743,9 +1743,20 @@ function createApp() {
         withTimeout(summarizeFunnelEvents(30), 3000, null),
       ]);
 
-      const inscriptionPaid = await enrichOrdersWithJobErrors(inscriptionPaidRaw, getSupabase()).catch(
-        () => inscriptionPaidRaw
-      );
+      let inscriptionPaid = inscriptionPaidRaw;
+      try {
+        let sb = null;
+        try {
+          sb = getSupabase();
+        } catch {
+          sb = null;
+        }
+        if (typeof enrichOrdersWithJobErrors === 'function') {
+          inscriptionPaid = await enrichOrdersWithJobErrors(inscriptionPaidRaw, sb);
+        }
+      } catch {
+        inscriptionPaid = inscriptionPaidRaw;
+      }
 
       const { rows, totals } = buildMonthlySalesRows({
         inscriptionOrders: inscriptionPaid,

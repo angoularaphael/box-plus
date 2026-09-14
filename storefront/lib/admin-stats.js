@@ -2,6 +2,7 @@
 
 const { matchGymSlug, BOXING_CENTER_GYM_SLUGS } = require('../../lib/gym-slugs');
 const { orderNeedsDeciplusSale, deciplusSaleSettled } = require('./deciplus-sale-reconcile');
+const { hasValidFrenchAddress } = require('../../lib/fr-address');
 
 const PARIS_TZ = 'Europe/Paris';
 
@@ -446,6 +447,103 @@ function missingFicheRows(
   return rows.sort((a, b) => Date.parse(b.paid_at || 0) - Date.parse(a.paid_at || 0));
 }
 
+function isBotErrorOrder(order = {}) {
+  if (order.manual_migration || order.skip_bot) return false;
+  const st = String(order.bot_status || order._job_status || order._job_state || '').toLowerCase();
+  if (order.bot_error || order._job_error) return true;
+  return ['manual_review', 'error', 'failover', 'failed'].includes(st);
+}
+
+async function enrichOrdersWithJobErrors(orders = [], sb) {
+  if (!sb || !Array.isArray(orders) || !orders.length) return orders || [];
+  const needsJob = orders.filter(
+    (o) =>
+      isMembershipSale(o) &&
+      !o.manual_migration &&
+      !o.skip_bot &&
+      !o.bot_error &&
+      !['success', 'manual_ok', 'manual_coach'].includes(String(o.bot_status || '').toLowerCase())
+  );
+  const ids = needsJob.map((o) => o.order_id).filter(Boolean);
+  if (!ids.length) return orders;
+
+  const jobMap = new Map();
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100);
+    const { data, error } = await sb
+      .from('boxplus_job_actions')
+      .select('order_id, status, lifecycle_state, error_message')
+      .in('order_id', chunk)
+      .eq('action', 'sale');
+    if (error) throw error;
+    for (const job of data || []) jobMap.set(job.order_id, job);
+  }
+
+  return orders.map((order) => {
+    const job = jobMap.get(order.order_id);
+    if (!job) return order;
+    const jobStatus = String(job.status || '').toLowerCase();
+    const jobState = String(job.lifecycle_state || '').toLowerCase();
+    const jobError = job.error_message ? String(job.error_message) : null;
+    const jobIsError =
+      Boolean(jobError) ||
+      jobStatus === 'manual_review' ||
+      jobStatus === 'failed' ||
+      jobState === 'manual_review' ||
+      jobState === 'failed';
+    if (!jobIsError) return order;
+    return {
+      ...order,
+      bot_error: order.bot_error || jobError,
+      bot_status:
+        order.bot_status ||
+        (jobStatus === 'manual_review' || jobState === 'manual_review'
+          ? 'manual_review'
+          : jobStatus || null),
+      _job_status: job.status || null,
+      _job_state: job.lifecycle_state || null,
+      _job_error: jobError,
+    };
+  });
+}
+
+function classifyBotError(order = {}, errorText = '') {
+  const err = String(errorText || order.bot_error || '').toLowerCase();
+  const cf = order.customer_full || order.customer || {};
+  if (!hasValidFrenchAddress(cf)) return 'adresse_non_fr';
+  if (/id introuvable|formulaire non valid/i.test(err)) return 'creation_membre';
+  if (/iban|rib|mandat/i.test(err)) return 'iban';
+  if (/doublon|duplicate/i.test(err)) return 'doublon';
+  if (/ancien abo|contrat actif/i.test(err)) return 'ancien_abo';
+  if (/badge/i.test(err)) return 'badge';
+  return 'autre';
+}
+
+function botErrorRows(orders = [], { fromMonth = '', toMonth = '' } = {}) {
+  const rows = [];
+  for (const o of orders) {
+    if (!isBotErrorOrder(o)) continue;
+    const paidAt = membershipPaidAt(o) || o.updated_at || o.created_at;
+    if ((fromMonth || toMonth) && !monthInFilter(paidAt, fromMonth, toMonth)) continue;
+    const cf = o.customer_full || o.customer || {};
+    rows.push({
+      order_id: o.order_id,
+      name: orderDisplayName(o),
+      gym: gymSlugFromOrder(o),
+      paid_at: paidAt,
+      signed: Boolean(o.signature?.signed_at),
+      bot_status: o.bot_status || null,
+      bot_error: o.bot_error ? String(o.bot_error).slice(0, 200) : null,
+      member_id: o.deciplus_member_id || null,
+      sale_id: o.deciplus_sale_id || null,
+      category: classifyBotError(o),
+      foreign_address: !hasValidFrenchAddress(cf),
+      product: o.product_snapshot?.name || o.product_name || null,
+    });
+  }
+  return rows.sort((a, b) => Date.parse(b.paid_at || 0) - Date.parse(a.paid_at || 0));
+}
+
 function bumpProduct(map, { id, name, kind, qty = 1, revenue = 0 }) {
   const key = canonicalProductKey({ id, name });
   if (!map[key]) {
@@ -673,6 +771,7 @@ function buildAdminSalesExtras({
     fromMonth,
     toMonth,
   });
+  const bot_errors = botErrorRows(inscriptionOrders, { fromMonth, toMonth });
 
   return {
     today: { day: today, count: today_count, revenue: today_revenue },
@@ -685,6 +784,8 @@ function buildAdminSalesExtras({
     missing_deciplus_sale,
     missing_fiches,
     missing_fiches_count: missing_fiches.filter((row) => !row.in_progress).length,
+    bot_errors,
+    bot_errors_count: bot_errors.length,
   };
 }
 
@@ -702,6 +803,10 @@ module.exports = {
   collectInscriptionMaterielOrders,
   missingFicheRows,
   missingFicheReason,
+  isBotErrorOrder,
+  classifyBotError,
+  botErrorRows,
+  enrichOrdersWithJobErrors,
   hasDeciplusFiche,
   dispatchInProgress,
   orderDisplayName,
