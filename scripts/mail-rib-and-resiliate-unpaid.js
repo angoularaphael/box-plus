@@ -2,7 +2,11 @@
 'use strict';
 /**
  * 1) Mail demande RIB aux prélèvements bloqués SANS mandat (sauf Etogo).
- * 2) Résilie les contrats Impayé AVEC RIB (mandat) qui bloquent — hors Balma.
+ * 2) Résilie les contrats Impayé AVEC RIB (mandat) — hors Balma.
+ *    Clique « Résilier » (jamais « Annuler la vente »).
+ *    Détail échéance : AM04 / fonds insuffisant → 3 impayés ;
+ *    AC01 / RIB inexploitable, MS02 / refus débiteur, MD01 / absence de mandat,
+ *    erreur JSON → immédiat ; fiche sans e-mail ni téléphone → immédiat aussi.
  *
  *   node scripts/mail-rib-and-resiliate-unpaid.js --apply
  *   node scripts/mail-rib-and-resiliate-unpaid.js --apply --mail-only
@@ -35,10 +39,10 @@ const {
 const {
   findActiveContracts,
   cancelOneContract,
-  isPendingOrFutureContract,
 } = require('../bot/cancel-sale');
 const { isStaleOrInactiveAbo } = require('../lib/replace-existing-abo');
 const { isDeciplusBadgeLabel } = require('../lib/catalog-sale');
+const { shouldResiliateUnpaid, classifySepaFromCandidate } = require('../lib/sepa-unpaid-policy');
 const { resolveSaleGymConfig, matchGymSlug } = require('../lib/gym-slugs');
 const { sendEmailViaResend, isConfigured: resendOk } = require('../storefront/lib/resend-send');
 
@@ -190,6 +194,52 @@ async function openFiche(page, memberId, gym) {
   if (!edited) await openMemberCheck(page, memberId, gymCfg);
 }
 
+async function readEcheanceDetailModal(page) {
+  for (const ctx of [page, ...(page.frames?.() || [])]) {
+    const text = await ctx
+      .evaluate(() => {
+        const nodes = [...document.querySelectorAll('div, table, form, section, .modal')];
+        const hit = nodes.find((el) => {
+          const t = String(el.innerText || '');
+          return (
+            /D[ée]tail de l['’]éch[ée]ance/i.test(t) &&
+            /Remarques|Status|Id SEPA/i.test(t) &&
+            t.length < 5000
+          );
+        });
+        return hit ? String(hit.innerText || '') : '';
+      })
+      .catch(() => '');
+    if (text) return text;
+  }
+  return '';
+}
+
+async function closeEcheanceDetailModal(page) {
+  for (const ctx of [page, ...(page.frames?.() || [])]) {
+    const ok = ctx.getByRole('button', { name: /^OK$/i }).first();
+    if ((await ok.count()) > 0 && (await ok.isVisible().catch(() => false))) {
+      await ok.click({ force: true }).catch(() => {});
+      await page.waitForTimeout(250);
+      return;
+    }
+  }
+  await page.keyboard.press('Escape').catch(() => {});
+}
+
+async function openEcheanceDetail(frame, page, eid) {
+  const etat = frame.locator(`select[name="etat_${eid}"]`).first();
+  if ((await etat.count()) === 0) return '';
+  const row = etat.locator('xpath=ancestor::tr[1]');
+  const link = row.locator('a, button').filter({ hasText: /d[ée]tail/i }).first();
+  if ((await link.count()) === 0) return '';
+  await link.click({ force: true }).catch(() => {});
+  await page.waitForTimeout(700);
+  const text = await readEcheanceDetailModal(page);
+  await closeEcheanceDetailModal(page);
+  return text;
+}
+
 async function scrapeUnpaidWithIds(page) {
   const origin = new URL(page.url()).origin;
   await page.goto(`${origin}/nextgen/legacy?path=${encodeURIComponent('/presta_echeance.php')}`, {
@@ -278,6 +328,20 @@ async function scrapeUnpaidWithIds(page) {
     if (signature && signature === lastSignature) break;
     lastSignature = signature;
     all.push(...hits);
+    const counts = {};
+    for (const r of all) {
+      if (!r.rum) continue;
+      counts[r.idm] = (counts[r.idm] || 0) + 1;
+    }
+    for (const h of hits) {
+      if (!h.rum || skipResiliateName(h.name)) continue;
+      const n = counts[h.idm] || 0;
+      const remarksSoFar = all.filter((x) => x.idm === h.idm).flatMap((x) => x.remarks || []);
+      const sepa = classifySepaFromCandidate({ remarks: remarksSoFar, unpaid_count: n });
+      if (sepa.hasImmediateSepaReason || n >= 3) continue;
+      const remark = await openEcheanceDetail(frame, page, h.eid);
+      if (remark) h.remarks = [remark];
+    }
     console.log(
       'unpaid page',
       pageNo + 1,
@@ -313,12 +377,18 @@ async function scrapeUnpaidWithIds(page) {
         gym: r.gym,
         product: r.product,
         n: 0,
+        unpaid_count: 0,
         active: false,
         badge: /^badge$/i.test(String(r.product || '').trim()),
         rum: r.rum,
+        remarks: [],
       };
     }
     byMember[key].n += 1;
+    byMember[key].unpaid_count += 1;
+    for (const remark of r.remarks || []) {
+      if (!byMember[key].remarks.includes(remark)) byMember[key].remarks.push(remark);
+    }
     if (r.active) byMember[key].active = true;
     if (r.product && !byMember[key].product) byMember[key].product = r.product;
     if (!/^badge$/i.test(String(r.product || '').trim())) byMember[key].badge = false;
@@ -409,6 +479,23 @@ async function resiliateUnpaid(page, report) {
       const gymCfg = resolveSaleGymConfig(gymSlug, { gym: gymSlug });
       await closeGreyboxIfOpen(page).catch(() => {});
       await openMemberCheck(page, memberId, gymCfg);
+      const contact = await readFicheContact(page);
+      row.email = String(contact.email || '').trim();
+      row.phone = String(contact.phone || '').trim();
+      const decision = shouldResiliateUnpaid({ ...t, email: row.email, phone: row.phone });
+      if (!decision.ok) {
+        console.log(
+          'CANCEL_SKIP',
+          decision.why,
+          t.name,
+          `#${t.member}`,
+          `n=${t.n}`,
+          (t.remarks || []).slice(0, 1).join(' ').slice(0, 80)
+        );
+        report.resiliate.push({ ...t, ...row, skipped: decision.why, sepa: decision.sepaReasons });
+        continue;
+      }
+      row.resiliate_why = decision.why;
       const contracts = await findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => []);
       const live = contracts.filter((c) => !isStaleOrInactiveAbo(c.label));
       const badge = Boolean(t.badge);
@@ -434,8 +521,7 @@ async function resiliateUnpaid(page, report) {
         continue;
       }
       for (const c of pick) {
-        const forceVoid = Boolean(c.isBadge) || isPendingOrFutureContract(c.label);
-        const result = await cancelOneContract(page, c, { forceVoid });
+        const result = await cancelOneContract(page, c, { neverVoid: true });
         row.cancelled.push({
           idc: c.idc,
           ok: Boolean(result.cancelled),
