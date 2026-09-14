@@ -4,9 +4,10 @@
  * 1) Mail demande RIB aux prélèvements bloqués SANS mandat (sauf Etogo).
  * 2) Résilie les contrats Impayé AVEC RIB (mandat) — hors Balma.
  *    Clique « Résilier » (jamais « Annuler la vente »).
- *    Détail échéance : AM04 / fonds insuffisant → 3 impayés ;
- *    AC01 / RIB inexploitable, MS02 / refus débiteur, MD01 / absence de mandat,
- *    erreur JSON → immédiat ; fiche sans e-mail ni téléphone → immédiat aussi.
+ *    Politique SEPA (lib/sepa-unpaid-policy.js) :
+ *    AM04 + MD01 → 3 impayés ; MD06/MS02/MS03/AC04/JSON → immédiat ;
+ *    AC01 + RC01 → mail RIB au 1er impayé, résil au 2e ; AC06 → résil au 2e ;
+ *    fiche sans e-mail ni téléphone → immédiat.
  *
  *   node scripts/mail-rib-and-resiliate-unpaid.js --apply
  *   node scripts/mail-rib-and-resiliate-unpaid.js --apply --mail-only
@@ -42,7 +43,11 @@ const {
 } = require('../bot/cancel-sale');
 const { isStaleOrInactiveAbo } = require('../lib/replace-existing-abo');
 const { isDeciplusBadgeLabel } = require('../lib/catalog-sale');
-const { shouldResiliateUnpaid, classifySepaFromCandidate } = require('../lib/sepa-unpaid-policy');
+const {
+  shouldResiliateUnpaid,
+  shouldSendRibReminder,
+  classifySepaFromCandidate,
+} = require('../lib/sepa-unpaid-policy');
 const { resolveSaleGymConfig, matchGymSlug } = require('../lib/gym-slugs');
 const { sendEmailViaResend, isConfigured: resendOk } = require('../storefront/lib/resend-send');
 
@@ -54,6 +59,7 @@ const DATA_DIR = path.join(__dirname, '..', 'data');
 const UNPAID_FILE = path.join(DATA_DIR, 'unpaid-one-1788996089487.json');
 const MAIL_STATE = path.join(DATA_DIR, 'missing-rib-emails-sent.json');
 const CANCEL_STATE = path.join(DATA_DIR, 'resiliate-unpaid-rib-state.json');
+const RIB_REMINDER_STATE = path.join(DATA_DIR, 'unpaid-rib-reminder-sent.json');
 const OUT = path.join(DATA_DIR, `mail-rib-resiliate-${Date.now()}.json`);
 
 const RIB_MAIL_TARGETS = [
@@ -338,7 +344,7 @@ async function scrapeUnpaidWithIds(page) {
       const n = counts[h.idm] || 0;
       const remarksSoFar = all.filter((x) => x.idm === h.idm).flatMap((x) => x.remarks || []);
       const sepa = classifySepaFromCandidate({ remarks: remarksSoFar, unpaid_count: n });
-      if (sepa.hasImmediateSepaReason || n >= 3) continue;
+      if (n >= (sepa.policy?.cancelAt ?? 3)) continue;
       const remark = await openEcheanceDetail(frame, page, h.eid);
       if (remark) h.remarks = [remark];
     }
@@ -462,6 +468,7 @@ async function sendRibMails(page, report) {
 async function resiliateUnpaid(page, report) {
   const targets = await scrapeUnpaidWithIds(page);
   const state = loadJson(CANCEL_STATE, { done: {} });
+  const ribReminderState = loadJson(RIB_REMINDER_STATE, { sent: {} });
   let n = 0;
   console.log('Résiliation impayés avec RIB', targets.length, 'cibles');
   for (const t of targets) {
@@ -482,6 +489,44 @@ async function resiliateUnpaid(page, report) {
       const contact = await readFicheContact(page);
       row.email = String(contact.email || '').trim();
       row.phone = String(contact.phone || '').trim();
+      const sepa = classifySepaFromCandidate(t);
+      const ribCheck = shouldSendRibReminder(
+        { ...t, email: row.email, phone: row.phone },
+        sepa,
+        ribReminderState.sent[stateKey]
+      );
+      if (ribCheck.ok) {
+        if (!APPLY) {
+          row.rib_email = { skipped: 'dry_run', to: row.email };
+          console.log('RIB_MAIL_DRY', t.name, row.email);
+        } else if (!resendOk()) {
+          row.rib_email = { skipped: 'no_resend_key' };
+        } else {
+          const mail = buildRibEmail({
+            firstName: firstNameOf(contact.prenom || t.name),
+            product: t.product,
+          });
+          const out = await sendEmailViaResend({
+            to: row.email,
+            subject: mail.subject,
+            text: mail.text,
+            html: mail.html,
+            fromName: 'Boxing Center',
+            replyTo: 'boxingcentertls@gmail.com',
+            headers: { 'X-Transactional': 'true' },
+            tags: [{ name: 'category', value: 'unpaid-rib-reminder' }],
+          });
+          ribReminderState.sent[stateKey] = {
+            at: new Date().toISOString(),
+            email: row.email,
+            messageId: out.messageId,
+            sepa: sepa.sepaReasons,
+          };
+          saveJson(RIB_REMINDER_STATE, ribReminderState);
+          row.rib_email = { sent: true, messageId: out.messageId, to: row.email };
+          console.log('RIB_MAIL_OK', t.name, row.email, out.messageId);
+        }
+      }
       const decision = shouldResiliateUnpaid({ ...t, email: row.email, phone: row.phone });
       if (!decision.ok) {
         console.log(
