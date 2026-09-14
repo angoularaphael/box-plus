@@ -269,6 +269,7 @@ async function processCancelJob(page, order) {
     const result = await cancelSale(page, memberId, {
       cancelDate: order.cancel_date || order.effective_date || null,
       cancelReason: order.cancel_reason || null,
+      neverVoid: true,
     });
     if (result?.refused && result.reason === 'comptant_refused') {
       await pushCancelStatus('error', {
@@ -288,10 +289,12 @@ async function processCancelJob(page, order) {
     }
     await pushCancelStatus('done', { cancelledCount: result?.cancelled_count ?? null, memberId });
     try {
-      const { reconcileActiveBadges } = require('./sale');
+      const saleMod = require('./sale');
       const { resolveSaleGymConfig } = require('../lib/gym-slugs');
       const gymConfig = resolveSaleGymConfig(getGymConfig(order.gym || 'minimes'));
-      await reconcileActiveBadges(page, memberId, gymConfig, { keepOne: true });
+      if (typeof saleMod.reconcileActiveBadges === 'function') {
+        await saleMod.reconcileActiveBadges(page, memberId, gymConfig, { keepOne: true });
+      }
     } catch (err) {
       logWarn('Badges orphelins non alignés après résiliation', {
         member_id: memberId,
@@ -432,12 +435,20 @@ async function processSaleJob(page, order, jobMeta = {}) {
   if (isPayplug4xPrelevementOrder(order)) {
     productConfig.auto_badge = false;
     productConfig.paiement_comptant = false;
+    productConfig.requires_iban = true;
+    productConfig.skip_rib_prompt = false;
+    productConfig.payplug_4x_prelevement = true;
   }
 
   const { isAnnualPromoProduct } = require('../lib/sale-contract-match');
   if (isAnnualPromoProduct(productConfig) || isAnnualPromoProduct(order)) {
     productConfig.auto_badge = false;
-    if (!isPayplug4xPrelevementOrder(order)) {
+    if (isPayplug4xPrelevementOrder(order)) {
+      productConfig.paiement_comptant = false;
+      productConfig.requires_iban = true;
+      productConfig.skip_rib_prompt = false;
+      productConfig.payplug_4x_prelevement = true;
+    } else {
       productConfig.paiement_comptant = true;
       productConfig.requires_iban = false;
       productConfig.skip_rib_prompt = true;

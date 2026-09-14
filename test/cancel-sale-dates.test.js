@@ -20,7 +20,7 @@ test('date de début = 2e date après « vendu le », pas la date de vente', () 
   assert.equal(start.getDate(), 7);
 });
 
-test('contrat vendu et commencé aujourd’hui → Annuler la vente, pas Résilier', () => {
+test('contrat vendu et commencé aujourd’hui → détecté comme même jour (résiliation David = Résilier)', () => {
   const now = new Date(2026, 8, 7);
   assert.equal(isSameDayStartContract(DUO_TODAY, now), true);
   assert.equal(isPendingOrFutureContract(DUO_TODAY), false);

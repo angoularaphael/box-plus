@@ -58,7 +58,7 @@ function isPendingOrFutureContract(label) {
   return startOfDay(start).getTime() > startOfDay(new Date()).getTime();
 }
 
-/** Vendu / début aujourd’hui : Deciplus bloque souvent Résilier — il faut Annuler la vente. */
+/** Vendu / début aujourd’hui (scripts internes forceVoid uniquement). */
 function isSameDayStartContract(label, now = new Date()) {
   const start = contractStartDate(label);
   if (!start) return false;
@@ -1114,6 +1114,16 @@ function shouldVoidSale(contract, { allowStarted = false } = {}) {
   return isSameDayStartContract(contract?.label);
 }
 
+/** Résiliation client (David) / impayés → toujours Résilier. Void réservé aux scripts pendingOnly / forceVoid. */
+function resolveCancelNeverVoid(options = {}, cancelReason = '') {
+  if (options.neverVoid === true) return true;
+  if (options.pendingOnly === true || options.forceVoid === true) return false;
+  const reason = String(cancelReason || '').toLowerCase();
+  if (/echeancier|impay|resiliation/.test(reason)) return true;
+  if (reason === 'change_to_comptant' || reason.startsWith('change_')) return false;
+  return true;
+}
+
 async function voidPendingSaleIfPossible(page, contract, { allowStarted = false } = {}) {
   if (!shouldVoidSale(contract, { allowStarted })) return false;
   const mode = await clickActionTile(page, [/^Annuler la vente$/i]);
@@ -1178,11 +1188,12 @@ async function cancelOneContract(page, contract, { cancelDate = null, forceVoid 
   }
 
   const sameDayStart = isSameDayStartContract(contract.label);
-  // Badge et impayés : toujours Résilier — jamais « Annuler la vente ».
+  // Résiliation client : toujours Résilier. Void uniquement si forceVoid (scripts internes).
   if (
     !neverVoid &&
+    forceVoid &&
     !contract.isBadge &&
-    (forceVoid || isPendingOrFutureContract(contract.label) || sameDayStart)
+    (isPendingOrFutureContract(contract.label) || sameDayStart)
   ) {
     const voided = await voidPendingSaleIfPossible(page, contract, {
       allowStarted: forceVoid || sameDayStart,
@@ -1210,7 +1221,7 @@ async function cancelOneContract(page, contract, { cancelDate = null, forceVoid 
     await clickActionTile(page, [/^Résilier$/i]).catch(() => {});
     await page.waitForTimeout(1500);
     if (!(await waitResilierForm(page, 8000))) {
-      if (!neverVoid && isPendingOrFutureContract(contract.label)) {
+      if (!neverVoid && forceVoid && !contract.isBadge && isPendingOrFutureContract(contract.label)) {
         const voided = await voidPendingSaleIfPossible(page, contract);
         if (voided) return { cancelled: true, reason: 'pending_voided', idc: contract.idc };
       }
@@ -1224,7 +1235,7 @@ async function cancelOneContract(page, contract, { cancelDate = null, forceVoid 
 
   const dateOk = await setResiliationDate(page, dateStr);
   if (!dateOk) {
-    if (!neverVoid && isPendingOrFutureContract(contract.label)) {
+    if (!neverVoid && forceVoid && !contract.isBadge && isPendingOrFutureContract(contract.label)) {
       const voided = await voidPendingSaleIfPossible(page, contract);
       if (voided) return { cancelled: true, reason: 'pending_voided', idc: contract.idc };
     }
@@ -1257,7 +1268,7 @@ async function cancelOneContract(page, contract, { cancelDate = null, forceVoid 
   if (!applied) {
     await openContractPage(page, contract).catch(() => {});
     await waitActionPanel(page);
-    if (!neverVoid && isPendingOrFutureContract(contract.label)) {
+    if (!neverVoid && forceVoid && !contract.isBadge && isPendingOrFutureContract(contract.label)) {
       const voided = await voidPendingSaleIfPossible(page, contract);
       if (voided) return { cancelled: true, reason: 'pending_voided', idc: contract.idc };
     }
@@ -1451,6 +1462,8 @@ async function cancelSale(page, memberId, options = {}) {
     const outcome = await cancelAllMemberSales(page, memberId, {
       maxSales: 15,
       cancelDate,
+      forceVoid: true,
+      neverVoid: false,
       filter: (c) =>
         !c.isBadge &&
         isPendingOrFutureContract(c.label) &&
@@ -1491,11 +1504,12 @@ async function cancelSale(page, memberId, options = {}) {
     }
   }
 
+  const neverVoid = resolveCancelNeverVoid(options, cancelReason);
   const outcome = await cancelAllMemberSales(page, memberId, {
     maxSales: 15,
     cancelDate,
     forceVoid: options.forceVoid === true,
-    neverVoid: options.neverVoid === true || /echeancier|impay/.test(cancelReason),
+    neverVoid,
     filter: extraFilter,
   });
   if (outcome.cancelled_count === 0) {
@@ -1555,6 +1569,7 @@ module.exports = {
   formatFrDate,
   isPendingOrFutureContract,
   isSameDayStartContract,
+  resolveCancelNeverVoid,
   isAppliquerQuitterLabel,
   parseFrDatesFromLabel,
   contractStartDate,
