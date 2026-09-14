@@ -71,6 +71,13 @@
       .replace(/"/g, '&quot;');
   }
 
+  function phoneLink(phone) {
+    const raw = String(phone || '').trim();
+    if (!raw) return '—';
+    const tel = raw.replace(/[^\d+]/g, '');
+    return `<a href="tel:${escapeHtml(tel)}" style="color:var(--bc-cta);font-weight:600;white-space:nowrap">${escapeHtml(raw)}</a>`;
+  }
+
   function headers(json = true) {
     const h = {};
     if (json) h['Content-Type'] = 'application/json';
@@ -2338,23 +2345,18 @@
       if (botErrorsBody) {
         botErrorsBody.innerHTML = botErrors.length
           ? botErrors
-              .map((b) => {
-                const phone = String(b.phone || '').trim();
-                const tel = phone.replace(/[^\d+]/g, '');
-                const phoneCell = phone
-                  ? `<a href="tel:${escapeHtml(tel)}" style="color:var(--bc-cta);font-weight:600;white-space:nowrap">${escapeHtml(phone)}</a>`
-                  : '—';
-                return `
+              .map((b) => `
             <tr>
               <td style="font-weight:600">${escapeHtml(b.name || b.order_id)}</td>
-              <td>${phoneCell}</td>
+              <td>${phoneLink(b.phone)}</td>
+              <td>${escapeHtml(b.product || '—')}</td>
               <td>${escapeHtml(gymLabel(b.gym) || b.gym || '—')}</td>
               <td>${b.paid_at ? new Date(b.paid_at).toLocaleString('fr-FR') : '—'}</td>
               <td>${b.signed ? 'Signé' : 'Non signé'}</td>
               <td>${escapeHtml(botCategoryLabel[b.category] || b.category || '—')}</td>
               <td title="${escapeHtml(b.bot_error || '')}">${escapeHtml(b.bot_error || b.bot_status || 'Erreur bot')}</td>
-            </tr>`;
-              })
+            </tr>`
+              )
               .join('')
           : '';
       }
@@ -2382,6 +2384,8 @@
               .map((m) => `
             <tr>
               <td style="font-weight:600">${escapeHtml(m.name || m.order_id)}</td>
+              <td>${phoneLink(m.phone)}</td>
+              <td>${escapeHtml(m.product || '—')}</td>
               <td>${escapeHtml(gymLabel(m.gym) || m.gym || '—')}</td>
               <td>${m.paid_at ? new Date(m.paid_at).toLocaleString('fr-FR') : '—'}</td>
               <td>${m.signed ? 'Signé' : 'Non signé'}</td>

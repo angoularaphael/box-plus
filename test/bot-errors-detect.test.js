@@ -57,5 +57,6 @@ describe('bot error detection', () => {
     assert.equal(rows.length, 1);
     assert.equal(rows[0].order_id, 'BC-1');
     assert.equal(rows[0].phone, '0612345678');
+    assert.equal(rows[0].product, 'OFFRE A 29€');
   });
 });

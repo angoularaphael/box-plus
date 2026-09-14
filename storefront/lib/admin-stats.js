@@ -441,6 +441,8 @@ function missingFicheRows(
     rows.push({
       order_id: o.order_id,
       name: orderDisplayName(o),
+      phone: orderPhone(o),
+      product: membershipProductName(o),
       gym: gymSlugFromOrder(o),
       paid_at: paidAt,
       signed: Boolean(o.signature?.signed_at),
@@ -547,7 +549,7 @@ function botErrorRows(orders = [], { fromMonth = '', toMonth = '' } = {}) {
       sale_id: o.deciplus_sale_id || null,
       category: classifyBotError(o),
       foreign_address: !hasValidFrenchAddress(cf),
-      product: o.product_snapshot?.name || o.product_name || null,
+      product: membershipProductName(o),
     });
   }
   return rows.sort((a, b) => Date.parse(b.paid_at || 0) - Date.parse(a.paid_at || 0));

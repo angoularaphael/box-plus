@@ -329,10 +329,10 @@ test('fiches manquantes — ignore une vente déjà créée, marque un envoi ré
     [
       {
         payment: { status: 'paid', paid_at: '2026-09-02T10:00:00.000Z' },
-        customer_short: { first_name: 'Léa', last_name: 'Martin', birthdate: '1990-01-01' },
+        customer_short: { first_name: 'Léa', last_name: 'Martin', birthdate: '1990-01-01', phone: '0611223344' },
         customer_full: { gym: 'minimes' },
         signature: { signed_at: '2026-09-02T10:05:00.000Z' },
-        product_snapshot: { sale_type: 'abonnement' },
+        product_snapshot: { sale_type: 'abonnement', display_name: "Séance d'essai" },
       },
       {
         payment: { status: 'paid', paid_at: '2026-09-02T11:00:00.000Z' },
@@ -354,6 +354,8 @@ test('fiches manquantes — ignore une vente déjà créée, marque un envoi ré
   );
   assert.equal(rows.length, 2);
   assert.equal(rows.find((r) => r.name === 'Léa Martin').reason, 'jamais_envoye');
+  assert.equal(rows.find((r) => r.name === 'Léa Martin').phone, '0611223344');
+  assert.equal(rows.find((r) => r.name === 'Léa Martin').product, "Séance d'essai");
   assert.equal(rows.find((r) => r.name === 'Célian Mahieu').in_progress, true);
   assert.equal(rows.find((r) => r.name === 'Célian Mahieu').ready, false);
 });
