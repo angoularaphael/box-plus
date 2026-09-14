@@ -273,6 +273,28 @@
           </div>
           <p class="form-msg" id="statsMsg"></p>
 
+          <div id="botErrorsWrap" hidden style="margin:12px 0 8px;padding:14px 16px;border:1px solid #fbbf24;background:#fffbeb;border-radius:10px">
+            <div>
+              <h3 class="admin-catalog-block-title" style="margin:0 0 4px">Erreurs bot</h3>
+              <p class="admin-section-desc" id="botErrorsSummary" style="margin:0">Dossiers signés ou payés bloqués par le bot Deciplus.</p>
+            </div>
+            <div style="overflow-x:auto;margin-top:12px">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Adhérent</th>
+                    <th>Salle</th>
+                    <th>Payé le</th>
+                    <th>Signé</th>
+                    <th>Catégorie</th>
+                    <th>Erreur</th>
+                  </tr>
+                </thead>
+                <tbody id="botErrorsBody"></tbody>
+              </table>
+            </div>
+          </div>
+
           <div id="missingFichesWrap" hidden style="margin:12px 0 8px;padding:14px 16px;border:1px solid #fecaca;background:#fef2f2;border-radius:10px">
             <div style="display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">
               <div>
@@ -377,7 +399,7 @@
 
           <div id="fluxWrap" hidden style="margin-top:24px">
             <h3 class="admin-catalog-block-title">Séance offerte — visites par jour</h3>
-            <p class="admin-section-desc">Lien flyer : <code>?utm_source=qr&amp;utm_medium=poster&amp;utm_campaign=rentree_2026</code></p>
+            <p class="admin-section-desc">Lien flyer : <code>?utm_source=qr&amp;utm_medium=poster&amp;utm_campaign=rentree_2026</code> · Lien e-mail : <code>?src=email</code></p>
             <p class="admin-section-desc" id="fluxSummary"></p>
             <div class="flux-chart" id="fluxChart" aria-label="Visites quotidiennes séance offerte"></div>
           </div>

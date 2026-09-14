@@ -2216,9 +2216,11 @@
               .map((d) => {
                 const h = Math.max(8, Math.round(((d.total || 0) / max) * 120));
                 const flyerH = Math.round(((d.flyer || 0) / max) * 120);
-                return `<div class="flux-col" title="${escapeHtml(d.day)} : ${d.total} visites dont ${d.flyer} flyer">
+                const emailH = Math.round(((d.email || 0) / max) * 120);
+                return `<div class="flux-col" title="${escapeHtml(d.day)} : ${d.total} visites dont ${d.email || 0} e-mail et ${d.flyer} flyer">
                   <div class="flux-stack">
                     <div class="flux-bar flux-bar--all" style="height:${h}px"></div>
+                    <div class="flux-bar flux-bar--email" style="height:${emailH}px"></div>
                     <div class="flux-bar flux-bar--flyer" style="height:${flyerH}px"></div>
                   </div>
                   <span class="flux-n">${d.total}</span>
@@ -2228,7 +2230,7 @@
               .join('')
           : '<p class="admin-section-desc">Pas encore de visites séance offerte.</p>';
         if (fluxSummary) {
-          fluxSummary.textContent = `${flux?.total || 0} visites · ${flux?.flyer || 0} depuis le flyer QR · ${flux?.other || 0} autres`;
+          fluxSummary.textContent = `${flux?.total || 0} visites · ${flux?.email || 0} depuis l’e-mail · ${flux?.flyer || 0} depuis le flyer QR · ${flux?.other || 0} autres`;
         }
         fluxWrap.hidden = false;
       }
