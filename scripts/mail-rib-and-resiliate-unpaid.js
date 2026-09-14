@@ -19,7 +19,7 @@ process.env.DECIPLUS_FAST = '1';
 process.env.DECIPLUS_HEADLESS = process.env.DECIPLUS_HEADLESS || 'true';
 process.env.TEMP = process.env.TEMP || 'D:\\tmp-playwright';
 process.env.TMP = process.env.TMP || 'D:\\tmp-playwright';
-process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
+process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'david@boxingcenter.fr';
 process.env.RESEND_SENDER_NAME = process.env.RESEND_SENDER_NAME || 'Boxing Center';
 delete process.env.BOXPLUS_BOT_URL;
 delete process.env.BOXPLUS_BOT_URL_OPS;

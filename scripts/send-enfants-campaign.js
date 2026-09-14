@@ -33,7 +33,7 @@ function loadEnvFile(file) {
 
 const ROOT = path.join(__dirname, '..');
 loadEnvFile(path.join(ROOT, '.env'));
-process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
+process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'david@boxingcenter.fr';
 process.env.RESEND_SENDER_NAME = 'David de Boxing Center';
 process.env.RESEND_REPLY_TO = process.env.RESEND_REPLY_TO || 'boxingcentertls@gmail.com';
 
