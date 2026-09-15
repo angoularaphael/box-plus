@@ -1736,9 +1736,9 @@ function createApp() {
         listMaterielOrdersCreatedSinceAsync(paidSince),
         withTimeout(summarizeVisits(30), 4000, { unique_visitors: 0, pageviews: 0, top_pages: [], total: 0 }),
         withTimeout(
-          require('./lib/seance-offerte-visits').summarizeSeanceOfferteVisits(14),
-          3000,
-          { days: [], total: 0, flyer: 0, other: 0 }
+          require('./lib/seance-offerte-visits').summarizeSeanceOfferteFunnel(14),
+          4000,
+          { days: [], total: 0, flyer: 0, email: 0, other: 0, inscriptions: { total: 0, email: 0, just_clicked: 0 } }
         ),
         withTimeout(summarizeFunnelEvents(30), 3000, null),
       ]);
@@ -1819,6 +1819,18 @@ function createApp() {
     } catch (err) {
       logError('Admin stats', { error: err.message });
       res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  app.get('/api/admin/seance-offerte-funnel', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    try {
+      const days = Math.min(60, Math.max(1, Number(req.query.days || 14)));
+      const funnel = await require('./lib/seance-offerte-visits').summarizeSeanceOfferteFunnel(days);
+      res.json({ ok: true, ...funnel });
+    } catch (err) {
+      logError('Funnel séance offerte', { error: err.message });
+      res.status(500).json({ ok: false, error: 'funnel_unavailable' });
     }
   });
 

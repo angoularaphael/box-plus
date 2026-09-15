@@ -2244,6 +2244,10 @@
             ? ` · ${flux.other} autres${otherBits ? ` (${otherBits})` : ''}`
             : '';
           fluxSummary.textContent = `${flux?.total || 0} visites · ${flux?.email || 0} e-mail David · ${flux?.flyer || 0} flyer QR${otherTxt}`;
+          const ins = flux?.inscriptions;
+          if (ins && Number(ins.email) >= 0 && flux?.email) {
+            fluxSummary.textContent += ` · ${ins.email} inscrits depuis l’e-mail · ${ins.just_clicked} ont seulement cliqué`;
+          }
         }
         fluxWrap.hidden = false;
       }

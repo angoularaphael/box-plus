@@ -24,6 +24,75 @@ function emptySummary() {
   return { days: [], total: 0, flyer: 0, email: 0, other: 0, other_sources: [] };
 }
 
+function leadSrc(row = {}) {
+  const meta = row.meta && typeof row.meta === 'object' ? row.meta : {};
+  return meta.src || meta.source || row.src || '';
+}
+
+function isDryRunLead(row = {}) {
+  const meta = row.meta && typeof row.meta === 'object' ? row.meta : {};
+  return Boolean(row.dry_run || meta.dry_run);
+}
+
+function toEmailLeadRow(row = {}) {
+  const meta = row.meta && typeof row.meta === 'object' ? row.meta : {};
+  return {
+    id: meta.id || row.id,
+    prenom: row.prenom || meta.prenom || '',
+    nom: row.nom || meta.nom || '',
+    salle: meta.salle_label || row.salle || meta.salle || '',
+    jour: meta.jour_nom || meta.jour || '',
+    visit_date: meta.visit_date || null,
+    status: meta.status || row.status || null,
+    has_sale: Boolean(meta.has_sale),
+    created_at: row.created_at || meta.created_at || null,
+  };
+}
+
+function summarizeEmailInscriptions(leads, visitSummary = {}) {
+  const real = (leads || []).filter((row) => row && !isDryRunLead(row));
+  const emailLeads = real.filter((row) => classifyVisitSrc(leadSrc(row)) === 'email');
+  const clicks = Number(visitSummary.email || 0);
+  const inscribed = emailLeads.length;
+  return {
+    total: real.length,
+    email: inscribed,
+    other: real.length - inscribed,
+    just_clicked: Math.max(0, clicks - inscribed),
+    conversion_pct: clicks ? Math.round((inscribed / clicks) * 1000) / 10 : 0,
+    leads: emailLeads
+      .map(toEmailLeadRow)
+      .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || ''))),
+  };
+}
+
+async function loadSeanceEssaiLeads() {
+  let supabase;
+  try {
+    supabase = getSupabase();
+  } catch {
+    return [];
+  }
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('tunnel_leads')
+    .select('id,prenom,nom,email,salle,created_at,meta')
+    .eq('tunnel', 'seance_essai')
+    .order('created_at', { ascending: true })
+    .limit(1000);
+  if (error || !Array.isArray(data)) return [];
+  return data;
+}
+
+async function summarizeSeanceOfferteFunnel(days = 14) {
+  const visits = await summarizeSeanceOfferteVisits(days);
+  const leads = await loadSeanceEssaiLeads();
+  return {
+    ...visits,
+    inscriptions: summarizeEmailInscriptions(leads, visits),
+  };
+}
+
 const SOURCE_LABELS = {
   flyer: 'Flyer QR',
   affiche: 'Flyer QR',
@@ -88,7 +157,10 @@ function summarizeVisitRows(data) {
 
 module.exports = {
   summarizeSeanceOfferteVisits,
+  summarizeSeanceOfferteFunnel,
+  summarizeEmailInscriptions,
   classifyVisitSrc,
   summarizeVisitRows,
   visitSourceLabel,
+  leadSrc,
 };
