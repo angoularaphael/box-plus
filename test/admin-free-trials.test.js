@@ -112,6 +112,17 @@ test('la source campagne e-mail / flyer est visible sur la fiche', () => {
   assert.equal(rows[1].campaign_src, 'Flyer QR');
 });
 
+test('la source campagne WhatsApp est visible sur la fiche', () => {
+  const rows = buildFreeTrialRows([
+    trial({
+      order_id: 'SO-WA',
+      created_at: '2026-09-03T10:00:00.000Z',
+      utm: { source: 'whatsapp' },
+    }),
+  ]);
+  assert.equal(rows[0].campaign_src, 'WhatsApp');
+});
+
 test('backoffice expose un onglet dédié et une API authentifiée paginée', () => {
   const root = path.join(__dirname, '..', 'storefront');
   const html = fs.readFileSync(path.join(root, 'public', 'admin', 'index.html'), 'utf8');
