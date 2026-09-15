@@ -37,11 +37,9 @@ test('l’admin affiche clics vs inscriptions', () => {
   const adminHtml = fs.readFileSync(path.join(__dirname, '../storefront/public/admin/index.html'), 'utf8');
   assert.match(adminJs, /e-mail David/);
   assert.match(adminJs, /d\.email/);
-  assert.match(adminJs, /fluxKpiClicks/);
-  assert.match(adminJs, /inscriptions/);
+  assert.match(adminJs, /inscrits à la séance/);
   assert.match(adminHtml, /\?src=email/);
-  assert.match(adminHtml, /Clics sur le lien/);
-  assert.match(adminHtml, /Inscrits à la séance/);
+  assert.doesNotMatch(adminHtml, /fluxKpis/);
   assert.match(adminHtml, /Bleu = total des visites/);
   assert.match(adminHtml, /Rouge = Flyer QR/);
   assert.match(adminHtml, /Vert = E-mail David/);
@@ -54,25 +52,14 @@ test('compte les inscriptions séance à part des clics', () => {
     { src: 'flyer', created_at: '2026-09-14T12:00:00.000Z' },
   ]);
   const inscriptions = summarizeInscriptionRows([
-    {
-      created_at: '2026-09-14T12:30:00.000Z',
-      product_id: 'seance-essai-offerte',
-      product_name: 'SEANCE D ESSAI GRATUITE WEB',
-      source: 'seance-offerte-web',
-      payment: { amount: 0, status: 'paid' },
-      utm: { source: 'email' },
-    },
-    {
-      created_at: '2026-09-14T13:00:00.000Z',
-      product_id: 'seance-essai',
-      product_name: "Séance d'essai 10 €",
-      payment: { amount: 10, status: 'paid' },
-      utm: { source: 'email' },
-    },
+    { created_at: '2026-09-14T12:30:00.000Z', meta: { src: 'email' } },
+    { created_at: '2026-09-14T13:00:00.000Z', meta: { src: 'flyer' } },
+    { created_at: '2026-09-14T14:00:00.000Z', meta: { src: 'flyer' } },
   ]);
   assert.equal(clicks.total, 3);
   assert.equal(clicks.email, 2);
-  assert.equal(inscriptions.total, 1);
+  assert.equal(inscriptions.total, 3);
   assert.equal(inscriptions.email, 1);
-  assert.equal(conversionPct(clicks.total, inscriptions.total), 33.3);
+  assert.equal(inscriptions.flyer, 2);
+  assert.equal(conversionPct(clicks.total, inscriptions.total), 100);
 });

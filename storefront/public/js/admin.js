@@ -2246,21 +2246,10 @@
           const otherTxt = clicks?.other
             ? ` · ${clicks.other} autres clics${otherBits ? ` (${otherBits})` : ''}`
             : '';
+          const conv = flux?.conversion_pct != null ? ` · ${flux.conversion_pct} % des clics s’inscrivent` : '';
           fluxSummary.textContent =
             `${clicks?.total || flux?.total || 0} clics (${clicks?.email || flux?.email || 0} e-mail David · ${clicks?.flyer || flux?.flyer || 0} flyer QR${otherTxt}) · ` +
-            `${signups.total || 0} inscrits (${signups.email || 0} e-mail David · ${signups.flyer || 0} flyer QR)`;
-        }
-        const kpiWrap = document.getElementById('fluxKpis');
-        const kpiClicks = document.getElementById('fluxKpiClicks');
-        const kpiSignups = document.getElementById('fluxKpiSignups');
-        const kpiConv = document.getElementById('fluxKpiConv');
-        if (kpiWrap && kpiClicks && kpiSignups && kpiConv) {
-          const clickN = flux?.clicks?.total ?? flux?.total ?? 0;
-          const signupN = flux?.inscriptions?.total ?? 0;
-          kpiClicks.textContent = String(clickN);
-          kpiSignups.textContent = String(signupN);
-          kpiConv.textContent = `${flux?.conversion_pct ?? 0} %`;
-          kpiWrap.hidden = false;
+            `${signups.total || 0} inscrits à la séance (${signups.email || 0} e-mail David · ${signups.flyer || 0} flyer QR)${conv}`;
         }
         fluxWrap.hidden = false;
       }

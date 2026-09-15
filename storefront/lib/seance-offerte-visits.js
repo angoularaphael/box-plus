@@ -11,40 +11,21 @@ async function summarizeSeanceOfferteVisits(days = 14) {
   }
   if (!supabase) return emptySummary();
   const since = new Date(Date.now() - days * 86400000).toISOString();
-  const [visitsRes, ordersRes] = await Promise.all([
+  const [visitsRes, leadsRes] = await Promise.all([
     supabase
       .from('seance_offerte_leads')
       .select('src,created_at')
       .eq('status', 'pageview')
       .gte('created_at', since),
     supabase
-      .from('boxplus_orders')
-      .select(
-        [
-          'created_at',
-          'utm:payload->utm',
-          'source:payload->source',
-          'product_id:payload->product_id',
-          'product_name:payload->product_name',
-          'product_snapshot:payload->product_snapshot',
-          'payment:payload->payment',
-          'deciplus_member_id:payload->>deciplus_member_id',
-          'bot_status:payload->bot_status',
-          'signed_at:payload->signature->signed_at',
-        ].join(',')
-      )
-      .or(
-        [
-          'payload->>product_id.eq.seance-essai-offerte',
-          'payload->>source.eq.seance-offerte-web',
-          'order_id.ilike.SO-%',
-        ].join(',')
-      )
+      .from('tunnel_leads')
+      .select('created_at,meta')
+      .eq('tunnel', 'seance_essai')
       .gte('created_at', since),
   ]);
 
   const clicks = summarizeVisitRows(visitsRes.error ? [] : visitsRes.data);
-  const inscriptions = summarizeInscriptionRows(ordersRes.error ? [] : ordersRes.data);
+  const inscriptions = summarizeInscriptionRows(leadsRes.error ? [] : leadsRes.data);
   return {
     ...clicks,
     clicks,
@@ -100,18 +81,8 @@ function classifyVisitSrc(src) {
 }
 
 function campaignSrcOf(row = {}) {
-  return (
-    row.utm?.source ||
-    row.utm_source ||
-    row.src ||
-    row.source_campaign ||
-    ''
-  );
-}
-
-function isRealSeanceInscription(row = {}) {
-  const { isFreeTrialOrder } = require('./admin-free-trials');
-  return isFreeTrialOrder(row);
+  const meta = row.meta && typeof row.meta === 'object' ? row.meta : {};
+  return row.utm?.source || row.utm_source || row.src || meta.src || meta.source || '';
 }
 
 function summarizeVisitRows(data) {
@@ -148,11 +119,12 @@ function summarizeVisitRows(data) {
 }
 
 function summarizeInscriptionRows(data) {
-  const real = (data || []).filter(isRealSeanceInscription).map((row) => ({
-    src: campaignSrcOf(row),
-    created_at: row.created_at,
-  }));
-  return summarizeVisitRows(real);
+  return summarizeVisitRows(
+    (data || []).map((row) => ({
+      src: campaignSrcOf(row),
+      created_at: row.created_at,
+    }))
+  );
 }
 
 function conversionPct(clicks, inscriptions) {
@@ -168,7 +140,6 @@ module.exports = {
   summarizeVisitRows,
   summarizeInscriptionRows,
   campaignSrcOf,
-  isRealSeanceInscription,
   visitSourceLabel,
   conversionPct,
 };
