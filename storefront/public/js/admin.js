@@ -175,72 +175,6 @@
     }
   }
 
-  async function sendResumeSms(data) {
-    const btn = document.getElementById('resumeSmsBtn');
-    const msg = document.getElementById('ordersMsg');
-    if (btn) btn.disabled = true;
-    try {
-      const res = await fetch(`/api/admin/orders/${encodeURIComponent(data.order_id)}/send-resume-whatsapp`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: headers(true),
-        body: JSON.stringify({ kind: data.kind || 'resume' }),
-      });
-      const out = await res.json().catch(() => ({}));
-      if (!res.ok || !out.ok) {
-        throw new Error(out.message || out.error || 'Envoi SMS impossible');
-      }
-      if (btn) btn.textContent = 'Envoyé';
-      if (msg) {
-        msg.textContent = out.message || `SMS envoyé au ${out.to}`;
-        msg.className = 'form-msg ok';
-      }
-      if (typeof window.panToast === 'function') window.panToast(out.message || 'SMS envoyé', 'ok');
-    } catch (err) {
-      if (btn) btn.disabled = false;
-      if (msg) {
-        msg.textContent = err.message;
-        msg.className = 'form-msg err';
-      }
-      if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
-    }
-  }
-
-  async function sendResumeBoth(data) {
-    const btn = document.getElementById('resumeBothBtn');
-    const msg = document.getElementById('ordersMsg');
-    if (btn) btn.disabled = true;
-    try {
-      const res = await fetch(`/api/admin/orders/${encodeURIComponent(data.order_id)}/send-resume-notify`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: headers(true),
-        body: JSON.stringify({ kind: data.kind || 'resume', email: true, sms: true }),
-      });
-      const out = await res.json().catch(() => ({}));
-      if (!res.ok || !out.ok) {
-        throw new Error(out.message || out.error || 'Envoi impossible');
-      }
-      if (btn) btn.textContent = 'Envoyé';
-      if (msg) {
-        msg.textContent = out.message || 'E-mail et SMS envoyés';
-        msg.className = 'form-msg ok';
-      }
-      if (typeof window.panToast === 'function') window.panToast(out.message || 'E-mail et SMS envoyés', 'ok');
-    } catch (err) {
-      if (btn) btn.disabled = false;
-      if (msg) {
-        msg.textContent = err.message;
-        msg.className = 'form-msg err';
-      }
-      if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
-    }
-  }
-
-  async function sendResumeWhatsApp(data) {
-    return sendResumeSms(data);
-  }
-
   async function generateResumeLink(orderId, btn, kind = 'resume') {
     const msg = document.getElementById('ordersMsg');
     const id = String(orderId || '').trim();
@@ -298,11 +232,9 @@
     return (o.can_resume || o.can_pay) && (hasMail || hasPhone);
   }
 
-  async function sendDiffusion(channel = 'email') {
+  async function sendDiffusion() {
     const ids = selectedOrderIds();
     const msg = document.getElementById('ordersMsg');
-    const viaSms = channel === 'sms' || channel === 'whatsapp';
-    const viaBoth = channel === 'both';
     if (!ids.length) {
       if (msg) {
         msg.textContent = 'Cochez les personnes à relancer.';
@@ -321,28 +253,18 @@
       return;
     }
     const failed = document.getElementById('ordersFilter')?.value === 'failed';
-    const confirmText = viaBoth
-      ? `Envoyer e-mail + SMS de reprise à ${ids.length} personne(s) ?`
-      : viaSms
-        ? `Envoyer le SMS de reprise à ${ids.length} personne(s) ?`
-        : failed
-          ? `Envoyer le mail de paiement (carte refusée) à ${ids.length} personne(s) ?`
-          : `Envoyer le mail de reprise à ${ids.length} personne(s) ?`;
+    const confirmText = failed
+      ? `Envoyer le mail de paiement (carte refusée) à ${ids.length} personne(s) ?`
+      : `Envoyer le mail de reprise à ${ids.length} personne(s) ?`;
     if (!confirm(confirmText)) return;
-    const btnId = viaBoth ? 'diffusionBothBtn' : viaSms ? 'diffusionSmsBtn' : 'diffusionBtn';
-    const btn = document.getElementById(btnId) || document.getElementById('diffusionWaBtn');
+    const btn = document.getElementById('diffusionBtn');
     if (btn) btn.disabled = true;
     try {
-      const path = viaBoth
-        ? '/api/admin/orders/send-resume-notify-batch'
-        : viaSms
-          ? '/api/admin/orders/send-resume-whatsapp-batch'
-          : '/api/admin/orders/send-resume-email-batch';
-      const res = await fetch(path, {
+      const res = await fetch('/api/admin/orders/send-resume-email-batch', {
         method: 'POST',
         credentials: 'include',
         headers: headers(true),
-        body: JSON.stringify({ order_ids: ids, email: true, sms: true }),
+        body: JSON.stringify({ order_ids: ids }),
       });
       const out = await res.json().catch(() => ({}));
       if (!res.ok && !out.sent) {
@@ -1513,12 +1435,9 @@
   function notifyLabel(sale) {
     const n = sale.manager_notify || {};
     if (n.sent && n.via === 'email') {
-      return { text: `Email (${n.manager || sale.manager_name || '—'})`, cls: 'badge ok' };
+      return { text: `E-mail envoyé (${n.manager || sale.manager_name || 'club'})`, cls: 'badge ok' };
     }
     if (n.sent) return { text: `Envoyé (${n.manager || sale.manager_name || '—'})`, cls: 'badge ok' };
-    if (n.skipped === 'awaiting_signal' || n.pending) {
-      return { text: 'En attente Signal', cls: 'badge warn' };
-    }
     if (n.skipped === 'demo') return { text: 'Ignoré (démo)', cls: 'badge warn' };
     if (n.error) return { text: n.error, cls: 'badge err' };
     if (sale.source === 'upsell' && sale.payment_status === 'paid') {
@@ -1632,14 +1551,14 @@
         body: JSON.stringify({}),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || data.error || 'Envoi WhatsApp impossible');
+      if (!res.ok) throw new Error(data.message || data.error || 'Envoi e-mail impossible');
       const idx = materielSales.findIndex((s) => s.order_id === orderId);
       if (idx >= 0 && data.sale) materielSales[idx] = data.sale;
       renderMaterielSales();
       const sent = data.notify?.sent;
       const text = sent
-        ? `WhatsApp envoyé à ${data.notify?.manager || 'le manager'}`
-        : data.notify?.error || 'WhatsApp non envoyé';
+        ? `E-mail envoyé (${data.notify?.manager || 'club'})`
+        : data.notify?.error || 'E-mail non envoyé';
       if (msg) {
         msg.textContent = text;
         msg.className = sent ? 'form-msg ok' : 'form-msg err';
@@ -1680,7 +1599,7 @@
     const btn = document.getElementById('flushMaterielCoachBtn');
     if (
       !window.confirm(
-        'Renvoyer toutes les ventes matériel en attente aux coachs (Signal/SMS) ?\n\nÀ utiliser une fois les téléphones branchés.'
+        'Renvoyer les e-mails de vente matériel non partis ?'
       )
     ) {
       return;
@@ -2748,9 +2667,6 @@
     generateResumeLink(id, document.getElementById('payLinkBtn'), 'pay');
   });
   document.getElementById('diffusionBtn')?.addEventListener('click', () => sendDiffusion('email'));
-  document.getElementById('diffusionSmsBtn')?.addEventListener('click', () => sendDiffusion('sms'));
-  document.getElementById('diffusionBothBtn')?.addEventListener('click', () => sendDiffusion('both'));
-  document.getElementById('diffusionWaBtn')?.addEventListener('click', () => sendDiffusion('sms'));
   document.getElementById('ordersSelectAll')?.addEventListener('change', (e) => {
     const on = Boolean(e.target.checked);
     document.querySelectorAll('.order-pick:not(:disabled)').forEach((cb) => {

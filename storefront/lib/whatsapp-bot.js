@@ -256,6 +256,9 @@ async function logoutWhatsAppBot() {
 async function sendWhatsAppMessage(phone, message, { timeoutMs = 20000, source = 'boutique', transactional = false } = {}) {
   const to = toE164(phone);
   if (!to) throw new Error('Numéro invalide');
+  if (transactional && String(source) === 'materiel-coach') {
+    throw new Error('sms_disabled');
+  }
   if (transactional) {
     const { sendTransactionalSms } = require('./twilio-sms');
     const result = await sendTransactionalSms(phone, message, { source });

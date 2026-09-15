@@ -207,7 +207,7 @@ test('le produit s’affiche même sans order_type (payload slim)', () => {
   assert.equal(row.manager_name, 'Tapia');
 });
 
-test('si WhatsApp échoue, le club reçoit un email', async () => {
+test('notification matériel : e-mail au club uniquement', async () => {
   const order = {
     order_id: 'MAT-mail',
     order_type: 'materiel',
@@ -217,19 +217,15 @@ test('si WhatsApp échoue, le club reçoit un email', async () => {
     items: [{ name: 'Gants', qty: 1, line_total_cents: 1370 }],
   };
   const out = await notifyMaterielSale(order, {
-    sendWa: async () => {
-      throw new Error('restricted');
-    },
     sendEmail: async () => ({ sent: true, to: 'boxingcenter31@gmail.com' }),
   });
   assert.equal(out.sent, true);
   assert.equal(out.via, 'email');
-  assert.equal(out.whatsapp.sent, false);
   assert.equal(out.email.sent, true);
   assert.equal(out.email.to, 'boxingcenter31@gmail.com');
 });
 
-test('même si WhatsApp part, boxingcenter31@gmail.com est toujours copié', async () => {
+test('boxingcenter31@gmail.com est copié pour chaque salle', async () => {
   const emails = [];
   const gyms = ['Minimes', 'Portet-sur-Garonne', 'Toulouse St-Cyprien', 'Ramonville', 'États-Unis'];
   for (const gym of gyms) {
@@ -243,7 +239,6 @@ test('même si WhatsApp part, boxingcenter31@gmail.com est toujours copié', asy
         items: [{ name: 'Gants', qty: 1, line_total_cents: 1370 }],
       },
       {
-        sendWa: async () => ({ sent: true }),
         sendEmail: async (_manager, _message, order) => {
           emails.push({ gym: order.pickup_gym, to: 'boxingcenter31@gmail.com' });
           return { sent: true, to: 'boxingcenter31@gmail.com' };
@@ -252,7 +247,7 @@ test('même si WhatsApp part, boxingcenter31@gmail.com est toujours copié', asy
     );
     assert.equal(out.sent, true);
     assert.equal(out.email.sent, true);
-    assert.ok(out.via === 'email' || out.via === 'sms+email' || out.via === 'whatsapp+email');
+    assert.equal(out.via, 'email');
   }
   assert.equal(emails.length, 5);
   assert.deepEqual(
@@ -271,52 +266,14 @@ test('chaque vente matériel part à boxingcenter31@gmail.com, toutes salles', (
   }
 });
 
-test('SMS matériel Twilio part en dry-run', async () => {
-  const prev = process.env.BOXPLUS_SMS_DRY_RUN;
-  process.env.BOXPLUS_SMS_DRY_RUN = '1';
-  const order = {
-    order_id: 'MAT-twilio',
-    order_type: 'materiel',
-    pickup_gym: 'Portet-sur-Garonne',
-    payment: { method: 'payplug', status: 'paid' },
-    customer: { first_name: 'Léa', last_name: 'Martin', phone: '0611223344' },
-    items: [{ name: 'Gants', qty: 1, line_total_cents: 1370 }],
-  };
-  try {
-    const out = await notifyMaterielSale(order, {
-      force: true,
-      sendEmail: async () => ({ sent: true, to: 'boxingcenter31@gmail.com', via: 'resend' }),
-    });
-    assert.equal(out.sent, true);
-    assert.equal(out.whatsapp.sent, true);
-    assert.equal(out.email.sent, true);
-    assert.equal(out.via, 'sms+email');
-  } finally {
-    if (prev === undefined) delete process.env.BOXPLUS_SMS_DRY_RUN;
-    else process.env.BOXPLUS_SMS_DRY_RUN = prev;
-  }
-});
-
-test('sans LIVE, le manager reçoit SMS + le club reçoit email', async () => {
-  const prev = process.env.MATERIEL_COACH_NOTIFY_LIVE;
-  delete process.env.MATERIEL_COACH_NOTIFY_LIVE;
-  const order = {
-    order_id: 'MAT-pending',
-    order_type: 'materiel',
-    pickup_gym: 'Portet-sur-Garonne',
-    payment: { method: 'payplug', status: 'paid' },
-    customer: { first_name: 'Léa', last_name: 'Martin', phone: '0611223344' },
-    items: [{ name: 'Gants', variant_label: '12oz', qty: 1, line_total_cents: 1370 }],
-  };
-  const out = await notifyMaterielSale(order, {
-    sendEmail: async () => ({ sent: true, to: 'boxingcenter31@gmail.com', via: 'resend' }),
-    sendWa: async () => ({ sent: true, via: 'sms' }),
-  });
-  assert.equal(out.sent, true);
-  assert.equal(out.via, 'sms+email');
-  assert.equal(out.whatsapp.sent, true);
-  assert.equal(out.email.sent, true);
-  assert.match(out.message, /Gants/);
-  if (prev === undefined) delete process.env.MATERIEL_COACH_NOTIFY_LIVE;
-  else process.env.MATERIEL_COACH_NOTIFY_LIVE = prev;
+test('pas de SMS matériel via le bot téléphonique', async () => {
+  const { sendWhatsAppMessage } = require('../storefront/lib/whatsapp-bot');
+  await assert.rejects(
+    () =>
+      sendWhatsAppMessage('0611223344', 'Vente matériel test', {
+        transactional: true,
+        source: 'materiel-coach',
+      }),
+    /sms_disabled/
+  );
 });

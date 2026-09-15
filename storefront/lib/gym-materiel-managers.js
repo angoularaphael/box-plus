@@ -1,13 +1,11 @@
 'use strict';
 
 /**
- * WhatsApp ventes matériel : un manager par salle de retrait choisie.
- * Distinct des managers d’accueil (bc-knowledge) — ici c’est le responsable
- * destockage / retrait, comme Remus pour Blade.
+ * Notifications ventes matériel : e-mail au club (boxingcenter31@gmail.com).
+ * Un manager par salle de retrait — distinct des managers d’accueil (bc-knowledge).
  */
 const { matchGymSlug } = require('../../lib/gym-slugs');
 const { resolvePickupGym } = require('./gym-pickup');
-const { sendWhatsAppMessage } = require('./whatsapp-bot');
 const { logInfo, logWarn } = require('../../lib/logger');
 
 const GYM_MATERIEL_MANAGERS = {
@@ -168,16 +166,6 @@ function shouldSkipWhatsApp(order, env = process.env) {
   return method === 'demo';
 }
 
-function isMaterielCoachNotifyLive(env = process.env) {
-  const v = String(env.MATERIEL_COACH_NOTIFY_LIVE || env.SIGNAL_MATERIEL_LIVE || '').trim().toLowerCase();
-  return v === '1' || v === 'true' || v === 'yes';
-}
-
-function shouldDeferCoachNotify({ force = false, ignoreDefer = false } = {}) {
-  if (force || ignoreDefer) return false;
-  return !isMaterielCoachNotifyLive();
-}
-
 const CLUB_MATERIEL_EMAIL = 'boxingcenter31@gmail.com';
 const WA_FALLBACK_EMAIL = CLUB_MATERIEL_EMAIL;
 
@@ -247,48 +235,8 @@ function applyManagerNotify(order, result, source) {
 }
 
 async function notifyManager(manager, message, order, hooks = {}) {
-  if (!manager?.phone && !managerEmail(manager)) return { sent: false, error: 'no_manager' };
-  const force = Boolean(hooks.force);
-  const skipWaRequested = Boolean(hooks.skipWhatsApp);
-  const skipDemoWa = !force && shouldSkipWhatsApp(order);
-
-  const sendWa =
-    hooks.sendWa ||
-    ((phone, text) =>
-      sendWhatsAppMessage(phone, text, {
-        timeoutMs: 4000,
-        transactional: true,
-        source: 'materiel-coach',
-      }));
+  if (!managerEmail(manager)) return { sent: false, error: 'no_manager' };
   const sendEmail = hooks.sendEmail || sendManagerSaleEmail;
-
-  let whatsapp = { sent: false };
-  const skipWa = skipWaRequested || skipDemoWa;
-  if (skipDemoWa) {
-    logInfo('SMS manager matériel ignoré (tests/démo)', {
-      manager: manager.name,
-      gym: manager.slug,
-    });
-  }
-  if (!skipWa && manager.phone) {
-    try {
-      const wa = await sendWa(manager.phone, message);
-      if (wa && (wa.sent === false || wa.skipped)) {
-        whatsapp = { sent: false, skipped: true, reason: wa.reason || 'skipped' };
-      } else {
-        whatsapp = { sent: true, wa };
-      }
-    } catch (err) {
-      whatsapp = { sent: false, error: err.message };
-      logWarn('SMS manager matériel', {
-        manager: manager.name,
-        gym: manager.slug,
-        error: err.message,
-      });
-    }
-  } else if (skipWa) {
-    whatsapp = { sent: false, skipped: skipWaRequested ? 'awaiting_signal' : 'restricted' };
-  }
 
   let email = { sent: false };
   try {
@@ -303,22 +251,12 @@ async function notifyManager(manager, message, order, hooks = {}) {
     });
   }
 
-  const sent = Boolean(whatsapp.sent || email.sent);
-  const via =
-    whatsapp.sent && email.sent
-      ? 'sms+email'
-      : whatsapp.sent
-        ? 'sms'
-        : email.sent
-          ? 'email'
-          : null;
+  const sent = Boolean(email.sent);
   return {
     sent,
-    via,
-    whatsapp,
-    sms: whatsapp,
+    via: sent ? 'email' : null,
     email,
-    error: sent ? null : email.error || whatsapp.error || 'not_sent',
+    error: sent ? null : email.error || 'not_sent',
     manager: manager.name,
     gym: manager.slug,
     phone: manager.phone,
@@ -334,7 +272,7 @@ async function notifyMaterielSale(order, { source = 'materiel', force = false, i
   const manager = resolveManagerForPickup(gymRaw);
   const message = saleWhatsAppText(order, source);
   if (!manager) {
-    logWarn('WhatsApp manager matériel : salle sans responsable', { gym: gymRaw, order_id: order?.order_id });
+    logWarn('Notification matériel : salle sans responsable', { gym: gymRaw, order_id: order?.order_id });
     const fallback = {
       name: gymRaw || 'salle inconnue',
       label: gymRaw || 'salle inconnue',
@@ -498,8 +436,6 @@ module.exports = {
   saleWhatsAppText,
   pickupGymFromOrder,
   shouldSkipWhatsApp,
-  isMaterielCoachNotifyLive,
-  shouldDeferCoachNotify,
   applyManagerNotify,
   notifyManager,
   notifyMaterielSale,
