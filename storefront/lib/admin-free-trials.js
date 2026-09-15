@@ -92,7 +92,24 @@ function customerDetails(order = {}) {
     email: short.email || full.email || customer.email || null,
     phone: short.phone || full.phone || full.mobile || customer.phone || null,
     gym: full.gym || order.gym || customer.gym || null,
+    campaign_src: campaignSrcLabel(order),
   };
+}
+
+function campaignSrcKind(order = {}) {
+  const s = String(order.utm?.source || order.utm_source || '').toLowerCase();
+  if (s === 'flyer' || s === 'affiche' || s === 'qr') return 'flyer';
+  if (s === 'email' || s === 'mail' || s === 'newsletter') return 'email';
+  if (!s || s === 'seance-offerte-web') return 'direct';
+  return s;
+}
+
+function campaignSrcLabel(order = {}) {
+  const kind = campaignSrcKind(order);
+  if (kind === 'flyer') return 'Flyer QR';
+  if (kind === 'email') return 'E-mail David';
+  if (kind === 'direct') return 'Accès direct';
+  return kind;
 }
 
 function toFreeTrialAdminRow(order = {}) {

@@ -476,7 +476,7 @@
     }
     if (tbody) {
       tbody.innerHTML =
-        '<tr><td colspan="8" style="text-align:center;color:var(--bc-muted)">Chargement…</td></tr>';
+        '<tr><td colspan="9" style="text-align:center;color:var(--bc-muted)">Chargement…</td></tr>';
     }
     try {
       const safePage = Math.max(1, Number(page) || 1);
@@ -499,7 +499,7 @@
       }
       if (tbody) {
         tbody.innerHTML =
-          '<tr><td colspan="8" style="text-align:center;color:var(--bc-muted)">Chargement impossible</td></tr>';
+          '<tr><td colspan="9" style="text-align:center;color:var(--bc-muted)">Chargement impossible</td></tr>';
       }
     }
   }
@@ -528,7 +528,7 @@
 
     if (!freeTrials.length) {
       tbody.innerHTML =
-        '<tr><td colspan="8" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune séance d’essai gratuite sur cette page</td></tr>';
+        '<tr><td colspan="9" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune séance d’essai gratuite sur cette page</td></tr>';
       return;
     }
     tbody.innerHTML = freeTrials
@@ -551,6 +551,7 @@
         return `
           <tr>
             <td style="font-size:12px">${formatDate(order.created_at)}</td>
+            <td style="font-size:12px">${escapeHtml(order.campaign_src || '—')}</td>
             <td><strong>${escapeHtml(order.name)}</strong><br><code style="font-size:11px">${escapeHtml(order.order_id)}</code></td>
             <td>${contact}</td>
             <td>${escapeHtml(gymLabel(order.gym))}</td>
@@ -2237,13 +2238,29 @@
               .join('')
           : '<p class="admin-section-desc">Pas encore de visites séance offerte.</p>';
         if (fluxSummary) {
-          const otherBits = (flux?.other_sources || [])
+          const clicks = flux?.clicks || flux;
+          const signups = flux?.inscriptions || { total: 0, email: 0, flyer: 0, other: 0 };
+          const otherBits = (clicks?.other_sources || flux?.other_sources || [])
             .map((s) => `${s.name} ${s.count}`)
             .join(', ');
-          const otherTxt = flux?.other
-            ? ` · ${flux.other} autres${otherBits ? ` (${otherBits})` : ''}`
+          const otherTxt = clicks?.other
+            ? ` · ${clicks.other} autres clics${otherBits ? ` (${otherBits})` : ''}`
             : '';
-          fluxSummary.textContent = `${flux?.total || 0} visites · ${flux?.email || 0} e-mail David · ${flux?.flyer || 0} flyer QR${otherTxt}`;
+          fluxSummary.textContent =
+            `${clicks?.total || flux?.total || 0} clics (${clicks?.email || flux?.email || 0} e-mail David · ${clicks?.flyer || flux?.flyer || 0} flyer QR${otherTxt}) · ` +
+            `${signups.total || 0} inscrits (${signups.email || 0} e-mail David · ${signups.flyer || 0} flyer QR)`;
+        }
+        const kpiWrap = document.getElementById('fluxKpis');
+        const kpiClicks = document.getElementById('fluxKpiClicks');
+        const kpiSignups = document.getElementById('fluxKpiSignups');
+        const kpiConv = document.getElementById('fluxKpiConv');
+        if (kpiWrap && kpiClicks && kpiSignups && kpiConv) {
+          const clickN = flux?.clicks?.total ?? flux?.total ?? 0;
+          const signupN = flux?.inscriptions?.total ?? 0;
+          kpiClicks.textContent = String(clickN);
+          kpiSignups.textContent = String(signupN);
+          kpiConv.textContent = `${flux?.conversion_pct ?? 0} %`;
+          kpiWrap.hidden = false;
         }
         fluxWrap.hidden = false;
       }

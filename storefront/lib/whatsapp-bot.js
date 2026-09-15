@@ -253,9 +253,15 @@ async function logoutWhatsAppBot() {
   return { ok: true, channel: 'sms', skipped: true };
 }
 
-async function sendWhatsAppMessage(phone, message, { timeoutMs = 20000, source = 'boutique' } = {}) {
+async function sendWhatsAppMessage(phone, message, { timeoutMs = 20000, source = 'boutique', transactional = false } = {}) {
   const to = toE164(phone);
   if (!to) throw new Error('Numéro invalide');
+  if (transactional) {
+    const { sendTransactionalSms } = require('./twilio-sms');
+    const result = await sendTransactionalSms(phone, message, { source });
+    if (!result.ok) throw new Error(result.error || 'twilio_sms_failed');
+    return { sent: true, via: 'twilio', sid: result.sid, to };
+  }
   if (!isAllowedBoutiqueSms(message, source)) {
     throw new Error('sms_disabled');
   }

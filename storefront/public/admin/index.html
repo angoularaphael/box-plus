@@ -402,8 +402,13 @@
           </div>
 
           <div id="fluxWrap" hidden style="margin-top:24px">
-            <h3 class="admin-catalog-block-title">Séance offerte — visites par jour</h3>
+            <h3 class="admin-catalog-block-title">Séance offerte — clics et inscriptions</h3>
             <p class="admin-section-desc">Lien flyer : <code>?utm_source=qr&amp;utm_medium=poster&amp;utm_campaign=rentree_2026</code> · Lien e-mail : <code>?src=email</code></p>
+            <div class="flux-kpis" id="fluxKpis" hidden>
+              <div class="flux-kpi"><strong id="fluxKpiClicks">0</strong><span>Clics sur le lien</span></div>
+              <div class="flux-kpi"><strong id="fluxKpiSignups">0</strong><span>Inscrits à la séance</span></div>
+              <div class="flux-kpi"><strong id="fluxKpiConv">0 %</strong><span>Clic → inscription</span></div>
+            </div>
             <p class="admin-section-desc" id="fluxSummary"></p>
             <p class="admin-section-desc flux-legend" id="fluxLegend">
               <span><i class="flux-dot flux-dot--all"></i> Bleu = total des visites</span>
@@ -570,7 +575,7 @@
           <div class="admin-section-head" style="flex-wrap:wrap;gap:10px">
             <div>
               <h2 class="admin-section-title">Séances d’essai gratuites</h2>
-              <p class="admin-section-desc">Toutes les inscriptions web réellement offertes (0 €), de la plus récente à la plus ancienne. Les séances d’essai payées 10 € et les coachings sont exclus.</p>
+              <p class="admin-section-desc">Toutes les inscriptions web réellement offertes (0 €), de la plus récente à la plus ancienne. Les séances d’essai payées 10 € et les coachings sont exclus. Les totaux clics vs inscrits sont dans Stats.</p>
             </div>
             <button type="button" class="btn sm secondary" id="refreshFreeTrialsBtn">Actualiser</button>
           </div>
@@ -579,8 +584,9 @@
             <table class="admin-table" id="freeTrialsTable">
               <thead>
                 <tr>
-                  <th>Date</th>
-                  <th>Personne</th>
+                    <th>Date</th>
+                    <th>Source</th>
+                    <th>Personne</th>
                   <th>Contact</th>
                   <th>Salle</th>
                   <th>Inscription</th>
@@ -590,7 +596,7 @@
                 </tr>
               </thead>
               <tbody id="freeTrialsBody">
-                <tr><td colspan="8" style="text-align:center;color:var(--bc-muted)">Ouvrez l’onglet pour charger les inscriptions.</td></tr>
+                <tr><td colspan="9" style="text-align:center;color:var(--bc-muted)">Ouvrez l’onglet pour charger les inscriptions.</td></tr>
               </tbody>
             </table>
           </div>

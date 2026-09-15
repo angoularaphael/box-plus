@@ -11,17 +11,61 @@ async function summarizeSeanceOfferteVisits(days = 14) {
   }
   if (!supabase) return emptySummary();
   const since = new Date(Date.now() - days * 86400000).toISOString();
-  const { data, error } = await supabase
-    .from('seance_offerte_leads')
-    .select('src,created_at')
-    .eq('status', 'pageview')
-    .gte('created_at', since);
-  if (error || !Array.isArray(data)) return emptySummary();
-  return summarizeVisitRows(data);
+  const [visitsRes, ordersRes] = await Promise.all([
+    supabase
+      .from('seance_offerte_leads')
+      .select('src,created_at')
+      .eq('status', 'pageview')
+      .gte('created_at', since),
+    supabase
+      .from('boxplus_orders')
+      .select(
+        [
+          'created_at',
+          'utm:payload->utm',
+          'source:payload->source',
+          'product_id:payload->product_id',
+          'product_name:payload->product_name',
+          'product_snapshot:payload->product_snapshot',
+          'payment:payload->payment',
+          'deciplus_member_id:payload->>deciplus_member_id',
+          'bot_status:payload->bot_status',
+          'signed_at:payload->signature->signed_at',
+        ].join(',')
+      )
+      .or(
+        [
+          'payload->>product_id.eq.seance-essai-offerte',
+          'payload->>source.eq.seance-offerte-web',
+          'order_id.ilike.SO-%',
+        ].join(',')
+      )
+      .gte('created_at', since),
+  ]);
+
+  const clicks = summarizeVisitRows(visitsRes.error ? [] : visitsRes.data);
+  const inscriptions = summarizeInscriptionRows(ordersRes.error ? [] : ordersRes.data);
+  return {
+    ...clicks,
+    clicks,
+    inscriptions,
+    conversion_pct: conversionPct(clicks.total, inscriptions.total),
+  };
+}
+
+function emptyBucket() {
+  return { days: [], total: 0, flyer: 0, email: 0, other: 0, other_sources: [] };
 }
 
 function emptySummary() {
-  return { days: [], total: 0, flyer: 0, email: 0, other: 0, other_sources: [] };
+  const clicks = emptyBucket();
+  const inscriptions = emptyBucket();
+  return {
+    ...clicks,
+    clicks,
+    inscriptions,
+    conversion_pct: 0,
+  };
 }
 
 const SOURCE_LABELS = {
@@ -40,7 +84,9 @@ const SOURCE_LABELS = {
 };
 
 function visitSourceLabel(src) {
-  const raw = String(src || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  const raw = String(src || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '');
   if (SOURCE_LABELS[raw]) return SOURCE_LABELS[raw];
   if (!raw) return 'Accès direct';
   return raw;
@@ -48,9 +94,24 @@ function visitSourceLabel(src) {
 
 function classifyVisitSrc(src) {
   const s = String(src || '').toLowerCase();
-  if (s === 'flyer' || s === 'affiche') return 'flyer';
+  if (s === 'flyer' || s === 'affiche' || s === 'qr') return 'flyer';
   if (s === 'email' || s === 'mail' || s === 'newsletter') return 'email';
   return 'other';
+}
+
+function campaignSrcOf(row = {}) {
+  return (
+    row.utm?.source ||
+    row.utm_source ||
+    row.src ||
+    row.source_campaign ||
+    ''
+  );
+}
+
+function isRealSeanceInscription(row = {}) {
+  const { isFreeTrialOrder } = require('./admin-free-trials');
+  return isFreeTrialOrder(row);
 }
 
 function summarizeVisitRows(data) {
@@ -86,9 +147,28 @@ function summarizeVisitRows(data) {
   };
 }
 
+function summarizeInscriptionRows(data) {
+  const real = (data || []).filter(isRealSeanceInscription).map((row) => ({
+    src: campaignSrcOf(row),
+    created_at: row.created_at,
+  }));
+  return summarizeVisitRows(real);
+}
+
+function conversionPct(clicks, inscriptions) {
+  const c = Number(clicks) || 0;
+  const n = Number(inscriptions) || 0;
+  if (c <= 0) return n > 0 ? 100 : 0;
+  return Math.round((1000 * n) / c) / 10;
+}
+
 module.exports = {
   summarizeSeanceOfferteVisits,
   classifyVisitSrc,
   summarizeVisitRows,
+  summarizeInscriptionRows,
+  campaignSrcOf,
+  isRealSeanceInscription,
   visitSourceLabel,
+  conversionPct,
 };

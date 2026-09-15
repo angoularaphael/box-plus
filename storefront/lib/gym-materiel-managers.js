@@ -7,6 +7,7 @@
  */
 const { matchGymSlug } = require('../../lib/gym-slugs');
 const { resolvePickupGym } = require('./gym-pickup');
+const { sendWhatsAppMessage } = require('./whatsapp-bot');
 const { logInfo, logWarn } = require('../../lib/logger');
 
 const GYM_MATERIEL_MANAGERS = {
@@ -253,7 +254,12 @@ async function notifyManager(manager, message, order, hooks = {}) {
 
   const sendWa =
     hooks.sendWa ||
-    (async () => ({ sent: false, skipped: true, reason: 'sms_disabled' }));
+    ((phone, text) =>
+      sendWhatsAppMessage(phone, text, {
+        timeoutMs: 4000,
+        transactional: true,
+        source: 'materiel-coach',
+      }));
   const sendEmail = hooks.sendEmail || sendManagerSaleEmail;
 
   let whatsapp = { sent: false };

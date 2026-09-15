@@ -271,23 +271,30 @@ test('chaque vente matériel part à boxingcenter31@gmail.com, toutes salles', (
   }
 });
 
-test('sans sendWa, aucun SMS Twilio — email club seulement', async () => {
+test('SMS matériel Twilio part en dry-run', async () => {
+  const prev = process.env.BOXPLUS_SMS_DRY_RUN;
+  process.env.BOXPLUS_SMS_DRY_RUN = '1';
   const order = {
-    order_id: 'MAT-notwilio',
+    order_id: 'MAT-twilio',
     order_type: 'materiel',
     pickup_gym: 'Portet-sur-Garonne',
     payment: { method: 'payplug', status: 'paid' },
     customer: { first_name: 'Léa', last_name: 'Martin', phone: '0611223344' },
     items: [{ name: 'Gants', qty: 1, line_total_cents: 1370 }],
   };
-  const out = await notifyMaterielSale(order, {
-    sendEmail: async () => ({ sent: true, to: 'boxingcenter31@gmail.com', via: 'resend' }),
-  });
-  assert.equal(out.sent, true);
-  assert.equal(out.via, 'email');
-  assert.equal(out.whatsapp.sent, false);
-  assert.equal(out.whatsapp.reason, 'sms_disabled');
-  assert.equal(out.email.sent, true);
+  try {
+    const out = await notifyMaterielSale(order, {
+      force: true,
+      sendEmail: async () => ({ sent: true, to: 'boxingcenter31@gmail.com', via: 'resend' }),
+    });
+    assert.equal(out.sent, true);
+    assert.equal(out.whatsapp.sent, true);
+    assert.equal(out.email.sent, true);
+    assert.equal(out.via, 'sms+email');
+  } finally {
+    if (prev === undefined) delete process.env.BOXPLUS_SMS_DRY_RUN;
+    else process.env.BOXPLUS_SMS_DRY_RUN = prev;
+  }
 });
 
 test('sans LIVE, le manager reçoit SMS + le club reçoit email', async () => {

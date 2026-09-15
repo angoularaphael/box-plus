@@ -91,6 +91,25 @@ test('présente toutes les séances retenues de la plus récente à la plus anci
   assert.deepEqual(rows.map((row) => row.order_id), ['SO-NEW', 'SO-OLD']);
   assert.equal(rows[0].email, 'camille@example.com');
   assert.equal(rows[0].phone, '0612345678');
+  assert.equal(rows[0].campaign_src, 'Accès direct');
+});
+
+test('la source campagne e-mail / flyer est visible sur la fiche', () => {
+  const rows = buildFreeTrialRows([
+    trial({
+      order_id: 'SO-MAIL',
+      created_at: '2026-09-03T10:00:00.000Z',
+      utm: { source: 'email' },
+    }),
+    trial({
+      order_id: 'SO-FLY',
+      created_at: '2026-09-02T10:00:00.000Z',
+      utm: { source: 'flyer' },
+    }),
+  ]);
+  assert.equal(rows[0].order_id, 'SO-MAIL');
+  assert.equal(rows[0].campaign_src, 'E-mail David');
+  assert.equal(rows[1].campaign_src, 'Flyer QR');
 });
 
 test('backoffice expose un onglet dédié et une API authentifiée paginée', () => {
