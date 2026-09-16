@@ -40,6 +40,23 @@ function run() {
     /Scalapay/
   );
   assert.ok(SCALAPAY_UNAVAILABLE_MESSAGE.length > 10);
+  assert.match(require('../storefront/lib/payplug').SCALAPAY_FEES_HINT, /1,?5\s*%|3×/i);
+  assert.match(require('../storefront/lib/payplug').SCALAPAY_REFUSAL_HELP, /boxingcenter31@gmail\.com/);
+
+  const { productSupportsScalapay } = require('../lib/billing-plan');
+  assert.equal(productSupportsScalapay({ id: 'offre-saison', price_cents: 25900 }), true);
+  assert.equal(productSupportsScalapay({ id: 'comptant-12-mois', price_cents: 40000 }), true);
+  assert.equal(productSupportsScalapay({ id: 'boxe-educative' }), true);
+  assert.equal(productSupportsScalapay({ id: 'baby-boxe' }), true);
+  assert.equal(productSupportsScalapay({ id: 'offre-duo', price_cents: 2900 }), false);
+  assert.equal(productSupportsScalapay({ id: 'materiel-gants', price_cents: 5000 }), false);
+
+  const { gymSupportsScalapay, supportsScalapayCheckout } = require('../lib/billing-plan');
+  assert.equal(gymSupportsScalapay('minimes'), true);
+  assert.equal(gymSupportsScalapay('portet'), false);
+  assert.equal(gymSupportsScalapay('Portet-sur-Garonne'), false);
+  assert.equal(supportsScalapayCheckout({ id: 'offre-saison' }, 'minimes'), true);
+  assert.equal(supportsScalapayCheckout({ id: 'offre-saison' }, 'portet'), false);
 
   assert.equal(isPayplugPaymentPaid({ is_paid: true, payment_method: { type: 'scalapay' } }), true);
   assert.equal(

@@ -50,6 +50,9 @@ const {
   normalizeBillingPlan,
   normalizePaymentPlan,
   productSupportsInstallmentChoice,
+  productSupportsScalapay,
+  gymSupportsScalapay,
+  supportsScalapayCheckout,
   requiresIbanForPlan,
   adultOfferAgeError,
   productNeedsAutoBadge,
@@ -77,6 +80,8 @@ const {
   isAmountEligibleForScalapay,
   ONEY_4X_UNAVAILABLE_MESSAGE,
   SCALAPAY_UNAVAILABLE_MESSAGE,
+  SCALAPAY_FEES_HINT,
+  SCALAPAY_REFUSAL_HELP,
   SCALAPAY_MIN_CENTS,
   SCALAPAY_MAX_CENTS,
   hostedPaymentUrl,
@@ -1436,6 +1441,18 @@ function createApp() {
   app.post('/api/cart/checkout', async (req, res) => {
     try {
       const { lines, customer } = req.body;
+      // Boutique matériel : paiement carte en une fois uniquement (pas de Scalapay).
+      const cartPayMethod = String(req.body.payment_method || req.body.pay_method || 'card')
+        .trim()
+        .toLowerCase();
+      if (cartPayMethod === 'scalapay') {
+        return res.status(400).json({
+          ok: false,
+          error: 'Scalapay n’est pas disponible pour le matériel. Réglez par carte bancaire en une fois.',
+          code: 'scalapay_materiel_forbidden',
+          suggest_card: true,
+        });
+      }
       const { errors: cartErrors, items, total_cents } = validateCartLines(lines);
       if (cartErrors.length) return res.status(400).json({ ok: false, errors: cartErrors });
 
@@ -1469,28 +1486,6 @@ function createApp() {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
 
-      const preferScalapay =
-        String(req.body?.payment_method || req.body?.pay_method || '').toLowerCase() === 'scalapay';
-
-      if (preferScalapay) {
-        if (!isScalapayEnabled()) {
-          return res.status(503).json({
-            ok: false,
-            error: SCALAPAY_UNAVAILABLE_MESSAGE,
-            code: 'scalapay_unavailable',
-          });
-        }
-        if (!isAmountEligibleForScalapay(total_cents)) {
-          return res.status(400).json({
-            ok: false,
-            error: `Scalapay est disponible entre ${SCALAPAY_MIN_CENTS / 100} € et ${
-              SCALAPAY_MAX_CENTS / 100
-            } €.`,
-            code: 'scalapay_amount_ineligible',
-          });
-        }
-      }
-
       const baseUrl = getCheckoutBaseUrl(req);
       const order = await createMaterielOrderAsync({
         order_id: orderId,
@@ -1505,81 +1500,34 @@ function createApp() {
 
       let payment;
       try {
-        if (preferScalapay) {
-          payment = await createScalapayPayment({
-            order: {
-              order_id: orderId,
-              customer_full: customer,
-              customer_short: customer,
-            },
-            items,
-            amountCents: total_cents,
-            description: `Matériel Boxing Center (${items.length} article${items.length > 1 ? 's' : ''})`,
-            baseUrl,
-            metadata: {
-              order_type: 'materiel',
-              order_id: orderId,
-              payment_plan: 'scalapay',
-            },
-            customerOverrides: customer,
-            returnUrl: `${baseUrl}/success.html?order=${encodeURIComponent(orderId)}&type=materiel&payplug_return=1&token=${encodeURIComponent(order.access_token || '')}`,
-            cancelUrl: `${baseUrl}/panier?cancelled=1&reason=scalapay`,
-          });
-        } else {
-          payment = await createHostedPayment({
-            order: {
-              order_id: orderId,
-              customer_full: customer,
-              customer_short: customer,
-            },
-            amountCents: total_cents,
-            description: `Matériel Boxing Center (${items.length} article${items.length > 1 ? 's' : ''})`,
-            baseUrl,
-            metadata: {
-              order_type: 'materiel',
-              order_id: orderId,
-              payment_plan: 'once',
-            },
-            customerOverrides: customer,
-            returnUrl: `${baseUrl}/success.html?order=${encodeURIComponent(orderId)}&type=materiel&payplug_return=1&token=${encodeURIComponent(order.access_token || '')}`,
-            cancelUrl: `${baseUrl}/panier?cancelled=1&reason=card`,
-          });
-        }
+        payment = await createHostedPayment({
+          order: {
+            order_id: orderId,
+            customer_full: customer,
+            customer_short: customer,
+          },
+          amountCents: total_cents,
+          description: `Matériel Boxing Center (${items.length} article${items.length > 1 ? 's' : ''})`,
+          baseUrl,
+          metadata: {
+            order_type: 'materiel',
+            order_id: orderId,
+            payment_plan: 'once',
+          },
+          customerOverrides: customer,
+          returnUrl: `${baseUrl}/success.html?order=${encodeURIComponent(orderId)}&type=materiel&payplug_return=1&token=${encodeURIComponent(order.access_token || '')}`,
+          cancelUrl: `${baseUrl}/panier?cancelled=1`,
+        });
       } catch (err) {
-        if (err.code === 'payplug_customer_incomplete' || err.code === 'scalapay_amount_ineligible') {
-          return res.status(400).json({
-            ok: false,
-            error: err.message,
-            missing: err.missing || [],
-            code: err.code,
-            suggest_card: preferScalapay,
-          });
-        }
         logError('Erreur PayPlug checkout matériel', {
           error: err.message,
           body: err.body || null,
           order_id: orderId,
-          scalapay: preferScalapay,
         });
-        if (preferScalapay) {
-          try {
-            const { sendAlert } = require('../lib/logger');
-            await sendAlert('Scalapay PayPlug indisponible ou erreur création', {
-              order_id: orderId,
-              error: err.message,
-              action: 'scalapay_create_failed',
-            });
-          } catch {
-            /* ignore alert failure */
-          }
-        }
         return res.status(502).json({
           ok: false,
-          error: preferScalapay
-            ? `${formatPayplugError(err) || err.message} Vous pouvez régler par carte bancaire en une fois.`
-            : formatPayplugError(err) || err.message,
-          code: preferScalapay ? 'scalapay_create_failed' : 'payplug_create_failed',
-          suggest_card: preferScalapay,
+          error: formatPayplugError(err) || err.message,
+          code: 'payplug_create_failed',
         });
       }
       const url = hostedPaymentUrl(payment);
@@ -1589,7 +1537,7 @@ function createApp() {
         ...(order.payment || {}),
         status: 'pending',
         method: 'payplug',
-        payment_plan: preferScalapay ? 'scalapay' : 'once',
+        payment_plan: 'once',
         payplug_payment_id: payment.id,
       };
       await saveMaterielOrderRecordAsync(order);
@@ -1602,14 +1550,14 @@ function createApp() {
         items,
         total_cents,
         payplug_payment_id: payment.id,
-        payment_plan: preferScalapay ? 'scalapay' : 'once',
+        payment_plan: 'once',
       };
       savePendingCheckout(payment.id, pendingPayload);
       savePendingCheckout(orderId, pendingPayload);
 
       res.json({
         ok: true,
-        mode: preferScalapay ? 'payplug_scalapay' : 'payplug',
+        mode: 'payplug',
         url,
         payment_id: payment.id,
         order_id: orderId,
@@ -4171,31 +4119,34 @@ function createApp() {
         });
       }
       let preferredCheckout =
-        payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
-          ? 'paypal'
-          : payMethod === 'cawl' || display.portetViaCawl
-            ? 'cawl'
-            : 'card';
-      const portetCawl4xRib = isPortetCawl4xRib({
-        gym: gymNorm,
-        paymentPlan,
-        billingPlan: payMethod === 'paypal' ? 'paypal' : 'rib',
-        payMethod,
-        preferredCheckout,
-      });
-      if (gymNorm === 'portet' && paymentPlan === '4x') {
-        if (payMethod === 'paypal' && display.portetPaypal4x === true) {
-          preferredCheckout = 'paypal';
-        } else if (display.portetViaCawl && payMethod !== 'paypal') {
-          preferredCheckout = 'cawl';
-        }
+        payMethod === 'scalapay'
+          ? 'scalapay'
+          : payMethod === 'paypal' || rawBilling === 'paypal' || billingPlan === 'paypal'
+            ? 'paypal'
+            : payMethod === 'cawl' || (display.portetViaCawl && payMethod !== 'scalapay')
+              ? 'cawl'
+              : 'card';
+      // 4× CB puis RIB retiré (PayPlug et CAWL).
+      const portetCawl4xRib = false;
+      if (gymNorm === 'portet' && paymentPlan === '4x' && payMethod === 'paypal' && display.portetPaypal4x) {
+        preferredCheckout = 'paypal';
       }
-      if (display.portetViaPaypal && !display.portetViaCawl) preferredCheckout = 'paypal';
+      if (
+        display.portetViaPaypal &&
+        !display.portetViaCawl &&
+        preferredCheckout !== 'scalapay' &&
+        preferredCheckout !== 'paypal'
+      ) {
+        preferredCheckout = 'paypal';
+      }
       if (preferredCheckout === 'cawl' && !display.show_cawl) {
         return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
       }
       if (preferredCheckout === 'paypal' && !display.show_paypal && !display.portetPaypal4x) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
+      }
+      if (preferredCheckout === 'scalapay' && !isPayplugEnabled()) {
+        return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
       if (preferredCheckout === 'card' && !display.show_payplug) {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
@@ -4245,12 +4196,139 @@ function createApp() {
       }
 
       const baseUrl = getCheckoutBaseUrl(req);
-      const planLabel = paymentPlan || (productSupportsInstallmentChoice(product) ? 'once' : 'once');
-      const payplug4xPrelev =
-        planLabel === '4x' &&
-        preferredCheckout !== 'paypal' &&
-        preferredCheckout !== 'cawl' &&
-        productSupportsInstallmentChoice(product);
+      const planLabel = paymentPlan || 'once';
+      const preferScalapay =
+        payMethod === 'scalapay' ||
+        planLabel === 'scalapay' ||
+        String(req.body.payment_method || '').toLowerCase() === 'scalapay';
+      // 4× CB puis RIB retiré — remplacé par Scalapay sur les offres éligibles.
+      const payplug4xPrelev = false;
+
+      if (preferScalapay) {
+        if (!gymSupportsScalapay(gym)) {
+          return res.status(400).json({
+            ok: false,
+            error:
+              'Scalapay n’est pas disponible pour la salle de Portet. Choisissez PayPal 4× sans frais, ou réglez en une fois.',
+            code: 'scalapay_gym_ineligible',
+            suggest_card: true,
+            suggest_paypal: true,
+          });
+        }
+        if (!productSupportsScalapay(product)) {
+          return res.status(400).json({
+            ok: false,
+            error: 'Scalapay n’est disponible que pour les offres 259 €, 400 €, Baby Boxe et Boxe éducative.',
+            code: 'scalapay_offer_ineligible',
+            suggest_card: true,
+          });
+        }
+        if (!isPayplugEnabled() || !isScalapayEnabled()) {
+          return res.status(503).json({
+            ok: false,
+            error: SCALAPAY_UNAVAILABLE_MESSAGE,
+            code: 'scalapay_unavailable',
+            suggest_card: true,
+          });
+        }
+        if (!isAmountEligibleForScalapay(product.price_cents)) {
+          return res.status(400).json({
+            ok: false,
+            error: `Scalapay est disponible entre ${SCALAPAY_MIN_CENTS / 100} € et ${
+              SCALAPAY_MAX_CENTS / 100
+            } €.`,
+            code: 'scalapay_amount_ineligible',
+            suggest_card: true,
+          });
+        }
+
+        const customerOverrides = {
+          address: req.body.address || order.customer_full?.address,
+          postal_code: req.body.postal_code || order.customer_full?.postal_code,
+          city: req.body.city || order.customer_full?.city,
+          gender: req.body.gender || order.customer_full?.gender,
+          phone: aventureOrder ? '' : req.body.phone || short?.phone,
+          ...(aventureOrder
+            ? { email: order.customer_short?.email || aventurePspEmail(order) }
+            : {}),
+        };
+
+        try {
+          const payment = await createScalapayPayment({
+            order: {
+              ...order,
+              customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
+            },
+            product,
+            amountCents: product.price_cents,
+            description: product.display_name || product.name || 'Offre Boxing Center',
+            baseUrl,
+            metadata: {
+              payment_plan: 'scalapay',
+              order_type: 'inscription',
+            },
+            customerOverrides,
+          });
+          order.payment = {
+            ...order.payment,
+            method: 'payplug',
+            payment_plan: 'scalapay',
+            billing_plan: null,
+            preferred_checkout: 'scalapay',
+            payplug_payment_ids: rememberPreviousPayplugId(order.payment, payment.id),
+            payplug_payment_id: payment.id,
+            status: 'pending',
+          };
+          order.requires_iban = false;
+          if (customerOverrides.address) {
+            order.customer_full = {
+              ...(order.customer_full || {}),
+              gym,
+              address: customerOverrides.address,
+              postal_code: customerOverrides.postal_code,
+              city: customerOverrides.city,
+              gender: customerOverrides.gender,
+            };
+          }
+          await saveOrderAsync(order);
+          const url = hostedPaymentUrl(payment);
+          if (!url) {
+            return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
+          }
+          return res.json({
+            ok: true,
+            mode: 'payplug_scalapay',
+            url,
+            payment_id: payment.id,
+          });
+        } catch (err) {
+          if (err.code === 'payplug_customer_incomplete' || err.code === 'scalapay_amount_ineligible') {
+            return res.status(400).json({
+              ok: false,
+              error: err.message,
+              missing: err.missing || [],
+              code: err.code,
+              suggest_card: true,
+            });
+          }
+          try {
+            const { sendAlert } = require('../lib/logger');
+            await sendAlert('Scalapay PayPlug indisponible ou erreur création', {
+              order_id: order.order_id,
+              error: err.message,
+              action: 'scalapay_create_failed',
+            });
+          } catch {
+            /* ignore */
+          }
+          return res.status(502).json({
+            ok: false,
+            error: `${formatPayplugError(err) || err.message} Vous pouvez régler par carte en une fois. ${SCALAPAY_REFUSAL_HELP}`,
+            code: 'scalapay_create_failed',
+            suggest_card: true,
+          });
+        }
+      }
 
       if (isDemoCheckoutAllowed() && !isPayplugEnabled() && !isPaypalEnabled(gym) && !isCawlEnabled()) {
         order = await markPaymentPaid(order.order_id, {
@@ -4265,10 +4343,21 @@ function createApp() {
         });
       }
 
-      // ——— CAWL Portet (carte 1×, ou 4× = 1/4 CB puis RIB — pas Oney) ———
+      // ——— CAWL Portet (carte 1× uniquement — 4× RIB retiré) ———
       if (preferredCheckout === 'cawl') {
         if (!isCawlEnabled()) {
           return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
+        }
+        if (planLabel === '4x') {
+          return res.status(400).json({
+            ok: false,
+            error: gymSupportsScalapay(gym)
+              ? 'Le paiement en plusieurs fois se fait via Scalapay. Choisissez Scalapay ou réglez en une fois.'
+              : 'À Portet, le paiement en plusieurs fois se fait via PayPal 4× sans frais. Choisissez PayPal ou réglez en une fois.',
+            suggest_scalapay: supportsScalapayCheckout(product, gym),
+            suggest_card: true,
+            suggest_paypal: true,
+          });
         }
         const customerOverrides = {
           address: req.body.address || order.customer_full?.address,
@@ -4280,10 +4369,8 @@ function createApp() {
             ? { email: order.customer_short?.email || aventurePspEmail(order) }
             : {}),
         };
-        const cawl4xRib = isPortetGym(gymNorm) && planLabel === '4x';
-        const amountCents = cawl4xRib
-          ? Math.round(Number(product.price_cents || 0) / 4)
-          : Number(product.price_cents || 0);
+        const cawl4xRib = false;
+        const amountCents = Number(product.price_cents || 0);
         try {
           const hosted = await createCawlHostedCheckout({
             order: {
@@ -4408,19 +4495,31 @@ function createApp() {
       }
 
       if (payplug4xPrelev) {
-        order.requires_iban = true;
-        order.payment = {
-          ...(order.payment || {}),
-          billing_plan: 'rib',
-          payment_plan: '4x',
-          preferred_checkout: 'payplug',
-        };
-        await saveOrderAsync(order);
+        return res.status(400).json({
+          ok: false,
+          error: gymSupportsScalapay(gym)
+            ? 'Le paiement CB puis RIB a été retiré. Choisissez Scalapay ou réglez en une fois.'
+            : 'Le paiement CB puis RIB a été retiré. À Portet, choisissez PayPal 4× sans frais ou réglez en une fois.',
+          suggest_scalapay: supportsScalapayCheckout(product, gym),
+          suggest_card: true,
+        });
       }
 
-      // ——— Carte PayPlug : 4× prélèvement (25 %) ou 4× Oney ou 1× hosted ———
+      // ——— Carte PayPlug : 1× hosted (4× Oney éventuel) ———
       if (!isPayplugEnabled()) {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
+      }
+
+      if (planLabel === '4x' && preferredCheckout !== 'paypal') {
+        return res.status(400).json({
+          ok: false,
+          error: gymSupportsScalapay(gym)
+            ? 'Pour payer en plusieurs fois, choisissez Scalapay.'
+            : 'À Portet, pour payer en plusieurs fois, choisissez PayPal 4× sans frais.',
+          suggest_scalapay: supportsScalapayCheckout(product, gym),
+          suggest_card: true,
+          suggest_paypal: true,
+        });
       }
 
       const customerOverrides = {
@@ -4436,25 +4535,7 @@ function createApp() {
 
       try {
         let payment;
-        if (payplug4xPrelev) {
-          const quarterCents = Math.round(Number(product.price_cents || 0) / 4);
-          payment = await createHostedPayment({
-            order: {
-              ...order,
-              customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
-            },
-            product,
-            baseUrl,
-            amountCents: quarterCents,
-            description: `${product.display_name || product.name || 'Offre 12 mois'} — 1ʳᵉ échéance 4×`,
-            metadata: {
-              payment_plan: '4x',
-              billing_plan: 'rib',
-              payplug_4x_prelevement: '1',
-            },
-            customerOverrides,
-          });
-        } else if (planLabel === '4x') {
+        if (planLabel === '4x') {
           payment = await createFourTimesPayment({
             order: {
               ...order,
@@ -4485,13 +4566,12 @@ function createApp() {
           ...order.payment,
           method: 'payplug',
           payment_plan: planLabel === '4x' ? '4x' : 'once',
-          billing_plan: payplug4xPrelev ? 'rib' : order.payment?.billing_plan || billingPlan || null,
+          billing_plan: order.payment?.billing_plan || billingPlan || null,
           preferred_checkout: 'payplug',
           payplug_payment_ids: rememberPreviousPayplugId(order.payment, payment.id),
           payplug_payment_id: payment.id,
           status: 'pending',
         };
-        if (payplug4xPrelev) order.requires_iban = true;
         if (customerOverrides.address) {
           order.customer_full = {
             ...(order.customer_full || {}),
@@ -4509,7 +4589,7 @@ function createApp() {
         }
         return res.json({
           ok: true,
-          mode: payplug4xPrelev ? 'payplug_4x_prelevement' : planLabel === '4x' ? 'payplug_4x' : 'payplug',
+          mode: planLabel === '4x' ? 'payplug_4x' : 'payplug',
           url,
           payment_id: payment.id,
         });
@@ -5042,73 +5122,11 @@ function createApp() {
       }
 
       if (paymentPlan === '4x' && productSupportsInstallmentChoice(product) && !preferPaypal && !preferCawl) {
-        const quarterCents = Math.round(Number(product.price_cents || 0) / 4);
-        const syntheticOrder = {
-          order_id: body.verify_order_id || `chg-${Date.now()}`,
-          customer_short: {
-            first_name: body.first_name,
-            last_name: body.last_name,
-            email: body.email,
-            phone: body.phone,
-          },
-          customer_full: {
-            first_name: body.first_name,
-            last_name: body.last_name,
-            email: body.email,
-            phone: body.phone,
-            gym: body.gym || 'minimes',
-            address: body.address,
-            postal_code: body.postal_code,
-            city: body.city,
-            gender: body.gender,
-          },
-        };
-        const payment = await createHostedPayment({
-          order: syntheticOrder,
-          product,
-          baseUrl,
-          amountCents: quarterCents,
-          description: `${product.display_name || product.name || 'Abonnement'} — 1ʳᵉ échéance 4×`,
-          metadata: {
-            order_type: 'membership_change',
-            payment_plan: '4x',
-            billing_plan: 'rib',
-            payplug_4x_prelevement: '1',
-          },
-          customerOverrides: {
-            first_name: body.first_name,
-            last_name: body.last_name,
-            email: body.email,
-            phone: body.phone,
-            address: body.address,
-            postal_code: body.postal_code,
-            city: body.city,
-            gender: body.gender,
-          },
-          returnUrl: `${baseUrl}/gerer-abonnement?change=1&payplug_return=1`,
-          cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled`,
-        });
-        const url = hostedPaymentUrl(payment);
-        if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
-        await saveMembershipChangePending(payment.id, {
-          ...meta,
-          payment_method: 'payplug',
-          payment_plan: '4x',
-          billing_plan: 'rib',
-          payplug_payment_id: payment.id,
-        });
-        return res.json({
-          ok: true,
-          mode: 'payplug_4x_prelevement',
-          url,
-          payment_id: payment.id,
-          product: {
-            id: product.id,
-            name: product.display_name || product.name,
-            price_label: product.price_label || product.marketing_price_label,
-            price_cents: product.price_cents,
-            supports_installment_choice: productSupportsInstallmentChoice(product),
-          },
+        return res.status(400).json({
+          ok: false,
+          error: 'Le paiement CB puis RIB a été retiré. À Portet, choisissez PayPal 4× sans frais ou réglez en une fois.',
+          suggest_scalapay: supportsScalapayCheckout(product, body.gym || gymNorm),
+          suggest_card: true,
         });
       }
 
@@ -6085,7 +6103,7 @@ function createApp() {
           if (!id || seen.has(id)) continue;
           if (!isPayplugPaymentPaid(row)) continue;
 
-          // Matériel (Scalapay / CB) : ne pas passer par le flux inscription
+          // Matériel (CB en une fois) : ne pas passer par le flux inscription
           const metaType = String(row?.metadata?.order_type || '');
           if (metaType === 'materiel') {
             seen.add(id);
@@ -6153,15 +6171,14 @@ function createApp() {
       portet_paypal_4x: display.portetPaypal4x === true,
       portet_paused: display.portetPaused === true,
       portet_paused_message: display.portetPaused ? display.portetPausedMessage || PORTET_PAUSED_MESSAGE : null,
-      oney_4x: display.portetViaCawl === true ? false : isOney4xEnabled(),
-      payplug_4x_prelevement:
-        display.portetViaCawl !== true &&
-        display.portetPaypal4x !== true &&
-        isPayplugEnabled(),
+      oney_4x: false,
+      payplug_4x_prelevement: false,
       oney_4x_message: null,
       scalapay: isPayplugEnabled() && isScalapayEnabled(),
       scalapay_min_cents: SCALAPAY_MIN_CENTS,
       scalapay_max_cents: SCALAPAY_MAX_CENTS,
+      scalapay_fees_hint: SCALAPAY_FEES_HINT,
+      scalapay_refusal_help: SCALAPAY_REFUSAL_HELP,
       scalapay_message: null,
       preview: display.preview,
       sandbox: Boolean(display.preview),

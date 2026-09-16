@@ -148,7 +148,7 @@ async function confirmPayplugMateriel() {
       showPaymentFailure(
         '/panier?pay=card',
         data.message ||
-          'Scalapay / PayPlug n’a pas confirmé le paiement. Réessayez par carte bancaire — vous n’avez pas été débité.'
+          'Le paiement n’a pas été confirmé. Réessayez par carte bancaire — vous n’avez pas été débité.'
       );
       return;
     } catch {

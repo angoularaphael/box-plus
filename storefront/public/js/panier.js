@@ -6,9 +6,6 @@
   const form = document.getElementById('checkoutForm');
   const errorEl = document.getElementById('checkoutError');
   const pickupSelect = document.getElementById('pickupGym');
-  const scalapayOption = document.getElementById('scalapayOption');
-  const scalapayRadio = document.getElementById('payMethodScalapay');
-  const scalapayAddress = document.getElementById('scalapayAddress');
   const checkoutBtn = document.getElementById('checkoutBtn');
   const CART_BACKUP_KEY = 'bc-cart-checkout-backup';
 
@@ -25,22 +22,10 @@
   ];
 
   let catalogProducts = [];
-  let payConfig = {
-    scalapay: false,
-    scalapay_min_cents: 500,
-    scalapay_max_cents: 200000,
-  };
 
   function showError(message) {
     errorEl.textContent = message || 'Erreur de paiement';
     errorEl.hidden = false;
-  }
-
-  function selectCardFallback(message) {
-    const card = form.querySelector('input[name="payment_method"][value="card"]');
-    if (card) card.checked = true;
-    syncPayMethodUi(window.BCCart.totalCents());
-    if (message) showError(message);
   }
 
   function backupCart() {
@@ -85,22 +70,6 @@
     }
   }
 
-  async function loadPayConfig() {
-    try {
-      const res = await fetch('/api/payments/config');
-      const data = await res.json();
-      if (data && data.ok) {
-        payConfig = {
-          scalapay: data.scalapay === true,
-          scalapay_min_cents: Number(data.scalapay_min_cents) || 500,
-          scalapay_max_cents: Number(data.scalapay_max_cents) || 200000,
-        };
-      }
-    } catch {
-      /* keep defaults */
-    }
-  }
-
   function gymsForCart(lines) {
     const lists = lines
       .map((l) => catalogProducts.find((p) => p.id === l.product_id))
@@ -132,44 +101,12 @@
     pickupSelect.disabled = false;
     pickupSelect.innerHTML =
       '<option value="">Choisir une salle</option>' +
-      gyms.map((g) => `<option value="${g}">${g}${sameDay ? ' — possibilité de retrait dès le jour même' : ' — sous 48h'}</option>`).join('');
-  }
-
-  function selectedPayMethod() {
-    return form.querySelector('input[name="payment_method"]:checked')?.value || 'card';
-  }
-
-  function scalapayEligible(totalCents) {
-    return (
-      payConfig.scalapay === true &&
-      totalCents >= payConfig.scalapay_min_cents &&
-      totalCents <= payConfig.scalapay_max_cents
-    );
-  }
-
-  function syncPayMethodUi(totalCents) {
-    const eligible = scalapayEligible(totalCents);
-    if (scalapayOption) scalapayOption.hidden = !eligible;
-    if (scalapayRadio) {
-      scalapayRadio.disabled = !eligible;
-      if (!eligible && scalapayRadio.checked) {
-        const card = form.querySelector('input[name="payment_method"][value="card"]');
-        if (card) card.checked = true;
-      }
-    }
-    const useScalapay = eligible && selectedPayMethod() === 'scalapay';
-    if (scalapayAddress) scalapayAddress.hidden = !useScalapay;
-    const gender = document.getElementById('scalapayGender');
-    const address1 = document.getElementById('scalapayAddress1');
-    const postcode = document.getElementById('scalapayPostcode');
-    const city = document.getElementById('scalapayCity');
-    [gender, address1, postcode, city].forEach((el) => {
-      if (!el) return;
-      el.required = useScalapay;
-    });
-    if (checkoutBtn) {
-      checkoutBtn.textContent = useScalapay ? 'Payer avec Scalapay' : 'Payer par carte';
-    }
+      gyms
+        .map(
+          (g) =>
+            `<option value="${g}">${g}${sameDay ? ' — possibilité de retrait dès le jour même' : ' — sous 48h'}</option>`
+        )
+        .join('');
   }
 
   function render() {
@@ -184,7 +121,7 @@
     contentEl.hidden = false;
     const totalCents = window.BCCart.totalCents();
     totalEl.textContent = window.BCCart.formatCents(totalCents);
-    syncPayMethodUi(totalCents);
+    if (checkoutBtn) checkoutBtn.textContent = 'Payer par carte';
 
     linesEl.innerHTML = lines
       .map(
@@ -228,32 +165,17 @@
     });
   }
 
-  form.addEventListener('change', (e) => {
-    if (e.target && e.target.name === 'payment_method') {
-      syncPayMethodUi(window.BCCart.totalCents());
-    }
-  });
-
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorEl.hidden = true;
     const fd = new FormData(form);
-    const payMethod = selectedPayMethod();
     const customer = {
       first_name: fd.get('first_name'),
       last_name: fd.get('last_name'),
       email: fd.get('email'),
       phone: fd.get('phone'),
-      pickup_gym: pickupSelect.disabled && pickupSelect.value
-        ? pickupSelect.value
-        : fd.get('pickup_gym'),
+      pickup_gym: pickupSelect.disabled && pickupSelect.value ? pickupSelect.value : fd.get('pickup_gym'),
     };
-    if (payMethod === 'scalapay') {
-      customer.gender = fd.get('gender') || '';
-      customer.address = fd.get('address') || '';
-      customer.postal_code = fd.get('postal_code') || '';
-      customer.city = fd.get('city') || '';
-    }
     const lines = window.BCCart.read().map((l) => ({
       product_id: l.product_id,
       variant_id: l.variant_id,
@@ -272,20 +194,12 @@
         body: JSON.stringify({
           lines,
           customer,
-          payment_method: payMethod === 'scalapay' ? 'scalapay' : 'card',
+          payment_method: 'card',
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         const msg = (data.errors || [data.error]).filter(Boolean).join(', ');
-        if (data.suggest_card || data.code === 'scalapay_create_failed' || data.code === 'scalapay_unavailable') {
-          selectCardFallback(
-            msg ||
-              'Scalapay n’a pas pu démarrer. Choisissez « Carte bancaire » pour payer en une fois.'
-          );
-          btn.disabled = false;
-          return;
-        }
         throw new Error(msg || 'Erreur de paiement');
       }
       if (data.payment_id) {
@@ -310,7 +224,7 @@
     } catch (err) {
       showError(err.message || 'Erreur de paiement');
       btn.disabled = false;
-      syncPayMethodUi(window.BCCart.totalCents());
+      btn.textContent = 'Payer par carte';
     }
   });
 
@@ -318,23 +232,13 @@
     const params = new URLSearchParams(location.search);
     if (params.get('cancelled') === '1') {
       restoreCartIfNeeded();
-      const reason = params.get('reason') || '';
-      selectCardFallback(
-        reason === 'scalapay'
-          ? 'Paiement Scalapay annulé ou refusé. Vous pouvez payer par carte bancaire en une fois.'
-          : 'Paiement annulé. Vous pouvez réessayer par carte bancaire.'
-      );
-      history.replaceState({}, '', '/panier');
-    }
-    if (params.get('pay') === 'card') {
-      restoreCartIfNeeded();
-      selectCardFallback('Réglez maintenant par carte bancaire en une fois.');
+      showError('Paiement annulé. Vous pouvez réessayer par carte bancaire.');
       history.replaceState({}, '', '/panier');
     }
   }
 
   window.addEventListener('bccart:change', render);
-  Promise.all([loadCatalog(), loadPayConfig()]).then(() => {
+  loadCatalog().then(() => {
     handleReturnParams();
     render();
   });
