@@ -41,17 +41,19 @@ test('le backoffice compte les visites e-mail et WhatsApp à part', () => {
   assert.deepEqual(summary.other_sources, [{ name: 'Accès direct', count: 1 }]);
 });
 
-test('l’admin affiche clics vs inscriptions', () => {
+test('l’admin n’affiche plus les liens UTM ni le résumé clics/inscrits', () => {
   const adminJs = fs.readFileSync(path.join(__dirname, '../storefront/public/js/admin.js'), 'utf8');
   const adminHtml = fs.readFileSync(path.join(__dirname, '../storefront/public/admin/index.html'), 'utf8');
-  assert.match(adminJs, /e-mail David/);
   assert.match(adminJs, /d\.email/);
   assert.match(adminJs, /d\.whatsapp/);
   assert.match(adminJs, /d\.sms/);
-  assert.match(adminJs, /inscrits à la séance/);
-  assert.match(adminHtml, /\?src=email/);
-  assert.match(adminHtml, /\?src=whatsapp/);
-  assert.match(adminHtml, /\?src=sms/);
+  assert.doesNotMatch(adminJs, /inscrits à la séance/);
+  assert.doesNotMatch(adminJs, /fluxSummary/);
+  assert.doesNotMatch(adminHtml, /Lien flyer/);
+  assert.doesNotMatch(adminHtml, /\?src=email/);
+  assert.doesNotMatch(adminHtml, /\?src=whatsapp/);
+  assert.doesNotMatch(adminHtml, /\?src=sms/);
+  assert.doesNotMatch(adminHtml, /fluxSummary/);
   assert.doesNotMatch(adminHtml, /fluxKpis/);
   assert.match(adminHtml, /Bleu = total des visites/);
   assert.match(adminHtml, /Rouge = Flyer QR/);

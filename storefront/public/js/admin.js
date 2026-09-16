@@ -2134,7 +2134,6 @@
       const flux = data.seance_offerte;
       const fluxWrap = document.getElementById('fluxWrap');
       const fluxChart = document.getElementById('fluxChart');
-      const fluxSummary = document.getElementById('fluxSummary');
       if (fluxWrap && fluxChart) {
         const daily = flux?.days || [];
         const max = Math.max(1, ...daily.map((d) => d.total || 0));
@@ -2160,20 +2159,6 @@
               })
               .join('')
           : '<p class="admin-section-desc">Pas encore de visites séance offerte.</p>';
-        if (fluxSummary) {
-          const clicks = flux?.clicks || flux;
-          const signups = flux?.inscriptions || { total: 0, email: 0, flyer: 0, whatsapp: 0, sms: 0, other: 0 };
-          const otherBits = (clicks?.other_sources || flux?.other_sources || [])
-            .map((s) => `${s.name} ${s.count}`)
-            .join(', ');
-          const otherTxt = clicks?.other
-            ? ` · ${clicks.other} autres clics${otherBits ? ` (${otherBits})` : ''}`
-            : '';
-          const conv = flux?.conversion_pct != null ? ` · ${flux.conversion_pct} % des clics s’inscrivent` : '';
-          fluxSummary.textContent =
-            `${clicks?.total || flux?.total || 0} clics (${clicks?.email || flux?.email || 0} e-mail David · ${clicks?.whatsapp || flux?.whatsapp || 0} WhatsApp · ${clicks?.sms || flux?.sms || 0} SMS · ${clicks?.flyer || flux?.flyer || 0} flyer QR${otherTxt}) · ` +
-            `${signups.total || 0} inscrits à la séance (${signups.email || 0} e-mail David · ${signups.whatsapp || 0} WhatsApp · ${signups.sms || 0} SMS · ${signups.flyer || 0} flyer QR)${conv}`;
-        }
         fluxWrap.hidden = false;
       }
 
