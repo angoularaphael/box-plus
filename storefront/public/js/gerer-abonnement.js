@@ -477,7 +477,7 @@
             '4x',
             false,
             'PayPal 4× sans frais',
-            'Pay Later · distinct de Scalapay · si éligible'
+            'Pay Later · distinct du CB plusieurs fois · si éligible'
           )}
         </div>
         <div id="changeFourXSchedule" class="fourx-schedule" style="display:none;margin-top:10px"></div>
@@ -531,7 +531,7 @@
           schedule.style.display = plan === '4x' ? '' : 'none';
           if (plan === '4x') {
             schedule.innerHTML = `<p class="fourx-schedule__title">PayPal 4× sans frais</p>
-                <p class="fourx-schedule__note">Distinct de Scalapay. PayPal affiche le montant total. Le 4× n’apparaît que si votre compte est éligible (Pay Later) — aucun frais supplémentaire.</p>`;
+                <p class="fourx-schedule__note">Distinct du paiement CB en plusieurs fois. PayPal affiche le montant total. Le 4× n’apparaît que si votre compte est éligible (Pay Later) — aucun frais supplémentaire.</p>`;
           }
         }
         if (addr) addr.style.display = 'none';

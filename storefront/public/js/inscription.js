@@ -498,9 +498,9 @@
       '3× sans frais pour vous, ou 4× avec 1,5 % de frais (à votre charge).';
     const help =
       refusalHelp ||
-      'Si Scalapay refuse votre carte, écrivez à boxingcenter31@gmail.com en expliquant votre situation : nous vous répondrons pour trouver une solution.';
+      'Si le paiement CB en plusieurs fois refuse votre carte, écrivez à boxingcenter31@gmail.com en expliquant votre situation : nous allons vous proposer une solution de paiement alternative.';
     return `<div class="scalapay-help" role="note">
-      <p class="scalapay-help__fees"><strong>Frais Scalapay :</strong> ${esc(fees)}</p>
+      <p class="scalapay-help__fees"><strong>Frais CB (plusieurs fois) :</strong> ${esc(fees)}</p>
       <p class="scalapay-help__refusal">${esc(help).replace(
         /boxingcenter31@gmail\.com/g,
         '<a href="mailto:boxingcenter31@gmail.com">boxingcenter31@gmail.com</a>'
@@ -510,7 +510,7 @@
 
   function scalapayAddressFieldsHtml(full = {}) {
     return `<div id="scalapayAddress" class="form-grid scalapay-address" style="display:none;margin-top:12px">
-      <p class="sub full" style="margin:0 0 8px">Adresse et civilité requises pour Scalapay :</p>
+      <p class="sub full" style="margin:0 0 8px">Adresse et civilité requises pour le paiement CB en plusieurs fois :</p>
       <div>
         <label>Civilité *</label>
         <select name="gender">
@@ -602,9 +602,9 @@
     if (mode === 'scalapay') {
       return `
       <div class="fourx-schedule__inner">
-        <p class="fourx-schedule__title">Scalapay — paiement en plusieurs fois</p>
-        <p class="fourx-schedule__lead">Sur Scalapay vous choisissez : <strong>3× sans frais</strong>, ou <strong>4× avec 1,5&nbsp;% de frais</strong> (à votre charge).</p>
-        <p class="fourx-schedule__note">Montant total : ${totalLabel || 'celui de l’offre'}. Scalapay affiche le détail des échéances avant validation.</p>
+        <p class="fourx-schedule__title">CB — paiement en plusieurs fois</p>
+        <p class="fourx-schedule__lead">Vous choisissez : <strong>3× sans frais</strong>, ou <strong>4× avec 1,5&nbsp;% de frais</strong> (à votre charge).</p>
+        <p class="fourx-schedule__note">Montant total : ${totalLabel || 'celui de l’offre'}. Le détail des échéances s’affiche avant validation.</p>
       </div>`;
     }
     if (mode === 'paypal') {
@@ -612,7 +612,7 @@
       <div class="fourx-schedule__inner">
         <p class="fourx-schedule__title">PayPal 4× sans frais</p>
         <p class="fourx-schedule__lead"><strong>Aucun frais supplémentaire</strong> si votre compte PayPal est éligible (Pay Later).</p>
-        <p class="fourx-schedule__note">PayPal affiche le <strong>montant total</strong>. Le 4× n’apparaît que si vous êtes éligible — sinon le paiement se fait en une fois. Ce n’est <strong>pas</strong> Scalapay.</p>
+        <p class="fourx-schedule__note">PayPal affiche le <strong>montant total</strong>. Le 4× n’apparaît que si vous êtes éligible — sinon le paiement se fait en une fois. Ce n’est <strong>pas</strong> le paiement CB en plusieurs fois.</p>
       </div>`;
     }
     return `
@@ -771,7 +771,7 @@
       return `Montant total : <strong>${amount}</strong> — une fois, ou <strong>PayPal 4× sans frais</strong> si éligible`;
     }
     if (supportsScalapay(product) || supportsInstallmentChoice(product)) {
-      return `Montant total : <strong>${amount}</strong> — une fois, ou <strong>Scalapay</strong> (3×/4×)`;
+      return `Montant total : <strong>${amount}</strong> — une fois, ou <strong>CB</strong> (3×/4×)`;
     }
     if (isComptantLikeProduct(product)) {
       return `Paiement de : <strong>${amount}</strong>`;
@@ -1307,7 +1307,7 @@
       const bothInstallments = scalapayAvailable && showPaypalFour;
       const compareNote = bothInstallments
         ? `<p class="pay-compare-note" role="note">Deux façons de payer en plusieurs fois — ne les confondez pas&nbsp;:
-            <strong>Scalapay</strong> (3× sans frais ou 4× avec 1,5&nbsp;% de frais) et
+            <strong>CB en plusieurs fois</strong> (3× sans frais ou 4× avec 1,5&nbsp;% de frais) et
             <strong>PayPal 4× sans frais</strong> (Pay Later, si votre compte est éligible).</p>`
         : portetPaypal4x || currentGym() === 'portet'
           ? `<p class="pay-compare-note" role="note">Le paiement en plusieurs fois se fait via <strong>PayPal 4× sans frais</strong> (Pay Later, si votre compte est éligible).</p>`
@@ -1330,7 +1330,7 @@
                 ? `<label class="billing-choice">
               <input type="radio" name="payment_plan" value="scalapay" ${defaultPlan === 'scalapay' ? 'checked' : ''} />
               <span class="billing-choice-text">
-                <strong>Scalapay</strong>
+                <strong>CB en plusieurs fois</strong>
                 <small>3× sans frais · ou 4× avec 1,5&nbsp;% de frais</small>
               </span>
             </label>`
@@ -1354,7 +1354,7 @@
             payFlags.scalapayRefusalHelp
           )}</div>
           <div id="paypalFourHelp" class="paypal-four-help" style="display:none;margin-top:12px" role="note">
-            <p><strong>PayPal 4× sans frais</strong> — distinct de Scalapay. Aucun frais ajouté si Pay Later est proposé sur votre compte.</p>
+            <p><strong>PayPal 4× sans frais</strong> — distinct du paiement CB en plusieurs fois. Aucun frais ajouté si Pay Later est proposé sur votre compte.</p>
           </div>
           <p class="sub" id="payStep2Label" style="margin:16px 0 8px">Étape 2 — Moyen de paiement</p>
           <div id="onceMethods" class="billing-choice-row">${onceMethods || emptyPayHtml}</div>
@@ -1515,7 +1515,7 @@
         }
         if (payBtn) {
           payBtn.classList.remove('pay-btn--4x-cb');
-          if (isScalapay) payBtn.textContent = 'Continuer vers Scalapay';
+          if (isScalapay) payBtn.textContent = 'Continuer vers le paiement CB';
           else if (isPaypalFour) payBtn.textContent = 'Payer via PayPal 4× sans frais';
           else payBtn.textContent = 'Payer en une fois';
         }
@@ -1562,11 +1562,11 @@
           body.city = document.querySelector('#scalapayAddress input[name="city"]')?.value?.trim();
           body.gender = document.querySelector('#scalapayAddress select[name="gender"]')?.value;
           if (!body.gender) {
-            setMsg('Civilité requise pour Scalapay.', 'err');
+            setMsg('Civilité requise pour le paiement CB en plusieurs fois.', 'err');
             return;
           }
           if (!body.address || !body.city || !/^\d{5}$/.test(body.postal_code || '')) {
-            setMsg('Adresse complète et code postal à 5 chiffres requis pour Scalapay.', 'err');
+            setMsg('Adresse complète et code postal à 5 chiffres requis pour le paiement CB en plusieurs fois.', 'err');
             return;
           }
         } else if (plan === '4x') {
