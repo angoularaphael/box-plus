@@ -74,7 +74,7 @@ describe('billing-plan', () => {
     assert.equal(requiresIbanForPlan(promo, 'rib', '4x'), true);
     assert.match(paymentModeLabel(promo, 'rib', '4x'), /25 %/i);
     assert.equal(normalizePaymentPlan('scalapay', promo), 'scalapay');
-    assert.match(paymentModeLabel(promo, null, 'scalapay'), /Scalapay/i);
+    assert.match(paymentModeLabel(promo, null, 'scalapay'), /CB en plusieurs fois/i);
     assert.equal(requiresIbanForPlan(promo, null, 'scalapay'), false);
   });
 
