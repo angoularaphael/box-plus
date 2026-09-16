@@ -13,10 +13,10 @@ const SCALAPAY_UNAVAILABLE_MESSAGE =
   'Le paiement CB en plusieurs fois n’est pas disponible pour le moment. Vous pouvez régler par carte en une fois.';
 
 const SCALAPAY_FEES_HINT =
-  'CB en plusieurs fois : 3× sans frais pour vous, ou 4× avec 1,5 % de frais (à votre charge).';
+  'Scalapay : 3× sans frais pour vous, ou 4× avec 1,5 % de frais (à votre charge).';
 
 const SCALAPAY_REFUSAL_HELP =
-  'Si le paiement CB en plusieurs fois refuse votre carte, écrivez à boxingcenter31@gmail.com en expliquant votre situation : nous allons vous proposer une solution de paiement alternative.';
+  'Si Scalapay refuse votre carte, écrivez à boxingcenter31@gmail.com en expliquant votre situation : nous allons vous proposer une solution de paiement alternative.';
 
 /** Bornes officielles PayPlug / Scalapay (centimes). */
 const SCALAPAY_MIN_CENTS = 500;
