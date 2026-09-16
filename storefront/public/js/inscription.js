@@ -495,12 +495,12 @@
   function scalapayHelpHtml(feesHint, refusalHelp) {
     const fees =
       feesHint ||
-      '3× sans frais pour vous, ou 4× avec 1,5 % de frais (à votre charge).';
+      'Scalapay : 3× sans frais pour vous, ou 4× avec 1,5 % de frais (à votre charge).';
     const help =
       refusalHelp ||
-      'Si le paiement CB en plusieurs fois refuse votre carte, écrivez à boxingcenter31@gmail.com en expliquant votre situation : nous allons vous proposer une solution de paiement alternative.';
+      'Si Scalapay refuse votre carte, écrivez à boxingcenter31@gmail.com en expliquant votre situation : nous allons vous proposer une solution de paiement alternative.';
     return `<div class="scalapay-help" role="note">
-      <p class="scalapay-help__fees"><strong>Frais CB (plusieurs fois) :</strong> ${esc(fees)}</p>
+      <p class="scalapay-help__fees"><strong>Frais Scalapay :</strong> ${esc(fees)}</p>
       <p class="scalapay-help__refusal">${esc(help).replace(
         /boxingcenter31@gmail\.com/g,
         '<a href="mailto:boxingcenter31@gmail.com">boxingcenter31@gmail.com</a>'
