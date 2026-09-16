@@ -2145,11 +2145,13 @@
                 const flyerH = Math.round(((d.flyer || 0) / max) * 120);
                 const emailH = Math.round(((d.email || 0) / max) * 120);
                 const waH = Math.round(((d.whatsapp || 0) / max) * 120);
-                return `<div class="flux-col" title="${escapeHtml(d.day)} : ${d.total} visites dont ${d.email || 0} e-mail, ${d.whatsapp || 0} WhatsApp et ${d.flyer || 0} flyer">
+                const smsH = Math.round(((d.sms || 0) / max) * 120);
+                return `<div class="flux-col" title="${escapeHtml(d.day)} : ${d.total} visites dont ${d.email || 0} e-mail, ${d.whatsapp || 0} WhatsApp, ${d.sms || 0} SMS et ${d.flyer || 0} flyer">
                   <div class="flux-stack">
                     <div class="flux-bar flux-bar--all" style="height:${h}px"></div>
                     <div class="flux-bar flux-bar--email" style="height:${emailH}px"></div>
                     <div class="flux-bar flux-bar--whatsapp" style="height:${waH}px"></div>
+                    <div class="flux-bar flux-bar--sms" style="height:${smsH}px"></div>
                     <div class="flux-bar flux-bar--flyer" style="height:${flyerH}px"></div>
                   </div>
                   <span class="flux-n">${d.total}</span>
@@ -2160,7 +2162,7 @@
           : '<p class="admin-section-desc">Pas encore de visites séance offerte.</p>';
         if (fluxSummary) {
           const clicks = flux?.clicks || flux;
-          const signups = flux?.inscriptions || { total: 0, email: 0, flyer: 0, whatsapp: 0, other: 0 };
+          const signups = flux?.inscriptions || { total: 0, email: 0, flyer: 0, whatsapp: 0, sms: 0, other: 0 };
           const otherBits = (clicks?.other_sources || flux?.other_sources || [])
             .map((s) => `${s.name} ${s.count}`)
             .join(', ');
@@ -2169,8 +2171,8 @@
             : '';
           const conv = flux?.conversion_pct != null ? ` · ${flux.conversion_pct} % des clics s’inscrivent` : '';
           fluxSummary.textContent =
-            `${clicks?.total || flux?.total || 0} clics (${clicks?.email || flux?.email || 0} e-mail David · ${clicks?.whatsapp || flux?.whatsapp || 0} WhatsApp · ${clicks?.flyer || flux?.flyer || 0} flyer QR${otherTxt}) · ` +
-            `${signups.total || 0} inscrits à la séance (${signups.email || 0} e-mail David · ${signups.whatsapp || 0} WhatsApp · ${signups.flyer || 0} flyer QR)${conv}`;
+            `${clicks?.total || flux?.total || 0} clics (${clicks?.email || flux?.email || 0} e-mail David · ${clicks?.whatsapp || flux?.whatsapp || 0} WhatsApp · ${clicks?.sms || flux?.sms || 0} SMS · ${clicks?.flyer || flux?.flyer || 0} flyer QR${otherTxt}) · ` +
+            `${signups.total || 0} inscrits à la séance (${signups.email || 0} e-mail David · ${signups.whatsapp || 0} WhatsApp · ${signups.sms || 0} SMS · ${signups.flyer || 0} flyer QR)${conv}`;
         }
         fluxWrap.hidden = false;
       }

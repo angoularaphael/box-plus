@@ -1738,7 +1738,7 @@ function createApp() {
         withTimeout(
           require('./lib/seance-offerte-visits').summarizeSeanceOfferteVisits(14),
           3000,
-          { days: [], total: 0, flyer: 0, email: 0, whatsapp: 0, other: 0, inscriptions: { total: 0, flyer: 0, email: 0, whatsapp: 0, other: 0 }, conversion_pct: 0 }
+          { days: [], total: 0, flyer: 0, email: 0, whatsapp: 0, sms: 0, other: 0, inscriptions: { total: 0, flyer: 0, email: 0, whatsapp: 0, sms: 0, other: 0 }, conversion_pct: 0 }
         ),
         withTimeout(summarizeFunnelEvents(30), 3000, null),
       ]);

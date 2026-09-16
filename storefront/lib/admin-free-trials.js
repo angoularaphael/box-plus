@@ -101,6 +101,7 @@ function campaignSrcKind(order = {}) {
   if (s === 'flyer' || s === 'affiche' || s === 'qr') return 'flyer';
   if (s === 'email' || s === 'mail' || s === 'newsletter') return 'email';
   if (s === 'whatsapp' || s === 'wa') return 'whatsapp';
+  if (s === 'sms' || s === 'texto') return 'sms';
   if (!s || s === 'seance-offerte-web') return 'direct';
   return s;
 }
@@ -110,6 +111,7 @@ function campaignSrcLabel(order = {}) {
   if (kind === 'flyer') return 'Flyer QR';
   if (kind === 'email') return 'E-mail David';
   if (kind === 'whatsapp') return 'WhatsApp';
+  if (kind === 'sms') return 'SMS';
   if (kind === 'direct') return 'Accès direct';
   return kind;
 }

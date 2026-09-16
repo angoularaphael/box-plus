@@ -35,7 +35,7 @@ async function summarizeSeanceOfferteVisits(days = 14) {
 }
 
 function emptyBucket() {
-  return { days: [], total: 0, flyer: 0, email: 0, whatsapp: 0, other: 0, other_sources: [] };
+  return { days: [], total: 0, flyer: 0, email: 0, whatsapp: 0, sms: 0, other: 0, other_sources: [] };
 }
 
 function emptySummary() {
@@ -57,6 +57,7 @@ const SOURCE_LABELS = {
   newsletter: 'E-mail David',
   whatsapp: 'WhatsApp',
   wa: 'WhatsApp',
+  sms: 'SMS',
   direct: 'Accès direct',
   meta: 'Meta',
   story: 'Story Instagram',
@@ -79,6 +80,7 @@ function classifyVisitSrc(src) {
   if (s === 'flyer' || s === 'affiche' || s === 'qr') return 'flyer';
   if (s === 'email' || s === 'mail' || s === 'newsletter') return 'email';
   if (s === 'whatsapp' || s === 'wa') return 'whatsapp';
+  if (s === 'sms' || s === 'texto') return 'sms';
   return 'other';
 }
 
@@ -93,17 +95,19 @@ function summarizeVisitRows(data) {
   let flyer = 0;
   let email = 0;
   let whatsapp = 0;
+  let sms = 0;
   let other = 0;
   for (const r of data || []) {
     const day = String(r.created_at || '').slice(0, 10);
     if (!day) continue;
-    if (!byDay[day]) byDay[day] = { day, total: 0, flyer: 0, email: 0, whatsapp: 0, other: 0 };
+    if (!byDay[day]) byDay[day] = { day, total: 0, flyer: 0, email: 0, whatsapp: 0, sms: 0, other: 0 };
     byDay[day].total += 1;
     const kind = classifyVisitSrc(r.src);
     byDay[day][kind] += 1;
     if (kind === 'flyer') flyer += 1;
     else if (kind === 'email') email += 1;
     else if (kind === 'whatsapp') whatsapp += 1;
+    else if (kind === 'sms') sms += 1;
     else {
       other += 1;
       const label = visitSourceLabel(r.src);
@@ -112,10 +116,11 @@ function summarizeVisitRows(data) {
   }
   return {
     days: Object.values(byDay).sort((a, b) => a.day.localeCompare(b.day)),
-    total: flyer + email + whatsapp + other,
+    total: flyer + email + whatsapp + sms + other,
     flyer,
     email,
     whatsapp,
+    sms,
     other,
     other_sources: Object.entries(otherCounts)
       .map(([name, count]) => ({ name, count }))

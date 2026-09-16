@@ -918,9 +918,10 @@ button.pan-kpi:hover {
   border-radius: 4px 4px 0 0;
 }
 .flux-bar--all { background: #20254b; position: absolute; bottom: 0; left: 2px; width: 24px; }
-.flux-bar--email { background: #1b8a4c; position: absolute; bottom: 0; left: 2px; width: 8px; }
-.flux-bar--whatsapp { background: #128c7e; position: absolute; bottom: 0; left: 10px; width: 8px; }
-.flux-bar--flyer { background: #e8001c; position: absolute; bottom: 0; left: 18px; width: 8px; }
+.flux-bar--email { background: #1b8a4c; position: absolute; bottom: 0; left: 2px; width: 6px; }
+.flux-bar--whatsapp { background: #128c7e; position: absolute; bottom: 0; left: 8px; width: 6px; }
+.flux-bar--sms { background: #2563eb; position: absolute; bottom: 0; left: 14px; width: 6px; }
+.flux-bar--flyer { background: #e8001c; position: absolute; bottom: 0; left: 20px; width: 6px; }
 .flux-n { font-size: 11px; font-weight: 700; color: #20254b; }
 .flux-col small { font-size: 10px; color: #5c6370; }
 .flux-legend { display: flex; flex-wrap: wrap; gap: 12px 18px; margin-top: 8px; }
@@ -930,6 +931,7 @@ button.pan-kpi:hover {
 .flux-dot--flyer { background: #e8001c; }
 .flux-dot--email { background: #1b8a4c; }
 .flux-dot--whatsapp { background: #128c7e; }
+.flux-dot--sms { background: #2563eb; }
 
 .dossier-overlay {
   position: fixed;
