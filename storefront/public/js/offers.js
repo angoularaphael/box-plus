@@ -74,15 +74,15 @@
     }
     if (product.description) return product.description;
     if (/baby\s*boxe/i.test(n)) {
-      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison. 1×, ou plusieurs fois avec Scalapay (3× sans frais / 4× +1,5 %), ou via PayPal si éligible.';
+      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison. 1×, ou plusieurs fois par CB (3× sans frais / 4× +1,5 %), ou via PayPal si éligible.';
     }
     if (/educative|éducative/i.test(n)) {
-      return 'Boxe éducative pour enfants et ados : technique, respect et confiance en soi, tout au long de la saison. 1×, ou plusieurs fois avec Scalapay (3× sans frais / 4× +1,5 %), ou via PayPal si éligible.';
+      return 'Boxe éducative pour enfants et ados : technique, respect et confiance en soi, tout au long de la saison. 1×, ou plusieurs fois par CB (3× sans frais / 4× +1,5 %), ou via PayPal si éligible.';
     }
     if (hasInstallmentChoice(product) || /comptant/i.test(n) || product.subsection === 'comptant') {
       const dur = formatDuration(product);
       if (hasInstallmentChoice(product)) {
-        return `Réglez en une fois, ou en plusieurs fois avec Scalapay (3× sans frais ou 4× +1,5 %) (${dur}).`;
+        return `Réglez en une fois, ou en plusieurs fois par CB (3× sans frais ou 4× +1,5 %) (${dur}).`;
       }
       return `Réglez une seule fois et entraînez-vous pendant ${dur} : accès illimité aux salles et à toutes les disciplines, sans aucun prélèvement mensuel.`;
     }
@@ -112,10 +112,10 @@
     if (!(total > 0)) return '';
     return `
       <div class="fourx-schedule fourx-schedule--card">
-        <p class="fourx-schedule__title">Paiement fractionné Scalapay</p>
+        <p class="fourx-schedule__title">CB — paiement en plusieurs fois</p>
         <p class="fourx-schedule__lead"><strong>3× sans frais</strong> ou <strong>4× avec 1,5&nbsp;% de frais</strong> (à votre charge)</p>
-        <p class="fourx-schedule__note">Montant total ${total.toFixed(2).replace('.', ',')}&nbsp;€. Scalapay affiche le détail des échéances avant validation.</p>
-        <p class="fourx-schedule__note">Si votre carte est refusée, écrivez à <a href="mailto:boxingcenter31@gmail.com">boxingcenter31@gmail.com</a>.</p>
+        <p class="fourx-schedule__note">Montant total ${total.toFixed(2).replace('.', ',')}&nbsp;€. Le détail des échéances s’affiche avant validation.</p>
+        <p class="fourx-schedule__note">Si le paiement CB en plusieurs fois refuse votre carte, écrivez à <a href="mailto:boxingcenter31@gmail.com">boxingcenter31@gmail.com</a> : nous allons vous proposer une solution de paiement alternative.</p>
         <p class="fourx-schedule__note">PayPal : 4× sans frais si éligible (montant total affiché par PayPal).</p>
       </div>`;
   }

@@ -1448,7 +1448,7 @@ function createApp() {
       if (cartPayMethod === 'scalapay') {
         return res.status(400).json({
           ok: false,
-          error: 'Scalapay n’est pas disponible pour le matériel. Réglez par carte bancaire en une fois.',
+          error: 'Le paiement CB en plusieurs fois n’est pas disponible pour le matériel. Réglez par carte bancaire en une fois.',
           code: 'scalapay_materiel_forbidden',
           suggest_card: true,
         });
@@ -4218,7 +4218,7 @@ function createApp() {
         if (!productSupportsScalapay(product)) {
           return res.status(400).json({
             ok: false,
-            error: 'Scalapay n’est disponible que pour les offres 259 €, 400 €, Baby Boxe et Boxe éducative.',
+            error: 'Le paiement CB en plusieurs fois n’est disponible que pour les offres 259 €, 400 €, Baby Boxe et Boxe éducative.',
             code: 'scalapay_offer_ineligible',
             suggest_card: true,
           });
@@ -4234,7 +4234,7 @@ function createApp() {
         if (!isAmountEligibleForScalapay(product.price_cents)) {
           return res.status(400).json({
             ok: false,
-            error: `Scalapay est disponible entre ${SCALAPAY_MIN_CENTS / 100} € et ${
+            error: `Le paiement CB en plusieurs fois est disponible entre ${SCALAPAY_MIN_CENTS / 100} € et ${
               SCALAPAY_MAX_CENTS / 100
             } €.`,
             code: 'scalapay_amount_ineligible',
@@ -4352,7 +4352,7 @@ function createApp() {
           return res.status(400).json({
             ok: false,
             error: gymSupportsScalapay(gym)
-              ? 'Le paiement en plusieurs fois se fait via Scalapay. Choisissez Scalapay ou réglez en une fois.'
+              ? 'Le paiement en plusieurs fois se fait par CB. Choisissez CB en plusieurs fois, ou réglez en une fois.'
               : 'À Portet, le paiement en plusieurs fois se fait via PayPal 4× sans frais. Choisissez PayPal ou réglez en une fois.',
             suggest_scalapay: supportsScalapayCheckout(product, gym),
             suggest_card: true,
@@ -4498,7 +4498,7 @@ function createApp() {
         return res.status(400).json({
           ok: false,
           error: gymSupportsScalapay(gym)
-            ? 'Le paiement CB puis RIB a été retiré. Choisissez Scalapay ou réglez en une fois.'
+            ? 'Le paiement CB puis RIB a été retiré. Choisissez CB en plusieurs fois, ou réglez en une fois.'
             : 'Le paiement CB puis RIB a été retiré. À Portet, choisissez PayPal 4× sans frais ou réglez en une fois.',
           suggest_scalapay: supportsScalapayCheckout(product, gym),
           suggest_card: true,
@@ -4514,7 +4514,7 @@ function createApp() {
         return res.status(400).json({
           ok: false,
           error: gymSupportsScalapay(gym)
-            ? 'Pour payer en plusieurs fois, choisissez Scalapay.'
+            ? 'Pour payer en plusieurs fois, choisissez CB en plusieurs fois.'
             : 'À Portet, pour payer en plusieurs fois, choisissez PayPal 4× sans frais.',
           suggest_scalapay: supportsScalapayCheckout(product, gym),
           suggest_card: true,

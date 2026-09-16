@@ -37,7 +37,7 @@ function run() {
       message: 'Access to this feature is not available.',
       body: { message: 'Access to this feature is not available.', details: [{ field: 'payment_method', message: 'scalapay' }] },
     }),
-    /Scalapay/
+    /CB|plusieurs fois/i
   );
   assert.ok(SCALAPAY_UNAVAILABLE_MESSAGE.length > 10);
   assert.match(require('../storefront/lib/payplug').SCALAPAY_FEES_HINT, /1,?5\s*%|3×/i);

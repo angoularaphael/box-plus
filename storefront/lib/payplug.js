@@ -10,13 +10,13 @@ const ONEY_4X_UNAVAILABLE_MESSAGE =
   'Le 4× sans frais par carte est momentanément indisponible. Vous pouvez payer en 4× via PayPal, ou régler en une fois par carte ou PayPal.';
 
 const SCALAPAY_UNAVAILABLE_MESSAGE =
-  'Le paiement fractionné Scalapay n’est pas disponible pour le moment. Vous pouvez régler par carte en une fois.';
+  'Le paiement CB en plusieurs fois n’est pas disponible pour le moment. Vous pouvez régler par carte en une fois.';
 
 const SCALAPAY_FEES_HINT =
-  '3× sans frais pour vous, ou 4× avec 1,5 % de frais (à votre charge).';
+  'CB en plusieurs fois : 3× sans frais pour vous, ou 4× avec 1,5 % de frais (à votre charge).';
 
 const SCALAPAY_REFUSAL_HELP =
-  'Si Scalapay refuse votre carte, écrivez à boxingcenter31@gmail.com en expliquant votre situation : nous vous répondrons pour trouver une solution.';
+  'Si le paiement CB en plusieurs fois refuse votre carte, écrivez à boxingcenter31@gmail.com en expliquant votre situation : nous allons vous proposer une solution de paiement alternative.';
 
 /** Bornes officielles PayPlug / Scalapay (centimes). */
 const SCALAPAY_MIN_CENTS = 500;
@@ -277,7 +277,7 @@ async function createScalapayPayment({
   const amount = Number(amountCents || product?.price_cents || 0);
   if (!isAmountEligibleForScalapay(amount)) {
     const err = new Error(
-      `Scalapay est disponible entre ${SCALAPAY_MIN_CENTS / 100} € et ${SCALAPAY_MAX_CENTS / 100} €.`
+      `Le paiement CB en plusieurs fois est disponible entre ${SCALAPAY_MIN_CENTS / 100} € et ${SCALAPAY_MAX_CENTS / 100} €.`
     );
     err.code = 'scalapay_amount_ineligible';
     throw err;
@@ -288,7 +288,7 @@ async function createScalapayPayment({
     : customerDetails({ customer: customerOverrides }, {});
   const missing = validateOneyCustomer(customer);
   if (missing.length) {
-    const err = new Error(`Infos manquantes pour Scalapay : ${missing.join(', ')}`);
+    const err = new Error(`Infos manquantes pour le paiement CB en plusieurs fois : ${missing.join(', ')}`);
     err.code = 'payplug_customer_incomplete';
     err.missing = missing;
     throw err;
