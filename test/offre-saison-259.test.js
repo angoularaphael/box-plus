@@ -94,6 +94,33 @@ describe('offre 259 € — comptant', () => {
     assert.match(paymentModeLabel(PROMO_STATIC, null, '4x'), /4× sans frais/i);
   });
 
+  it('buildOrderPayload Scalapay — comptant Deciplus, sans IBAN, pas de note 4×', () => {
+    const payload = buildOrderPayload(
+      sampleInput({
+        payment_plan: 'scalapay',
+        payment_method: 'payplug',
+        payplug_payment_id: 'pay_test_scalapay',
+      }),
+      PROMO_STATIC
+    );
+    assert.equal(payload.requires_iban, false);
+    assert.equal(payload.payment_plan, 'scalapay');
+    assert.equal(payload.paiement_comptant, true);
+    assert.equal(payload.payment.method, 'payplug');
+    assert.equal(payload.payment.iban, null);
+    assert.equal(payload.payment.amount, 259);
+    const order = normalizeOrder(payload);
+    assert.equal(order.paiement_comptant, true);
+    assert.deepEqual(validateOrder(order), []);
+
+    const { buildFourXInfoComptaNote } = require('../lib/info-compta-note');
+    const note = buildFourXInfoComptaNote(order, {
+      label: 'OFFRE PROMO 12 MOIS — 1× ou 4× sans frais',
+      amount: 259,
+    });
+    assert.equal(note, '', 'Scalapay ne doit pas écrire un échéancier 4× club');
+  });
+
   it('buildOrderPayload 1× — sans IBAN, paiement comptant, validation OK', () => {
     const payload = buildOrderPayload(sampleInput({ payment_plan: 'once' }), PROMO_STATIC);
     assert.equal(payload.requires_iban, false);

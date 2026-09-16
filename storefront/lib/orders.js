@@ -72,8 +72,17 @@ function buildOrderPayload(input, product) {
   const paymentMethod = isFree
     ? 'free'
     : input.payment_method ||
-      (input.payplug_payment_id || paymentPlan === '4x' ? 'payplug' : 'stripe');
+      (input.payplug_payment_id || paymentPlan === '4x' || paymentPlan === 'scalapay'
+        ? 'payplug'
+        : 'stripe');
   const saleType = isFree ? 'none' : product.sale_type || null;
+  const paiementComptant = payplug4xPrelev
+    ? false
+    : paymentPlan === 'once' ||
+        paymentPlan === 'scalapay' ||
+        paymentPlan === '4x' ||
+        Boolean(paymentPlan) ||
+        undefined;
 
   return {
     order_id: input.order_id || `STORE-${Date.now()}`,
@@ -87,7 +96,7 @@ function buildOrderPayload(input, product) {
     requires_iban: isFree ? false : requiresIban,
     billing_plan: billingPlan,
     payment_plan: paymentPlan,
-    paiement_comptant: payplug4xPrelev ? false : Boolean(paymentPlan) || undefined,
+    paiement_comptant: paiementComptant,
     gym: input.gym,
     customer: {
       first_name: input.first_name,
