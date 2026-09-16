@@ -1016,6 +1016,65 @@
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
 @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
 
+.cart-pay-methods {
+  border: 0;
+  margin: 12px 0 4px;
+  padding: 0;
+}
+
+.cart-pay-methods legend {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bc-navy);
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.cart-pay-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--bc-border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--bc-navy);
+}
+
+.cart-pay-option:has(input:checked) {
+  border-color: var(--bc-navy);
+  background: color-mix(in srgb, var(--bc-navy) 4%, #fff);
+}
+
+.cart-pay-option input {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.cart-pay-option em {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--bc-muted);
+  font-weight: 400;
+}
+
+.scalapay-address {
+  margin: 8px 0 12px;
+  padding: 12px;
+  border: 1px dashed var(--bc-border);
+  border-radius: 8px;
+  background: var(--bc-bg);
+}
+
+.scalapay-address__hint {
+  font-size: 12px;
+  color: var(--bc-muted);
+  margin: 0 0 10px;
+}
+
 .cart-empty {
   max-width: 460px;
   margin: 40px auto 60px;

@@ -51,6 +51,32 @@
               <option value="">Choisir une salle</option>
             </select>
           </label>
+          <fieldset class="cart-pay-methods" id="payMethodFieldset">
+            <legend>Moyen de paiement</legend>
+            <label class="cart-pay-option">
+              <input type="radio" name="payment_method" value="card" checked />
+              <span>Carte bancaire <em>(paiement en une fois)</em></span>
+            </label>
+            <label class="cart-pay-option" id="scalapayOption" hidden>
+              <input type="radio" name="payment_method" value="scalapay" id="payMethodScalapay" disabled />
+              <span>Scalapay <em>(3× sans frais ou 4× avec frais)</em></span>
+            </label>
+          </fieldset>
+          <div id="scalapayAddress" class="scalapay-address" hidden>
+            <p class="scalapay-address__hint">Adresse de facturation requise pour Scalapay</p>
+            <label>Civilité
+              <select name="gender" id="scalapayGender">
+                <option value="">Choisir</option>
+                <option value="M">Monsieur</option>
+                <option value="F">Madame</option>
+              </select>
+            </label>
+            <label>Adresse<input name="address" id="scalapayAddress1" autocomplete="street-address" /></label>
+            <div class="form-row">
+              <label>Code postal<input name="postal_code" id="scalapayPostcode" autocomplete="postal-code" inputmode="numeric" /></label>
+              <label>Ville<input name="city" id="scalapayCity" autocomplete="address-level2" /></label>
+            </div>
+          </div>
           <div class="cart-total">
             <span>Total TTC</span>
             <strong id="cartTotal">0,00 €</strong>
