@@ -114,8 +114,8 @@
       <div class="fourx-schedule fourx-schedule--card">
         <p class="fourx-schedule__title">CB — paiement en plusieurs fois</p>
         <p class="fourx-schedule__lead"><strong>3× sans frais</strong> ou <strong>4× avec 1,5&nbsp;% de frais</strong> (à votre charge)</p>
-        <p class="fourx-schedule__note">Montant total ${total.toFixed(2).replace('.', ',')}&nbsp;€. Le détail des échéances s’affiche avant validation.</p>
-        <p class="fourx-schedule__note">Si le paiement CB en plusieurs fois refuse votre carte, écrivez à <a href="mailto:boxingcenter31@gmail.com">boxingcenter31@gmail.com</a> : nous allons vous proposer une solution de paiement alternative.</p>
+        <p class="fourx-schedule__note">Montant total ${total.toFixed(2).replace('.', ',')}&nbsp;€. Sur Scalapay, le détail des échéances s’affiche avant validation.</p>
+        <p class="fourx-schedule__note">Si Scalapay refuse votre carte, écrivez à <a href="mailto:boxingcenter31@gmail.com">boxingcenter31@gmail.com</a> : nous allons vous proposer une solution de paiement alternative.</p>
         <p class="fourx-schedule__note">PayPal : 4× sans frais si éligible (montant total affiché par PayPal).</p>
       </div>`;
   }
