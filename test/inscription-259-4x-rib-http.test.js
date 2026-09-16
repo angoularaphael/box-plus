@@ -1,12 +1,10 @@
 'use strict';
 
 /**
- * Tunnel inscription navigateur — offre 259 € en 4× PayPlug prélèvement (25 % CB + RIB).
- * STORE_DEMO_ENABLED + clé PayPlug test (overlay) pour l’UI ; paiement simulé côté API.
+ * Tunnel inscription navigateur — offre 259 € avec Scalapay (RIB 4× retiré).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const http = require('http');
@@ -15,17 +13,21 @@ process.env.STORE_DEMO_ENABLED = 'true';
 process.env.NODE_ENV = 'test';
 process.env.VERCEL = '';
 process.env.PAYPLUG_ONEY_4X_ENABLED = '0';
+process.env.PAYPLUG_SCALAPAY_ENABLED = '1';
 process.env.WHATSAPP_BOT_URL = 'http://127.0.0.1:9';
-process.env.BOXPLUS_ORDERS_DIR = path.join(os.tmpdir(), `boxplus-rib-browser-${Date.now()}`);
-process.env.BOXPLUS_MERCH_FILE = path.join(os.tmpdir(), `boxplus-merch-rib-${Date.now()}.json`);
-process.env.BOXPLUS_MATERIEL_CATALOG_FILE = path.join(os.tmpdir(), `boxplus-catalog-rib-${Date.now()}.json`);
+process.env.BOXPLUS_ORDERS_DIR = path.join(os.tmpdir(), `boxplus-scalapay-browser-${Date.now()}`);
+process.env.BOXPLUS_MERCH_FILE = path.join(os.tmpdir(), `boxplus-merch-scalapay-${Date.now()}.json`);
+process.env.BOXPLUS_MATERIEL_CATALOG_FILE = path.join(
+  os.tmpdir(),
+  `boxplus-catalog-scalapay-${Date.now()}.json`
+);
 process.env.BOXPLUS_ORDERS_REMOTE = '0';
 
 process.env.BOXPLUS_TEST_ENV_FILE = path.join(__dirname, '..', 'env.test');
 require('../storefront/lib/test-env').resetTestFileCache();
 
 const { createApp } = require('../storefront/server');
-const { uniqueTestCustomer, VALID_TEST_IBAN } = require('../lib/test-fixtures');
+const { uniqueTestCustomer } = require('../lib/test-fixtures');
 const { markPaymentPaid } = require('../storefront/lib/order-lifecycle');
 
 function listen(app) {
@@ -86,7 +88,7 @@ function inscriptionUrl(base, orderId, token, step) {
   return `${base}/inscription?order=${encodeURIComponent(orderId)}&token=${tok}&bc_token=${tok}&step=${step}`;
 }
 
-test('tunnel inscription navigateur — 259 € 4× PayPlug affiche le RIB puis le dossier', async (t) => {
+test('tunnel inscription navigateur — 259 € Scalapay (pas de RIB 4×)', async (t) => {
   let chromium;
   try {
     ({ chromium } = require('playwright'));
@@ -99,7 +101,10 @@ test('tunnel inscription navigateur — 259 € 4× PayPlug affiche le RIB puis 
   t.after(() => new Promise((resolve) => server.close(resolve)));
 
   const payCfg = await json(base, '/api/payments/config?gym=minimes');
-  assert.equal(payCfg.data.payplug_4x_prelevement, true);
+  assert.equal(payCfg.data.payplug_4x_prelevement, false);
+  assert.equal(payCfg.data.scalapay, true);
+  assert.match(String(payCfg.data.scalapay_fees_hint || ''), /1,?5\s*%|3×/i);
+  assert.match(String(payCfg.data.scalapay_refusal_help || ''), /boxingcenter31@gmail\.com/i);
 
   const { order_id, access_token } = await draft259(base);
   const payUrl = inscriptionUrl(base, order_id, access_token, 4);
@@ -113,56 +118,43 @@ test('tunnel inscription navigateur — 259 € 4× PayPlug affiche le RIB puis 
   const page = await browser.newPage();
 
   await page.goto(payUrl, { waitUntil: 'networkidle', timeout: 30000 });
-  await page.waitForSelector('input[name="payment_plan"][value="4x"]', { timeout: 15000 });
-  await page.check('input[name="payment_plan"][value="4x"]');
-  await page.waitForSelector('input[name="pay_method_4x"]', { timeout: 10000 });
-  const fourXMethods = await page.locator('input[name="pay_method_4x"]').evaluateAll((els) =>
-    els.filter((el) => el.offsetParent !== null).map((el) => el.value)
-  );
-  assert.ok(fourXMethods.includes('payplug'), `PayPlug 4× manquant: ${fourXMethods.join(',')}`);
-  assert.ok(fourXMethods.includes('paypal'), `PayPal 4× manquant: ${fourXMethods.join(',')}`);
+  await page.waitForSelector('input[name="payment_plan"][value="scalapay"]', { timeout: 15000 });
+  await page.check('input[name="payment_plan"][value="scalapay"]');
 
-  await page.check('input[name="pay_method_4x"][value="payplug"]');
-  let payBtnText = await page.locator('#payBtn').innerText();
-  assert.match(payBtnText, /64,75.*aujourd/i, 'bouton CB 1ʳᵉ échéance');
-  assert.match(payBtnText, /RIB/i, 'bouton mentionne le RIB');
-  const schedulePayplug = await page.locator('#fourXSchedule').innerText();
-  assert.match(schedulePayplug, /Aujourd.hui.*64,75.*CB/i, 'calendrier CB aujourd’hui');
-  assert.match(schedulePayplug, /RIB/i, 'calendrier mentionne le RIB');
-  assert.match(schedulePayplug, /Prélèvement sur votre RIB/i, 'échéances RIB datées');
+  const helpText = await page.locator('#scalapayHelpBox').innerText();
+  assert.match(helpText, /1,?5\s*%|sans frais/i, 'frais Scalapay affichés');
+  assert.match(helpText, /boxingcenter31@gmail\.com/i, 'email d’aide affiché');
 
-  await page.check('input[name="pay_method_4x"][value="paypal"]');
-  payBtnText = await page.locator('#payBtn').innerText();
-  assert.match(payBtnText, /259|PayPal.*4×/i, 'bouton PayPal montant total 4×');
-  const schedulePaypal = await page.locator('#fourXSchedule').innerText();
-  assert.match(schedulePaypal, /Pay Later|éligible/i, 'calendrier PayPal = 4× sans frais');
+  const addrVisible = await page.locator('#scalapayAddress').isVisible();
+  assert.equal(addrVisible, true, 'adresse Scalapay visible');
+
+  const payBtnText = await page.locator('#payBtn').innerText();
+  assert.match(payBtnText, /Scalapay/i);
+
+  const pageText = await page.locator('body').innerText();
+  assert.doesNotMatch(pageText, /CB puis RIB|3 prochains paiements sur votre RIB/i);
+  assert.match(pageText, /PayPal 4× sans frais|Scalapay/i);
 
   await markPaymentPaid(order_id, {
     method: 'payplug',
-    payment_plan: '4x',
-    billing_plan: 'rib',
-    amount: 64.75,
+    payment_plan: 'scalapay',
+    amount: 259,
   });
 
-  await page.goto(inscriptionUrl(base, order_id, access_token, 5), {
+  await page.goto(inscriptionUrl(base, order_id, access_token, 6), {
     waitUntil: 'networkidle',
     timeout: 30000,
   });
-  await page.waitForSelector('#ibanForm', { timeout: 15000 });
-  assert.match(await page.locator('h1').innerText(), /coordonnées bancaires/i);
-  assert.ok(!(await page.locator('#bladeSkip').isVisible().catch(() => false)), 'pas d’upsell Blade avant le RIB');
-
-  await page.fill('#iban', VALID_TEST_IBAN);
-  await page.click('#ibanForm button[type="submit"]');
   const bladeSkip = page.locator('#bladeSkip');
   const fullForm = page.locator('#fullForm');
   await Promise.race([
     fullForm.waitFor({ state: 'visible', timeout: 15000 }),
     bladeSkip.waitFor({ state: 'visible', timeout: 15000 }),
   ]);
-  if (await bladeSkip.isVisible()) {
+  if (await bladeSkip.isVisible().catch(() => false)) {
     await bladeSkip.click();
     await fullForm.waitFor({ state: 'visible', timeout: 15000 });
   }
   assert.match(await page.locator('h1').innerText(), /dossier/i);
+  assert.ok(!(await page.locator('#ibanForm').isVisible().catch(() => false)), 'pas d’étape RIB après Scalapay');
 });

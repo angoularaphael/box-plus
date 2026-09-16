@@ -74,16 +74,15 @@
     }
     if (product.description) return product.description;
     if (/baby\s*boxe/i.test(n)) {
-      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison. 1×, ou 4× : 62,50 € par CB puis RIB, ou via PayPal si éligible.';
+      return 'Éveil sportif et boxe ludique pour les tout-petits, encadrés par des coachs spécialisés, sur toute la saison. 1×, ou plusieurs fois avec Scalapay (3× sans frais / 4× +1,5 %), ou via PayPal si éligible.';
     }
     if (/educative|éducative/i.test(n)) {
-      return 'Boxe éducative pour enfants et ados : technique, respect et confiance en soi, tout au long de la saison. 1×, ou 4× : 73,75 € par CB puis RIB, ou via PayPal si éligible.';
+      return 'Boxe éducative pour enfants et ados : technique, respect et confiance en soi, tout au long de la saison. 1×, ou plusieurs fois avec Scalapay (3× sans frais / 4× +1,5 %), ou via PayPal si éligible.';
     }
     if (hasInstallmentChoice(product) || /comptant/i.test(n) || product.subsection === 'comptant') {
       const dur = formatDuration(product);
       if (hasInstallmentChoice(product)) {
-        const quart = ((Number(product.price_cents || 0) / 100) / 4).toFixed(2).replace('.', ',');
-        return `Réglez en une fois, ou en 4× sans frais : ${quart} € PayPal ou CB (${dur}).`;
+        return `Réglez en une fois, ou en plusieurs fois avec Scalapay (3× sans frais ou 4× +1,5 %) (${dur}).`;
       }
       return `Réglez une seule fois et entraînez-vous pendant ${dur} : accès illimité aux salles et à toutes les disciplines, sans aucun prélèvement mensuel.`;
     }
@@ -111,24 +110,12 @@
     if (!hasInstallmentChoice(product) || !product.requires_payment) return '';
     const total = Number(product.price_cents || 0) / 100;
     if (!(total > 0)) return '';
-    const quart = (total / 4).toFixed(2).replace('.', ',');
-    const today = new Date();
-    const dates = [0, 30, 60, 90].map((d) => {
-      const x = new Date(today);
-      x.setDate(x.getDate() + d);
-      return x.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
-    });
     return `
       <div class="fourx-schedule fourx-schedule--card">
-        <p class="fourx-schedule__title">Pour le 4× sans frais CB</p>
-        <p class="fourx-schedule__lead"><strong>Aujourd’hui : ${quart}&nbsp;€ CB</strong></p>
-        <p class="fourx-schedule__note">Puis saisissez votre RIB pour les 3 autres paiements de ${quart}&nbsp;€.</p>
-        <ul>
-          <li><strong>${dates[0]}</strong> — 1) CB : ${quart}&nbsp;€</li>
-          <li><strong>${dates[1]}</strong> — 2) Prélèvement sur votre RIB : ${quart}&nbsp;€</li>
-          <li><strong>${dates[2]}</strong> — 3) Prélèvement sur votre RIB : ${quart}&nbsp;€</li>
-          <li><strong>${dates[3]}</strong> — 4) Prélèvement sur votre RIB : ${quart}&nbsp;€</li>
-        </ul>
+        <p class="fourx-schedule__title">Paiement fractionné Scalapay</p>
+        <p class="fourx-schedule__lead"><strong>3× sans frais</strong> ou <strong>4× avec 1,5&nbsp;% de frais</strong> (à votre charge)</p>
+        <p class="fourx-schedule__note">Montant total ${total.toFixed(2).replace('.', ',')}&nbsp;€. Scalapay affiche le détail des échéances avant validation.</p>
+        <p class="fourx-schedule__note">Si votre carte est refusée, écrivez à <a href="mailto:boxingcenter31@gmail.com">boxingcenter31@gmail.com</a>.</p>
         <p class="fourx-schedule__note">PayPal : 4× sans frais si éligible (montant total affiché par PayPal).</p>
       </div>`;
   }
