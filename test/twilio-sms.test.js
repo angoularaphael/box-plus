@@ -27,16 +27,9 @@ test('isConfigured suit TWILIO_*', () => {
   }
 });
 
-test('dry-run n’appelle pas Twilio', async () => {
-  const prev = process.env.BOXPLUS_SMS_DRY_RUN;
-  process.env.BOXPLUS_SMS_DRY_RUN = '1';
-  try {
-    const out = await sendTransactionalSms('+33612345678', 'hello', { source: 'materiel-coach' });
-    assert.equal(out.ok, true);
-    assert.equal(out.dry, true);
-    assert.equal(out.source, 'materiel-coach');
-  } finally {
-    if (prev === undefined) delete process.env.BOXPLUS_SMS_DRY_RUN;
-    else process.env.BOXPLUS_SMS_DRY_RUN = prev;
-  }
+test('Twilio SMS est coupé — aucun messages.create', async () => {
+  const out = await sendTransactionalSms('+33612345678', 'hello', { source: 'materiel-coach' });
+  assert.equal(out.ok, false);
+  assert.equal(out.error, 'sms_disabled');
+  assert.equal(out.skipped, true);
 });

@@ -66,24 +66,7 @@ async function sendTransactionalSms(phone, message, { source = 'boutique' } = {}
   if (!to) return { ok: false, error: 'invalid_phone' };
   if (!body) return { ok: false, error: 'empty_message' };
 
-  if (process.env.BOXPLUS_SMS_DRY_RUN === '1') {
-    return { ok: true, sid: 'dry-run', dry: true, to, source };
-  }
-
-  if (!isConfigured()) {
-    return { ok: false, error: 'twilio_not_configured' };
-  }
-
-  try {
-    const msg = await getClient().messages.create({
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to,
-      body,
-    });
-    return { ok: true, sid: msg.sid, to, via: 'twilio', source };
-  } catch (err) {
-    return { ok: false, error: err.message || 'twilio_error', to, source };
-  }
+  return { ok: false, error: 'sms_disabled', skipped: true, to, source };
 }
 
 module.exports = { sendTransactionalSms, isConfigured };
