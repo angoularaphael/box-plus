@@ -13,7 +13,7 @@ const SCALAPAY_UNAVAILABLE_MESSAGE =
   'Le paiement fractionné Scalapay n’est pas disponible pour le moment. Vous pouvez régler par carte en une fois.';
 
 const SCALAPAY_FEES_HINT =
-  'Scalapay (hors Portet) : 3× sans frais pour vous, ou 4× avec 1,5 % de frais (à votre charge). À Portet : PayPal 4× sans frais.';
+  '3× sans frais pour vous, ou 4× avec 1,5 % de frais (à votre charge).';
 
 const SCALAPAY_REFUSAL_HELP =
   'Si Scalapay refuse votre carte, écrivez à boxingcenter31@gmail.com en expliquant votre situation : nous vous répondrons pour trouver une solution.';

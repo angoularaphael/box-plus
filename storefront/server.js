@@ -4209,7 +4209,7 @@ function createApp() {
           return res.status(400).json({
             ok: false,
             error:
-              'Scalapay n’est pas disponible pour la salle de Portet. Choisissez PayPal 4× sans frais, ou réglez en une fois.',
+              'Pour cette salle, choisissez PayPal 4× sans frais, ou réglez en une fois.',
             code: 'scalapay_gym_ineligible',
             suggest_card: true,
             suggest_paypal: true,
