@@ -129,7 +129,14 @@ describe('offre 259 € — comptant', () => {
     assert.equal(cfg.amount, 259);
 
     const { buildFourXInfoComptaNote, buildPaymentChannelInfoComptaNote } = require('../lib/info-compta-note');
-    assert.equal(buildPaymentChannelInfoComptaNote(order), '4× Scalapay');
+    assert.equal(buildPaymentChannelInfoComptaNote(order), '3×/4× Scalapay');
+    assert.equal(
+      buildPaymentChannelInfoComptaNote({
+        ...order,
+        payment: { ...order.payment, scalapay_installments: 3 },
+      }),
+      '3× Scalapay'
+    );
     assert.equal(
       buildFourXInfoComptaNote(order, {
         label: 'OFFRE PROMO 12 MOIS — 1× ou 4× sans frais',

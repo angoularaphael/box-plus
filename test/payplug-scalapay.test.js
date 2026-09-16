@@ -62,8 +62,17 @@ function run() {
   assert.equal(supportsScalapayCheckout({ id: 'offre-saison' }, 'minimes'), true);
   assert.equal(supportsScalapayCheckout({ id: 'offre-saison' }, 'portet'), false);
 
-  const { resolveScalapayDeciplus, isScalapayOrder } = require('../lib/billing-plan');
+  const { resolveScalapayDeciplus, isScalapayOrder, scalapayInfoComptaNote } = require('../lib/billing-plan');
   assert.equal(isScalapayOrder({ payment: { payment_plan: 'scalapay' } }), true);
+  assert.equal(scalapayInfoComptaNote({ payment: { payment_plan: 'scalapay' } }), '3×/4× Scalapay');
+  assert.equal(
+    scalapayInfoComptaNote({ payment: { payment_plan: 'scalapay', scalapay_installments: 3 } }),
+    '3× Scalapay'
+  );
+  assert.equal(
+    scalapayInfoComptaNote({ payment: { payment_plan: 'scalapay', payment_method: { installment_count: 4 } } }),
+    '4× Scalapay'
+  );
   assert.equal(
     resolveScalapayDeciplus({ id: 'offre-saison', price_cents: 25900 }, { payment: { amount: 259 } })
       .deciplus_product_name,
