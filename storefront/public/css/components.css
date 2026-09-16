@@ -1020,6 +1020,7 @@
   border: 0;
   margin: 12px 0 4px;
   padding: 0;
+  min-width: 0;
 }
 
 .cart-pay-methods legend {
@@ -1033,14 +1034,18 @@
 .cart-pay-option {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
   margin: 0 0 8px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border: 1px solid var(--bc-border);
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 600;
   color: var(--bc-navy);
+  background: #fff;
 }
 
 .cart-pay-option:has(input:checked) {
@@ -1048,13 +1053,26 @@
   background: color-mix(in srgb, var(--bc-navy) 4%, #fff);
 }
 
-.cart-pay-option input {
-  margin-top: 3px;
-  flex-shrink: 0;
+.cart-pay-option input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  margin: 2px 0 0;
+  padding: 0;
+  flex: 0 0 18px;
+  accent-color: var(--bc-navy);
+  cursor: pointer;
+}
+
+.cart-pay-option > span {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.35;
 }
 
 .cart-pay-option em {
   display: block;
+  margin-top: 2px;
   font-style: normal;
   font-size: 12px;
   color: var(--bc-muted);
