@@ -604,7 +604,7 @@
       <div class="fourx-schedule__inner">
         <p class="fourx-schedule__title">CB — paiement en plusieurs fois</p>
         <p class="fourx-schedule__lead">Vous choisissez : <strong>3× sans frais</strong>, ou <strong>4× avec 1,5&nbsp;% de frais</strong> (à votre charge).</p>
-        <p class="fourx-schedule__note">Montant total : ${totalLabel || 'celui de l’offre'}. Le détail des échéances s’affiche avant validation.</p>
+        <p class="fourx-schedule__note">Montant total : ${totalLabel || 'celui de l’offre'}. Sur Scalapay, le détail des échéances s’affiche avant validation.</p>
       </div>`;
     }
     if (mode === 'paypal') {
