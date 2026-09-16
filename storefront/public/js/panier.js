@@ -6,6 +6,10 @@
   const form = document.getElementById('checkoutForm');
   const errorEl = document.getElementById('checkoutError');
   const pickupSelect = document.getElementById('pickupGym');
+  const scalapayOption = document.getElementById('scalapayOption');
+  const scalapayRadio = document.getElementById('payMethodScalapay');
+  const scalapayAddress = document.getElementById('scalapayAddress');
+  const checkoutBtn = document.getElementById('checkoutBtn');
 
   function A(path) {
     return window.BCPaths?.asset(path) || path.replace(/^\//, '');
@@ -20,6 +24,11 @@
   ];
 
   let catalogProducts = [];
+  let payConfig = {
+    scalapay: false,
+    scalapay_min_cents: 500,
+    scalapay_max_cents: 200000,
+  };
 
   async function loadCatalog() {
     try {
@@ -28,6 +37,22 @@
       catalogProducts = data.products || [];
     } catch {
       catalogProducts = [];
+    }
+  }
+
+  async function loadPayConfig() {
+    try {
+      const res = await fetch('/api/payments/config');
+      const data = await res.json();
+      if (data && data.ok) {
+        payConfig = {
+          scalapay: data.scalapay === true,
+          scalapay_min_cents: Number(data.scalapay_min_cents) || 500,
+          scalapay_max_cents: Number(data.scalapay_max_cents) || 200000,
+        };
+      }
+    } catch {
+      /* keep defaults */
     }
   }
 
@@ -65,6 +90,43 @@
       gyms.map((g) => `<option value="${g}">${g}${sameDay ? ' — possibilité de retrait dès le jour même' : ' — sous 48h'}</option>`).join('');
   }
 
+  function selectedPayMethod() {
+    return form.querySelector('input[name="payment_method"]:checked')?.value || 'card';
+  }
+
+  function scalapayEligible(totalCents) {
+    return (
+      payConfig.scalapay === true &&
+      totalCents >= payConfig.scalapay_min_cents &&
+      totalCents <= payConfig.scalapay_max_cents
+    );
+  }
+
+  function syncPayMethodUi(totalCents) {
+    const eligible = scalapayEligible(totalCents);
+    if (scalapayOption) scalapayOption.hidden = !eligible;
+    if (scalapayRadio) {
+      scalapayRadio.disabled = !eligible;
+      if (!eligible && scalapayRadio.checked) {
+        const card = form.querySelector('input[name="payment_method"][value="card"]');
+        if (card) card.checked = true;
+      }
+    }
+    const useScalapay = eligible && selectedPayMethod() === 'scalapay';
+    if (scalapayAddress) scalapayAddress.hidden = !useScalapay;
+    const gender = document.getElementById('scalapayGender');
+    const address1 = document.getElementById('scalapayAddress1');
+    const postcode = document.getElementById('scalapayPostcode');
+    const city = document.getElementById('scalapayCity');
+    [gender, address1, postcode, city].forEach((el) => {
+      if (!el) return;
+      el.required = useScalapay;
+    });
+    if (checkoutBtn) {
+      checkoutBtn.textContent = useScalapay ? 'Payer avec Scalapay' : 'Payer par carte';
+    }
+  }
+
   function render() {
     const lines = window.BCCart.read();
     fillPickup(lines);
@@ -75,7 +137,9 @@
     }
     emptyEl.hidden = true;
     contentEl.hidden = false;
-    totalEl.textContent = window.BCCart.formatCents(window.BCCart.totalCents());
+    const totalCents = window.BCCart.totalCents();
+    totalEl.textContent = window.BCCart.formatCents(totalCents);
+    syncPayMethodUi(totalCents);
 
     linesEl.innerHTML = lines
       .map(
@@ -119,10 +183,17 @@
     });
   }
 
+  form.addEventListener('change', (e) => {
+    if (e.target && e.target.name === 'payment_method') {
+      syncPayMethodUi(window.BCCart.totalCents());
+    }
+  });
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorEl.hidden = true;
     const fd = new FormData(form);
+    const payMethod = selectedPayMethod();
     const customer = {
       first_name: fd.get('first_name'),
       last_name: fd.get('last_name'),
@@ -132,6 +203,12 @@
         ? pickupSelect.value
         : fd.get('pickup_gym'),
     };
+    if (payMethod === 'scalapay') {
+      customer.gender = fd.get('gender') || '';
+      customer.address = fd.get('address') || '';
+      customer.postal_code = fd.get('postal_code') || '';
+      customer.city = fd.get('city') || '';
+    }
     const lines = window.BCCart.read().map((l) => ({
       product_id: l.product_id,
       variant_id: l.variant_id,
@@ -146,7 +223,11 @@
       const res = await fetch('/api/cart/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lines, customer }),
+        body: JSON.stringify({
+          lines,
+          customer,
+          payment_method: payMethod === 'scalapay' ? 'scalapay' : 'card',
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -174,10 +255,10 @@
       errorEl.textContent = err.message || 'Erreur de paiement';
       errorEl.hidden = false;
       btn.disabled = false;
-      btn.textContent = 'Payer';
+      syncPayMethodUi(window.BCCart.totalCents());
     }
   });
 
   window.addEventListener('bccart:change', render);
-  loadCatalog().then(render);
+  Promise.all([loadCatalog(), loadPayConfig()]).then(render);
 })();

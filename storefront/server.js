@@ -64,6 +64,7 @@ const {
 } = require('../lib/portet-inscription');
 const {
   createFourTimesPayment,
+  createScalapayPayment,
   createHostedPayment,
   retrievePayment,
   retrievePaymentLiveOrTest,
@@ -72,7 +73,12 @@ const {
   isPayplugPaymentPending,
   isPayplugEnabled,
   isOney4xEnabled,
+  isScalapayEnabled,
+  isAmountEligibleForScalapay,
   ONEY_4X_UNAVAILABLE_MESSAGE,
+  SCALAPAY_UNAVAILABLE_MESSAGE,
+  SCALAPAY_MIN_CENTS,
+  SCALAPAY_MAX_CENTS,
   hostedPaymentUrl,
   formatPayplugError,
 } = require('./lib/payplug');
@@ -1463,6 +1469,28 @@ function createApp() {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
 
+      const preferScalapay =
+        String(req.body?.payment_method || req.body?.pay_method || '').toLowerCase() === 'scalapay';
+
+      if (preferScalapay) {
+        if (!isScalapayEnabled()) {
+          return res.status(503).json({
+            ok: false,
+            error: SCALAPAY_UNAVAILABLE_MESSAGE,
+            code: 'scalapay_unavailable',
+          });
+        }
+        if (!isAmountEligibleForScalapay(total_cents)) {
+          return res.status(400).json({
+            ok: false,
+            error: `Scalapay est disponible entre ${SCALAPAY_MIN_CENTS / 100} € et ${
+              SCALAPAY_MAX_CENTS / 100
+            } €.`,
+            code: 'scalapay_amount_ineligible',
+          });
+        }
+      }
+
       const baseUrl = getCheckoutBaseUrl(req);
       const order = await createMaterielOrderAsync({
         order_id: orderId,
@@ -1475,24 +1503,69 @@ function createApp() {
         logError('Sync client matériel (checkout)', { order_id: orderId, error: err.message })
       );
 
-      const payment = await createHostedPayment({
-        order: {
+      let payment;
+      try {
+        if (preferScalapay) {
+          payment = await createScalapayPayment({
+            order: {
+              order_id: orderId,
+              customer_full: customer,
+              customer_short: customer,
+            },
+            items,
+            amountCents: total_cents,
+            description: `Matériel Boxing Center (${items.length} article${items.length > 1 ? 's' : ''})`,
+            baseUrl,
+            metadata: {
+              order_type: 'materiel',
+              order_id: orderId,
+              payment_plan: 'scalapay',
+            },
+            customerOverrides: customer,
+            returnUrl: `${baseUrl}/success.html?order=${encodeURIComponent(orderId)}&type=materiel&payplug_return=1&token=${encodeURIComponent(order.access_token || '')}`,
+            cancelUrl: `${baseUrl}/panier?cancelled=1`,
+          });
+        } else {
+          payment = await createHostedPayment({
+            order: {
+              order_id: orderId,
+              customer_full: customer,
+              customer_short: customer,
+            },
+            amountCents: total_cents,
+            description: `Matériel Boxing Center (${items.length} article${items.length > 1 ? 's' : ''})`,
+            baseUrl,
+            metadata: {
+              order_type: 'materiel',
+              order_id: orderId,
+              payment_plan: 'once',
+            },
+            customerOverrides: customer,
+            returnUrl: `${baseUrl}/success.html?order=${encodeURIComponent(orderId)}&type=materiel&payplug_return=1&token=${encodeURIComponent(order.access_token || '')}`,
+            cancelUrl: `${baseUrl}/panier?cancelled=1`,
+          });
+        }
+      } catch (err) {
+        if (err.code === 'payplug_customer_incomplete' || err.code === 'scalapay_amount_ineligible') {
+          return res.status(400).json({
+            ok: false,
+            error: err.message,
+            missing: err.missing || [],
+            code: err.code,
+          });
+        }
+        logError('Erreur PayPlug checkout matériel', {
+          error: err.message,
+          body: err.body || null,
           order_id: orderId,
-          customer_full: customer,
-          customer_short: customer,
-        },
-        amountCents: total_cents,
-        description: `Matériel Boxing Center (${items.length} article${items.length > 1 ? 's' : ''})`,
-        baseUrl,
-        metadata: {
-          order_type: 'materiel',
-          order_id: orderId,
-          payment_plan: 'once',
-        },
-        customerOverrides: customer,
-        returnUrl: `${baseUrl}/success.html?order=${encodeURIComponent(orderId)}&type=materiel&payplug_return=1&token=${encodeURIComponent(order.access_token || '')}`,
-        cancelUrl: `${baseUrl}/panier?cancelled=1`,
-      });
+          scalapay: preferScalapay,
+        });
+        return res.status(502).json({
+          ok: false,
+          error: formatPayplugError(err) || err.message,
+          code: preferScalapay ? 'scalapay_create_failed' : 'payplug_create_failed',
+        });
+      }
       const url = hostedPaymentUrl(payment);
       if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
 
@@ -1500,6 +1573,7 @@ function createApp() {
         ...(order.payment || {}),
         status: 'pending',
         method: 'payplug',
+        payment_plan: preferScalapay ? 'scalapay' : 'once',
         payplug_payment_id: payment.id,
       };
       await saveMaterielOrderRecordAsync(order);
@@ -1512,13 +1586,14 @@ function createApp() {
         items,
         total_cents,
         payplug_payment_id: payment.id,
+        payment_plan: preferScalapay ? 'scalapay' : 'once',
       };
       savePendingCheckout(payment.id, pendingPayload);
       savePendingCheckout(orderId, pendingPayload);
 
       res.json({
         ok: true,
-        mode: 'payplug',
+        mode: preferScalapay ? 'payplug_scalapay' : 'payplug',
         url,
         payment_id: payment.id,
         order_id: orderId,
@@ -6039,6 +6114,10 @@ function createApp() {
         display.portetPaypal4x !== true &&
         isPayplugEnabled(),
       oney_4x_message: null,
+      scalapay: isPayplugEnabled() && isScalapayEnabled(),
+      scalapay_min_cents: SCALAPAY_MIN_CENTS,
+      scalapay_max_cents: SCALAPAY_MAX_CENTS,
+      scalapay_message: null,
       preview: display.preview,
       sandbox: Boolean(display.preview),
     });

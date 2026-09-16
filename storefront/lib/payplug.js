@@ -9,6 +9,13 @@ const { paymentVar, useTestPayments, runPaymentContext } = require('./test-env')
 const ONEY_4X_UNAVAILABLE_MESSAGE =
   'Le 4× sans frais par carte est momentanément indisponible. Vous pouvez payer en 4× via PayPal, ou régler en une fois par carte ou PayPal.';
 
+const SCALAPAY_UNAVAILABLE_MESSAGE =
+  'Le paiement fractionné Scalapay n’est pas disponible pour le moment. Vous pouvez régler par carte en une fois.';
+
+/** Bornes officielles PayPlug / Scalapay (centimes). */
+const SCALAPAY_MIN_CENTS = 500;
+const SCALAPAY_MAX_CENTS = 200000;
+
 /**
  * 4× Oney live : off tant que PayPlug n’a pas ouvert l’option sur le compte.
  * PAYPLUG_ONEY_4X_ENABLED=1 pour le réactiver. Le studio (/dev) reste testable.
@@ -16,6 +23,21 @@ const ONEY_4X_UNAVAILABLE_MESSAGE =
 function isOney4xEnabled() {
   const flag = String(process.env.PAYPLUG_ONEY_4X_ENABLED || '').trim().toLowerCase();
   return flag === '1' || flag === 'true' || flag === 'yes';
+}
+
+/**
+ * Scalapay via PayPlug API (`payment_method: "scalapay"`).
+ * Offre marchande déjà ouverte : activer avec PAYPLUG_SCALAPAY_ENABLED=1.
+ * Ne s’affiche PAS tout seul sur la page CB hosted — paramètre API obligatoire.
+ */
+function isScalapayEnabled() {
+  const flag = String(process.env.PAYPLUG_SCALAPAY_ENABLED || '').trim().toLowerCase();
+  return flag === '1' || flag === 'true' || flag === 'yes';
+}
+
+function isAmountEligibleForScalapay(amountCents) {
+  const n = Number(amountCents);
+  return Number.isFinite(n) && n >= SCALAPAY_MIN_CENTS && n <= SCALAPAY_MAX_CENTS;
 }
 
 function isPayplugEnabled() {
@@ -96,6 +118,9 @@ function formatPayplugError(err) {
   const body = err?.body || {};
   const raw = String(err?.message || body.message || body.error || '');
   if (/access to this feature is not available|can'?t use this feature|cannot use this feature/i.test(raw)) {
+    if (/scalapay/i.test(JSON.stringify(body)) || /scalapay/i.test(raw)) {
+      return SCALAPAY_UNAVAILABLE_MESSAGE;
+    }
     return (
       'Le 4× carte (Oney) n’est pas activé sur le compte PayPlug. ' +
       'Dans le portail PayPlug, demandez l’activation du paiement fractionné 4× sans frais, puis réessayez. ' +
@@ -224,6 +249,123 @@ async function createFourTimesPayment({
 }
 
 /**
+ * Scalapay (3×/4×) via PayPlug APM — montant total garanti au marchand.
+ * Différent d’Oney : champ `amount` (pas `authorized_amount`) + payment_method "scalapay".
+ * Le client choisit 3× ou 4× sur la page Scalapay après redirect.
+ */
+async function createScalapayPayment({
+  order = null,
+  product = null,
+  items = null,
+  baseUrl,
+  amountCents,
+  description,
+  metadata = {},
+  customerOverrides = {},
+  returnUrl = null,
+  cancelUrl = null,
+}) {
+  const amount = Number(amountCents || product?.price_cents || 0);
+  if (!isAmountEligibleForScalapay(amount)) {
+    const err = new Error(
+      `Scalapay est disponible entre ${SCALAPAY_MIN_CENTS / 100} € et ${SCALAPAY_MAX_CENTS / 100} €.`
+    );
+    err.code = 'scalapay_amount_ineligible';
+    throw err;
+  }
+
+  const customer = order
+    ? customerDetails(order, customerOverrides)
+    : customerDetails({ customer: customerOverrides }, {});
+  const missing = validateOneyCustomer(customer);
+  if (missing.length) {
+    const err = new Error(`Infos manquantes pour Scalapay : ${missing.join(', ')}`);
+    err.code = 'payplug_customer_incomplete';
+    err.missing = missing;
+    throw err;
+  }
+
+  const deliveryDate = new Date();
+  deliveryDate.setDate(deliveryDate.getDate() + 1);
+  const expectedDelivery = deliveryDate.toISOString().slice(0, 10);
+
+  let cart;
+  if (Array.isArray(items) && items.length) {
+    cart = items.map((item, idx) => {
+      const qty = Math.max(1, Number(item.qty) || 1);
+      const unit = Number(item.unit_cents || item.price_cents || 0);
+      const lineTotal = Number(item.line_total_cents != null ? item.line_total_cents : unit * qty);
+      const label = item.variant_label
+        ? `${item.name || 'Article'} (${item.variant_label})`
+        : item.name || item.description || `Article ${idx + 1}`;
+      return {
+        delivery_label: 'Boxing Center',
+        delivery_type: 'storepickup',
+        brand: 'Boxing Center',
+        merchant_item_id: String(item.product_id || item.id || `item-${idx + 1}`).slice(0, 40),
+        name: String(label).slice(0, 80),
+        expected_delivery_date: expectedDelivery,
+        total_amount: lineTotal,
+        price: unit,
+        quantity: qty,
+      };
+    });
+  } else {
+    const itemName =
+      description || product?.display_name || product?.name || 'Paiement Boxing Center';
+    cart = [
+      {
+        delivery_label: 'Boxing Center',
+        delivery_type: 'storepickup',
+        brand: 'Boxing Center',
+        merchant_item_id: String(product?.id || metadata.order_id || 'scalapay').slice(0, 40),
+        name: String(itemName).slice(0, 80),
+        expected_delivery_date: expectedDelivery,
+        total_amount: amount,
+        price: amount,
+        quantity: 1,
+      },
+    ];
+  }
+
+  const itemName =
+    description ||
+    product?.display_name ||
+    product?.name ||
+    (cart[0] && cart[0].name) ||
+    'Paiement Boxing Center';
+  const urls = buildReturnUrls(baseUrl, order);
+
+  const payload = {
+    amount,
+    currency: 'EUR',
+    payment_method: 'scalapay',
+    payment_context: { cart },
+    billing: customer,
+    shipping: {
+      ...customer,
+      delivery_type: 'BILLING',
+      company_name: 'Boxing Center',
+    },
+    description: String(itemName).slice(0, 80),
+    metadata: {
+      ...(order?.order_id
+        ? { order_id: order.order_id, lifecycle_order_id: order.order_id }
+        : {}),
+      ...(product?.id ? { product_id: String(product.id) } : {}),
+      payment_plan: 'scalapay',
+      ...metadata,
+    },
+    notification_url: `${baseUrl}/api/webhooks/payplug`,
+    hosted_payment: {
+      return_url: returnUrl || urls.return_url,
+      cancel_url: cancelUrl || urls.cancel_url,
+    },
+  };
+  return request('/payments', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+/**
  * Paiement carte hosted PayPlug (1×) — comptant, 1ʳᵉ échéance, matériel, etc.
  */
 async function createHostedPayment({
@@ -341,6 +483,7 @@ function hostedPaymentUrl(payment) {
 
 module.exports = {
   createFourTimesPayment,
+  createScalapayPayment,
   createHostedPayment,
   retrievePayment,
   retrievePaymentLiveOrTest,
@@ -349,7 +492,12 @@ module.exports = {
   isPayplugPaymentPending,
   isPayplugEnabled,
   isOney4xEnabled,
+  isScalapayEnabled,
+  isAmountEligibleForScalapay,
   ONEY_4X_UNAVAILABLE_MESSAGE,
+  SCALAPAY_UNAVAILABLE_MESSAGE,
+  SCALAPAY_MIN_CENTS,
+  SCALAPAY_MAX_CENTS,
   phoneE164,
   customerDetails,
   validateOneyCustomer,
