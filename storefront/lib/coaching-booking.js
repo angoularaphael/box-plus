@@ -3,9 +3,10 @@
 const crypto = require('crypto');
 const { sendEmailViaBrevo, isConfigured, defaultReplyTo } = require('./brevo-send');
 const { getManagerContact } = require('./membership');
-const { COACHING_SESSION_PRICE_CENTS } = require('./invoice-pdf');
 const { getStoreUrl } = require('../../lib/app-urls');
 const { logInfo, logWarn } = require('../../lib/logger');
+
+const COACHING_SESSION_PRICE_CENTS = 5500;
 
 function coachingInvoicePath(orderId, accessToken) {
   const q = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
@@ -29,6 +30,20 @@ const ACTIVITIES = [
   { id: 'preparation-physique', label: 'Préparation physique' },
   { id: 'boxing-fitness', label: 'Boxing Fitness' },
 ];
+
+function isCoachingPackProduct(product = {}) {
+  return product.tab === 'coachings' || product.subsection === 'coaching';
+}
+
+function isCoachingOrder(order = {}) {
+  if (order.action === 'coaching_booking' || String(order.order_id || '').startsWith('COACH-')) return true;
+  return isCoachingPackProduct(order.product_snapshot || {});
+}
+
+function isCoachingAdminOrder(order = {}) {
+  if (order.action === 'coaching_booking' || String(order.order_id || '').startsWith('COACH-')) return true;
+  return isCoachingPackProduct(order.product_snapshot || {}) && Boolean(order.booking_date);
+}
 
 /** Créneaux 1 h de 10h–11h à 20h–21h */
 function listSlots() {
@@ -76,21 +91,20 @@ function formatFrDate(iso) {
   });
 }
 
-function validateBooking(body = {}) {
+function labelsForBooking(data = {}) {
+  const activityLabel = ACTIVITIES.find((a) => a.id === data.activity)?.label || data.activity;
+  const slotLabel = listSlots().find((s) => s.id === data.slot)?.label || data.slot;
+  const gymLabel = GYMS.find((g) => g.id === data.gym)?.label || data.gym;
+  return { activityLabel, slotLabel, gymLabel, dateLabel: formatFrDate(data.date || data.booking_date) };
+}
+
+function validateBookingDetails(body = {}) {
   const errors = [];
-  const name = String(body.name || body.full_name || '').trim();
-  const email = String(body.email || '')
-    .trim()
-    .toLowerCase();
-  const phone = String(body.phone || '').trim();
   const gym = String(body.gym || '').trim().toLowerCase();
   const activity = String(body.activity || '').trim().toLowerCase();
   const slot = String(body.slot || '').trim();
-  const dateIso = String(body.date || '').trim();
+  const dateIso = String(body.date || body.booking_date || '').trim();
 
-  if (!name || name.length < 2) errors.push('Indiquez votre nom');
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Email invalide');
-  if (!phone || phone.replace(/\D/g, '').length < 8) errors.push('Téléphone invalide');
   if (!GYMS.some((g) => g.id === gym)) errors.push('Choisissez une salle');
   if (!ACTIVITIES.some((a) => a.id === activity)) errors.push('Choisissez une activité');
   if (!listSlots().some((s) => s.id === slot)) errors.push('Choisissez un créneau');
@@ -103,26 +117,73 @@ function validateBooking(body = {}) {
   return {
     ok: errors.length === 0,
     errors,
-    data: {
-      name,
-      email,
-      phone,
-      gym,
-      activity,
-      slot,
-      date: dateIso,
-    },
+    data: { gym, activity, slot, date: dateIso },
   };
 }
 
-async function sendCoachingBookingEmail(booking, { orderId, access_token } = {}) {
+function validateBooking(body = {}) {
+  const errors = [];
+  const name = String(body.name || body.full_name || '').trim();
+  const email = String(body.email || '')
+    .trim()
+    .toLowerCase();
+  const phone = String(body.phone || '').trim();
+
+  if (!name || name.length < 2) errors.push('Indiquez votre nom');
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Email invalide');
+  if (!phone || phone.replace(/\D/g, '').length < 8) errors.push('Téléphone invalide');
+
+  const details = validateBookingDetails(body);
+  if (!details.ok) errors.push(...details.errors);
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    data: { name, email, phone, ...details.data },
+  };
+}
+
+function bookingFromOrder(order = {}) {
+  const short = order.customer_short || {};
+  const full = order.customer_full || {};
+  const customer = order.customer || {};
+  const name =
+    [short.first_name, short.last_name].filter(Boolean).join(' ') ||
+    customer.name ||
+    [customer.first_name, customer.last_name].filter(Boolean).join(' ') ||
+    [full.first_name, full.last_name].filter(Boolean).join(' ');
+  return {
+    name,
+    email: short.email || customer.email || full.email || '',
+    phone: short.phone || customer.phone || full.phone || full.mobile || '',
+    gym: order.gym || full.gym || '',
+    activity: order.activity || '',
+    slot: order.slot || '',
+    date: order.booking_date || '',
+  };
+}
+
+function applyBookingFieldsToOrder(order, data = {}) {
+  const labels = labelsForBooking(data);
+  order.gym = data.gym;
+  order.customer_full = { ...(order.customer_full || {}), gym: data.gym };
+  order.activity = data.activity;
+  order.activity_label = labels.activityLabel;
+  order.slot = data.slot;
+  order.slot_label = labels.slotLabel;
+  order.booking_date = data.date;
+  return order;
+}
+
+async function sendCoachingBookingEmail(booking, { orderId, access_token, paid = false, packLabel = '' } = {}) {
   const manager = getManagerContact(booking.gym);
   if (!manager?.email) return { sent: false, reason: 'no_manager' };
 
-  const gymLabel = manager.label;
-  const activityLabel = ACTIVITIES.find((a) => a.id === booking.activity)?.label || booking.activity;
-  const slotLabel = listSlots().find((s) => s.id === booking.slot)?.label || booking.slot;
-  const dateLabel = formatFrDate(booking.date);
+  const { activityLabel, slotLabel, gymLabel, dateLabel } = labelsForBooking(booking);
+  const packLine = packLabel ? `<tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Pack</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${packLabel}</td></tr>` : '';
+  const paidLine = paid
+    ? '<p style="color:#0B7A3B;font-weight:600">Paiement en ligne confirmé.</p>'
+    : '<p style="color:#5C6370;font-size:13px">Merci de confirmer ou recontacter le client rapidement.</p>';
 
   const html = `<!DOCTYPE html><html lang="fr"><body style="font-family:Arial,sans-serif;padding:24px;color:#1A1A2E">
     <h2 style="color:#0B1F3A;margin:0 0 16px">Nouvelle réservation coaching</h2>
@@ -131,12 +192,13 @@ async function sendCoachingBookingEmail(booking, { orderId, access_token } = {})
       <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Nom</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${booking.name}</td></tr>
       <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Email</strong></td><td style="padding:8px;border-bottom:1px solid #eee"><a href="mailto:${booking.email}">${booking.email}</a></td></tr>
       <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Téléphone</strong></td><td style="padding:8px;border-bottom:1px solid #eee"><a href="tel:${booking.phone}">${booking.phone}</a></td></tr>
+      ${packLine}
       <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Salle</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${gymLabel}</td></tr>
       <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Activité</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${activityLabel}</td></tr>
       <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Date</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${dateLabel}</td></tr>
       <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Créneau</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${slotLabel}</td></tr>
     </table>
-    <p style="color:#5C6370;font-size:13px">Merci de confirmer ou recontacter le client rapidement.</p>
+    ${paidLine}
   </body></html>`;
 
   if (!isConfigured()) {
@@ -151,22 +213,30 @@ async function sendCoachingBookingEmail(booking, { orderId, access_token } = {})
       html,
       replyTo: booking.email || defaultReplyTo(),
     });
+    const priceCents = Number(packLabel ? 0 : COACHING_SESSION_PRICE_CENTS);
     const invoiceLink =
       orderId && access_token
-        ? `<p><a href="${coachingInvoiceUrl(orderId, access_token)}" style="color:#C41E3A;font-weight:600">Télécharger votre facture</a> (séance ${(COACHING_SESSION_PRICE_CENTS / 100).toFixed(0)}&nbsp;€ TTC).</p>`
+        ? `<p><a href="${coachingInvoiceUrl(orderId, access_token)}" style="color:#C41E3A;font-weight:600">Télécharger votre facture</a>${priceCents ? ` (séance ${(priceCents / 100).toFixed(0)}&nbsp;€ TTC).` : '.'}</p>`
         : '';
-    // Accusé au client
+    const clientIntro = paid
+      ? `Votre coaching <strong>${activityLabel}</strong> à <strong>${gymLabel}</strong> le <strong>${dateLabel}</strong> (${slotLabel}) est confirmé.`
+      : `Nous avons bien reçu votre demande de coaching <strong>${activityLabel}</strong> à <strong>${gymLabel}</strong> le <strong>${dateLabel}</strong> (${slotLabel}).`;
+    const clientFollow = paid
+      ? 'Votre paiement a bien été enregistré. Le responsable de votre salle vous recontactera si besoin.'
+      : 'Le responsable de votre salle va vous recontacter pour confirmer.';
     await sendEmailViaBrevo({
       to: booking.email,
-      subject: 'Demande de coaching bien reçue — Boxing Center',
+      subject: paid
+        ? 'Coaching confirmé — Boxing Center'
+        : 'Demande de coaching bien reçue — Boxing Center',
       html: `<p>Bonjour ${booking.name},</p>
-        <p>Nous avons bien reçu votre demande de coaching <strong>${activityLabel}</strong> à <strong>${gymLabel}</strong> le <strong>${dateLabel}</strong> (${slotLabel}).</p>
-        <p>Le responsable de votre salle va vous recontacter pour confirmer.</p>
+        <p>${clientIntro}</p>
+        <p>${clientFollow}</p>
         ${invoiceLink}
         <p>Sportivement,<br/>Boxing Center</p>`,
       replyTo: defaultReplyTo(),
     }).catch(() => null);
-    logInfo('Email réservation coaching envoyé', { to: manager.email, gym: booking.gym });
+    logInfo('Email réservation coaching envoyé', { to: manager.email, gym: booking.gym, paid });
     return { sent: true, manager };
   } catch (err) {
     logWarn('Email réservation coaching échoué', { error: err.message });
@@ -174,12 +244,39 @@ async function sendCoachingBookingEmail(booking, { orderId, access_token } = {})
   }
 }
 
+async function notifyCoachingPaidOrder(order) {
+  if (!isCoachingOrder(order) || !order.booking_date) return { sent: false, reason: 'not_coaching' };
+  if (order.manager_notify?.coaching_sent_at) return { sent: false, reason: 'already_sent' };
+
+  const booking = bookingFromOrder(order);
+  if (!booking.name || !booking.email) return { sent: false, reason: 'missing_customer' };
+
+  const packLabel =
+    order.product_snapshot?.display_name || order.product_snapshot?.name || order.product_name || '';
+  const mail = await sendCoachingBookingEmail(booking, {
+    orderId: order.order_id,
+    access_token: order.access_token,
+    paid: true,
+    packLabel,
+  });
+
+  const { saveOrderAsync } = require('./order-persistence');
+  order.booking_status = mail.sent ? 'sent' : mail.reason || 'queued';
+  order.manager_email = mail.manager?.email || order.manager_email || null;
+  order.email_sent_at = mail.sent ? new Date().toISOString() : order.email_sent_at || null;
+  order.manager_notify = {
+    ...(order.manager_notify || {}),
+    coaching_sent_at: mail.sent ? new Date().toISOString() : null,
+    coaching_status: mail.sent ? 'sent' : mail.reason || 'queued',
+  };
+  await saveOrderAsync(order);
+  return mail;
+}
+
 async function persistCoachingBooking(booking, mail = {}, ids = {}) {
   const orderId = ids.orderId || `COACH-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
   const access_token = ids.access_token || crypto.randomBytes(16).toString('hex');
-  const activityLabel = ACTIVITIES.find((a) => a.id === booking.activity)?.label || booking.activity;
-  const slotLabel = listSlots().find((s) => s.id === booking.slot)?.label || booking.slot;
-  const gymLabel = mail.manager?.label || GYMS.find((g) => g.id === booking.gym)?.label || booking.gym;
+  const { activityLabel, slotLabel, gymLabel } = labelsForBooking(booking);
   const nameParts = String(booking.name || '')
     .trim()
     .split(/\s+/)
@@ -250,7 +347,6 @@ async function bookCoaching(body = {}) {
     invoice_url: coachingInvoicePath(saved.order_id, saved.access_token),
     gym: check.data.gym,
     manager_label: mail.manager?.label || null,
-    // En mode log (Brevo off), on considère quand même OK pour ne pas bloquer en local
     queued: !mail.sent && mail.reason === 'brevo_not_configured',
   };
 }
@@ -265,6 +361,7 @@ function bookingOptions() {
 }
 
 module.exports = {
+  COACHING_SESSION_PRICE_CENTS,
   GYMS,
   ACTIVITIES,
   listSlots,
@@ -272,8 +369,16 @@ module.exports = {
   toIsoDate,
   bookingOptions,
   validateBooking,
+  validateBookingDetails,
+  labelsForBooking,
+  applyBookingFieldsToOrder,
+  bookingFromOrder,
+  isCoachingPackProduct,
+  isCoachingOrder,
+  isCoachingAdminOrder,
   bookCoaching,
   sendCoachingBookingEmail,
+  notifyCoachingPaidOrder,
   coachingInvoicePath,
   coachingInvoiceUrl,
 };

@@ -293,7 +293,9 @@
     const coachings = commandes.filter(
       (o) =>
         !o.archived &&
-        (o.action === "coaching_booking" || String(o.order_id || "").startsWith("COACH-"))
+        (o.action === "coaching_booking" ||
+          String(o.order_id || "").startsWith("COACH-") ||
+          (o.booking_date && /coaching/i.test(String(o.product || ""))))
     );
     const refuse = (st) => st === "past_due" || st === "failed" || st === "refused" || st === "unpaid";
     const impayes = inscriptions.filter((o) => refuse(o.payment_status) || o.access_blocked);

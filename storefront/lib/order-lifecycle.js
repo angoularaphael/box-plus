@@ -195,10 +195,38 @@ async function updateShortProfileAsync(orderId, customer_short) {
   return saved;
 }
 
-async function updateGymAsync(orderId, gym) {
+async function updateGymAsync(orderId, gym, coachingBooking = null) {
   const order = await loadOrderAsync(orderId);
   if (!order) return null;
   order.customer_full = { ...(order.customer_full || {}), gym };
+  order.gym = gym;
+  if (coachingBooking) {
+    const { applyBookingFieldsToOrder } = require('./coaching-booking');
+    applyBookingFieldsToOrder(order, coachingBooking);
+  }
+  order.step = Math.max(order.step || 1, STEPS.IDENTITY);
+  return saveOrderAsync(order);
+}
+
+async function updateCoachingBookingAsync(orderId, bookingBody = {}) {
+  const order = await loadOrderAsync(orderId);
+  if (!order) return null;
+  const { validateBookingDetails, applyBookingFieldsToOrder, isCoachingPackProduct } = require('./coaching-booking');
+  if (!isCoachingPackProduct(order.product_snapshot || {})) {
+    throw new Error('Produit coaching requis');
+  }
+  const check = validateBookingDetails({
+    gym: bookingBody.gym || order.customer_full?.gym || order.gym,
+    activity: bookingBody.activity,
+    slot: bookingBody.slot,
+    date: bookingBody.date || bookingBody.booking_date,
+  });
+  if (!check.ok) {
+    const err = new Error(check.errors.join(', '));
+    err.errors = check.errors;
+    throw err;
+  }
+  applyBookingFieldsToOrder(order, check.data);
   order.step = Math.max(order.step || 1, STEPS.IDENTITY);
   return saveOrderAsync(order);
 }
@@ -261,6 +289,14 @@ async function markPaymentPaidAsync(orderId, paymentData) {
     await notifyAventurePaid(saved);
   } catch {
     /* le dispatch Aventure ne doit pas bloquer le paiement */
+  }
+  try {
+    const { isCoachingOrder, notifyCoachingPaidOrder } = require('./coaching-booking');
+    if (isCoachingOrder(saved) && saved.booking_date) {
+      await notifyCoachingPaidOrder(saved);
+    }
+  } catch {
+    /* notification coaching ne doit pas bloquer le paiement */
   }
   return saved;
 }
@@ -533,6 +569,17 @@ function actionStepLabel(order) {
     if (order.booking_status === 'sent' || order.email_sent_at) return 'Envoyé';
     return 'Reçu';
   }
+  try {
+    const { isCoachingPackProduct } = require('./coaching-booking');
+    if (isCoachingPackProduct(order.product_snapshot || {})) {
+      if (String(order.payment?.status || '').toLowerCase() === 'paid') {
+        return order.email_sent_at ? 'Payé · mail envoyé' : 'Payé';
+      }
+      return order.booking_date ? 'Créneau choisi' : 'En cours';
+    }
+  } catch {
+    /* ignore */
+  }
   return null;
 }
 
@@ -710,6 +757,7 @@ module.exports = {
   updateShortProfile,
   updateShortProfileAsync,
   updateGymAsync,
+  updateCoachingBookingAsync,
   patchCustomerFullAsync,
   markPaymentPaid,
   markPaymentFailed,

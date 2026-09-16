@@ -404,6 +404,22 @@
     return currentGym() === 'portet' && isChildOfferProduct(state.product || state.order?.product_snapshot);
   }
 
+  function isCoachingProduct(p) {
+    return p?.tab === 'coachings' || p?.subsection === 'coaching';
+  }
+
+  function coachingSelectOptions(items, selected, placeholder) {
+    return (
+      `<option value="">${esc(placeholder)}</option>` +
+      (items || [])
+        .map(
+          (it) =>
+            `<option value="${esc(it.id)}" ${selected === it.id ? 'selected' : ''}>${esc(it.label)}</option>`
+        )
+        .join('')
+    );
+  }
+
   function ageFromBirthdate(value) {
     const raw = String(value || '').trim();
     const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -1785,14 +1801,49 @@
     };
   }
 
-  function renderStep2() {
+  async function renderStep2() {
     const selected = state.order?.customer_full?.gym || state.gymDraft || '';
+    const isCoaching = isCoachingProduct(state.product || state.order?.product_snapshot);
+    if (isCoaching && !state.coachingOptions) {
+      try {
+        const res = await fetch('/api/coachings/options');
+        const data = await res.json();
+        if (data.ok) state.coachingOptions = data;
+      } catch {
+        /* options chargées plus tard */
+      }
+    }
+    const coachingOpts = state.coachingOptions || {};
+    const bookingDraft = state.coachingBookingDraft || {
+      activity: state.order?.activity || '',
+      slot: state.order?.slot || '',
+      date: state.order?.booking_date || coachingOpts.min_date || '',
+    };
     stepContent.innerHTML = `
-      <h1>Votre salle</h1>
+      <h1>${isCoaching ? 'Votre créneau coaching' : 'Votre salle'}</h1>
+      ${
+        isCoaching
+          ? `<p class="form-hint">Choisissez votre salle, votre activité et un créneau d’1&nbsp;heure. Réservation possible à partir de <strong>4&nbsp;jours</strong> après aujourd’hui.</p>`
+          : ''
+      }
       <form id="gymForm" class="form-grid">
-        <div class="full"><label for="gym">Salle principale *</label>
+        <div class="full"><label for="gym">${isCoaching ? 'Salle' : 'Salle principale'} *</label>
           <select id="gym" name="gym" required>${gymsOptions(selected)}</select>
         </div>
+        ${
+          isCoaching
+            ? `
+        <div><label for="cb_activity">Activité *</label>
+          <select id="cb_activity" name="activity" required>${coachingSelectOptions(coachingOpts.activities, bookingDraft.activity, 'Choisir une activité')}</select>
+        </div>
+        <div><label for="cb_date">Date *</label>
+          <input id="cb_date" name="date" type="date" required min="${esc(coachingOpts.min_date || '')}" value="${esc(bookingDraft.date || '')}" />
+        </div>
+        <div class="full"><label for="cb_slot">Créneau (1&nbsp;h) *</label>
+          <select id="cb_slot" name="slot" required>${coachingSelectOptions(coachingOpts.slots, bookingDraft.slot, 'Choisir un créneau')}</select>
+        </div>`
+            : ''
+        }
         <p id="portetPayPause" class="portet-pay-notice" hidden></p>
         <div class="full"><button type="submit" class="btn block">Continuer</button></div>
         <div class="full">${backButton('← Retour à l\'offre', 1)}</div>
@@ -1822,9 +1873,36 @@
         setMsg('Choisissez une salle', 'err');
         return;
       }
+      const coachingBody = isCoaching
+        ? {
+            activity: document.getElementById('cb_activity')?.value || '',
+            date: document.getElementById('cb_date')?.value || '',
+            slot: document.getElementById('cb_slot')?.value || '',
+          }
+        : {};
+      if (isCoaching && (!coachingBody.activity || !coachingBody.date || !coachingBody.slot)) {
+        setMsg('Complétez activité, date et créneau', 'err');
+        return;
+      }
       setMsg('Enregistrement…');
       state.gymDraft = gym;
+      if (isCoaching) state.coachingBookingDraft = { gym, ...coachingBody };
       saveProgress();
+
+      async function patchGym(orderId, token) {
+        const res = await fetch(`/api/orders/${orderId}/gym`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token,
+            gym,
+            product_id: state.productId,
+            source: params.get('source') || undefined,
+            ...coachingBody,
+          }),
+        });
+        return { res, data: await res.json() };
+      }
 
       if (!state.orderId) {
         const res = await fetch('/api/orders/draft', {
@@ -1848,18 +1926,16 @@
           customer_full: { gym },
           product_snapshot: state.product,
         };
+        if (isCoaching) {
+          const patched = await patchGym(data.order_id, data.access_token);
+          if (!patched.data.ok) {
+            setMsg((patched.data.errors || [patched.data.error]).join(', '), 'err');
+            return;
+          }
+          adoptCheckoutIds(patched.data);
+        }
       } else {
-        const res = await fetch(`/api/orders/${state.orderId}/gym`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            token: state.token,
-            gym,
-            product_id: state.productId,
-            source: params.get('source') || undefined,
-          }),
-        });
-        const data = await res.json();
+        const { res, data } = await patchGym(state.orderId, state.token);
         if (!data.ok && (data.error === 'not_found' || res.status === 404)) {
           const retry = await fetch('/api/orders/draft', {
             method: 'POST',
@@ -1876,16 +1952,23 @@
             return;
           }
           adoptCheckoutIds(created);
+          if (isCoaching) {
+            const patched = await patchGym(created.order_id, created.access_token);
+            if (!patched.data.ok) {
+              setMsg((patched.data.errors || [patched.data.error]).join(', '), 'err');
+              return;
+            }
+            adoptCheckoutIds(patched.data);
+          }
         } else if (!data.ok) {
-          setMsg(orderErrorMessage(data), 'err');
+          setMsg(orderErrorMessage(data) || (data.errors || []).join(', '), 'err');
           return;
         } else {
           adoptCheckoutIds(data);
         }
-        state.order = state.order || {};
-        state.order.customer_full = { ...(state.order.customer_full || {}), gym };
       }
       setMsg('');
+      await loadOrder();
       goToStep(3);
     };
   }
@@ -3178,7 +3261,7 @@
     if (state.step === 1) {
       await ensureProductLoaded();
       renderStep1();
-    } else if (state.step === 2) renderStep2();
+    } else if (state.step === 2) await renderStep2();
     else if (state.step === 3) renderStep3();
     else if (state.step === 4) await renderStep4();
     else if (state.step === 5) renderStep5();

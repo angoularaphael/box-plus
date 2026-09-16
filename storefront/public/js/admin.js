@@ -498,7 +498,9 @@
   }
 
   function isCoachingOrder(o) {
-    return o.action === 'coaching_booking' || String(o.order_id || '').startsWith('COACH-');
+    if (o.action === 'coaching_booking' || String(o.order_id || '').startsWith('COACH-')) return true;
+    if (o.booking_date && /coaching/i.test(String(o.product || ''))) return true;
+    return false;
   }
 
   function fillGymFilter() {

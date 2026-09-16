@@ -285,11 +285,10 @@ function renderMaterielInvoice(doc, order) {
   drawPageFooter(doc, club);
 }
 
-const COACHING_SESSION_PRICE_CENTS = 5500;
-
-function isCoachingOrder(order = {}) {
-  return order.action === 'coaching_booking' || String(order.order_id || '').startsWith('COACH-');
-}
+const {
+  COACHING_SESSION_PRICE_CENTS,
+  isCoachingOrder,
+} = require('./coaching-booking');
 
 function coachingSessionPriceCents(order = {}) {
   const fromSnap = Number(order.product_snapshot?.price_cents);
@@ -305,7 +304,9 @@ function renderCoachingInvoice(doc, order) {
   const invoiceNo = `FAC-${order.order_id}`;
   const priceCents = coachingSessionPriceCents(order);
   const priceHt = Math.round(priceCents / 1.2);
-  const activityLabel = order.activity_label || order.product_snapshot?.name || 'Coaching individuel';
+  const packLabel =
+    order.product_snapshot?.display_name || order.product_snapshot?.name || 'Coaching individuel';
+  const activityLabel = order.activity_label || order.activity || '—';
   const gymLabel = GYM_LABELS[order.gym] || order.gym || '—';
   const slotLabel = order.slot_label || order.slot || '—';
   const dateLabel = order.booking_date ? formatDateFr(order.booking_date) : '—';
@@ -334,7 +335,7 @@ function renderCoachingInvoice(doc, order) {
     rows: [
       {
         type: 'Coach.',
-        description: `${activityLabel}\n${gymLabel} · ${dateLabel} · ${slotLabel}`,
+        description: `${packLabel}\n${activityLabel} · ${gymLabel} · ${dateLabel} · ${slotLabel}`,
         unit: formatEuros(priceHt),
         qty: '1',
         vat: '20 %',
@@ -351,14 +352,16 @@ function renderCoachingInvoice(doc, order) {
   });
 
   drawConditions(doc, [
+    { label: 'Pack', value: packLabel },
+    { label: 'Activité', value: activityLabel },
     { label: 'Salle', value: gymLabel },
     { label: 'Date de séance', value: dateLabel },
     { label: 'Créneau', value: slotLabel },
     {
       label: 'Mode de règlement',
-      value: paid ? paymentLabel(order) : 'À régler en salle avant la séance',
+      value: paid ? paymentLabel(order) : 'À régler en ligne',
     },
-    { label: 'Statut', value: paid ? 'Paiement acquitté' : 'Réservation confirmée — paiement en attente' },
+    { label: 'Statut', value: paid ? 'Paiement acquitté' : 'Paiement en attente' },
   ]);
 
   drawPageFooter(doc, club);

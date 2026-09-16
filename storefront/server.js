@@ -226,6 +226,7 @@ const {
   verifyAccess,
   updateShortProfile,
   updateGymAsync,
+  updateCoachingBookingAsync,
   patchCustomerFullAsync,
   updateIbanAsync,
   markPaymentPaid,
@@ -2257,7 +2258,10 @@ function createApp() {
     const since = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
     const raw = await listOrdersCreatedSinceAsync(since);
     const orders = raw
-      .filter((o) => o.action === 'coaching_booking' || String(o.order_id || '').startsWith('COACH-'))
+      .filter((o) => {
+        const { isCoachingAdminOrder } = require('./lib/coaching-booking');
+        return isCoachingAdminOrder(o);
+      })
       .map(toAdminSummary)
       .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
     res.json({ ok: true, orders, count: orders.length });
@@ -2954,15 +2958,33 @@ function createApp() {
       if (!verifyAccess(order, token)) {
         return res.status(403).json({ ok: false, error: 'forbidden' });
       }
-      const updated = await updateGymAsync(order.order_id, gym);
+      const { isCoachingPackProduct } = require('./lib/coaching-booking');
+      const product = order.product_snapshot || findProduct(order.product_snapshot?.id || req.body.product_id);
+      let updated;
+      if (isCoachingPackProduct(product)) {
+        updated = await updateCoachingBookingAsync(order.order_id, {
+          gym,
+          activity: req.body.activity,
+          slot: req.body.slot,
+          date: req.body.date || req.body.booking_date,
+        });
+      } else {
+        updated = await updateGymAsync(order.order_id, gym);
+      }
       res.json({
         ok: true,
         step: updated.step,
         gym,
+        activity: updated.activity || null,
+        booking_date: updated.booking_date || null,
+        slot: updated.slot || null,
         order_id: updated.order_id,
         access_token: updated.access_token,
       });
     } catch (err) {
+      if (err.errors) {
+        return res.status(400).json({ ok: false, errors: err.errors });
+      }
       res.status(500).json({ ok: false, error: err.message });
     }
   });
@@ -5741,6 +5763,11 @@ function createApp() {
       order.payment?.payment_plan ||
       (payplug4xPrelev ? '4x' : 'once');
     const hist = rememberPreviousPayplugId(order.payment, payment.id);
+    const { scalapayInstallmentCount, isScalapayOrder } = require('../../lib/billing-plan');
+    const scalapayInstallments =
+      plan === 'scalapay' || isScalapayOrder(order) || String(payment.payment_method?.type || '') === 'scalapay'
+        ? scalapayInstallmentCount(payment) || scalapayInstallmentCount(order) || null
+        : null;
     const paid = await markPaymentPaid(order.order_id, {
       method: 'payplug',
       payment_plan: payplug4xPrelev || plan === '4x' ? '4x' : plan,
@@ -5749,6 +5776,7 @@ function createApp() {
       payplug_payment_ids: hist,
       payplug_payment_id: payment.id,
       status: 'paid',
+      ...(scalapayInstallments ? { scalapay_installments: scalapayInstallments } : {}),
     });
     if (payplug4xPrelev && paid) {
       paid.requires_iban = true;
