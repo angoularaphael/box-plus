@@ -73,6 +73,9 @@ describe('billing-plan', () => {
     assert.match(paymentModeLabel(promo, null, 'once'), /une fois/i);
     assert.equal(requiresIbanForPlan(promo, 'rib', '4x'), true);
     assert.match(paymentModeLabel(promo, 'rib', '4x'), /25 %/i);
+    assert.equal(normalizePaymentPlan('scalapay', promo), 'scalapay');
+    assert.match(paymentModeLabel(promo, null, 'scalapay'), /Scalapay/i);
+    assert.equal(requiresIbanForPlan(promo, null, 'scalapay'), false);
   });
 
   it('adult offers block under 15, child offers do not', () => {

@@ -3,6 +3,7 @@
 /**
  * Offre promo 259 € (OFFRE PROMO 12 MOIS) — doit se comporter en comptant
  * (1× ou 4×), sans IBAN, même si le catalogue Deciplus sync dit requires_iban.
+ * Scalapay = tuile OFFRE PROMO 12 MOIS + note « 4× Scalapay ».
  */
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
@@ -94,7 +95,7 @@ describe('offre 259 € — comptant', () => {
     assert.match(paymentModeLabel(PROMO_STATIC, null, '4x'), /4× sans frais/i);
   });
 
-  it('buildOrderPayload Scalapay — comptant Deciplus, sans IBAN, pas de note 4×', () => {
+  it('buildOrderPayload Scalapay — comptant Deciplus 259, sans IBAN, note 4× Scalapay', () => {
     const payload = buildOrderPayload(
       sampleInput({
         payment_plan: 'scalapay',
@@ -113,12 +114,40 @@ describe('offre 259 € — comptant', () => {
     assert.equal(order.paiement_comptant, true);
     assert.deepEqual(validateOrder(order), []);
 
-    const { buildFourXInfoComptaNote } = require('../lib/info-compta-note');
-    const note = buildFourXInfoComptaNote(order, {
-      label: 'OFFRE PROMO 12 MOIS — 1× ou 4× sans frais',
-      amount: 259,
+    const { buildProductConfig, pickBestCatalogTile } = require('../lib/catalog-sale');
+    const cfg = buildProductConfig(order, {
+      id: 100,
+      title: '259€ EN 4X PRELEVEMENT',
+      type: 'abo',
+      categoryId: 'abo',
+      price: 259,
     });
-    assert.equal(note, '', 'Scalapay ne doit pas écrire un échéancier 4× club');
+    assert.equal(cfg.paiement_comptant, true);
+    assert.equal(cfg.requires_iban, false);
+    assert.equal(cfg.deciplus_product_name, 'OFFRE PROMO 12 MOIS');
+    assert.equal(cfg.deciplus_product_search, 'OFFRE PROMO 12');
+    assert.equal(cfg.amount, 259);
+
+    const { buildFourXInfoComptaNote, buildPaymentChannelInfoComptaNote } = require('../lib/info-compta-note');
+    assert.equal(buildPaymentChannelInfoComptaNote(order), '4× Scalapay');
+    assert.equal(
+      buildFourXInfoComptaNote(order, {
+        label: 'OFFRE PROMO 12 MOIS — 1× ou 4× sans frais',
+        amount: 259,
+      }),
+      '',
+      'Scalapay ne doit pas écrire un échéancier 4× club'
+    );
+    const pick = pickBestCatalogTile(
+      [
+        '259€ EN 4X PRELEVEMENT',
+        'OFFRE PROMO 12 MOIS',
+        'COMPTANT 12 MOIS — 400 €',
+        '44,99€ / 4 semaines',
+      ],
+      cfg
+    );
+    assert.match(String(pick.text), /OFFRE PROMO 12 MOIS/i);
   });
 
   it('buildOrderPayload 1× — sans IBAN, paiement comptant, validation OK', () => {

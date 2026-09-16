@@ -58,6 +58,19 @@ function run() {
   assert.equal(supportsScalapayCheckout({ id: 'offre-saison' }, 'minimes'), true);
   assert.equal(supportsScalapayCheckout({ id: 'offre-saison' }, 'portet'), false);
 
+  const { resolveScalapayDeciplus, isScalapayOrder } = require('../lib/billing-plan');
+  assert.equal(isScalapayOrder({ payment: { payment_plan: 'scalapay' } }), true);
+  assert.equal(
+    resolveScalapayDeciplus({ id: 'offre-saison', price_cents: 25900 }, { payment: { amount: 259 } })
+      .deciplus_product_name,
+    'OFFRE PROMO 12 MOIS'
+  );
+  assert.equal(
+    resolveScalapayDeciplus({ id: 'offre-saison' }, { payment: { amount: 259 } })
+      .deciplus_product_search,
+    'OFFRE PROMO 12'
+  );
+
   assert.equal(isPayplugPaymentPaid({ is_paid: true, payment_method: { type: 'scalapay' } }), true);
   assert.equal(
     isPayplugPaymentPaid({

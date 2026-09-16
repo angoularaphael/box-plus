@@ -52,6 +52,8 @@ const { fetchDeciplusCatalog, resolveProductConfig, resolveBadgeProductConfig } 
 const {
   applyBillingPlanToProductConfig,
   isPayplug4xPrelevementOrder,
+  isScalapayOrder,
+  resolveScalapayDeciplus,
   orderNeedsAutoBadge,
 } = require('../lib/billing-plan');
 const { isCartePrestationConfig } = require('../lib/catalog-sale');
@@ -452,6 +454,20 @@ async function processSaleJob(page, order, jobMeta = {}) {
       productConfig.paiement_comptant = true;
       productConfig.requires_iban = false;
       productConfig.skip_rib_prompt = true;
+    }
+  }
+
+  if (isScalapayOrder(order)) {
+    productConfig.auto_badge = false;
+    productConfig.paiement_comptant = true;
+    productConfig.requires_iban = false;
+    productConfig.skip_rib_prompt = true;
+    const scalapayDeciplus = resolveScalapayDeciplus(productConfig, order);
+    if (scalapayDeciplus) {
+      productConfig.label = scalapayDeciplus.deciplus_product_name;
+      productConfig.deciplus_product_name = scalapayDeciplus.deciplus_product_name;
+      productConfig.deciplus_product_search = scalapayDeciplus.deciplus_product_search;
+      if (scalapayDeciplus.amount) productConfig.amount = scalapayDeciplus.amount;
     }
   }
 
