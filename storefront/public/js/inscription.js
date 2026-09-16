@@ -604,7 +604,7 @@
       <div class="fourx-schedule__inner">
         <p class="fourx-schedule__title">Scalapay — paiement en plusieurs fois</p>
         <p class="fourx-schedule__lead">Sur Scalapay vous choisissez : <strong>3× sans frais</strong>, ou <strong>4× avec 1,5&nbsp;% de frais</strong> (à votre charge).</p>
-        <p class="fourx-schedule__note">Ce n’est <strong>pas</strong> le 4× PayPal. Montant total : ${totalLabel || 'celui de l’offre'}. Scalapay affiche le détail des échéances avant validation.</p>
+        <p class="fourx-schedule__note">Montant total : ${totalLabel || 'celui de l’offre'}. Scalapay affiche le détail des échéances avant validation.</p>
       </div>`;
     }
     if (mode === 'paypal') {
@@ -771,7 +771,7 @@
       return `Montant total : <strong>${amount}</strong> — une fois, ou <strong>PayPal 4× sans frais</strong> si éligible`;
     }
     if (supportsScalapay(product) || supportsInstallmentChoice(product)) {
-      return `Montant total : <strong>${amount}</strong> — une fois, ou <strong>Scalapay</strong> (3×/4×) · hors Portet`;
+      return `Montant total : <strong>${amount}</strong> — une fois, ou <strong>Scalapay</strong> (3×/4×)`;
     }
     if (isComptantLikeProduct(product)) {
       return `Paiement de : <strong>${amount}</strong>`;
@@ -1310,7 +1310,7 @@
             <strong>Scalapay</strong> (3× sans frais ou 4× avec 1,5&nbsp;% de frais) et
             <strong>PayPal 4× sans frais</strong> (Pay Later, si votre compte est éligible).</p>`
         : portetPaypal4x || currentGym() === 'portet'
-          ? `<p class="pay-compare-note" role="note">À <strong>Portet</strong>, le paiement en plusieurs fois se fait via <strong>PayPal 4× sans frais</strong> (Pay Later). Scalapay n’est pas proposé pour cette salle.</p>`
+          ? `<p class="pay-compare-note" role="note">Le paiement en plusieurs fois se fait via <strong>PayPal 4× sans frais</strong> (Pay Later, si votre compte est éligible).</p>`
           : '';
       billingHtml = `
         <div class="full billing-plan-block">
@@ -1444,7 +1444,7 @@
               <li><strong>Responsable légal</strong> — ${esc(g.first_name || '')} ${esc(g.last_name || '')}</li>
               <li><strong>Offre</strong> — ${esc(p.display_name || p.name || '')} · ${esc(priceLabel(p))}</li>
             </ul>
-            <p class="sub" style="margin:8px 0 0">À Portet : une fois ou PayPal 4× sans frais (Scalapay non disponible).</p>
+            <p class="sub" style="margin:8px 0 0">Une fois ou PayPal 4× sans frais.</p>
           </div>`;
         })()
       : '';
@@ -1595,7 +1595,7 @@
         body.pay_method = 'cawl';
         if (body.payment_plan === '4x') {
           setMsg(
-            'Pour payer en 4× à Portet, choisissez « PayPal 4× sans frais » (Scalapay n’est pas disponible à Portet).',
+            'Pour payer en plusieurs fois, choisissez « PayPal 4× sans frais », ou réglez en une fois.',
             'err'
           );
           return;
