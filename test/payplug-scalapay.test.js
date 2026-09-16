@@ -24,7 +24,7 @@ function run() {
 
   const prev = process.env.PAYPLUG_SCALAPAY_ENABLED;
   delete process.env.PAYPLUG_SCALAPAY_ENABLED;
-  assert.equal(isScalapayEnabled(), false, 'Scalapay désactivé par défaut');
+  assert.equal(isScalapayEnabled(), true, 'Scalapay activé par défaut');
   process.env.PAYPLUG_SCALAPAY_ENABLED = '0';
   assert.equal(isScalapayEnabled(), false);
   process.env.PAYPLUG_SCALAPAY_ENABLED = '1';

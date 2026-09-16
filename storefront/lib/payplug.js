@@ -27,12 +27,15 @@ function isOney4xEnabled() {
 
 /**
  * Scalapay via PayPlug API (`payment_method: "scalapay"`).
- * Offre marchande déjà ouverte : activer avec PAYPLUG_SCALAPAY_ENABLED=1.
+ * Offre marchande + API test validées : activé par défaut.
+ * Désactiver avec PAYPLUG_SCALAPAY_ENABLED=0. Forcer ON avec =1.
  * Ne s’affiche PAS tout seul sur la page CB hosted — paramètre API obligatoire.
  */
 function isScalapayEnabled() {
   const flag = String(process.env.PAYPLUG_SCALAPAY_ENABLED || '').trim().toLowerCase();
-  return flag === '1' || flag === 'true' || flag === 'yes';
+  if (flag === '0' || flag === 'false' || flag === 'no' || flag === 'off') return false;
+  if (flag === '1' || flag === 'true' || flag === 'yes') return true;
+  return true;
 }
 
 function isAmountEligibleForScalapay(amountCents) {
