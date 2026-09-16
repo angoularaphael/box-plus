@@ -83,6 +83,7 @@
 
   window.BCCart = {
     read,
+    write,
     add,
     setQty,
     remove,

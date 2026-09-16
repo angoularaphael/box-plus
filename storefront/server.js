@@ -1523,7 +1523,7 @@ function createApp() {
             },
             customerOverrides: customer,
             returnUrl: `${baseUrl}/success.html?order=${encodeURIComponent(orderId)}&type=materiel&payplug_return=1&token=${encodeURIComponent(order.access_token || '')}`,
-            cancelUrl: `${baseUrl}/panier?cancelled=1`,
+            cancelUrl: `${baseUrl}/panier?cancelled=1&reason=scalapay`,
           });
         } else {
           payment = await createHostedPayment({
@@ -1542,7 +1542,7 @@ function createApp() {
             },
             customerOverrides: customer,
             returnUrl: `${baseUrl}/success.html?order=${encodeURIComponent(orderId)}&type=materiel&payplug_return=1&token=${encodeURIComponent(order.access_token || '')}`,
-            cancelUrl: `${baseUrl}/panier?cancelled=1`,
+            cancelUrl: `${baseUrl}/panier?cancelled=1&reason=card`,
           });
         }
       } catch (err) {
@@ -1552,6 +1552,7 @@ function createApp() {
             error: err.message,
             missing: err.missing || [],
             code: err.code,
+            suggest_card: preferScalapay,
           });
         }
         logError('Erreur PayPlug checkout matériel', {
@@ -1560,10 +1561,25 @@ function createApp() {
           order_id: orderId,
           scalapay: preferScalapay,
         });
+        if (preferScalapay) {
+          try {
+            const { sendAlert } = require('../lib/logger');
+            await sendAlert('Scalapay PayPlug indisponible ou erreur création', {
+              order_id: orderId,
+              error: err.message,
+              action: 'scalapay_create_failed',
+            });
+          } catch {
+            /* ignore alert failure */
+          }
+        }
         return res.status(502).json({
           ok: false,
-          error: formatPayplugError(err) || err.message,
+          error: preferScalapay
+            ? `${formatPayplugError(err) || err.message} Vous pouvez régler par carte bancaire en une fois.`
+            : formatPayplugError(err) || err.message,
           code: preferScalapay ? 'scalapay_create_failed' : 'payplug_create_failed',
+          suggest_card: preferScalapay,
         });
       }
       const url = hostedPaymentUrl(payment);
@@ -2064,7 +2080,7 @@ function createApp() {
     let payplug = { skipped: true };
     try {
       if (isPayplugEnabled()) {
-        payplug = await reconcilePayplugPayments({ listRecent: true, scanPending: false });
+        payplug = await reconcilePayplugPayments({ listRecent: true, scanPending: true });
       }
     } catch (err) {
       logWarn('PayPlug réconciliation (cron catalogue)', { error: err.message });
@@ -5993,6 +6009,22 @@ function createApp() {
           return Number.isFinite(t) && t >= cutoff;
         })
         .slice(0, 25);
+
+      try {
+        const materielUnpaid = (await listAllMaterielOrdersAsync())
+          .filter((order) => {
+            if (String(order.payment?.status) === 'paid') return false;
+            if (!payplugIdCandidates(order).length) return false;
+            const t = Date.parse(order.updated_at || order.created_at || order.paid_at || 0);
+            return Number.isFinite(t) && t >= cutoff;
+          })
+          .slice(0, 25);
+        for (const order of materielUnpaid) {
+          for (const id of payplugIdCandidates(order)) await tryOne(id, order);
+        }
+      } catch (err) {
+        logWarn('PayPlug scan pending matériel', { error: err.message });
+      }
     }
 
     async function tryOne(paymentId, orderHint) {
@@ -6005,7 +6037,10 @@ function createApp() {
         return;
       }
       const metaType = String(payment.metadata?.order_type || '');
-      if (metaType === 'materiel') {
+      const hintMateriel =
+        orderHint?.order_type === 'materiel' ||
+        String(orderHint?.order_id || '').startsWith('MAT-');
+      if (metaType === 'materiel' || hintMateriel) {
         const out = await fulfillMaterielPayplug(id, payment);
         results.push({ payment_id: id, ...out });
         return;
@@ -6046,6 +6081,19 @@ function createApp() {
         }
         const rows = listing?.data || listing?.payments || [];
         for (const row of rows) {
+          const id = sanitizePaymentId(row.id);
+          if (!id || seen.has(id)) continue;
+          if (!isPayplugPaymentPaid(row)) continue;
+
+          // Matériel (Scalapay / CB) : ne pas passer par le flux inscription
+          const metaType = String(row?.metadata?.order_type || '');
+          if (metaType === 'materiel') {
+            seen.add(id);
+            const out = await fulfillMaterielPayplug(id, row);
+            results.push({ payment_id: id, ...out });
+            continue;
+          }
+
           const metaId = String(row?.metadata?.lifecycle_order_id || row?.metadata?.order_id || '').trim();
           const payEmail = String(row?.billing?.email || row?.metadata?.email || '')
             .trim()
@@ -6059,9 +6107,6 @@ function createApp() {
           } else {
             order = await findUnpaidOrderForPayplug(row, recentUnpaid);
           }
-          if (!isPayplugPaymentPaid(row)) continue;
-          const id = sanitizePaymentId(row.id);
-          if (!id || seen.has(id)) continue;
           seen.add(id);
           if (!order || String(order.payment?.status) === 'paid' || String(order.payment?.status) === 'free') {
             continue;
@@ -6355,7 +6400,7 @@ function createApp() {
     if (!isAuthorizedCron(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
     if (!isPayplugEnabled()) return res.json({ ok: true, skipped: 'payplug_not_configured' });
     try {
-      const out = await reconcilePayplugPayments({ listRecent: true, scanPending: false });
+      const out = await reconcilePayplugPayments({ listRecent: true, scanPending: true });
       let nudges = { count: 0 };
       try {
         const { dispatchDueNudges } = require('./lib/inscription-nudge');

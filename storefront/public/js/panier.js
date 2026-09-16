@@ -10,6 +10,7 @@
   const scalapayRadio = document.getElementById('payMethodScalapay');
   const scalapayAddress = document.getElementById('scalapayAddress');
   const checkoutBtn = document.getElementById('checkoutBtn');
+  const CART_BACKUP_KEY = 'bc-cart-checkout-backup';
 
   function A(path) {
     return window.BCPaths?.asset(path) || path.replace(/^\//, '');
@@ -29,6 +30,50 @@
     scalapay_min_cents: 500,
     scalapay_max_cents: 200000,
   };
+
+  function showError(message) {
+    errorEl.textContent = message || 'Erreur de paiement';
+    errorEl.hidden = false;
+  }
+
+  function selectCardFallback(message) {
+    const card = form.querySelector('input[name="payment_method"][value="card"]');
+    if (card) card.checked = true;
+    syncPayMethodUi(window.BCCart.totalCents());
+    if (message) showError(message);
+  }
+
+  function backupCart() {
+    try {
+      sessionStorage.setItem(CART_BACKUP_KEY, JSON.stringify(window.BCCart.read()));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function restoreCartIfNeeded() {
+    if (window.BCCart.read().length) return false;
+    try {
+      const raw = sessionStorage.getItem(CART_BACKUP_KEY);
+      if (!raw) return false;
+      const lines = JSON.parse(raw);
+      if (!Array.isArray(lines) || !lines.length) return false;
+      window.BCCart.write
+        ? window.BCCart.write(lines)
+        : localStorage.setItem('bc-cart', JSON.stringify(lines));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function clearCartBackup() {
+    try {
+      sessionStorage.removeItem(CART_BACKUP_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
 
   async function loadCatalog() {
     try {
@@ -220,6 +265,7 @@
     btn.textContent = 'Redirection…';
 
     try {
+      backupCart();
       const res = await fetch('/api/cart/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -231,7 +277,16 @@
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        throw new Error((data.errors || [data.error]).join(', '));
+        const msg = (data.errors || [data.error]).filter(Boolean).join(', ');
+        if (data.suggest_card || data.code === 'scalapay_create_failed' || data.code === 'scalapay_unavailable') {
+          selectCardFallback(
+            msg ||
+              'Scalapay n’a pas pu démarrer. Choisissez « Carte bancaire » pour payer en une fois.'
+          );
+          btn.disabled = false;
+          return;
+        }
+        throw new Error(msg || 'Erreur de paiement');
       }
       if (data.payment_id) {
         try {
@@ -241,6 +296,7 @@
         }
       }
       if (data.mode === 'demo' || data.redirect) {
+        clearCartBackup();
         window.BCCart.clear();
         location.href = data.redirect || data.url;
         return;
@@ -252,13 +308,34 @@
       }
       throw new Error('Réponse checkout invalide');
     } catch (err) {
-      errorEl.textContent = err.message || 'Erreur de paiement';
-      errorEl.hidden = false;
+      showError(err.message || 'Erreur de paiement');
       btn.disabled = false;
       syncPayMethodUi(window.BCCart.totalCents());
     }
   });
 
+  function handleReturnParams() {
+    const params = new URLSearchParams(location.search);
+    if (params.get('cancelled') === '1') {
+      restoreCartIfNeeded();
+      const reason = params.get('reason') || '';
+      selectCardFallback(
+        reason === 'scalapay'
+          ? 'Paiement Scalapay annulé ou refusé. Vous pouvez payer par carte bancaire en une fois.'
+          : 'Paiement annulé. Vous pouvez réessayer par carte bancaire.'
+      );
+      history.replaceState({}, '', '/panier');
+    }
+    if (params.get('pay') === 'card') {
+      restoreCartIfNeeded();
+      selectCardFallback('Réglez maintenant par carte bancaire en une fois.');
+      history.replaceState({}, '', '/panier');
+    }
+  }
+
   window.addEventListener('bccart:change', render);
-  Promise.all([loadCatalog(), loadPayConfig()]).then(render);
+  Promise.all([loadCatalog(), loadPayConfig()]).then(() => {
+    handleReturnParams();
+    render();
+  });
 })();
