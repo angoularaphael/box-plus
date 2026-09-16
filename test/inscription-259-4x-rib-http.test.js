@@ -129,11 +129,11 @@ test('tunnel inscription navigateur — 259 € Scalapay (pas de RIB 4×)', asyn
   assert.equal(addrVisible, true, 'adresse Scalapay visible');
 
   const payBtnText = await page.locator('#payBtn').innerText();
-  assert.match(payBtnText, /Scalapay/i);
+  assert.match(payBtnText, /paiement CB|CB/i);
 
   const pageText = await page.locator('body').innerText();
   assert.doesNotMatch(pageText, /CB puis RIB|3 prochains paiements sur votre RIB/i);
-  assert.match(pageText, /PayPal 4× sans frais|Scalapay/i);
+  assert.match(pageText, /PayPal 4× sans frais|CB en plusieurs fois/i);
 
   await markPaymentPaid(order_id, {
     method: 'payplug',

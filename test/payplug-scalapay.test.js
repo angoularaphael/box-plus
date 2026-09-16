@@ -42,6 +42,10 @@ function run() {
   assert.ok(SCALAPAY_UNAVAILABLE_MESSAGE.length > 10);
   assert.match(require('../storefront/lib/payplug').SCALAPAY_FEES_HINT, /1,?5\s*%|3×/i);
   assert.match(require('../storefront/lib/payplug').SCALAPAY_REFUSAL_HELP, /boxingcenter31@gmail\.com/);
+  assert.match(
+    require('../storefront/lib/payplug').SCALAPAY_REFUSAL_HELP,
+    /solution de paiement alternative/i
+  );
 
   const { productSupportsScalapay } = require('../lib/billing-plan');
   assert.equal(productSupportsScalapay({ id: 'offre-saison', price_cents: 25900 }), true);
