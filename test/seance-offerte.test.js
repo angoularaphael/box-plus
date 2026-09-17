@@ -58,6 +58,22 @@ describe('séance offerte — info_compta + défauts ami', () => {
     assert.deepEqual(validateOrder(order), []);
   });
 
+  it('une séance offerte réussie sans vente n’est pas une revue manuelle', () => {
+    const { lifecycleFromBotOutcome, STATES } = require('../lib/job-lifecycle');
+    assert.equal(
+      lifecycleFromBotOutcome({ status: 'success', deciplus_member_id: '18178', deciplus_sale_id: null }),
+      STATES.VERIFIED
+    );
+    assert.equal(
+      lifecycleFromBotOutcome({ status: 'manual_review', deciplus_sale_id: null }),
+      STATES.MANUAL_REVIEW
+    );
+    assert.equal(
+      lifecycleFromBotOutcome({ status: 'error', deciplus_sale_id: '99' }),
+      STATES.VERIFIED
+    );
+  });
+
   it('valide un job check_sale', () => {
     const order = normalizeOrder({
       order_id: 'SO-2#check-sale',

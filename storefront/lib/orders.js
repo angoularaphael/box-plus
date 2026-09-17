@@ -361,8 +361,10 @@ async function dispatchOrder(rawPayload) {
       }
       if (result.processed?.deciplus_sale_id || result.processed?.deciplus_member_id) {
         const { applyBotSaleStatus } = require('./order-lifecycle');
+        const { lifecycleFromBotOutcome, STATES } = require('../../lib/job-lifecycle');
+        const verified = lifecycleFromBotOutcome(result.processed) === STATES.VERIFIED;
         await applyBotSaleStatus(order.order_id, {
-          status: result.processed.deciplus_sale_id ? 'success' : 'manual_review',
+          status: verified ? 'success' : 'manual_review',
           deciplus_member_id: result.processed.deciplus_member_id || undefined,
           deciplus_sale_id: result.processed.deciplus_sale_id || undefined,
           error: result.processed.error || null,

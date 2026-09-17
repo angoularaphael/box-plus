@@ -137,4 +137,41 @@ describe('memberSearchHitMatches — pas de réutilisation sur email de couple',
       true
     );
   });
+
+  it('accepte une typo de nom si le téléphone est le même (Duou / Dufou)', () => {
+    assert.equal(
+      memberSearchHitMatches(
+        {
+          lastName: 'DUOU',
+          firstName: 'Martin',
+          email: 'martin.dufou@gmail.com',
+          phone: '0768886807',
+          fromMemberForm: true,
+        },
+        {
+          last_name: 'Dufou',
+          first_name: 'Martin',
+          email: 'martin.dufou@gmail.com',
+          phone: '0768886807',
+        }
+      ),
+      true
+    );
+  });
+
+  it('réutilise la fiche pour une séance offerte même si le nom diverge', () => {
+    assert.equal(
+      memberSearchHitMatches(
+        {
+          lastName: 'DUOU',
+          firstName: 'Martin',
+          phone: '0768886807',
+          fromMemberForm: true,
+        },
+        { last_name: 'Martin', first_name: 'Autre', phone: '0768886807' },
+        { seanceOfferte: true }
+      ),
+      true
+    );
+  });
 });

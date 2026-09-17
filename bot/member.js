@@ -373,14 +373,14 @@ async function readSearchHit(page) {
 }
 
 /** Vérifie que la fiche ouverte est la même personne (nom obligatoire si le client en a un). */
-async function searchHitMatchesCustomer(page, customer = {}) {
+async function searchHitMatchesCustomer(page, customer = {}, opts = {}) {
   let form = await readMemberIdentityFields(page).catch(() => null);
   if (!form?.fromMemberForm || !String(form.lastName || form.firstName).trim()) {
     await page.waitForTimeout(400);
     form = await readMemberIdentityFields(page).catch(() => null);
   }
   if (!form?.fromMemberForm) return false;
-  return memberSearchHitMatches(form, customer);
+  return memberSearchHitMatches(form, customer, opts);
 }
 
 async function searchMember(page, query) {
@@ -1043,8 +1043,10 @@ async function startNewMemberFromSelect(page, customer) {
 
 async function fillMemberForm(page, customer, gymConfig, order) {
   const { applySeanceOfferteCustomerDefaults } = require('../lib/info-compta-note');
+  const { applyFrenchAddressFallback } = require('../lib/fr-address');
   gymConfig = safeMemberCreationGymConfig(gymConfig);
   customer = applySeanceOfferteCustomerDefaults(customer, order || {});
+  customer = applyFrenchAddressFallback(customer, gymConfig);
   const sel = getSelectors().member_form_selectors || {};
   const ctx = await getMemberFormContext(page);
   const phone = phoneForDeciplus(customer.phone);
@@ -1571,13 +1573,21 @@ async function detectDuplicateError(page) {
   return null;
 }
 
-async function findExistingMemberOnCurrentSite(page, customer) {
+async function findExistingMemberOnCurrentSite(page, customer, opts = {}) {
   await resetMemberSearchContext(page);
 
   async function acceptHit(hit, action) {
     if (!hit?.found || !hit.member_id) return null;
     await openMemberEditForm(page, hit.member_id).catch(() => false);
-    const ok = await searchHitMatchesCustomer(page, customer);
+    const ok = await searchHitMatchesCustomer(page, customer, opts);
+    if (!ok && opts.seanceOfferte && (action === 'found_email' || action === 'found_phone')) {
+      logWarn('Séance offerte — fiche réutilisée (même email/tél, écart de nom)', {
+        member_id: hit.member_id,
+        action,
+        email: customer.email || null,
+      });
+      return { member_id: hit.member_id, action: `${action}_seance` };
+    }
     if (!ok) {
       logWarn('Résultat recherche Deciplus ignoré (identité non concordante)', {
         member_id: hit.member_id,
@@ -1665,7 +1675,7 @@ async function resolveMemberSiteConfig(page, memberId, fallback = {}) {
   return detectMemberGymConfig(page, fallback);
 }
 
-async function searchExistingMemberAcrossSites(page, customer, sites, logCtx = {}) {
+async function searchExistingMemberAcrossSites(page, customer, sites, logCtx = {}, opts = {}) {
   const { switchDeciplusSite } = require('./deciplus-zone');
   for (const site of sites) {
     const label = site.deciplus_label || site.label;
@@ -1678,7 +1688,7 @@ async function searchExistingMemberAcrossSites(page, customer, sites, logCtx = {
       return false;
     });
     if (!switched) continue;
-    const found = await findExistingMemberOnCurrentSite(page, customer);
+    const found = await findExistingMemberOnCurrentSite(page, customer, opts);
     if (found) {
       logInfo('Fiche Deciplus existante réutilisée', {
         member_id: found.member_id,
@@ -1699,9 +1709,12 @@ async function findOrCreateMember(page, order, gymConfig) {
   gymConfig = safeMemberCreationGymConfig(gymConfig);
   const logCtx = { order_id: order.order_id };
 
+  const { isSeanceOfferteOrder } = require('../lib/info-compta-note');
+  const seanceOpts = { seanceOfferte: isSeanceOfferteOrder(order) };
+
   if (!order.force_new_member) {
     const sites = saleMemberSearchConfigs(order.gym || gymConfig.key);
-    const found = await searchExistingMemberAcrossSites(page, customer, sites, logCtx);
+    const found = await searchExistingMemberAcrossSites(page, customer, sites, logCtx, seanceOpts);
     if (found) return found;
   } else {
     logInfo('Création membre Deciplus forcée (nouvelle fiche)', {
@@ -1727,11 +1740,24 @@ async function findOrCreateMember(page, order, gymConfig) {
   if (duplicateMsg) {
     logWarn('Doublon à la création — recherche multi-salles (repli sécurité)', logCtx);
     const allSites = uniqueDeciplusSearchConfigs(order.gym || gymConfig.key);
-    const accepted = await searchExistingMemberAcrossSites(page, customer, allSites, {
-      ...logCtx,
-      fallback: 'duplicate_all_gyms',
-    });
+    const accepted = await searchExistingMemberAcrossSites(
+      page,
+      customer,
+      allSites,
+      { ...logCtx, fallback: 'duplicate_all_gyms' },
+      seanceOpts
+    );
     if (accepted) return accepted;
+    if (seanceOpts.seanceOfferte && customer.phone) {
+      const phoneHit = await searchMember(page, customer.phone);
+      if (phoneHit?.found && phoneHit.member_id) {
+        logWarn('Séance offerte — fiche réutilisée (même téléphone, doublon Deciplus)', {
+          ...logCtx,
+          member_id: phoneHit.member_id,
+        });
+        return { member_id: phoneHit.member_id, action: 'found_phone_duplicate', gymConfig };
+      }
+    }
     return { duplicate: true, message: duplicateMsg };
   }
 
