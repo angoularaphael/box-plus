@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Attribution des contributions
 
-Consigne utilisateur : **ne jamais te mettre contributeur** ; **tout le code produit par l’agent est à l’utilisateur** (Brad / Boxing Center).
+Consigne utilisateur : **ne jamais te mettre contributeur** ; **tout le code produit par l’agent est à Raphael** (l’utilisateur / Boxing Center).
 
 ## Interdit
 
@@ -15,9 +15,9 @@ Consigne utilisateur : **ne jamais te mettre contributeur** ; **tout le code pro
 
 ## À faire
 
-- Les commits, PR et livrables doivent refléter le travail comme **celui de l’utilisateur** (pas de mention d’assistant IA sauf si l’utilisateur le demande explicitement).
+- Les commits, PR et livrables doivent refléter le travail comme **celui de Raphael** (pas de mention d’assistant IA sauf s’il le demande explicitement).
 - Messages de commit neutres, orientés produit — sans « by AI », sans signature agent.
-- En cas de doute sur un crédit visible dans le dépôt : **ne pas ajouter le nom de l’agent** ; laisser ou attribuer à l’utilisateur / l’équipe Boxing Center existante.
+- En cas de doute sur un crédit visible dans le dépôt : **ne pas ajouter le nom de l’agent** ; laisser ou attribuer à **Raphael** / l’équipe Boxing Center existante.
 
 ## Git
 
