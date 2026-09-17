@@ -21,6 +21,7 @@ const { sendEmailViaResend, isConfigured } = require('../storefront/lib/resend-s
 const { isNoblartPaypalOfferProduct } = require('../lib/billing-plan');
 
 const SEND = process.argv.includes('--send');
+const FORCE = process.argv.includes('--force');
 const CLUB_TO = 'nobleartportesien@gmail.com';
 const SINCE = '2026-01-01T00:00:00+01:00';
 const GAP_MS = 500;
@@ -167,7 +168,7 @@ async function main() {
   const state = loadState();
   const results = [];
 
-  if (!state.digest_sent) {
+  if (!state.digest_sent || FORCE) {
     const digest = await sendEmailViaResend({
       to: CLUB_TO,
       subject: `Boxe éducative Portet — ${rows.length} inscription(s) transférée(s)`,
@@ -181,7 +182,7 @@ async function main() {
   }
 
   for (const row of rows) {
-    if (state.sent[row.order_id]) {
+    if (state.sent[row.order_id] && !FORCE) {
       results.push({ order_id: row.order_id, skipped: true });
       continue;
     }
@@ -193,12 +194,17 @@ async function main() {
       }
     } catch (err) {
       results.push({ order_id: row.order_id, ok: false, error: `pdf: ${err.message}` });
+      continue;
+    }
+    if (!attachments.length) {
+      results.push({ order_id: row.order_id, ok: false, error: 'pdf_missing' });
+      continue;
     }
     const html = `<!DOCTYPE html>
 <html lang="fr"><head><meta charset="UTF-8"></head>
 <body style="font-family:Arial,sans-serif;color:#1A1A2E;max-width:600px;margin:0 auto;padding:24px">
-  <h1 style="color:#0B1F3A">Dossier boxe éducative — Portet</h1>
-  <p>Copie club pour <strong>Noble Art Portésien</strong>.</p>
+  <h1 style="color:#0B1F3A">Facture boxe éducative — Portet</h1>
+  <p>Facture pour <strong>Noble Art Portésien</strong> (pièce jointe PDF).</p>
   <table style="width:100%;border-collapse:collapse;margin:20px 0">
     <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Adhérent</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(row.name)}</td></tr>
     <tr><td style="padding:8px;border-bottom:1px solid #eee"><strong>Email</strong></td><td style="padding:8px;border-bottom:1px solid #eee">${escapeHtml(row.email)}</td></tr>
@@ -210,14 +216,19 @@ async function main() {
     try {
       const sent = await sendEmailViaResend({
         to: CLUB_TO,
-        subject: `Éducative Portet — ${row.name || row.order_id}`,
+        subject: `Facture boxe éducative Portet — ${row.name || row.order_id}`,
         html,
         fromName: 'Noble Art Portésien',
         attachments,
       });
       state.sent[row.order_id] = { at: new Date().toISOString(), id: sent.messageId };
       saveState(state);
-      results.push({ order_id: row.order_id, ok: true, id: sent.messageId });
+      results.push({
+        order_id: row.order_id,
+        ok: true,
+        id: sent.messageId,
+        pdf: attachments[0].filename,
+      });
     } catch (err) {
       results.push({ order_id: row.order_id, ok: false, error: err.message });
     }
