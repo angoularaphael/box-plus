@@ -1,0 +1,40 @@
+---
+description: Toute page ou composant web doit être responsive mobile par défaut.
+alwaysApply: true
+---
+
+# Responsivité automatique (mobile-first)
+
+Toute nouvelle page, section ou composant **doit fonctionner sur mobile sans demande explicite** de Raphael.
+
+## HTML
+
+- `<meta name="viewport" content="width=device-width, initial-scale=1" />` sur chaque page.
+- Pas de largeurs fixes en px pour des blocs principaux (préférer `%`, `minmax()`, `fr`, `max-width`).
+- Images : `max-width: 100%`, `height: auto` ; `loading="lazy"` si hors hero.
+
+## CSS (conventions Boxing Center)
+
+- Réutiliser `boutique.css`, `components.css`, classes existantes (`form-grid`, `section`, `offer-card`, `checkout-layout`, etc.) avant d’ajouter du CSS ad hoc.
+- **Mobile-first** : styles de base pour petit écran, puis `@media (min-width: …)` pour agrandir.
+- Breakpoints déjà utilisés dans le projet (s’y tenir) : **480**, **600**, **640**, **720**, **760**, **768**, **899**, **900** px.
+- Grilles : `grid-template-columns: 1fr` par défaut ; colonnes multiples seulement en `min-width`.
+- Éviter le scroll horizontal (`overflow-x: hidden` seulement si nécessaire — corriger la cause en priorité).
+- Zones cliquables : **min. 44×44 px** (boutons, liens menu, champs tactiles).
+- Texte : pas de `font-size` inférieur à **14px** sur mobile pour le corps ; titres avec `clamp()` si besoin.
+- Respecter `prefers-reduced-motion: reduce` quand des animations sont ajoutées.
+
+## Formulaires & tunnel
+
+- Champs en **une colonne** sur mobile (`form-grid` → `full` ou media `max-width: 640px`).
+- Boutons d’action : `width: 100%` ou `.btn.block` sur petit écran.
+- Tables admin : `overflow-x: auto` sur le conteneur, pas sur toute la page.
+
+## Vérification avant de livrer
+
+Mentalement ou visuellement contrôler au minimum :
+
+1. **375px** (iPhone) — pas de débordement, texte lisible, CTA accessibles.
+2. **~900px+** — mise en page desktop cohérente avec le reste du site.
+
+Si une page est ajoutée ou refaite : la responsivité fait partie du livrable, pas une tâche optionnelle.
