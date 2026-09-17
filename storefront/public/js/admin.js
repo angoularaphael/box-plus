@@ -2639,6 +2639,14 @@
   document.getElementById('refreshOrdersBtn').onclick = loadOrders;
   document.getElementById('refreshArchivesBtn')?.addEventListener('click', () => loadOrders().then(() => renderArchives()));
   document.getElementById('archivesSearch')?.addEventListener('input', renderArchives);
+  function syncCustomOfferModeHint() {
+    const mode = document.getElementById('co_mode')?.value;
+    const hint = document.getElementById('co_mode_hint');
+    if (hint) hint.hidden = mode !== 'comptant_4x';
+  }
+  document.getElementById('co_mode')?.addEventListener('change', syncCustomOfferModeHint);
+  syncCustomOfferModeHint();
+
   document.getElementById('customOfferForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -2682,7 +2690,7 @@
             — ${escapeHtml(data.price_label || '')}
             · ${
               data.product?.supports_installment_choice
-                ? 'Comptant — 1× ou 4× sans frais'
+                ? escapeHtml(data.product?.installments_note || 'Comptant — 1× ou fractionné')
                 : data.mode === 'comptant'
                   ? 'Comptant'
                   : 'Abonnement 4 semaines'

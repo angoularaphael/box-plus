@@ -37,9 +37,17 @@ test('buildCustomOfferProduct comptant 1× ou 4×', () => {
   assert.equal(p.subsection, 'comptant');
   assert.equal(p.requires_iban, false);
   assert.equal(p.supports_installment_choice, true);
-  assert.equal(p.installments_note, 'En une fois ou en 4× sans frais');
-  assert.equal(p.badge, '1× ou 4×');
+  assert.equal(p.installments_note, 'En une fois, PayPal 4× sans frais ou CB 3×/4×');
+  assert.equal(p.badge, '1× ou fractionné');
   assert.equal(p.price_cents, 25900);
+});
+
+test('buildCustomOfferProduct 150 € — PayPal 4× seulement (pas Scalapay)', () => {
+  const p = buildCustomOfferProduct({ price_euros: 150, mode: 'comptant_4x' });
+  assert.equal(p.supports_installment_choice, true);
+  assert.equal(p.installments_note, 'En une fois ou PayPal 4× sans frais');
+  assert.match(p.description, /PayPal 4× sans frais/);
+  assert.doesNotMatch(p.description, /CB 3×/);
 });
 
 test('buildCustomOfferProduct allow_4x sur comptant', () => {
@@ -138,4 +146,5 @@ test('offre perso 3 personnes + companions', () => {
   assert.match(recap.text, /Paul Martin/);
   assert.match(recap.html, /Personne 1 \(payeur\)/);
   assert.match(recap.html, /12 rue Test/);
+  assert.match(recap.text, /PayPal 4× sans frais/);
 });

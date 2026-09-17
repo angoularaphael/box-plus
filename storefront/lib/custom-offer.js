@@ -140,6 +140,38 @@ function peopleLabel(n) {
   return `${size} personnes`;
 }
 
+/** CB Scalapay (3×/4×) : mêmes montants que le catalogue (259 €, 400 €). */
+function customOfferSupportsScalapay(cents) {
+  const n = Number(cents);
+  return n === 25900 || n === 40000;
+}
+
+function installmentCopyForPrice(cents, priceLabel, quartLabel) {
+  const scalapay = customOfferSupportsScalapay(cents);
+  const note = scalapay
+    ? 'En une fois, PayPal 4× sans frais ou CB 3×/4×'
+    : 'En une fois ou PayPal 4× sans frais';
+  const duration = scalapay ? '1×, PayPal 4× ou CB 3×/4×' : '1× ou PayPal 4×';
+  const description = scalapay
+    ? `Offre négociée avec Boxing Center. Paiement ${priceLabel} en une fois, PayPal 4× sans frais, ou CB 3× sans frais / 4× avec 1,5 % de frais (${quartLabel} par échéance en 4×), puis dossier d’inscription.`
+    : `Offre négociée avec Boxing Center. Paiement ${priceLabel} en une fois ou PayPal 4× sans frais (${quartLabel} par échéance si éligible), puis dossier d’inscription.`;
+  const benefit = scalapay
+    ? `${priceLabel} en 1×, PayPal 4× sans frais, ou CB 3× sans frais / 4× (1,5 % de frais)`
+    : `${priceLabel} en 1× ou PayPal 4× sans frais`;
+  return { note, duration, description, benefit, badge: '1× ou fractionné' };
+}
+
+function paymentPlanLabel(pay = {}, product = {}) {
+  const plan = String(pay.payment_plan || '').toLowerCase();
+  if (plan === 'scalapay') return 'CB en plusieurs fois (Scalapay)';
+  if (plan === '4x') return 'PayPal 4× sans frais';
+  if (plan === 'once') return 'Comptant 1×';
+  if (product.supports_installment_choice) {
+    return product.installments_note || 'Comptant (1× ou fractionné)';
+  }
+  return product.requires_iban ? 'Abonnement 4 semaines' : 'Comptant';
+}
+
 function escapeHtml(value) {
   return String(value || '')
     .replace(/&/g, '&amp;')
@@ -169,16 +201,7 @@ function buildCustomOfferClubRecap(order = {}) {
   const gymName = GYM_LABELS[gym] || gym || '—';
   const size = partySizeOf(order);
   const pay = order.payment || {};
-  const plan =
-    pay.payment_plan === '4x'
-      ? '4× sans frais'
-      : product.supports_installment_choice
-        ? pay.payment_plan === 'once'
-          ? 'Comptant 1×'
-          : product.installments_note || 'Comptant (1× ou 4×)'
-        : product.requires_iban
-          ? 'Abonnement 4 semaines'
-          : 'Comptant';
+  const plan = paymentPlanLabel(pay, product);
   const payer = {
     ...short,
     gender: full.gender,
@@ -274,7 +297,7 @@ function buildCustomOfferProduct(input = {}) {
   }
   const mode = normalizeMode(input.mode || input.payment_mode);
   if (!mode) {
-    const err = new Error('Choisis comptant, 1× ou 4×, ou abonnement');
+    const err = new Error('Choisis comptant, comptant fractionné, ou abonnement');
     err.status = 400;
     throw err;
   }
@@ -283,14 +306,15 @@ function buildCustomOfferProduct(input = {}) {
   const priceLabel = formatPriceLabel(cents);
   const customName = String(input.label || input.name || '').trim();
   const id = `custom-${crypto.randomBytes(4).toString('hex')}`;
+  const quartLabel = formatPriceLabel(Math.round(cents / 4));
+  const installment = allow4x ? installmentCopyForPrice(cents, priceLabel, quartLabel) : null;
   const name =
     customName ||
     (!comptant
       ? `Offre personnalisée ${priceLabel} / 4 semaines`
       : allow4x
-        ? `Offre personnalisée ${priceLabel} (1× ou 4×)`
+        ? `Offre personnalisée ${priceLabel} (1× ou fractionné)`
         : `Offre personnalisée ${priceLabel} comptant`);
-  const quartLabel = formatPriceLabel(Math.round(cents / 4));
   const partySize = parsePartySize(input);
   const people = peopleLabel(partySize);
   const peopleNote =
@@ -304,7 +328,7 @@ function buildCustomOfferProduct(input = {}) {
     description: (!comptant
       ? 'Offre négociée avec Boxing Center. 1ʳᵉ échéance CB, puis prélèvement toutes les 4 semaines, sans engagement.'
       : allow4x
-        ? `Offre négociée avec Boxing Center. Paiement ${priceLabel} en une fois ou en 4× sans frais (${quartLabel} par échéance), puis dossier d’inscription.`
+        ? installment.description
         : 'Offre négociée avec Boxing Center. Paiement comptant, puis dossier d’inscription.') + peopleNote,
     price_cents: cents,
     price_label: priceLabel,
@@ -313,11 +337,11 @@ function buildCustomOfferProduct(input = {}) {
     requires_payment: true,
     supports_billing_choice: false,
     supports_installment_choice: Boolean(comptant && allow4x),
-    installments_note: comptant && allow4x ? 'En une fois ou en 4× sans frais' : null,
+    installments_note: comptant && allow4x ? installment.note : null,
     tab: 'abonnements',
     subsection: comptant ? 'comptant' : 'prelevement',
-    duration_label: comptant ? (allow4x ? '1× ou 4× sans frais' : 'Comptant') : 'Toutes les 4 semaines',
-    badge: !comptant ? 'Sans engagement' : allow4x ? '1× ou 4×' : 'Comptant',
+    duration_label: comptant ? (allow4x ? installment.duration : 'Comptant') : 'Toutes les 4 semaines',
+    badge: !comptant ? 'Sans engagement' : allow4x ? installment.badge : 'Comptant',
     party_size: partySize,
     benefits: [
       'Accès aux 5 salles Boxing Center',
@@ -325,7 +349,7 @@ function buildCustomOfferProduct(input = {}) {
       !comptant
         ? `${priceLabel} toutes les 4 semaines, sans engagement`
         : allow4x
-          ? `${priceLabel} en 1×, ou 4× sans frais (${quartLabel} × 4)`
+          ? installment.benefit
           : `Paiement unique ${priceLabel}`,
       partySize > 1 ? `Pour ${people} (infos de chacun au dossier)` : 'Dossier : uniquement les infos encore manquantes',
     ],
@@ -370,6 +394,9 @@ module.exports = {
   isCustomOfferOrder,
   clubCustomOfferEmail,
   buildCustomOfferClubRecap,
+  customOfferSupportsScalapay,
+  installmentCopyForPrice,
+  paymentPlanLabel,
   buildCustomOfferProduct,
   prepareCustomOffer,
   landingUrl,

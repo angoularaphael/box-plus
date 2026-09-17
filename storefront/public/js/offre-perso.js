@@ -42,7 +42,9 @@
         lead.textContent = !comptant
           ? '1ʳᵉ échéance aujourd’hui, puis prélèvement toutes les 4 semaines, sans engagement. Ensuite le dossier (infos manquantes uniquement).'
           : fourX
-            ? 'Payez en une fois ou en 4× sans frais, puis vous complétez uniquement les infos encore manquantes.'
+            ? (Number(product.price_cents) === 25900 || Number(product.price_cents) === 40000
+                ? 'Payez en une fois, PayPal 4× sans frais ou CB 3×/4×, puis vous complétez uniquement les infos encore manquantes.'
+                : 'Payez en une fois ou PayPal 4× sans frais, puis vous complétez uniquement les infos encore manquantes.')
             : 'Paiement unique, puis vous complétez uniquement les infos encore manquantes.';
       }
       if (priceEl) priceEl.textContent = price;
@@ -51,7 +53,9 @@
           !comptant
             ? 'Abonnement — 4 semaines, sans engagement'
             : fourX
-              ? 'Comptant — 1× ou 4× sans frais'
+              ? (Number(product.price_cents) === 25900 || Number(product.price_cents) === 40000
+                  ? 'Comptant — 1×, PayPal 4× ou CB 3×/4×'
+                  : 'Comptant — 1× ou PayPal 4× sans frais')
               : 'Comptant — un seul paiement',
           peopleLabel,
         ].filter(Boolean);

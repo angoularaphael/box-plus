@@ -519,9 +519,12 @@
                 <label for="co_mode">Paiement *</label>
                 <select id="co_mode" name="mode" required>
                   <option value="comptant">Comptant (une fois)</option>
-                  <option value="comptant_4x">Comptant (1× ou 4× sans frais)</option>
+                  <option value="comptant_4x">Comptant — 1× ou fractionné (PayPal 4×)</option>
                   <option value="abonnement">Abonnement (4 semaines + IBAN)</option>
                 </select>
+                <p id="co_mode_hint" class="admin-section-desc" style="margin:6px 0 0;font-size:13px" hidden>
+                  PayPal 4× sans frais pour tout montant. CB 3×/4× (Scalapay) uniquement à 259&nbsp;€ ou 400&nbsp;€. À Portet&nbsp;: PayPal 4× seulement.
+                </p>
               </div>
               <div>
                 <label for="co_people">Nombre de personnes *</label>
