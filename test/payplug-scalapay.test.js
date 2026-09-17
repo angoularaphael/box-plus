@@ -93,6 +93,15 @@ function run() {
     false
   );
 
+  const fs = require('fs');
+  const path = require('path');
+  const serverSrc = fs.readFileSync(path.join(__dirname, '../storefront/server.js'), 'utf8');
+  assert.equal(
+    serverSrc.includes("require('../../lib/billing-plan')"),
+    false,
+    'storefront/server.js must require ../lib/billing-plan (Vercel root), not ../../lib'
+  );
+
   console.log('ok — Scalapay PayPlug flags / bornes / paid');
 }
 

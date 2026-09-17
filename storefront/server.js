@@ -56,6 +56,8 @@ const {
   requiresIbanForPlan,
   adultOfferAgeError,
   productNeedsAutoBadge,
+  isScalapayOrder,
+  scalapayInstallmentCount,
 } = require('../lib/billing-plan');
 const {
   isPortetGym,
@@ -4940,10 +4942,6 @@ function createApp() {
           message: display.portetPausedMessage || PORTET_PAUSED_MESSAGE,
         });
       }
-      const {
-        productSupportsInstallmentChoice,
-        normalizePaymentPlan,
-      } = require('../../lib/billing-plan');
       const paymentPlan =
         normalizePaymentPlan(body.payment_plan, product) ||
         (productSupportsInstallmentChoice(product) ? 'once' : 'once');
@@ -5763,7 +5761,6 @@ function createApp() {
       order.payment?.payment_plan ||
       (payplug4xPrelev ? '4x' : 'once');
     const hist = rememberPreviousPayplugId(order.payment, payment.id);
-    const { scalapayInstallmentCount, isScalapayOrder } = require('../../lib/billing-plan');
     const scalapayInstallments =
       plan === 'scalapay' || isScalapayOrder(order) || String(payment.payment_method?.type || '') === 'scalapay'
         ? scalapayInstallmentCount(payment) || scalapayInstallmentCount(order) || null
