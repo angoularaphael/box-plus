@@ -1,0 +1,25 @@
+---
+description: Ne jamais s’attribuer le code — les contributions appartiennent à l’utilisateur.
+alwaysApply: true
+---
+
+# Attribution des contributions
+
+Consigne utilisateur : **ne jamais te mettre contributeur** ; **tout le code produit par l’agent est à l’utilisateur** (Brad / Boxing Center).
+
+## Interdit
+
+- Ajouter l’IA comme auteur ou contributeur : `Co-authored-by`, `Signed-off-by`, crédits Cursor/Composer/Claude/GPT dans les commits, PR, README, `package.json` (`contributors`, `author`), licences, ou pages HTML.
+- Créer ou modifier une section « Contributors » / « Crédits dev » au nom de l’agent.
+- Signer commentaires, commits ou messages comme si l’agent était co-auteur du projet.
+
+## À faire
+
+- Les commits, PR et livrables doivent refléter le travail comme **celui de l’utilisateur** (pas de mention d’assistant IA sauf si l’utilisateur le demande explicitement).
+- Messages de commit neutres, orientés produit — sans « by AI », sans signature agent.
+- En cas de doute sur un crédit visible dans le dépôt : **ne pas ajouter le nom de l’agent** ; laisser ou attribuer à l’utilisateur / l’équipe Boxing Center existante.
+
+## Git
+
+- **Jamais** `Co-authored-by: Cursor …` (ni variante) dans les commits.
+- Ne pas modifier `git config` user.name / user.email pour l’agent.
