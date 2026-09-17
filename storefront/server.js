@@ -58,6 +58,7 @@ const {
   productNeedsAutoBadge,
   isScalapayOrder,
   scalapayInstallmentCount,
+  isPayplug4xPrelevement,
 } = require('../lib/billing-plan');
 const {
   isPortetGym,
@@ -5751,15 +5752,16 @@ function createApp() {
 
   async function markPayplugOrderPaid(order, payment) {
     const meta = payment.metadata || {};
-    const payplug4xPrelev =
-      meta.payplug_4x_prelevement === '1' ||
-      meta.payplug_4x_prelevement === true ||
-      meta.billing_plan === 'rib' ||
-      order.payment?.billing_plan === 'rib';
     const plan =
       meta.payment_plan ||
       order.payment?.payment_plan ||
-      (payplug4xPrelev ? '4x' : 'once');
+      'once';
+    const billing = order.payment?.billing_plan || meta.billing_plan || null;
+    const payplug4xPrelev =
+      meta.payplug_4x_prelevement === '1' ||
+      meta.payplug_4x_prelevement === true ||
+      order.payment?.payplug_4x_prelevement === true ||
+      isPayplug4xPrelevement(plan, billing);
     const hist = rememberPreviousPayplugId(order.payment, payment.id);
     const scalapayInstallments =
       plan === 'scalapay' || isScalapayOrder(order) || String(payment.payment_method?.type || '') === 'scalapay'

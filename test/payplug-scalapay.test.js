@@ -102,6 +102,12 @@ function run() {
     'storefront/server.js must require ../lib/billing-plan (Vercel root), not ../../lib'
   );
 
+  assert.equal(
+    serverSrc.includes("meta.billing_plan === 'rib' ||"),
+    false,
+    'un 29 € RIB ne doit pas être marqué 4× prélèvement'
+  );
+
   console.log('ok — Scalapay PayPlug flags / bornes / paid');
 }
 
