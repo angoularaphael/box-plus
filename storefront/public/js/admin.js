@@ -497,6 +497,81 @@
     });
   }
 
+  function fluxDonutSegment(cx, cy, rOuter, rInner, startAngle, endAngle) {
+    const x1 = cx + rOuter * Math.cos(startAngle);
+    const y1 = cy + rOuter * Math.sin(startAngle);
+    const x2 = cx + rOuter * Math.cos(endAngle);
+    const y2 = cy + rOuter * Math.sin(endAngle);
+    const xi1 = cx + rInner * Math.cos(endAngle);
+    const yi1 = cy + rInner * Math.sin(endAngle);
+    const xi2 = cx + rInner * Math.cos(startAngle);
+    const yi2 = cy + rInner * Math.sin(startAngle);
+    const large = endAngle - startAngle > Math.PI ? 1 : 0;
+    return `M ${x1} ${y1} A ${rOuter} ${rOuter} 0 ${large} 1 ${x2} ${y2} L ${xi1} ${yi1} A ${rInner} ${rInner} 0 ${large} 0 ${xi2} ${yi2} Z`;
+  }
+
+  function renderSeanceConversionPie(flux) {
+    const pieEl = document.getElementById('fluxConversionPie');
+    const legendEl = document.getElementById('fluxConversionLegend');
+    const summaryEl = document.getElementById('fluxConversionSummary');
+    if (!pieEl || !legendEl) return;
+
+    const ins = flux?.inscriptions || {};
+    const clicks = flux?.clicks || flux || {};
+    const slices = [
+      { key: 'flyer', label: 'Flyer QR', color: '#e8001c', value: Number(ins.flyer || 0) },
+      { key: 'email', label: 'E-mail David', color: '#1b8a4c', value: Number(ins.email || 0) },
+      { key: 'whatsapp', label: 'WhatsApp', color: '#128c7e', value: Number(ins.whatsapp || 0) },
+      { key: 'sms', label: 'SMS', color: '#2563eb', value: Number(ins.sms || 0) },
+      { key: 'other', label: 'Autre', color: '#5c6370', value: Number(ins.other || 0) },
+    ].filter((s) => s.value > 0);
+
+    const total = slices.reduce((n, s) => n + s.value, 0);
+    const clickTotal = Number(clicks.total || flux?.total || 0);
+    const convPct = Number(flux?.conversion_pct ?? 0);
+
+    if (!total) {
+      pieEl.innerHTML = '<p class="admin-section-desc" style="margin:0;padding:24px 8px">Pas encore d\'inscription séance offerte sur 14 j.</p>';
+      legendEl.innerHTML = '';
+      if (summaryEl) {
+        summaryEl.textContent = clickTotal
+          ? `${clickTotal} clic${clickTotal > 1 ? 's' : ''} sans inscription pour l'instant.`
+          : 'Pas encore de données séance offerte.';
+      }
+      return;
+    }
+
+    const cx = 90;
+    const cy = 90;
+    const rOuter = 72;
+    const rInner = 46;
+    let angle = -Math.PI / 2;
+    const paths = slices.map((slice) => {
+      const frac = slice.value / total;
+      const end = angle + frac * Math.PI * 2;
+      const d = fluxDonutSegment(cx, cy, rOuter, rInner, angle, end);
+      angle = end;
+      return `<path d="${d}" fill="${slice.color}" stroke="#fff" stroke-width="1.5"><title>${escapeHtml(slice.label)} : ${slice.value} (${Math.round(frac * 1000) / 10} %)</title></path>`;
+    });
+
+    pieEl.innerHTML = `<svg class="flux-pie-svg" viewBox="0 0 180 180" role="img" aria-label="Conversions séance offerte">
+      ${paths.join('')}
+      <text class="flux-pie-center-num" x="${cx}" y="${cy - 4}" text-anchor="middle">${total}</text>
+      <text class="flux-pie-center-sub" x="${cx}" y="${cy + 14}" text-anchor="middle">${convPct} % conv.</text>
+    </svg>`;
+
+    legendEl.innerHTML = slices
+      .map((slice) => {
+        const pct = Math.round((slice.value / total) * 1000) / 10;
+        return `<li><span><i class="flux-dot flux-dot--${slice.key === 'other' ? 'all' : slice.key}" style="background:${slice.color}"></i>${escapeHtml(slice.label)}</span><strong>${slice.value} · ${pct} %</strong></li>`;
+      })
+      .join('');
+
+    if (summaryEl) {
+      summaryEl.textContent = `${total} inscription${total > 1 ? 's' : ''} sur ${clickTotal || '—'} clic${clickTotal > 1 ? 's' : ''} (14 j) · taux global ${convPct} %.`;
+    }
+  }
+
   function isCoachingOrder(o) {
     if (o.action === 'coaching_booking' || String(o.order_id || '').startsWith('COACH-')) return true;
     if (o.booking_date && /coaching/i.test(String(o.product || ''))) return true;
@@ -2161,6 +2236,7 @@
               })
               .join('')
           : '<p class="admin-section-desc">Pas encore de visites séance offerte.</p>';
+        renderSeanceConversionPie(flux);
         fluxWrap.hidden = false;
       }
 

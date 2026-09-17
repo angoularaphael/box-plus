@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/boutique.css?v=7" />
   <link rel="stylesheet" href="../css/components.css?v=9" />
-  <link rel="stylesheet" href="/admin/admin.css?v=14" />
+  <link rel="stylesheet" href="/admin/admin.css?v=15" />
 </head>
 <body>
   <div id="adminPanel" hidden>
@@ -411,6 +411,12 @@
               <span><i class="flux-dot flux-dot--sms"></i> Bleu clair = SMS</span>
             </p>
             <div class="flux-chart" id="fluxChart" aria-label="Visites quotidiennes séance offerte"></div>
+            <h3 class="admin-catalog-block-title" style="margin-top:24px">Séance offerte — conversions par canal</h3>
+            <p class="admin-section-desc" id="fluxConversionSummary">Part des inscriptions (14 j) selon la source de trafic.</p>
+            <div class="flux-conversion-row">
+              <div class="flux-pie-wrap" id="fluxConversionPie" aria-label="Graphique circulaire des conversions séance offerte"></div>
+              <ul class="flux-pie-legend" id="fluxConversionLegend"></ul>
+            </div>
           </div>
 
           <div id="dailySalesWrap" hidden style="margin-top:24px">
@@ -825,7 +831,7 @@
   </div>
 
   <script src="../js/contract-open.js?v=8"></script>
-  <script src="/js/admin.js?v=33"></script>
+  <script src="/js/admin.js?v=34"></script>
   <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
        reecrit pas une ligne (un autre developpeur y travaille). -->
   <script src="/js/admin-shell.js?v=20"></script>
