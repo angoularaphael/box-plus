@@ -536,6 +536,16 @@
                 </select>
               </div>
               <div>
+                <label for="co_minors">Âge *</label>
+                <select id="co_minors" name="allow_minors" required>
+                  <option value="0" selected>Adultes uniquement (15 ans et +)</option>
+                  <option value="1">Mineurs autorisés</option>
+                </select>
+                <p class="admin-section-desc" style="margin:6px 0 0;font-size:13px">
+                  Si l’offre concerne un enfant ou un ado, choisissez «&nbsp;Mineurs autorisés&nbsp;» — sinon la date de naissance sera refusée.
+                </p>
+              </div>
+              <div>
                 <label for="co_label">Libellé (facultatif)</label>
                 <input id="co_label" name="label" placeholder="Offre négociée Youssef" />
               </div>
@@ -565,6 +575,10 @@
               <div>
                 <label for="co_phone">Téléphone (facultatif)</label>
                 <input id="co_phone" name="phone" type="tel" autocomplete="tel" />
+              </div>
+              <div>
+                <label for="co_birthdate">Date de naissance (facultatif)</label>
+                <input id="co_birthdate" name="birthdate" type="date" />
               </div>
               <div class="full"><button type="submit" class="btn sm">Générer le lien</button></div>
             </div>

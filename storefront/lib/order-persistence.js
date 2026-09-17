@@ -70,6 +70,7 @@ function pickSnapshot(snapshot) {
     installments_note: s.installments_note || null,
     badge: s.badge || null,
     party_size: Number(s.party_size) >= 1 ? Math.min(4, Math.round(Number(s.party_size))) : null,
+    allow_minors: s.allow_minors === true,
   };
 }
 

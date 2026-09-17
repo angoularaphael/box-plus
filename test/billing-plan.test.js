@@ -95,6 +95,7 @@ describe('billing-plan', () => {
     assert.equal(adultOfferAgeError(fourteen, baby), null);
     assert.equal(adultOfferAgeError(seven, educative), null);
     assert.equal(adultOfferAgeError(sixteen, educative), null);
+    assert.equal(adultOfferAgeError(fourteen, { allow_minors: true }), null);
   });
 
   it('éducative et compétition = PayPal Noblart, pas Baby / 259 €', () => {

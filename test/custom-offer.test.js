@@ -27,9 +27,31 @@ test('buildCustomOfferProduct comptant sans IBAN', () => {
   assert.equal(p.subsection, 'comptant');
   assert.equal(p.requires_iban, false);
   assert.equal(p.supports_installment_choice, false);
+  assert.equal(p.allow_minors, false);
   assert.equal(p.price_cents, 8000);
   assert.equal(p.display_name, 'Offre Youssef');
   assert.match(p.id, /^custom-[a-f0-9]+$/);
+});
+
+test('buildCustomOfferProduct mineurs autorisés', () => {
+  const { parseAllowMinors, validateCompanions } = require('../storefront/lib/custom-offer');
+  const { adultOfferAgeError } = require('../lib/billing-plan');
+  assert.equal(parseAllowMinors({ allow_minors: '1' }), true);
+  assert.equal(parseAllowMinors({}), false);
+  const p = buildCustomOfferProduct({ price_euros: 150, mode: 'comptant', allow_minors: true });
+  assert.equal(p.allow_minors, true);
+  assert.match(p.benefits.join(' '), /Mineurs acceptés/);
+  const childBirth = '2020-06-18';
+  assert.match(adultOfferAgeError(childBirth, { id: 'offre-saison' }), /adultes/);
+  assert.equal(adultOfferAgeError(childBirth, p), null);
+  assert.deepEqual(
+    validateCompanions(
+      [{ first_name: 'Elina', last_name: 'Test', birthdate: childBirth, phone: '0612345678' }],
+      2,
+      p
+    ),
+    []
+  );
 });
 
 test('buildCustomOfferProduct comptant 1× ou 4×', () => {

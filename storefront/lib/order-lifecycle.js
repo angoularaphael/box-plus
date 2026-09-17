@@ -81,6 +81,7 @@ function productSnapshot(product) {
     subsection: product.subsection || null,
     duration_label: product.duration_label || null,
     party_size: Number(product.party_size) >= 1 ? Math.min(4, Math.round(Number(product.party_size))) : null,
+    allow_minors: product.allow_minors === true,
   };
 }
 

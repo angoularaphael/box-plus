@@ -437,6 +437,7 @@
 
   function adultOfferAgeError(birthdate, product) {
     if (isChildOfferProduct(product)) return null;
+    if (product?.allow_minors === true) return null;
     const age = ageFromBirthdate(birthdate);
     if (age == null) return 'Date de naissance requise';
     if (age < 15) {

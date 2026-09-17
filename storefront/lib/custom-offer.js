@@ -67,6 +67,18 @@ function parsePartySize(input = {}) {
   return Math.min(4, n);
 }
 
+/** Par défaut : adultes uniquement (15 ans et +), comme le catalogue standard. */
+function parseAllowMinors(input = {}) {
+  const raw = input.allow_minors ?? input.minors ?? input.enfants;
+  if (raw === false || raw === 0 || raw === '0' || raw === 'false' || raw === 'non' || raw === 'off') {
+    return false;
+  }
+  if (raw === true || raw === 1 || raw === '1' || raw === 'true' || raw === 'oui' || raw === 'on') {
+    return true;
+  }
+  return false;
+}
+
 function isCustomOfferOrder(order = {}) {
   if (!order) return false;
   if (String(order.source || '').toLowerCase() === 'custom_offer') return true;
@@ -224,6 +236,7 @@ function buildCustomOfferClubRecap(order = {}) {
     `Statut paiement : ${pay.status || '—'}`,
     `Salle : ${gymName}`,
     `Personnes : ${peopleLabel(size)}`,
+    `Âge : ${product.allow_minors ? 'mineurs autorisés' : 'adultes uniquement (15 ans et +)'}`,
     '',
     ...peopleBlocks.flatMap((block) => [...block, '']),
   ].join('\n');
@@ -302,6 +315,7 @@ function buildCustomOfferProduct(input = {}) {
     throw err;
   }
   const allow4x = parseAllow4x(input, mode);
+  const allowMinors = parseAllowMinors(input);
   const comptant = mode === 'comptant' || mode === 'comptant_4x';
   const priceLabel = formatPriceLabel(cents);
   const customName = String(input.label || input.name || '').trim();
@@ -343,9 +357,11 @@ function buildCustomOfferProduct(input = {}) {
     duration_label: comptant ? (allow4x ? installment.duration : 'Comptant') : 'Toutes les 4 semaines',
     badge: !comptant ? 'Sans engagement' : allow4x ? installment.badge : 'Comptant',
     party_size: partySize,
+    allow_minors: allowMinors,
     benefits: [
       'Accès aux 5 salles Boxing Center',
       'Cours illimités toutes disciplines',
+      allowMinors ? 'Mineurs acceptés sur cette offre' : 'Réservée aux 15 ans et plus',
       !comptant
         ? `${priceLabel} toutes les 4 semaines, sans engagement`
         : allow4x
@@ -386,6 +402,7 @@ module.exports = {
   normalizeGym,
   normalizeCustomerShort,
   parseAllow4x,
+  parseAllowMinors,
   parsePartySize,
   parseCompanions,
   validateCompanions,

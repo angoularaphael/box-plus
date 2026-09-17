@@ -2666,12 +2666,14 @@
       price_euros: fd.get('price_euros'),
       mode: fd.get('mode'),
       party_size: fd.get('party_size') || 1,
+      allow_minors: fd.get('allow_minors') === '1',
       label: fd.get('label'),
       gym: fd.get('gym'),
       first_name: fd.get('first_name'),
       last_name: fd.get('last_name'),
       email: fd.get('email'),
       phone: fd.get('phone'),
+      birthdate: fd.get('birthdate'),
     };
     if (btn) btn.disabled = true;
     try {
@@ -2697,7 +2699,8 @@
             }
             · ${Number(data.party_size || data.product?.party_size || 1) > 1
               ? `${Number(data.party_size || data.product?.party_size)} personnes`
-              : '1 personne'}</p>
+              : '1 personne'}
+            · ${data.product?.allow_minors ? 'Mineurs autorisés' : 'Adultes uniquement'}</p>
           <p class="admin-section-desc">Envoie ce lien. La personne voit l’offre, paie, puis complète le dossier.</p>
           <p><code id="customOfferUrl">${escapeHtml(data.landing_url)}</code></p>
           <button type="button" class="btn sm" id="customOfferCopy">Copier le lien</button>

@@ -35,6 +35,7 @@
         /1\s*[x×]\s*ou\s*4\s*[x×]/i.test(String(product.badge || product.duration_label || ''));
       const people = Number(product.party_size || order.party_size || 1);
       const peopleLabel = people > 1 ? `Offre pour ${people} personnes` : '';
+      const ageLabel = product.allow_minors ? 'Mineurs autorisés' : '15 ans et plus';
       const name = product.display_name || product.name || 'Votre offre Boxing Center';
       const price = product.price_label || '';
       if (title) title.textContent = name;
@@ -58,6 +59,7 @@
                   : 'Comptant — 1× ou PayPal 4× sans frais')
               : 'Comptant — un seul paiement',
           peopleLabel,
+          ageLabel,
         ].filter(Boolean);
         modeEl.textContent = modeBits.join(' · ');
       }
