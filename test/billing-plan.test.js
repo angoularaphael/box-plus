@@ -97,6 +97,16 @@ describe('billing-plan', () => {
     assert.equal(adultOfferAgeError(sixteen, educative), null);
   });
 
+  it('éducative et compétition = PayPal Noblart, pas Baby / 259 €', () => {
+    const { isNoblartPaypalOfferProduct } = require('../lib/billing-plan');
+    assert.equal(isNoblartPaypalOfferProduct({ id: 'boxe-educative' }), true);
+    assert.equal(isNoblartPaypalOfferProduct({ id: 'dp-45', legacy_id: 'boxe-educative' }), true);
+    assert.equal(isNoblartPaypalOfferProduct({ name: 'BOXE EDUCATIVE' }), true);
+    assert.equal(isNoblartPaypalOfferProduct({ name: 'Boxe compétition' }), true);
+    assert.equal(isNoblartPaypalOfferProduct({ id: 'baby-boxe', name: 'BABY BOXE' }), false);
+    assert.equal(isNoblartPaypalOfferProduct({ id: 'offre-saison' }), false);
+  });
+
   it('IBAN manquant : 29 € / 4 semaines restent en prélèvement, 259 € reste comptant', () => {
     assert.equal(
       shouldFallbackToComptantOnIbanError(

@@ -361,14 +361,17 @@
 
   let changePayFlags = { preview: false, showCard: true, showPaypal: true };
 
-  async function loadPayFlags(gym) {
+  async function loadPayFlags(gym, productId) {
     try {
-      const qs = gym ? `?gym=${encodeURIComponent(gym)}` : '';
+      const params = new URLSearchParams();
+      if (gym) params.set('gym', gym);
+      if (productId) params.set('product', productId);
+      const qs = params.toString() ? `?${params}` : '';
       const res = await fetch(`/api/payments/config${qs}`);
       const cfg = await res.json().catch(() => ({}));
       return {
         preview: Boolean(cfg.preview),
-        showCard: cfg.show_cawl === true || cfg.show_payplug !== false,
+        showCard: cfg.show_cawl === true || cfg.portet_via_paypal === true || cfg.show_payplug !== false,
         showPaypal: cfg.show_paypal !== false,
         oney4x: cfg.oney_4x === true,
         oney4xMessage: cfg.oney_4x_message || '',
@@ -395,7 +398,7 @@
   }
 
   async function renderChangePayChoices({ product, gym }) {
-    changePayFlags = await loadPayFlags(gym);
+    changePayFlags = await loadPayFlags(gym, product?.id || product?.legacy_id);
     const portetPaused = changePayFlags.portetPaused === true && !changePayFlags.preview;
     const portetViaCawl = !portetPaused && changePayFlags.portetViaCawl === true;
     const portetPaypal4x = !portetPaused && changePayFlags.portetPaypal4x === true;
@@ -650,7 +653,9 @@
         (changePayFlags.showPaypal && !changePayFlags.showCard ? 'paypal' : 'payplug');
     }
 
-    if (changePayFlags.portetViaCawl && paymentPlan === '4x' && changePayFlags.portetPaypal4x) {
+    if (String(gym || '').toLowerCase() === 'portet' && paymentPlan === '4x') {
+      paymentMethod = 'paypal';
+    } else if (changePayFlags.portetViaCawl && paymentPlan === '4x' && changePayFlags.portetPaypal4x) {
       paymentMethod = 'paypal';
     } else if (changePayFlags.portetViaCawl) {
       paymentMethod = 'cawl';

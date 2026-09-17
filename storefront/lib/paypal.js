@@ -4,8 +4,8 @@
  * PayPal natif (hors Stripe) — Orders API v2 + capture.
  * Deux comptes possibles :
  *   - Minimes / autres salles → PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET
- *   - Portet                 → PAYPAL_PORTET_CLIENT_ID + PAYPAL_PORTET_CLIENT_SECRET
- *     (si les clés Portet manquent, repli sur le compte Minimes)
+ *   - Portet (Noble Art Portésien) → PAYPAL_PORTET_CLIENT_ID + PAYPAL_PORTET_CLIENT_SECRET
+ *     Pas de repli Minimes / Végé : sans clés Portet, PayPal Portet est indisponible.
  * Pay Later / 4× FR : proposé par PayPal si le compte + client sont éligibles
  * (enable-funding=paylater côté SDK ; ici flux redirect approve).
  * Mode studio (cookie) : overlay env.test / PAYPAL_TEST_* → sandbox.
@@ -33,8 +33,8 @@ function credentialsForAccount(account) {
   if (account === 'portet') {
     return {
       account: 'portet',
-      clientId: paymentVar('PAYPAL_PORTET_CLIENT_ID') || paymentVar('PAYPAL_CLIENT_ID') || '',
-      secret: paymentVar('PAYPAL_PORTET_CLIENT_SECRET') || paymentVar('PAYPAL_CLIENT_SECRET') || '',
+      clientId: paymentVar('PAYPAL_PORTET_CLIENT_ID') || '',
+      secret: paymentVar('PAYPAL_PORTET_CLIENT_SECRET') || '',
     };
   }
   return {
@@ -222,7 +222,7 @@ async function createPaypalOrder({
   const landingPage = resolvePaypalLandingPage({ paymentPlan, guestCard });
   const paypalSource = {
     experience_context: {
-      brand_name: account === 'portet' ? 'Boxing Center Portet' : 'Boxing Center',
+      brand_name: account === 'portet' ? 'Noble Art Portésien' : 'Boxing Center',
       locale: 'fr-FR',
       landing_page: landingPage,
       user_action: 'PAY_NOW',

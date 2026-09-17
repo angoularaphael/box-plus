@@ -36,7 +36,7 @@ test('formatPaypalError traduit Client Authentication failed', () => {
   assert.equal(looksLikePaypalClientId('A'.repeat(80)), true);
 });
 
-test('credentialsForAccount : Portet a ses clés, sinon repli Minimes', () => {
+test('credentialsForAccount : Portet n’emprunte plus Minimes / Végé', () => {
   const prev = {
     id: process.env.PAYPAL_CLIENT_ID,
     secret: process.env.PAYPAL_CLIENT_SECRET,
@@ -50,8 +50,8 @@ test('credentialsForAccount : Portet a ses clés, sinon repli Minimes', () => {
 
   try {
     assert.equal(credentialsForAccount('minimes').clientId, 'minimes-id');
-    assert.equal(credentialsForAccount('portet').clientId, 'minimes-id');
-    assert.equal(isPaypalEnabled('portet'), true);
+    assert.equal(credentialsForAccount('portet').clientId, '');
+    assert.equal(isPaypalEnabled('portet'), false);
     assert.equal(publicClientId('minimes'), 'minimes-id');
 
     process.env.PAYPAL_PORTET_CLIENT_ID = 'portet-id';

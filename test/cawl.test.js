@@ -111,6 +111,38 @@ test('historique hostedCheckoutId CAWL', () => {
   assert.deepEqual(ids, ['extra', 'new', 'old']);
 });
 
+test('Portet éducative / compétition : PayPal Noblart, pas CAWL', () => {
+  const vis = resolveDisplay({
+    stored: { payplug: true, paypal: true, cawl: true },
+    preview: false,
+    gym: 'portet',
+    payplugReady: true,
+    paypalReady: true,
+    cawlReady: true,
+    product: { id: 'boxe-educative', name: 'BOXE EDUCATIVE' },
+  });
+  assert.equal(vis.portetPaypalOnly, true);
+  assert.equal(vis.portetViaCawl, false);
+  assert.equal(vis.portetViaPaypal, true);
+  assert.equal(vis.show_cawl, false);
+  assert.equal(vis.show_paypal, true);
+  assert.equal(vis.show_payplug, false);
+  assert.equal(vis.portetPaypal4x, true);
+
+  const adult = resolveDisplay({
+    stored: { payplug: true, paypal: true, cawl: true },
+    preview: false,
+    gym: 'portet',
+    payplugReady: true,
+    paypalReady: true,
+    cawlReady: true,
+    product: { id: 'offre-saison', name: 'OFFRE PROMO 12 MOIS' },
+  });
+  assert.equal(adult.portetPaypalOnly, false);
+  assert.equal(adult.portetViaCawl, true);
+  assert.equal(adult.show_cawl, true);
+});
+
 test('Portet + CAWL masque PayPal / PayPlug (1×), garde PayPal pour le 4×', () => {
   const vis = resolveDisplay({
     stored: { payplug: true, paypal: true },
@@ -351,13 +383,14 @@ test('studio sans CAWL_TEST_* ne mélange pas le PSPID live avec preprod', () =>
   }
 });
 
-test('inscription 4× Portet : PayPal ou CAWL+RIB, pas Oney forcé', () => {
+test('inscription 4× Portet : PayPal uniquement, pas CAWL 4×', () => {
   const fs = require('fs');
   const path = require('path');
   const js = fs.readFileSync(path.join(__dirname, '..', 'storefront', 'public', 'js', 'inscription.js'), 'utf8');
   assert.match(js, /portetPaypal4x/);
-  assert.match(js, /portetCawl4xRib/);
   assert.match(js, /body\.pay_method = 'cawl'/);
+  assert.match(js, /Pour payer en plusieurs fois, choisissez « PayPal 4× sans frais »/);
+  assert.doesNotMatch(js, /portetCawl4xRib/);
   assert.doesNotMatch(js, /portetViaCawl && body\.payment_plan === '4x' && portetPaypal4x/);
 });
 

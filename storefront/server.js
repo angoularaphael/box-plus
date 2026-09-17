@@ -4122,6 +4122,7 @@ function createApp() {
         payplugReady: isPayplugEnabled(),
         paypalReady: isPaypalEnabled(gymNorm),
         cawlReady: isCawlEnabled(),
+        product,
       });
       if (aventureOrder && wantTestPayments(req) && !display.show_payplug && !display.show_paypal && !display.show_cawl) {
         order = await markPaymentPaid(order.order_id, {
@@ -4151,9 +4152,12 @@ function createApp() {
             : payMethod === 'cawl' || (display.portetViaCawl && payMethod !== 'scalapay')
               ? 'cawl'
               : 'card';
-      // 4× CB puis RIB retiré (PayPlug et CAWL).
+      // 4× CB puis RIB retiré (PayPlug et CAWL). À Portet : 4× = PayPal uniquement.
       const portetCawl4xRib = false;
-      if (gymNorm === 'portet' && paymentPlan === '4x' && payMethod === 'paypal' && display.portetPaypal4x) {
+      if (gymNorm === 'portet' && paymentPlan === '4x') {
+        preferredCheckout = 'paypal';
+      }
+      if (display.portetPaypalOnly && preferredCheckout !== 'scalapay') {
         preferredCheckout = 'paypal';
       }
       if (
@@ -4166,6 +4170,13 @@ function createApp() {
       }
       if (preferredCheckout === 'cawl' && !display.show_cawl) {
         return res.status(503).json({ ok: false, error: 'cawl_not_configured' });
+      }
+      if (gymNorm === 'portet' && paymentPlan === '4x' && preferredCheckout !== 'paypal') {
+        return res.status(400).json({
+          ok: false,
+          error: 'À Portet, le paiement en plusieurs fois se fait uniquement via PayPal 4× sans frais.',
+          code: 'portet_4x_paypal_only',
+        });
       }
       if (preferredCheckout === 'paypal' && !display.show_paypal && !display.portetPaypal4x) {
         return res.status(503).json({ ok: false, error: 'paypal_not_configured' });
@@ -4935,6 +4946,7 @@ function createApp() {
         payplugReady: isPayplugEnabled(),
         paypalReady: isPaypalEnabled(gymNorm),
         cawlReady: isCawlEnabled(),
+        product,
       });
       if (display.portetPaused) {
         return res.status(503).json({
@@ -4949,6 +4961,14 @@ function createApp() {
       let preferCawl = method === 'cawl' || display.portetViaCawl === true;
       let preferPaypal =
         !preferCawl && (method === 'paypal' || display.portetViaPaypal === true);
+      if (gymNorm === 'portet' && paymentPlan === '4x') {
+        preferCawl = false;
+        preferPaypal = true;
+      }
+      if (display.portetPaypalOnly) {
+        preferCawl = false;
+        preferPaypal = true;
+      }
       if (paymentPlan === '4x' && display.portetPaypal4x === true) {
         preferCawl = false;
         preferPaypal = true;
@@ -6173,10 +6193,12 @@ function createApp() {
 
   app.get('/api/payments/config', async (req, res) => {
     const gym = req.query.gym;
+    const product = findProduct(req.query.product || req.query.product_id);
     const display = await resolvePaymentDisplay(req, gym, {
       payplugReady: isPayplugEnabled(),
       paypalReady: isPaypalEnabled(gym),
       cawlReady: isCawlEnabled(),
+      product,
     });
     res.json({
       ok: true,
@@ -6196,6 +6218,7 @@ function createApp() {
       portet_via_paypal: display.portetViaPaypal === true,
       portet_via_cawl: display.portetViaCawl === true,
       portet_paypal_4x: display.portetPaypal4x === true,
+      portet_paypal_only: display.portetPaypalOnly === true,
       portet_paused: display.portetPaused === true,
       portet_paused_message: display.portetPaused ? display.portetPausedMessage || PORTET_PAUSED_MESSAGE : null,
       oney_4x: false,

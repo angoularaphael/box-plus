@@ -698,14 +698,17 @@
     return `<span class="pay-logos" aria-hidden="true">${cardImgs}</span>`;
   }
 
-  async function loadPayFlags(gym) {
+  async function loadPayFlags(gym, productId) {
     try {
-      const qs = gym ? `?gym=${encodeURIComponent(gym)}` : '';
+      const params = new URLSearchParams();
+      if (gym) params.set('gym', gym);
+      if (productId) params.set('product', productId);
+      const qs = params.toString() ? `?${params}` : '';
       const res = await fetch(`/api/payments/config${qs}`);
       const cfg = await res.json().catch(() => ({}));
       return {
         preview: Boolean(cfg.preview),
-        showCard: cfg.show_cawl === true || cfg.show_payplug !== false,
+        showCard: cfg.show_cawl === true || cfg.portet_via_paypal === true || cfg.show_payplug !== false,
         showPaypal: cfg.show_paypal !== false,
         showCawl: cfg.show_cawl === true,
         oney4x: cfg.oney_4x === true,
@@ -1243,7 +1246,7 @@
       orderRequiresPayment({ product_snapshot: p });
     const savedPlan = state.order?.payment?.billing_plan === 'paypal' ? 'paypal' : 'rib';
     const full = state.order?.customer_full || {};
-    const payFlags = await loadPayFlags(full.gym);
+    const payFlags = await loadPayFlags(full.gym, state.productId || p?.id || p?.legacy_id);
     const portetPaused = payFlags.portetPaused === true && !payFlags.preview;
     const portetViaCawl = !portetPaused && payFlags.portetViaCawl === true;
     const portetPaypal4x = !portetPaused && payFlags.portetPaypal4x === true;

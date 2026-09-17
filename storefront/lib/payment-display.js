@@ -6,6 +6,7 @@ const { ROOT } = require('../../lib/utils');
 const { logError } = require('../../lib/logger');
 const { getSupabase } = require('./supabase');
 const { getDevSession } = require('./dev-session');
+const { isNoblartPaypalOfferProduct } = require('../../lib/billing-plan');
 
 const CONFIG_KEY = 'payment_display';
 const DEFAULTS = { payplug: true, paypal: true, cawl: true };
@@ -138,10 +139,12 @@ function isPortetPaymentsPaused() {
  * Visiteur : cases cochées.
  * Portet + CAWL : CAWL pour la carte (1× / 1ʳᵉ échéance). Le 4× sans frais
  * reste sur PayPal Portet (Pay Later) — Oney CAWL n’est pas activé.
+ * Portet éducative / compétition : uniquement PayPal Noble Art Portésien
+ * (carte via PayPal ou 4× Pay Later) — jamais CAWL / Végé.
  * Portet sans CAWL : repli PayPal (CB via PayPal).
  * Portet en pause : aucun moyen affiché (sauf studio).
  */
-function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady, cawlReady, portetPaused }) {
+function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady, cawlReady, portetPaused, product }) {
   const flags = normalize(stored);
   const portet = isPortetGym(gym);
   const paused = portet && Boolean(portetPaused) && !preview;
@@ -159,9 +162,25 @@ function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady, cawlR
       portetPausedMessage: PORTET_PAUSED_MESSAGE,
     };
   }
-  const cawlConfigured = portet && Boolean(cawlReady);
+  const noblartPaypalOnly = portet && isNoblartPaypalOfferProduct(product);
+  const cawlConfigured = portet && Boolean(cawlReady) && !noblartPaypalOnly;
   const cawlOn = cawlConfigured && (preview || flags.cawl);
-  const portetPaypal4x = portet && Boolean(paypalReady) && (preview || flags.paypal);
+  const portetPaypal4x = portet && Boolean(paypalReady) && (preview || flags.paypal || noblartPaypalOnly);
+  if (noblartPaypalOnly) {
+    const show_paypal = Boolean(paypalReady);
+    return {
+      preview: Boolean(preview),
+      show_payplug: false,
+      show_paypal,
+      show_cawl: false,
+      portetPaypalOnly: true,
+      portetViaPaypal: show_paypal,
+      portetViaCawl: false,
+      portetPaypal4x: show_paypal,
+      portetPaused: false,
+      portetPausedMessage: null,
+    };
+  }
   if (preview) {
     const show_paypal = Boolean(paypalReady) && !cawlOn;
     return {
@@ -201,7 +220,7 @@ function isLocalPreviewHost(req) {
   return host === 'localhost' || host === '127.0.0.1';
 }
 
-async function resolvePaymentDisplay(req, gym, { payplugReady, paypalReady, cawlReady }) {
+async function resolvePaymentDisplay(req, gym, { payplugReady, paypalReady, cawlReady, product } = {}) {
   const stored = await getPaymentDisplay();
   return resolveDisplay({
     stored,
@@ -211,6 +230,7 @@ async function resolvePaymentDisplay(req, gym, { payplugReady, paypalReady, cawl
     paypalReady,
     cawlReady,
     portetPaused: isPortetPaymentsPaused(),
+    product,
   });
 }
 

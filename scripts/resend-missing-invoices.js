@@ -19,7 +19,7 @@ const { getSupabase } = require('../storefront/lib/supabase');
 const { generateInscriptionInvoicePdf } = require('../storefront/lib/invoice-pdf');
 const { sendEmailViaResend, isConfigured } = require('../storefront/lib/resend-send');
 const { markEmailSent } = require('../storefront/lib/order-lifecycle');
-const { CLUB_PORTET } = require('../storefront/lib/pdf-layout');
+const { portetDossierCc } = require('../storefront/lib/mailer');
 
 const SEND = process.argv.includes('--send');
 const LIMIT = Number((process.argv.find((a) => a.startsWith('--limit=')) || '').slice(8) || 0);
@@ -52,19 +52,8 @@ function isTest(p) {
   return /\btest\b|boxplus-test|@boxplus-test\.local/.test(hay);
 }
 
-function isPortet(p) {
-  const gym = String(p.customer_full?.gym || p.gym || '').toLowerCase();
-  return gym === 'portet' || gym.includes('portet');
-}
-
 function portetCc(p) {
-  if (!isPortet(p)) return [];
-  const to = emailOf(p);
-  const raw = String(process.env.PORTET_DOSSIER_CC || CLUB_PORTET.email || '').trim();
-  return raw
-    .split(/[,;]+/)
-    .map((v) => v.trim())
-    .filter((v) => v && v.toLowerCase() !== to);
+  return portetDossierCc(p);
 }
 
 function loadState() {

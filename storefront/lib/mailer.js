@@ -169,12 +169,28 @@ function isPortetOrder(order) {
   return gym === 'portet' || gym.includes('portet');
 }
 
+const VEGE_EMAIL = 'vgsportmanagement@gmail.com';
+
 function portetInvoiceEmails() {
-  const raw = String(process.env.PORTET_DOSSIER_CC || CLUB_PORTET.email || '').trim();
-  return raw
+  const fallback = CLUB_PORTET.email || 'nobleartportesien@gmail.com';
+  const raw = String(process.env.PORTET_DOSSIER_CC || fallback).trim();
+  const list = raw
     .split(/[,;]+/)
     .map((value) => value.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((value) =>
+      value.toLowerCase() === VEGE_EMAIL ? fallback : value
+    )
+    .filter((value) => value && value.toLowerCase() !== VEGE_EMAIL);
+  const seen = new Set();
+  const unique = [];
+  for (const email of list.length ? list : [fallback]) {
+    const key = email.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(email);
+  }
+  return unique;
 }
 
 function portetDossierCc(order) {

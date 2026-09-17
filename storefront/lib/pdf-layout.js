@@ -39,7 +39,7 @@ const CLUB_PORTET = {
   tva: 'FR80444152482',
   naf: '9312Z',
   phone: '06 87 90 02 16',
-  email: 'vgsportmanagement@gmail.com',
+  email: 'nobleartportesien@gmail.com',
   web: '',
 };
 

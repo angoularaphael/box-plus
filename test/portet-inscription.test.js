@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const {
   isPortetGym,
   isPortetKidsFlow,
+  isPortetNoblartPaypalFlow,
   isPortetKidsOrder,
   isPortetCawl4xRib,
   normalizeGuardian,
@@ -41,6 +42,10 @@ describe('Portet enfants — isolation salles', () => {
     assert.equal(isPortetKidsFlow('minimes', EDUC), false);
     assert.equal(isPortetKidsFlow('portet', EDUC), true);
     assert.equal(isPortetKidsFlow('portet', { id: 'offre-saison', name: 'OFFRE PROMO' }), false);
+    assert.equal(isPortetNoblartPaypalFlow('portet', EDUC), true);
+    assert.equal(isPortetNoblartPaypalFlow('portet', { name: 'Boxe compétition' }), true);
+    assert.equal(isPortetNoblartPaypalFlow('portet', { id: 'offre-saison' }), false);
+    assert.equal(isPortetNoblartPaypalFlow('minimes', EDUC), false);
   });
 
   it('tuteur obligatoire seulement si fourni incomplet', () => {
