@@ -694,7 +694,7 @@
         showCawl: cfg.show_cawl === true,
         oney4x: cfg.oney_4x === true,
         oney4xMessage: cfg.oney_4x_message || '',
-        payplug4xPrelevement: false,
+        payplug4xPrelevement: cfg.payplug_4x_prelevement === true,
         scalapay: cfg.scalapay === true,
         scalapayMinCents: Number(cfg.scalapay_min_cents) || 500,
         scalapayMaxCents: Number(cfg.scalapay_max_cents) || 200000,
@@ -771,7 +771,7 @@
       return `Montant total : <strong>${amount}</strong> — une fois, ou <strong>PayPal 4× sans frais</strong> si éligible`;
     }
     if (supportsScalapay(product) || supportsInstallmentChoice(product)) {
-      return `Montant total : <strong>${amount}</strong> — une fois, ou <strong>CB</strong> (3×/4×)`;
+      return `Montant total : <strong>${amount}</strong> — une fois, <strong>CB</strong> (3×/4×), ou <strong>4× CB puis RIB</strong>`;
     }
     if (isComptantLikeProduct(product)) {
       return `Paiement de : <strong>${amount}</strong>`;
@@ -1240,9 +1240,23 @@
       supportsScalapay(p) &&
       priceCents >= payFlags.scalapayMinCents &&
       priceCents <= payFlags.scalapayMaxCents;
+    const payplug4xPrelev =
+      installmentChoice &&
+      !portetViaCawl &&
+      !portetPaypal4x &&
+      currentGym() !== 'portet' &&
+      payFlags.payplug4xPrelevement === true &&
+      showCard;
     const savedPlanRaw = String(state.order?.payment?.payment_plan || '').toLowerCase();
+    const savedBillingRaw = String(state.order?.payment?.billing_plan || '').toLowerCase();
     const savedInstallment =
-      savedPlanRaw === 'scalapay' ? 'scalapay' : savedPlanRaw === '4x' ? '4x' : 'once';
+      savedPlanRaw === 'scalapay'
+        ? 'scalapay'
+        : savedPlanRaw === '4x' && savedBillingRaw === 'rib'
+          ? '4x-rib'
+          : savedPlanRaw === '4x'
+            ? '4x'
+            : 'once';
     const showPaypalOnce = portetViaCawl ? false : payFlags.showPaypal;
     const showPaypalFour = portetViaCawl ? portetPaypal4x : payFlags.showPaypal;
     const showPaypal = showPaypalOnce || showPaypalFour;
@@ -1253,6 +1267,7 @@
       : portetViaCawl
         ? 'Paiement sécurisé CAWL'
         : 'Paiement sécurisé';
+    const quart = fourXQuartLabel(p);
     const paypalMsgHtml = showPaypal
       ? `<div class="full" style="margin-top:8px">
               <div data-pp-message data-pp-style-layout="text" data-pp-style-logo-type="inline" data-pp-amount="${(Number(p.price_cents || 0) / 100).toFixed(2)}"></div>
@@ -1274,7 +1289,9 @@
         : '<p class="portet-pay-notice">Studio : tous les moyens branchés s’affichent. Les visiteurs verront les cases enregistrées après déconnexion.</p>'
       : '';
     const multiChoice =
-      installmentChoice || (scalapayAvailable && (isComptantLike || isOneShotPaid));
+      installmentChoice ||
+      (scalapayAvailable && (isComptantLike || isOneShotPaid)) ||
+      payplug4xPrelev;
 
     let billingHtml = '';
     if (portetPaused) {
@@ -1301,14 +1318,17 @@
       const defaultPlan =
         savedInstallment === 'scalapay' && scalapayAvailable
           ? 'scalapay'
-          : savedInstallment === '4x' && showPaypalFour
-            ? '4x'
-            : 'once';
-      const bothInstallments = scalapayAvailable && showPaypalFour;
+          : savedInstallment === '4x-rib' && payplug4xPrelev
+            ? '4x-rib'
+            : savedInstallment === '4x' && showPaypalFour
+              ? '4x'
+              : 'once';
+      const bothInstallments = scalapayAvailable && (showPaypalFour || payplug4xPrelev);
       const compareNote = bothInstallments
-        ? `<p class="pay-compare-note" role="note">Deux façons de payer en plusieurs fois — ne les confondez pas&nbsp;:
-            <strong>CB en plusieurs fois</strong> (3× sans frais ou 4× avec 1,5&nbsp;% de frais) et
-            <strong>PayPal 4× sans frais</strong> (Pay Later, si votre compte est éligible).</p>`
+        ? `<p class="pay-compare-note" role="note">Plusieurs façons de payer en plusieurs fois&nbsp;:
+            <strong>CB en plusieurs fois</strong> (Scalapay), <strong>4× CB puis RIB</strong>${
+              showPaypalFour ? ', et <strong>PayPal 4× sans frais</strong>' : ''
+            }.</p>`
         : portetPaypal4x || currentGym() === 'portet'
           ? `<p class="pay-compare-note" role="note">Le paiement en plusieurs fois se fait via <strong>PayPal 4× sans frais</strong> (Pay Later, si votre compte est éligible).</p>`
           : '';
@@ -1337,6 +1357,17 @@
                 : ''
             }
             ${
+              payplug4xPrelev
+                ? `<label class="billing-choice">
+              <input type="radio" name="payment_plan" value="4x-rib" ${defaultPlan === '4x-rib' ? 'checked' : ''} />
+              <span class="billing-choice-text">
+                <strong>4× sans frais CB puis RIB</strong>
+                <small>${quart}&nbsp;€ aujourd’hui · 3 prochains paiements sur votre RIB</small>
+              </span>
+            </label>`
+                : ''
+            }
+            ${
               showPaypalFour
                 ? `<label class="billing-choice">
               <input type="radio" name="payment_plan" value="4x" ${defaultPlan === '4x' ? 'checked' : ''} />
@@ -1354,7 +1385,7 @@
             payFlags.scalapayRefusalHelp
           )}</div>
           <div id="paypalFourHelp" class="paypal-four-help" style="display:none;margin-top:12px" role="note">
-            <p><strong>PayPal 4× sans frais</strong> — distinct du paiement CB en plusieurs fois. Aucun frais ajouté si Pay Later est proposé sur votre compte.</p>
+            <p><strong>PayPal 4× sans frais</strong> — distinct du paiement CB en plusieurs fois et du 4× CB puis RIB. Aucun frais ajouté si Pay Later est proposé sur votre compte.</p>
           </div>
           <p class="sub" id="payStep2Label" style="margin:16px 0 8px">Étape 2 — Moyen de paiement</p>
           <div id="onceMethods" class="billing-choice-row">${onceMethods || emptyPayHtml}</div>
@@ -1489,6 +1520,7 @@
         const payBtn = document.getElementById('payBtn');
         const isOnce = plan === 'once';
         const isScalapay = plan === 'scalapay';
+        const isRibFour = plan === '4x-rib';
         const isPaypalFour = plan === '4x';
 
         if (onceBox) onceBox.style.display = isOnce ? '' : 'none';
@@ -1500,11 +1532,13 @@
         if (paypalHelp) paypalHelp.style.display = isPaypalFour ? '' : 'none';
         if (paypalMsg) paypalMsg.style.display = isPaypalFour ? '' : 'none';
         if (schedule) {
-          schedule.style.display = isScalapay || isPaypalFour ? '' : 'none';
+          schedule.style.display = isScalapay || isPaypalFour || isRibFour ? '' : 'none';
           if (isScalapay) {
-            schedule.innerHTML = buildFourXScheduleHtml(fourXQuartLabel(p), 'scalapay', priceLabel(p));
+            schedule.innerHTML = buildFourXScheduleHtml(quart, 'scalapay', priceLabel(p));
+          } else if (isRibFour) {
+            schedule.innerHTML = buildFourXScheduleHtml(quart, 'payplug_prelevement', priceLabel(p));
           } else if (isPaypalFour) {
-            schedule.innerHTML = buildFourXScheduleHtml(fourXQuartLabel(p), 'paypal', priceLabel(p));
+            schedule.innerHTML = buildFourXScheduleHtml(quart, 'paypal', priceLabel(p));
           }
         }
         if (addrBox) {
@@ -1515,9 +1549,16 @@
         }
         if (payBtn) {
           payBtn.classList.remove('pay-btn--4x-cb');
-          if (isScalapay) payBtn.textContent = 'Continuer vers le paiement CB';
-          else if (isPaypalFour) payBtn.textContent = 'Payer via PayPal 4× sans frais';
-          else payBtn.textContent = 'Payer en une fois';
+          if (isScalapay) {
+            payBtn.textContent = 'Continuer vers le paiement CB';
+          } else if (isRibFour) {
+            payBtn.classList.add('pay-btn--4x-cb');
+            payBtn.innerHTML = `${quart}&nbsp;€ aujourd'hui<br><span class="pay-btn-sub">3 prochains paiements sur votre RIB</span>`;
+          } else if (isPaypalFour) {
+            payBtn.textContent = 'Payer via PayPal 4× sans frais';
+          } else {
+            payBtn.textContent = 'Payer en une fois';
+          }
         }
       };
       document.querySelectorAll('input[name="payment_plan"]').forEach((el) => {
@@ -1531,7 +1572,7 @@
       loadPaypalMessaging((Number(p?.price_cents || 0) / 100).toFixed(2)).catch(() => {});
     }
     const payBtnEl = document.getElementById('payBtn');
-    if (payBtnEl && !showCard && !showPaypalOnce && !showPaypalFour && !scalapayAvailable) {
+    if (payBtnEl && !showCard && !showPaypalOnce && !showPaypalFour && !scalapayAvailable && !payplug4xPrelev) {
       payBtnEl.disabled = true;
     }
     document.getElementById('payForm').onsubmit = async (e) => {
@@ -1569,6 +1610,10 @@
             setMsg('Adresse complète et code postal à 5 chiffres requis pour le paiement CB en plusieurs fois.', 'err');
             return;
           }
+        } else if (plan === '4x-rib') {
+          body.payment_plan = '4x';
+          body.pay_method = 'payplug';
+          body.billing_plan = 'rib';
         } else if (plan === '4x') {
           body.payment_plan = '4x';
           body.pay_method = 'paypal';
