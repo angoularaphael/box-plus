@@ -398,7 +398,7 @@
     }
     if (tbody) {
       tbody.innerHTML =
-        '<tr><td colspan="9" style="text-align:center;color:var(--bc-muted)">Chargement…</td></tr>';
+        '<tr><td colspan="10" style="text-align:center;color:var(--bc-muted)">Chargement…</td></tr>';
     }
     try {
       const safePage = Math.max(1, Number(page) || 1);
@@ -421,7 +421,7 @@
       }
       if (tbody) {
         tbody.innerHTML =
-          '<tr><td colspan="9" style="text-align:center;color:var(--bc-muted)">Chargement impossible</td></tr>';
+          '<tr><td colspan="10" style="text-align:center;color:var(--bc-muted)">Chargement impossible</td></tr>';
       }
     }
   }
@@ -450,7 +450,7 @@
 
     if (!freeTrials.length) {
       tbody.innerHTML =
-        '<tr><td colspan="9" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune séance d’essai gratuite sur cette page</td></tr>';
+        '<tr><td colspan="10" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune séance d’essai gratuite sur cette page</td></tr>';
       return;
     }
     tbody.innerHTML = freeTrials
@@ -481,6 +481,13 @@
             <td>${freeTrialPaymentLabel(order)}</td>
             <td style="font-size:12px">${deciplus}</td>
             <td style="max-width:240px;font-size:12px">${bot}</td>
+            <td style="display:flex;gap:6px;flex-wrap:wrap">
+              ${
+                order.signed
+                  ? `<a class="btn sm secondary" href="/api/admin/orders/${encodeURIComponent(order.order_id)}/dossier.pdf" target="_blank" rel="noopener">Dossier signé</a>`
+                  : '—'
+              }
+            </td>
           </tr>`;
       })
       .join('');
@@ -945,7 +952,14 @@
           ${
             o.action
               ? '—'
-              : `<button type="button" class="btn sm dl-contract" data-id="${escapeHtml(o.order_id)}">PDF</button>`
+              : `<div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <button type="button" class="btn sm dl-contract" data-id="${escapeHtml(o.order_id)}">PDF</button>
+                  ${
+                    o.signed
+                      ? `<a class="btn sm secondary" href="/api/admin/orders/${encodeURIComponent(o.order_id)}/dossier.pdf" target="_blank" rel="noopener">Dossier signé</a>`
+                      : ''
+                  }
+                </div>`
           }
         </td>
         <td>
@@ -1048,6 +1062,11 @@
           <div><dt>Montant / mode</dt><dd>${escapeHtml(String(paid))} · ${escapeHtml(plan)} · ${escapeHtml(pay.method || '—')}</dd></div>
         </dl>
         <div class="dossier-media">${photo}${idDoc}</div>
+        ${
+          o.signature?.signed_at
+            ? `<p style="margin-top:16px"><a class="btn block" href="/api/admin/orders/${encodeURIComponent(id)}/dossier.pdf" target="_blank" rel="noopener">Télécharger le dossier signé</a></p>`
+            : ''
+        }
       `;
     } catch (err) {
       bodyEl.innerHTML = `<p class="form-msg err">${escapeHtml(err.message)}</p>`;

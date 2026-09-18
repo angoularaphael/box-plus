@@ -271,6 +271,10 @@ const {
   streamCoachingInvoicePdf,
   isCoachingOrder,
 } = require('./lib/invoice-pdf');
+const {
+  streamInscriptionDossierPdf,
+  orderHasSignedDossier,
+} = require('./lib/legal-pdf');
 const { upsertClientFromInscription, upsertMaterielClient, upsertLeadClient } = require('./lib/client-sync');
 const { insertTunnelLead, tunnelFromProductId } = require('./lib/tunnel-lead');
 const {
@@ -298,6 +302,32 @@ function streamOrderFacturePdf(order, res) {
     else streamInscriptionInvoicePdf(order, res);
   } catch (err) {
     logError('PDF facture', { order_id: order?.order_id, error: err.message });
+    if (!res.headersSent) {
+      res.status(500).json({ ok: false, error: 'pdf_failed' });
+    }
+  }
+}
+
+async function streamOrderDossierPdf(order, res) {
+  if (!order) {
+    return res.status(404).json({ ok: false, error: 'not_found' });
+  }
+  if (isCoachingOrder(order)) {
+    return res.status(400).json({
+      ok: false,
+      error: 'Pas de dossier d’inscription pour une réservation coaching.',
+    });
+  }
+  if (!orderHasSignedDossier(order)) {
+    return res.status(409).json({
+      ok: false,
+      error: 'Dossier disponible après la signature finale.',
+    });
+  }
+  try {
+    await streamInscriptionDossierPdf(order, res);
+  } catch (err) {
+    logError('PDF dossier inscription', { order_id: order?.order_id, error: err.message });
     if (!res.headersSent) {
       res.status(500).json({ ok: false, error: 'pdf_failed' });
     }
@@ -2671,6 +2701,13 @@ function createApp() {
     });
   });
 
+  app.get('/api/admin/orders/:id/dossier.pdf', async (req, res) => {
+    if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
+    const id = String(req.params.id || '').trim();
+    const order = await loadOrderAsync(id);
+    return streamOrderDossierPdf(order, res);
+  });
+
   app.get('/api/admin/orders/:id/contract.pdf', async (req, res) => {
     if (!(await isAuthorizedAdmin(req))) return res.status(401).json({ ok: false, error: 'unauthorized' });
     const id = String(req.params.id || '').trim();
@@ -3579,6 +3616,7 @@ function createApp() {
       product: order.product_snapshot?.display_name || order.product_snapshot?.name,
       dispatched: Boolean(order.dispatched_at),
       email_sent: Boolean(order.email_sent_at),
+      signed: Boolean(order.signature?.signed_at),
     });
   });
 
@@ -3993,6 +4031,20 @@ function createApp() {
       return res.status(403).json({ ok: false, error: 'forbidden' });
     }
     streamOrderFacturePdf(order, res);
+  });
+
+  app.get('/api/orders/:id/dossier.pdf', async (req, res) => {
+    const order = await loadOrderOrRecover(req.params.id, {
+      token: req.query.token,
+      sessionId: req.query.session_id,
+      stripe,
+      findProduct,
+    });
+    if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+    if (!verifyAccess(order, req.query.token)) {
+      return res.status(403).json({ ok: false, error: 'forbidden' });
+    }
+    return streamOrderDossierPdf(order, res);
   });
 
   app.post('/api/orders/:id/pay', async (req, res) => {

@@ -2,7 +2,16 @@ const fs = require('fs');
 const path = require('path');
 const PDFDocument = require('pdfkit');
 const { ensureDir } = require('../../lib/utils');
-const { NAVY, MUTED, drawPageFooter, clubForOrder } = require('./pdf-layout');
+const { NAVY, MUTED, formatDateFr, drawPageFooter, clubForOrder } = require('./pdf-layout');
+
+const GYM_LABELS = {
+  minimes: 'Minimes',
+  ramonville: 'Ramonville',
+  portet: 'Portet',
+  'etats-unis': 'États-Unis',
+  'st-cyprien': 'Saint-Cyprien',
+  balma: 'Balma',
+};
 
 /** Toujours relatif à ce fichier — fiable sur Vercel (pas de dépendance à process.cwd). */
 const LEGAL_DIR = path.join(__dirname, '..', 'legal');
@@ -318,44 +327,203 @@ async function generateInscriptionLegalPdfs(order = null) {
   return { pdfs: out, errors, legalDir: LEGAL_DIR, docsDir: DOCS_DIR };
 }
 
-/**
- * Un seul PDF : CGV + règlement + déclaration médicale (signés) + facture.
- */
-async function generateInscriptionDossierPdf(order) {
-  if (!order?.order_id) throw new Error('order requis');
-  const { hydrateOrderMedia } = require('./cloudinary');
-  order = await hydrateOrderMedia(order);
-  ensureDir(DOCS_DIR);
-  const { renderInscriptionInvoice } = require('./invoice-pdf');
-  const safeId = String(order.order_id).replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 80);
-  const filename = `dossier-inscription-${safeId}.pdf`;
-  const filepath = path.join(DOCS_DIR, filename);
+function orderHasSignedDossier(order) {
+  return Boolean(order?.signature?.signed_at);
+}
 
-  const doc = new PDFDocument({
+function dossierFilename(order) {
+  const safeId = String(order?.order_id || 'adh')
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .slice(0, 80);
+  return `dossier-inscription-${safeId}.pdf`;
+}
+
+function createDossierDoc() {
+  return new PDFDocument({
     size: 'A4',
     margins: { top: 48, bottom: 56, left: 48, right: 48 },
     bufferPages: true,
     autoFirstPage: true,
   });
-  const stream = fs.createWriteStream(filepath);
-  doc.pipe(stream);
+}
 
-  let first = true;
+function loadBufferImage(raw) {
+  const b64 = String(raw || '').split(',').pop();
+  if (!b64) return null;
+  try {
+    const buf = Buffer.from(b64, 'base64');
+    return buf.length > 32 ? { type: 'buffer', value: buf } : null;
+  } catch {
+    return null;
+  }
+}
+
+function loadPhotoImage(order) {
+  const docs = order?.documents || {};
+  const filePath = docs.photo;
+  if (filePath && fs.existsSync(filePath)) return { type: 'path', value: filePath };
+  return loadBufferImage(docs.photo_base64);
+}
+
+function loadIdImage(order) {
+  const docs = order?.documents || {};
+  const filePath = docs.id_document;
+  if (filePath && fs.existsSync(filePath)) {
+    const ext = path.extname(filePath).toLowerCase();
+    if (['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext)) {
+      return { type: 'path', value: filePath };
+    }
+  }
+  return loadBufferImage(docs.id_document_base64);
+}
+
+function gymLabelForDossier(order) {
+  const slug = String(order?.customer_full?.gym || order?.gym || '').trim();
+  if (!slug) return '—';
+  return GYM_LABELS[slug] || GYM_LABELS[slug.toLowerCase()] || slug;
+}
+
+function offerLabelForDossier(order) {
+  return (
+    order?.product_snapshot?.display_name ||
+    order?.product_snapshot?.name ||
+    order?.product_name ||
+    'Inscription'
+  );
+}
+
+function drawFittedImage(doc, img, x, y, fit) {
+  if (!img) return false;
+  try {
+    if (img.type === 'path') doc.image(img.value, x, y, { fit, align: 'center', valign: 'center' });
+    else doc.image(img.value, x, y, { fit, align: 'center', valign: 'center' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function renderDossierCover(doc, order) {
+  const left = doc.page.margins.left;
+  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const club = clubForOrder(order);
+  const short = order?.customer_short || {};
+  const full = order?.customer_full || {};
+  const name = signerFullName(order) || 'Adhérent';
+  const signedAt = order?.signature?.signed_at;
+  const photo = loadPhotoImage(order);
+  const hasId = Boolean(loadIdImage(order) || order?.documents?.id_document || order?.documents?.id_document_url);
+
+  doc.font('Helvetica-Bold').fontSize(18).fillColor(NAVY).text('Dossier d’inscription signé', left, doc.y, { width });
+  doc.moveDown(0.35);
+  doc
+    .font('Helvetica')
+    .fontSize(9)
+    .fillColor(MUTED)
+    .text(`${club.name} — ${club.address}, ${club.city}`, { width });
+  doc.moveDown(0.9);
+
+  const photoW = 118;
+  const photoH = 148;
+  const textW = photo ? width - photoW - 18 : width;
+  const infoY = doc.y;
+  const rows = [
+    ['Référence', order.order_id],
+    ['Adhérent', name],
+    ['E-mail', short.email || full.email || '—'],
+    ['Téléphone', short.phone || full.phone || '—'],
+    ['Offre', offerLabelForDossier(order)],
+    ['Salle', gymLabelForDossier(order)],
+    ['Signé le', signedAt ? formatDateFr(signedAt) : '—'],
+  ];
+  let y = infoY;
+  for (const [label, value] of rows) {
+    doc.font('Helvetica').fontSize(8).fillColor(MUTED).text(label, left, y, { width: textW });
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#1A1A2E').text(String(value || '—'), left, y + 11, {
+      width: textW,
+    });
+    y = doc.y + 8;
+  }
+
+  if (photo) {
+    const px = left + width - photoW;
+    doc.rect(px - 4, infoY - 4, photoW + 8, photoH + 8).strokeColor('#E5E7EB').lineWidth(0.8).stroke();
+    drawFittedImage(doc, photo, px, infoY, [photoW, photoH]);
+  }
+  doc.y = Math.max(y, photo ? infoY + photoH + 12 : y);
+
+  doc.moveDown(0.4);
+  doc.font('Helvetica-Bold').fontSize(10).fillColor(NAVY).text('Documents inclus', left, doc.y, { width });
+  doc.moveDown(0.25);
+  const included = [
+    'Conditions générales de vente (signées)',
+    'Règlement intérieur (signé)',
+    'Déclaration médicale (signée)',
+    'Facture',
+  ];
+  if (hasId) included.push('Pièce d’identité');
+  for (const item of included) {
+    doc.font('Helvetica').fontSize(9).fillColor('#1A1A2E').text(`• ${item}`, { width });
+    doc.moveDown(0.12);
+  }
+
+  stampSignature(doc, order, { title: 'Signature électronique du dossier' });
+  drawPageFooter(doc, order || club);
+}
+
+function renderIdDocumentPage(doc, order) {
+  const img = loadIdImage(order);
+  if (!img) return false;
+  const left = doc.page.margins.left;
+  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const height = doc.page.height - doc.page.margins.top - doc.page.margins.bottom - 80;
+  doc.addPage();
+  doc.font('Helvetica-Bold').fontSize(16).fillColor(NAVY).text('Pièce d’identité', left, doc.y, { width });
+  doc.moveDown(0.6);
+  const drew = drawFittedImage(doc, img, left, doc.y, [width, height]);
+  if (!drew) {
+    doc.font('Helvetica').fontSize(9).fillColor(MUTED).text('Pièce d’identité enregistrée (aperçu indisponible).', { width });
+  }
+  drawPageFooter(doc, order);
+  return true;
+}
+
+function renderInscriptionDossier(doc, order) {
+  const { renderInscriptionInvoice } = require('./invoice-pdf');
+  renderDossierCover(doc, order);
   for (const spec of LEGAL_PDFS) {
     const loaded = readLegalMarkdown(spec);
     if (!loaded) continue;
-    if (!first) doc.addPage();
-    first = false;
+    doc.addPage();
     let md = loaded.md;
     if (spec.key === 'medical') {
       md = personalizeMedicalMarkdown(md, signerFullName(order));
     }
     renderLegalPdf(doc, { title: spec.title, md, order, stamp: true });
   }
-
   doc.addPage();
   renderInscriptionInvoice(doc, order);
+  renderIdDocumentPage(doc, order);
+}
 
+async function prepareDossierOrder(order) {
+  if (!order?.order_id) throw new Error('order requis');
+  const { hydrateOrderMedia } = require('./cloudinary');
+  return hydrateOrderMedia(order);
+}
+
+/**
+ * Un seul PDF : page de garde + CGV + règlement + déclaration médicale (signés) + facture.
+ */
+async function generateInscriptionDossierPdf(order) {
+  order = await prepareDossierOrder(order);
+  ensureDir(DOCS_DIR);
+  const filename = dossierFilename(order);
+  const filepath = path.join(DOCS_DIR, filename);
+  const doc = createDossierDoc();
+  const stream = fs.createWriteStream(filepath);
+  doc.pipe(stream);
+  renderInscriptionDossier(doc, order);
   doc.end();
   await new Promise((resolve, reject) => {
     stream.on('finish', resolve);
@@ -365,6 +533,17 @@ async function generateInscriptionDossierPdf(order) {
   return { filepath, filename, size };
 }
 
+async function streamInscriptionDossierPdf(order, res) {
+  order = await prepareDossierOrder(order);
+  const filename = dossierFilename(order);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  const doc = createDossierDoc();
+  doc.pipe(res);
+  renderInscriptionDossier(doc, order);
+  doc.end();
+}
+
 module.exports = {
   LEGAL_PDFS,
   LEGAL_DIR,
@@ -372,6 +551,9 @@ module.exports = {
   generateInscriptionLegalPdfs,
   generatePersonalizedMedicalPdf,
   generateInscriptionDossierPdf,
+  streamInscriptionDossierPdf,
+  orderHasSignedDossier,
+  dossierFilename,
   personalizeMedicalMarkdown,
   signerFullName,
   writeLegalPdf,

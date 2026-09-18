@@ -346,6 +346,21 @@
     return true;
   }
 
+  function isPaidSeanceEssai() {
+    const p = state.product || state.order?.product_snapshot || {};
+    const id = String(
+      state.productId || state.order?.product_id || p.id || p.legacy_id || ''
+    ).toLowerCase();
+    if (id === 'seance-essai-offerte' || /offerte|gratuite/.test(id)) return false;
+    if (p.requires_payment === false || Number(p.price_cents || 0) <= 0) return false;
+    const name = String(p.display_name || p.name || '').toLowerCase();
+    return (
+      id === 'seance-essai' ||
+      /(^|[\s-])seance-essai$/.test(id) ||
+      /s[eé]ance d['’ ]?essai/.test(name)
+    );
+  }
+
   /** Marque l’offre gratuite comme « payée » (free) puis enchaîne vers le dossier. */
   async function ensureFreeOrderMarked() {
     if (!state.orderId || !state.token) return false;
@@ -1517,6 +1532,14 @@
       : '';
     stepContent.innerHTML = `
       <h1>Paiement</h1>
+      ${
+        isPaidSeanceEssai()
+          ? `<div class="notice-important" style="margin:0 0 16px">
+        <strong>Important — séance d’essai à 10 €</strong>
+        <p>Payer ne suffit pas pour être enregistré. Après le paiement, vous devez terminer le dossier (photo) puis signer. Si vous quittez avant la signature, vous n’êtes pas inscrit au club.</p>
+      </div>`
+          : ''
+      }
       ${recapKids}
       ${
         isBalmaRetour() && (state.aventureDossierSaved || state.order?.customer_full?.address)
@@ -2436,6 +2459,11 @@
             : 'Complétez uniquement les infos encore manquantes. À la confirmation, Boxing Center reçoit le récapitulatif.'
         }</p>
       </div>`
+          : isPaidSeanceEssai()
+            ? `<div class="notice-important" style="margin:0 0 20px">
+        <strong>Séance d’essai — terminez les étapes</strong>
+        <p>Le paiement de 10 € ne suffit pas. Complétez ce dossier puis signez. Tant que ce n’est pas fait, vous n’êtes pas enregistré au club et votre séance n’est pas validée.</p>
+      </div>`
           : `<div class="notice-important" style="margin:0 0 20px">
         <strong>Anciens et nouveaux adhérents</strong>
         <p>Allez jusqu’au bout des étapes : ce dossier, puis la signature. Tant que ce n’est pas terminé, votre abonnement ne prend pas effet — que vous soyez déjà membre ou que vous rejoigniez Boxing Center.</p>
@@ -2853,6 +2881,14 @@
     stepContent.innerHTML = `
       ${roundClockHtml()}
       <h1>Signature</h1>
+      ${
+        isPaidSeanceEssai()
+          ? `<div class="notice-important" style="margin:0 0 16px">
+        <strong>Dernière étape pour être enregistré</strong>
+        <p>Sans cette signature, le paiement de 10 € ne vous inscrit pas au club. Signez pour valider votre séance d’essai.</p>
+      </div>`
+          : ''
+      }
       <canvas id="sigPad" class="signature-pad" width="640" height="180" style="width:100%;display:block;cursor:crosshair"></canvas>
       <div class="signature-actions">
         <button type="button" class="btn secondary" id="clearSig">Effacer</button>
@@ -2958,7 +2994,7 @@
     clearCacheAfterConfirm();
     const p = state.product;
     const emailNote = state.emailWarning
-      ? `<div class="notice-important" style="margin-top:16px;text-align:left"><strong>Email non envoyé</strong><p>Votre inscription est bien enregistrée. L'email de confirmation n'a pas pu être envoyé (${esc(state.emailWarning)}). Téléchargez votre facture ci-dessous ou contactez le club.</p></div>`
+      ? `<div class="notice-important" style="margin-top:16px;text-align:left"><strong>Email non envoyé</strong><p>Votre inscription est bien enregistrée. L'email de confirmation n'a pas pu être envoyé (${esc(state.emailWarning)}). Téléchargez votre facture ou votre dossier ci-dessous, ou contactez le club.</p></div>`
       : '';
     const dispatchNote = state.dispatchError
       ? `<div class="notice-important" style="margin-top:12px;text-align:left"><strong>Traitement club en attente</strong><p>Votre paiement est OK. L'enregistrement automatique au club a échoué (${esc(state.dispatchError)}). Le club va finaliser votre dossier — gardez votre référence.</p></div>`
@@ -2994,6 +3030,7 @@
         <div class="success-actions" style="display:flex;flex-direction:column;gap:12px;margin-top:24px">
           <a href="${homeHref}" class="btn block" id="confirmHomeBtn">Retour à l'accueil</a>
           <button type="button" class="btn secondary block" id="downloadContractBtn">Télécharger ma facture</button>
+          <button type="button" class="btn secondary block" id="downloadDossierBtn">Télécharger mon dossier</button>
         </div>
       </div>`;
     document.getElementById('confirmHomeBtn')?.addEventListener('click', () => {
@@ -3001,6 +3038,12 @@
     });
     document.getElementById('downloadContractBtn').onclick = () => {
       window.BCContract.openView(state.orderId, { token: state.token });
+    };
+    document.getElementById('downloadDossierBtn').onclick = () => {
+      window.BCContract.openDossier(state.orderId, {
+        token: state.token,
+        sessionId: state.sessionId,
+      });
     };
   }
 
