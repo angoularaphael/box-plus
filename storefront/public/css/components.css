@@ -1102,7 +1102,8 @@
 }
 
 .scalapay-help__fees,
-.scalapay-help__refusal {
+.scalapay-help__refusal,
+.scalapay-help__mobile {
   margin: 0;
   font-size: 13px;
   line-height: 1.45;
@@ -1112,6 +1113,10 @@
 .scalapay-help__fees {
   margin-bottom: 8px;
   color: var(--bc-ink, #1a1a1a);
+}
+
+.scalapay-help__mobile {
+  margin-bottom: 8px;
 }
 
 .scalapay-help__refusal a {

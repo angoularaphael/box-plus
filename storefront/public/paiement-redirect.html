@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Paiement sécurisé — Boxing Center</title>
+  <link rel="dns-prefetch" href="https://secure.payplug.com" />
+  <link rel="dns-prefetch" href="https://portal.scalapay.com" />
+  <link rel="preconnect" href="https://secure.payplug.com" crossorigin />
+  <link rel="preconnect" href="https://portal.scalapay.com" crossorigin />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/boutique.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <style>
+    .pay-redirect {
+      min-height: 70vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px 48px;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(200, 144, 47, 0.12), transparent 55%),
+        linear-gradient(180deg, #0C1829 0%, var(--bc-navy) 45%, #F4F5F7 45%);
+    }
+    .pay-redirect__panel {
+      width: min(440px, 100%);
+      background: #fff;
+      border: 1px solid var(--bc-border);
+      padding: 28px 22px 24px;
+      text-align: center;
+    }
+    .pay-redirect__brand {
+      font-family: "Barlow Condensed", sans-serif;
+      font-weight: 700;
+      font-size: clamp(1.6rem, 5vw, 2rem);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--bc-navy);
+      margin: 0 0 8px;
+    }
+    .pay-redirect__title {
+      font-family: Montserrat, sans-serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--bc-text);
+      margin: 0 0 10px;
+    }
+    .pay-redirect__copy {
+      font-family: Montserrat, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--bc-muted);
+      margin: 0 0 20px;
+    }
+    .pay-redirect__spinner {
+      width: 36px;
+      height: 36px;
+      margin: 0 auto 18px;
+      border: 3px solid var(--bc-border);
+      border-top-color: var(--bc-gold);
+      border-radius: 50%;
+      animation: pay-redirect-spin 0.8s linear infinite;
+    }
+    @keyframes pay-redirect-spin {
+      to { transform: rotate(360deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pay-redirect__spinner { animation: none; border-top-color: var(--bc-navy); }
+    }
+    .pay-redirect__actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .pay-redirect__actions .btn {
+      width: 100%;
+      min-height: 48px;
+    }
+    .pay-redirect__fallback {
+      display: none;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--bc-border);
+    }
+    .pay-redirect__fallback.is-visible { display: block; }
+    .pay-redirect__err {
+      color: var(--bc-error);
+      font-size: 14px;
+      margin: 0 0 12px;
+    }
+  </style>
+</head>
+<body>
+  <main class="pay-redirect">
+    <div class="pay-redirect__panel" id="panel">
+      <p class="pay-redirect__brand">Boxing Center</p>
+      <div class="pay-redirect__spinner" id="spinner" aria-hidden="true"></div>
+      <h1 class="pay-redirect__title" id="title">Redirection vers le paiement</h1>
+      <p class="pay-redirect__copy" id="copy">
+        Connexion sécurisée en cours. Sur mobile, laissez la page charger quelques secondes —
+        le paiement CB en plusieurs fois s’ouvre ensuite.
+      </p>
+      <form id="payForm" method="GET" action="#">
+        <div class="pay-redirect__actions">
+          <button type="submit" class="btn" id="continueBtn">Continuer le paiement</button>
+        </div>
+      </form>
+      <div class="pay-redirect__fallback" id="fallback" role="status">
+        <p class="pay-redirect__copy" style="margin-bottom:12px">
+          Si l’écran reste blanc après ouverture, revenez ici et appuyez à nouveau sur
+          <strong>Continuer le paiement</strong>.
+        </p>
+        <a class="btn secondary" id="cancelLink" href="/inscription">Annuler et revenir</a>
+      </div>
+      <p class="pay-redirect__err" id="err" hidden></p>
+    </div>
+  </main>
+  <script>
+    (function () {
+      function allowedPayplugUrl(raw) {
+        try {
+          var u = new URL(String(raw || ''));
+          if (u.protocol !== 'https:') return false;
+          if (u.hostname !== 'secure.payplug.com' && u.hostname !== 'payplug.com') return false;
+          return /^\/pay(\/test)?\/[A-Za-z0-9_-]+\/?$/.test(u.pathname);
+        } catch (e) {
+          return false;
+        }
+      }
+
+      var params = new URLSearchParams(window.location.search);
+      var target = params.get('u') || '';
+      var cancel = params.get('c') || '';
+      var kind = (params.get('k') || '').toLowerCase();
+      var form = document.getElementById('payForm');
+      var err = document.getElementById('err');
+      var fallback = document.getElementById('fallback');
+      var cancelLink = document.getElementById('cancelLink');
+      var copy = document.getElementById('copy');
+      var title = document.getElementById('title');
+
+      if (kind === 'scalapay') {
+        title.textContent = 'Paiement CB en plusieurs fois';
+        copy.textContent =
+          'Redirection vers le paiement sécurisé. Sur iPhone, attendez 2 à 5 secondes — la page de connexion mobile s’affiche ensuite.';
+      }
+
+      if (cancel && /^https?:\/\//i.test(cancel) && cancel.indexOf(window.location.origin) === 0) {
+        cancelLink.href = cancel;
+      } else if (cancel && cancel.charAt(0) === '/') {
+        cancelLink.href = cancel;
+      }
+
+      if (!allowedPayplugUrl(target)) {
+        document.getElementById('spinner').style.display = 'none';
+        form.style.display = 'none';
+        err.hidden = false;
+        err.textContent = 'Lien de paiement invalide ou expiré. Revenez à l’inscription et réessayez.';
+        fallback.classList.add('is-visible');
+        return;
+      }
+
+      form.action = target;
+
+      function go() {
+        try {
+          form.submit();
+        } catch (e) {
+          window.location.replace(target);
+        }
+      }
+
+      // Soumission immédiate (geste utilisateur préservé via navigation same-origin → form GET).
+      window.setTimeout(go, 120);
+
+      // Filet de sécurité mobile : bouton + message si Scalapay/PayPlug reste blanc.
+      window.setTimeout(function () {
+        fallback.classList.add('is-visible');
+      }, 4500);
+    })();
+  </script>
+</body>
+</html>

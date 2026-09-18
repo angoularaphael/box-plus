@@ -83,6 +83,17 @@ function isFrenchMobileE164(value) {
   return /^\+33[67]\d{8}$/.test(String(value || ''));
 }
 
+/** PayPlug / Scalapay refusent les emails avec « + » dans la partie locale. */
+function sanitizePayplugEmail(value) {
+  const email = String(value || '').trim();
+  if (!email) return '';
+  const at = email.indexOf('@');
+  if (at < 1) return email;
+  const local = email.slice(0, at).replace(/\+/g, '');
+  const domain = email.slice(at + 1);
+  return local && domain ? `${local}@${domain}` : email;
+}
+
 function customerDetails(order, overrides = {}) {
   const customer = {
     ...(order.customer_full || {}),
@@ -95,7 +106,7 @@ function customerDetails(order, overrides = {}) {
   const common = {
     first_name: customer.first_name || '',
     last_name: customer.last_name || '',
-    email: customer.email || '',
+    email: sanitizePayplugEmail(customer.email || ''),
     address1: customer.address || customer.address1 || '',
     postcode: String(customer.postal_code || customer.postcode || '').replace(/\s+/g, ''),
     city: customer.city || '',
@@ -345,17 +356,27 @@ async function createScalapayPayment({
     'Paiement Boxing Center';
   const urls = buildReturnUrls(baseUrl, order);
 
+  // Marchand + locale FR explicites : Scalapay affiche parfois une page blanche /
+  // spinner si le contexte marchand / téléphone / langue est incomplet (doc merchant).
+  const billing = {
+    ...customer,
+    language: 'fr',
+    company_name: 'Boxing Center',
+  };
+  const shipping = {
+    ...customer,
+    language: 'fr',
+    delivery_type: 'BILLING',
+    company_name: 'Boxing Center',
+  };
+
   const payload = {
     amount,
     currency: 'EUR',
     payment_method: 'scalapay',
     payment_context: { cart },
-    billing: customer,
-    shipping: {
-      ...customer,
-      delivery_type: 'BILLING',
-      company_name: 'Boxing Center',
-    },
+    billing,
+    shipping,
     description: String(itemName).slice(0, 80),
     metadata: {
       ...(order?.order_id
