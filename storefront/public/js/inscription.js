@@ -349,16 +349,33 @@
   function isPaidSeanceEssai() {
     const p = state.product || state.order?.product_snapshot || {};
     const id = String(
-      state.productId || state.order?.product_id || p.id || p.legacy_id || ''
+      state.productId ||
+        state.order?.product_id ||
+        p.id ||
+        p.legacy_id ||
+        params.get('product') ||
+        ''
     ).toLowerCase();
-    if (id === 'seance-essai-offerte' || /offerte|gratuite/.test(id)) return false;
+    const tab = String(p.tab || p.subsection || '').toLowerCase();
+    const hay = `${id} ${p.display_name || ''} ${p.name || ''} ${p.tagline || ''} ${tab}`.toLowerCase();
     if (p.requires_payment === false || Number(p.price_cents || 0) <= 0) return false;
-    const name = String(p.display_name || p.name || '').toLowerCase();
-    return (
-      id === 'seance-essai' ||
-      /(^|[\s-])seance-essai$/.test(id) ||
-      /s[eé]ance d['’ ]?essai/.test(name)
-    );
+    if (/offerte|gratuite/.test(hay) && Number(p.price_cents || 0) === 0) return false;
+    if (id === 'seance-essai' || tab === 'seance-essai' || tab === 'essai') return true;
+    if (id.includes('seance-essai') && !id.includes('offerte')) return true;
+    if (/s[eé]ance d['’ ]?essai/.test(hay)) return true;
+    if (/\bessai\b/.test(hay) && Number(p.price_cents || 0) === 1000) return true;
+    return false;
+  }
+
+  function essaiCompleteStepsNoticeHtml(compact = false) {
+    if (!isPaidSeanceEssai()) return '';
+    if (compact) {
+      return `<p class="portet-pay-notice essai-pay-reminder" role="note">Après le paiement, terminez le dossier puis la signature. Sinon vous n’êtes <strong>pas enregistré</strong> au club.</p>`;
+    }
+    return `<div class="notice-important notice-important--alert" role="alert">
+      <strong>Vous n’êtes pas encore enregistré</strong>
+      <p>Payer les 10&nbsp;€ ne suffit pas. Après le paiement, vous devez terminer le dossier (photo) puis signer. Si vous quittez avant, vous ne serez <strong>pas inscrit</strong> au club.</p>
+    </div>`;
   }
 
   /** Marque l’offre gratuite comme « payée » (free) puis enchaîne vers le dossier. */
@@ -1496,6 +1513,8 @@
       billingHtml = `
         <div class="full billing-plan-block">
           ${previewNotice}
+          ${essaiCompleteStepsNoticeHtml()}
+          <p class="sub" style="margin:12px 0 8px">Choisissez votre moyen de paiement</p>
           <div class="billing-choice-row" role="radiogroup" aria-label="Mode de paiement">
             ${methods || emptyPayHtml}
           </div>
@@ -1532,14 +1551,7 @@
       : '';
     stepContent.innerHTML = `
       <h1>Paiement</h1>
-      ${
-        isPaidSeanceEssai()
-          ? `<div class="notice-important" style="margin:0 0 16px">
-        <strong>Important — séance d’essai à 10 €</strong>
-        <p>Payer ne suffit pas pour être enregistré. Après le paiement, vous devez terminer le dossier (photo) puis signer. Si vous quittez avant la signature, vous n’êtes pas inscrit au club.</p>
-      </div>`
-          : ''
-      }
+      ${essaiCompleteStepsNoticeHtml()}
       ${recapKids}
       ${
         isBalmaRetour() && (state.aventureDossierSaved || state.order?.customer_full?.address)
@@ -1554,7 +1566,7 @@
         ${
           portetPaused
             ? ''
-            : `<button type="submit" class="btn stripe block" id="payBtn">${
+            : `${essaiCompleteStepsNoticeHtml(true)}<button type="submit" class="btn stripe block" id="payBtn">${
                 p?.requires_payment === false ? 'Continuer' : 'Payer'
               }</button>`
         }

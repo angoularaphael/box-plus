@@ -459,6 +459,28 @@ input:focus, select:focus, textarea:focus {
   line-height: 1.5;
 }
 
+.notice-important--alert {
+  background: #fff1f0;
+  border-color: #f5c2c0;
+  color: #7a1f1a;
+  margin: 0 0 16px;
+}
+
+.notice-important--alert strong {
+  font-size: 15px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #7a1f1a;
+}
+
+.notice-important--alert + .notice-important--alert {
+  display: none;
+}
+
+.essai-pay-reminder {
+  margin: 0 0 12px;
+}
+
 .iban-fr-hint {
   margin: 8px 0 0;
   font-size: 13px;
