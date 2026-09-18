@@ -126,7 +126,7 @@ function renderInscriptionInvoice(doc, order) {
   } else if (copy.showBadge72h && (badgeTiming === 'deferred' || !badgeTiming)) {
     rows.push({
       type: 'Info',
-      description: `Badge d'accès (${BADGE_FEE_AMOUNT}) — non inclus sur cette facture\nPrélèvement prévu ~72h après inscription (${badgeMethod === 'card' ? 'carte' : 'IBAN'})`,
+      description: `Badge d'accès (${BADGE_FEE_AMOUNT}) — non inclus sur cette facture\nPrélèvement prévu sous 7 jours après inscription (${badgeMethod === 'card' ? 'carte' : 'IBAN'})`,
       unit: '—',
       qty: '—',
       vat: '—',

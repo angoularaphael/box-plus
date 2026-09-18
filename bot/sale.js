@@ -737,24 +737,24 @@ async function ensurePaiementComptantOff(page, { strict = false } = {}) {
 }
 
 function resolveBadgePrelevementDelayDays(productConfig = {}) {
-  // Défaut : 3 jours ≈ 72h après l'abonnement (date de PAIEMENT uniquement)
+  // Défaut : 7 jours — le J+3 (~72h) passait avant le 1er SEPA et restait « À faire ».
   const min = Number(
     productConfig.prelevement_delay_days_min ||
       process.env.BADGE_PRELEVEMENT_DELAY_MIN ||
-      3
+      7
   );
   const max = Number(
     productConfig.prelevement_delay_days_max ||
       process.env.BADGE_PRELEVEMENT_DELAY_MAX ||
-      3
+      7
   );
   const raw = Number(
     productConfig.prelevement_delay_days ||
       process.env.BADGE_PRELEVEMENT_DELAY_DAYS ||
-      3
+      7
   );
-  const delay = Number.isFinite(raw) ? raw : 3;
-  const lo = Number.isFinite(min) ? min : 3;
+  const delay = Number.isFinite(raw) ? raw : 7;
+  const lo = Number.isFinite(min) ? min : 7;
   const hi = Number.isFinite(max) ? Math.max(lo, max) : lo;
   return Math.min(hi, Math.max(lo, delay));
 }
@@ -778,7 +778,7 @@ function resolveBadgeValidityExtraDays(productConfig = {}) {
 /**
  * Badge différé :
  * - début = aujourd’hui
- * - échéance / débit = J+3 (~72h)
+ * - échéance / débit = J+7 (le J+3 restait « À faire » avant le 1er SEPA)
  * - fin = échéance + 13 mois (ex. 09/08/2026 → 09/09/2027)
  */
 function badgeScheduleDates(delayDays = 3, validityMonthsOrExtra = null) {
@@ -1941,7 +1941,7 @@ async function fillBadgeDatesInConfigModal(page, delayDays = 3, productConfig = 
   const auReadback = await readBadgeAuValueFromModal(page);
   const ready = await waitForBadgeModalRecapReady(page, delayDays, 12000);
 
-  logInfo('Badge — validité 13 mois + paiement ~72h', {
+  logInfo('Badge — validité 13 mois + paiement J+' + delayDays, {
     valide_du: startStr,
     valide_au: endStr,
     date_paiement: payStr,
@@ -2324,7 +2324,7 @@ async function applyBadgeConfigModal(page, productConfig, _memberId = null) {
   logInfo(
     immediate
       ? 'Badge — Configuration appliquée (paiement immédiat)'
-      : 'Badge — Configuration appliquée (échéance J+72h, validité 13 mois)',
+      : `Badge — Configuration appliquée (échéance J+${delayDays}, validité 13 mois)`,
     {
       delay_days: immediate ? 0 : delayDays,
       validity_months: months,
@@ -3369,7 +3369,8 @@ async function enforceBadgeEcheance(page, memberId, badgeConfig = {}, gymConfig 
   await randomDelayStable(500, 800);
 
   const contracts = await findActiveContracts(page).catch(() => []);
-  const badge = contracts.find((c) => c.isBadge);
+  const badges = contracts.filter((c) => c.isBadge && !/expir[eé]/i.test(String(c.label || '')));
+  const badge = [...badges].sort((a, b) => Number(b.idc) - Number(a.idc))[0] || null;
   if (!badge) {
     logWarn('Badge — contrat introuvable pour vérification échéance', { member_id: memberId });
     return { ok: false, reason: 'badge_contract_not_found' };

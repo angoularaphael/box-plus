@@ -15,7 +15,7 @@ runWithSession('test-badge-echeance', async (page) => {
   await login(page);
   const result = await enforceBadgeEcheance(page, memberId, {
     badge_timing: 'deferred',
-    prelevement_delay_days: 3,
+    prelevement_delay_days: 7,
     badge_validity_months: 13,
     paiement_comptant: false,
   });

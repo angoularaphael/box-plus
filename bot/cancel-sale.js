@@ -1192,8 +1192,7 @@ async function cancelOneContract(page, contract, { cancelDate = null, forceVoid 
   if (
     !neverVoid &&
     forceVoid &&
-    !contract.isBadge &&
-    (isPendingOrFutureContract(contract.label) || sameDayStart)
+    (contract.isBadge || isPendingOrFutureContract(contract.label) || sameDayStart)
   ) {
     const voided = await voidPendingSaleIfPossible(page, contract, {
       allowStarted: forceVoid || sameDayStart,
@@ -1207,6 +1206,9 @@ async function cancelOneContract(page, contract, { cancelDate = null, forceVoid 
     }
     await openContractPage(page, contract).catch(() => {});
     await waitActionPanel(page);
+    if (contract.isBadge) {
+      return { cancelled: false, reason: 'badge_void_failed', idc: contract.idc };
+    }
   }
 
   // IMPORTANT : Résilier — jamais « Annuler la vente » sur un abo déjà commencé
@@ -1573,4 +1575,7 @@ module.exports = {
   isAppliquerQuitterLabel,
   parseFrDatesFromLabel,
   contractStartDate,
+  voidPendingSaleIfPossible,
+  openContractPage,
+  waitActionPanel,
 };
