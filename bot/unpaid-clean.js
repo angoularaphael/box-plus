@@ -1,6 +1,7 @@
 /**
  * Supprime toutes les échéances impayées d’une fiche membre Deciplus.
- * Les impayés bloquent la migration de salle.
+ * Les impayés bloquent la migration de salle et forcent « Paiement Comptant »
+ * sur une nouvelle vente — d’où un 4× / abo SEPA enregistré en cash.
  */
 const { randomDelay, loadJson } = require('../lib/utils');
 const { logInfo, logWarn } = require('../lib/logger');

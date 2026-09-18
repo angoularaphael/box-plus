@@ -736,6 +736,68 @@ async function ensurePaiementComptantOff(page, { strict = false } = {}) {
   return true;
 }
 
+function saleWantsPrelevement(productConfig = {}) {
+  if (productConfig.paiement_comptant === true) return false;
+  if (productConfig.create_sale === false) return false;
+  const type = String(productConfig.sale_type || '').toLowerCase();
+  if (type === 'none') return false;
+  if (isCartePrestationConfig(productConfig) && !isBadgeSale(productConfig)) return false;
+  return type === 'abonnement' || type === 'carte' || isBadgeSale(productConfig);
+}
+
+async function dismissUnpaidSaleWarnings(page) {
+  const scopes = [page, ...(page.frames?.() || [])];
+  for (const ctx of scopes) {
+    try {
+      const dialog = ctx
+        .locator('[role="dialog"], .el-message-box, .el-dialog, .el-overlay, .modal, .swal2-popup, .ui-dialog, .ari-modal')
+        .filter({ hasText: /impay/i })
+        .first();
+      if ((await dialog.count()) === 0 || !(await dialog.isVisible().catch(() => false))) continue;
+      const btn = dialog
+        .locator('button, .ari-button, [role="button"]')
+        .filter({ hasText: /ignorer|continuer|valider|confirmer|ok|oui|fermer/i })
+        .first();
+      if ((await btn.count()) > 0 && (await btn.isVisible().catch(() => false))) {
+        await btn.click({ force: true }).catch(() => {});
+        logInfo('Vente Deciplus — avertissement impayés ignoré');
+        await randomDelay(400, 700);
+      }
+    } catch {
+      /* frame */
+    }
+  }
+}
+
+/**
+ * Deciplus force « Paiement Comptant » tant qu’il reste des échéances Impayé.
+ * Pour un prélèvement, on continue quand même : on retire ces lignes de la fiche
+ * (la dette reste en historique) afin de poser le nouvel échéancier SEPA.
+ */
+async function preparePrelevementDespiteUnpaid(page, memberId, gymConfig, productConfig = {}) {
+  if (!memberId || !saleWantsPrelevement(productConfig)) return { unpaid: 0 };
+  const { countUnpaidRows, deleteUnpaidOnMember } = require('./unpaid-clean');
+  await dismissUnpaidSaleWarnings(page);
+  const unpaid = await countUnpaidRows(page).catch(() => 0);
+  if (!unpaid) return { unpaid: 0 };
+  logWarn('Impayés Deciplus — on pose quand même la vente prélèvement', {
+    member_id: memberId,
+    unpaid,
+  });
+  const cleaned = await deleteUnpaidOnMember(page, memberId, gymConfig).catch((err) => {
+    logWarn('Impayés non nettoyés — poursuite prélèvement', {
+      member_id: memberId,
+      error: err.message,
+    });
+    return { deleted: 0, remaining: unpaid, error: err.message };
+  });
+  await closeGreyboxIfOpen(page).catch(() => {});
+  await dismissJqueryUiOverlay(page).catch(() => {});
+  await openMemberCheck(page, memberId, gymConfig).catch(() => {});
+  await randomDelay(600, 1000);
+  return { unpaid, cleaned };
+}
+
 function resolveBadgePrelevementDelayDays(productConfig = {}) {
   // Défaut : 7 jours — le J+3 (~72h) passait avant le 1er SEPA et restait « À faire ».
   const min = Number(
@@ -2233,6 +2295,7 @@ async function applyBadgeConfigModal(page, productConfig, _memberId = null) {
     });
     await ensurePaiementComptantOn(page, { strict: false }).catch(() => {});
   } else {
+    await dismissUnpaidSaleWarnings(page);
     await ensurePaiementComptantOff(page, { strict: true });
     await randomDelay(200, 400);
     const ctx = await resolveDeciplusWorkPage(page);
@@ -2443,11 +2506,14 @@ async function applyConfigModal(page, productConfig, memberId = null) {
     .waitFor({ state: 'visible', timeout: 15000 })
     .catch(() => {});
 
+  await dismissUnpaidSaleWarnings(page);
+
   if (productConfig.paiement_comptant === true) {
     // Offre déjà payée Stripe : laisser / forcer Paiement Comptant ON, pas de RIB
     await ensurePaiementComptantOn(page, { strict: true });
-  } else if (productConfig.paiement_comptant === false) {
-    await ensurePaiementComptantOff(page);
+  } else if (saleWantsPrelevement(productConfig) || productConfig.paiement_comptant === false) {
+    await dismissUnpaidSaleWarnings(page);
+    await ensurePaiementComptantOff(page, { strict: true });
   }
 
   if (productConfig.restore_start_fr || productConfig.restore_end_fr) {
@@ -2493,7 +2559,7 @@ async function applyConfigModal(page, productConfig, memberId = null) {
     }).catch(() => false);
   }
   if (ignored) {
-    logInfo('Vente Deciplus — étape RIB ignorée');
+    logInfo('Vente Deciplus — étape RIB / impayés ignorée');
     await randomDelayStable(600, 1000);
   }
 }
@@ -2850,6 +2916,9 @@ async function reconcileActiveBadges(page, memberId, gymConfig, { keepOne = fals
 }
 
 async function buyCarteBadge(page, productConfig, gymConfig, memberId = null) {
+  if (memberId && saleWantsPrelevement(productConfig)) {
+    await preparePrelevementDespiteUnpaid(page, memberId, gymConfig, productConfig);
+  }
   if (memberId && isBadgeSale(productConfig)) {
     const { findActiveContracts } = require('./cancel-sale');
     await closeGreyboxIfOpen(page).catch(() => {});
@@ -3034,6 +3103,15 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
   await closeGreyboxIfOpen(page);
   await openMemberCheck(page, memberId, gymConfig);
   await randomDelay(1000, 1800);
+
+  if (saleWantsPrelevement(productConfig) || saleWantsPrelevement(options.badgeProductConfig || {})) {
+    await preparePrelevementDespiteUnpaid(
+      page,
+      memberId,
+      gymConfig,
+      saleWantsPrelevement(productConfig) ? productConfig : options.badgeProductConfig
+    );
+  }
 
   if (productConfig.paiement_comptant === true) {
     const addr = ribAddressFields(order.customer || {}, gymConfig);
@@ -3544,4 +3622,5 @@ module.exports = {
   reconcileActiveBadges,
   isTrialPrestationConfig,
   annotateMember,
+  saleWantsPrelevement,
 };

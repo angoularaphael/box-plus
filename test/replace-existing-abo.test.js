@@ -310,6 +310,14 @@ test('échéance badge : gymConfig est un argument (plus de ReferenceError)', ()
   assert.match(src, /enforceBadgeEcheance\(page, memberId, badgeProductConfig, gymConfig\)/);
 });
 
+test('prélèvement : impayés ne bloquent pas la vente', () => {
+  const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/sale.js'), 'utf8');
+  assert.match(src, /function saleWantsPrelevement/);
+  assert.match(src, /preparePrelevementDespiteUnpaid/);
+  assert.match(src, /Impayés Deciplus — on pose quand même la vente prélèvement/);
+  assert.match(src, /ensurePaiementComptantOff\(page, \{ strict: true \}\)/);
+});
+
 test('badge impayé : Résilier, jamais Annuler la vente', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/cancel-sale.js'), 'utf8');
   assert.match(src, /!contract\.isBadge/);
