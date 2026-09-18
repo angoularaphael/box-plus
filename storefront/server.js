@@ -4237,8 +4237,16 @@ function createApp() {
         payMethod === 'scalapay' ||
         planLabel === 'scalapay' ||
         String(req.body.payment_method || '').toLowerCase() === 'scalapay';
-      // 4× CB puis RIB retiré — remplacé par Scalapay sur les offres éligibles.
-      const payplug4xPrelev = false;
+      // 4× CB puis RIB (PayPlug) — coexiste avec Scalapay sur les offres éligibles.
+      const payplug4xPrelev =
+        planLabel === '4x' &&
+        preferredCheckout !== 'paypal' &&
+        preferredCheckout !== 'cawl' &&
+        preferredCheckout !== 'scalapay' &&
+        (billingPlan === 'rib' ||
+          String(req.body.billing_plan || '').toLowerCase() === 'rib' ||
+          payMethod === 'payplug') &&
+        productSupportsInstallmentChoice(product);
 
       if (preferScalapay) {
         if (!gymSupportsScalapay(gym)) {
@@ -4530,32 +4538,32 @@ function createApp() {
         });
       }
 
-      if (payplug4xPrelev) {
-        return res.status(400).json({
-          ok: false,
-          error: gymSupportsScalapay(gym)
-            ? 'Le paiement CB puis RIB a été retiré. Choisissez CB en plusieurs fois, ou réglez en une fois.'
-            : 'Le paiement CB puis RIB a été retiré. À Portet, choisissez PayPal 4× sans frais ou réglez en une fois.',
-          suggest_scalapay: supportsScalapayCheckout(product, gym),
-          suggest_card: true,
-        });
-      }
-
-      // ——— Carte PayPlug : 1× hosted (4× Oney éventuel) ———
+      // ——— Carte PayPlug : 1× hosted, 4× CB+RIB, ou 4× Oney éventuel ———
       if (!isPayplugEnabled()) {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
 
-      if (planLabel === '4x' && preferredCheckout !== 'paypal') {
+      if (planLabel === '4x' && preferredCheckout !== 'paypal' && !payplug4xPrelev) {
         return res.status(400).json({
           ok: false,
           error: gymSupportsScalapay(gym)
-            ? 'Pour payer en plusieurs fois, choisissez CB en plusieurs fois.'
+            ? 'Pour payer en plusieurs fois, choisissez CB en plusieurs fois, 4× CB puis RIB, ou PayPal 4×.'
             : 'À Portet, pour payer en plusieurs fois, choisissez PayPal 4× sans frais.',
           suggest_scalapay: supportsScalapayCheckout(product, gym),
           suggest_card: true,
           suggest_paypal: true,
         });
+      }
+
+      if (payplug4xPrelev) {
+        order.requires_iban = true;
+        order.payment = {
+          ...(order.payment || {}),
+          billing_plan: 'rib',
+          payment_plan: '4x',
+          preferred_checkout: 'payplug',
+        };
+        await saveOrderAsync(order);
       }
 
       const customerOverrides = {
@@ -4571,7 +4579,25 @@ function createApp() {
 
       try {
         let payment;
-        if (planLabel === '4x') {
+        if (payplug4xPrelev) {
+          const quarterCents = Math.round(Number(product.price_cents || 0) / 4);
+          payment = await createHostedPayment({
+            order: {
+              ...order,
+              customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
+            },
+            product,
+            baseUrl,
+            amountCents: quarterCents,
+            description: `${product.display_name || product.name || 'Offre 12 mois'} — 1ʳᵉ échéance 4×`,
+            metadata: {
+              payment_plan: '4x',
+              billing_plan: 'rib',
+              payplug_4x_prelevement: '1',
+            },
+            customerOverrides,
+          });
+        } else if (planLabel === '4x') {
           payment = await createFourTimesPayment({
             order: {
               ...order,
@@ -4602,12 +4628,13 @@ function createApp() {
           ...order.payment,
           method: 'payplug',
           payment_plan: planLabel === '4x' ? '4x' : 'once',
-          billing_plan: order.payment?.billing_plan || billingPlan || null,
+          billing_plan: payplug4xPrelev ? 'rib' : order.payment?.billing_plan || billingPlan || null,
           preferred_checkout: 'payplug',
           payplug_payment_ids: rememberPreviousPayplugId(order.payment, payment.id),
           payplug_payment_id: payment.id,
           status: 'pending',
         };
+        if (payplug4xPrelev) order.requires_iban = true;
         if (customerOverrides.address) {
           order.customer_full = {
             ...(order.customer_full || {}),
@@ -4625,7 +4652,7 @@ function createApp() {
         }
         return res.json({
           ok: true,
-          mode: planLabel === '4x' ? 'payplug_4x' : 'payplug',
+          mode: payplug4xPrelev ? 'payplug_4x_prelevement' : planLabel === '4x' ? 'payplug_4x' : 'payplug',
           url,
           payment_id: payment.id,
         });
@@ -5163,11 +5190,73 @@ function createApp() {
       }
 
       if (paymentPlan === '4x' && productSupportsInstallmentChoice(product) && !preferPaypal && !preferCawl) {
-        return res.status(400).json({
-          ok: false,
-          error: 'Le paiement CB puis RIB a été retiré. À Portet, choisissez PayPal 4× sans frais ou réglez en une fois.',
-          suggest_scalapay: supportsScalapayCheckout(product, body.gym || gymNorm),
-          suggest_card: true,
+        const quarterCents = Math.round(Number(product.price_cents || 0) / 4);
+        const syntheticOrder = {
+          order_id: body.verify_order_id || `chg-${Date.now()}`,
+          customer_short: {
+            first_name: body.first_name,
+            last_name: body.last_name,
+            email: body.email,
+            phone: body.phone,
+          },
+          customer_full: {
+            first_name: body.first_name,
+            last_name: body.last_name,
+            email: body.email,
+            phone: body.phone,
+            gym: body.gym || 'minimes',
+            address: body.address,
+            postal_code: body.postal_code,
+            city: body.city,
+            gender: body.gender,
+          },
+        };
+        const payment = await createHostedPayment({
+          order: syntheticOrder,
+          product,
+          baseUrl,
+          amountCents: quarterCents,
+          description: `${product.display_name || product.name || 'Abonnement'} — 1ʳᵉ échéance 4×`,
+          metadata: {
+            order_type: 'membership_change',
+            payment_plan: '4x',
+            billing_plan: 'rib',
+            payplug_4x_prelevement: '1',
+          },
+          customerOverrides: {
+            first_name: body.first_name,
+            last_name: body.last_name,
+            email: body.email,
+            phone: body.phone,
+            address: body.address,
+            postal_code: body.postal_code,
+            city: body.city,
+            gender: body.gender,
+          },
+          returnUrl: `${baseUrl}/gerer-abonnement?change=1&payplug_return=1`,
+          cancelUrl: `${baseUrl}/gerer-abonnement?change=cancelled`,
+        });
+        const url = hostedPaymentUrl(payment);
+        if (!url) return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
+        await saveMembershipChangePending(payment.id, {
+          ...meta,
+          payment_method: 'payplug',
+          payment_plan: '4x',
+          billing_plan: 'rib',
+          payplug_payment_id: payment.id,
+        });
+        return res.json({
+          ok: true,
+          mode: 'payplug_4x_prelevement',
+          url,
+          payment_id: payment.id,
+          product: {
+            id: product.id,
+            name: product.display_name || product.name,
+            price_label: product.price_label || product.marketing_price_label,
+            price_cents: product.price_cents,
+            supports_installment_choice: productSupportsInstallmentChoice(product),
+          },
         });
       }
 
@@ -6222,7 +6311,10 @@ function createApp() {
       portet_paused: display.portetPaused === true,
       portet_paused_message: display.portetPaused ? display.portetPausedMessage || PORTET_PAUSED_MESSAGE : null,
       oney_4x: false,
-      payplug_4x_prelevement: false,
+      payplug_4x_prelevement:
+        display.portetViaCawl !== true &&
+        display.portetPaypal4x !== true &&
+        isPayplugEnabled(),
       oney_4x_message: null,
       scalapay: isPayplugEnabled() && isScalapayEnabled(),
       scalapay_min_cents: SCALAPAY_MIN_CENTS,

@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Smoke HTTP — Scalapay réservé aux 4 offres, RIB 4× retiré, config frais/email.
+ * Smoke HTTP — Scalapay réservé aux 4 offres, 4× CB+RIB disponible, config frais/email.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -84,13 +84,13 @@ test('boutique matériel — Scalapay refusé (carte uniquement)', async (t) => 
   assert.ok(res.status >= 400);
 });
 
-test('config paiements — Scalapay ON, 4× RIB OFF, textes frais/email', async (t) => {
+test('config paiements — Scalapay ON, 4× RIB ON si PayPlug, textes frais/email', async (t) => {
   const { server, base } = await listen(createApp());
   t.after(() => new Promise((resolve) => server.close(resolve)));
 
   const { data } = await json(base, '/api/payments/config?gym=minimes');
   assert.equal(data.ok, true);
-  assert.equal(data.payplug_4x_prelevement, false);
+  assert.equal(data.payplug_4x_prelevement, Boolean(data.payplug));
   assert.equal(data.oney_4x, false);
   assert.equal(data.scalapay, true);
   assert.match(String(data.scalapay_fees_hint || ''), /1,?5\s*%|3×/i);
@@ -186,7 +186,7 @@ test('pay Scalapay — offre non éligible refusée', async (t) => {
   assert.equal(data.code, 'scalapay_offer_ineligible');
 });
 
-test('pay 4× RIB — rejeté', async (t) => {
+test('pay 4× RIB — accepté (mode prélevement ou erreur PayPlug API)', async (t) => {
   const { server, base } = await listen(createApp());
   t.after(() => new Promise((resolve) => server.close(resolve)));
 
@@ -200,6 +200,17 @@ test('pay 4× RIB — rejeté', async (t) => {
       billing_plan: 'rib',
     }),
   });
-  assert.equal(data.ok, false);
-  assert.match(String(data.error || ''), /RIB|Scalapay|retir|plusieurs fois/i);
+  if (data.ok) {
+    assert.equal(data.mode, 'payplug_4x_prelevement');
+    assert.ok(data.url);
+  } else {
+    assert.notEqual(data.code, 'scalapay_offer_ineligible');
+    assert.doesNotMatch(String(data.error || ''), /retiré/i);
+    assert.ok(
+      /payplug|carte|customer|config|API key|not valid|indisponible/i.test(
+        String(data.error || data.code || '')
+      ),
+      JSON.stringify(data)
+    );
+  }
 });

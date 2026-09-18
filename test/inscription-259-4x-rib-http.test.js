@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Tunnel inscription navigateur — offre 259 € avec Scalapay (RIB 4× retiré).
+ * Tunnel inscription navigateur — offre 259 € avec Scalapay + 4× CB puis RIB.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -88,7 +88,7 @@ function inscriptionUrl(base, orderId, token, step) {
   return `${base}/inscription?order=${encodeURIComponent(orderId)}&token=${tok}&bc_token=${tok}&step=${step}`;
 }
 
-test('tunnel inscription navigateur — 259 € Scalapay (pas de RIB 4×)', async (t) => {
+test('tunnel inscription navigateur — 259 € Scalapay et option 4× CB puis RIB', async (t) => {
   let chromium;
   try {
     ({ chromium } = require('playwright'));
@@ -101,7 +101,7 @@ test('tunnel inscription navigateur — 259 € Scalapay (pas de RIB 4×)', asyn
   t.after(() => new Promise((resolve) => server.close(resolve)));
 
   const payCfg = await json(base, '/api/payments/config?gym=minimes');
-  assert.equal(payCfg.data.payplug_4x_prelevement, false);
+  assert.equal(payCfg.data.payplug_4x_prelevement, Boolean(payCfg.data.payplug));
   assert.equal(payCfg.data.scalapay, true);
   assert.match(String(payCfg.data.scalapay_fees_hint || ''), /1,?5\s*%|3×/i);
   assert.match(String(payCfg.data.scalapay_refusal_help || ''), /boxingcenter31@gmail\.com/i);
@@ -119,6 +119,9 @@ test('tunnel inscription navigateur — 259 € Scalapay (pas de RIB 4×)', asyn
 
   await page.goto(payUrl, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForSelector('input[name="payment_plan"][value="scalapay"]', { timeout: 15000 });
+  if (payCfg.data.payplug_4x_prelevement) {
+    await page.waitForSelector('input[name="payment_plan"][value="4x-rib"]', { timeout: 5000 });
+  }
   await page.check('input[name="payment_plan"][value="scalapay"]');
 
   const helpText = await page.locator('#scalapayHelpBox').innerText();
@@ -132,8 +135,10 @@ test('tunnel inscription navigateur — 259 € Scalapay (pas de RIB 4×)', asyn
   assert.match(payBtnText, /paiement CB|CB/i);
 
   const pageText = await page.locator('body').innerText();
-  assert.doesNotMatch(pageText, /CB puis RIB|3 prochains paiements sur votre RIB/i);
-  assert.match(pageText, /PayPal 4× sans frais|CB en plusieurs fois/i);
+  assert.match(pageText, /CB en plusieurs fois/i);
+  if (payCfg.data.payplug_4x_prelevement) {
+    assert.match(pageText, /4× sans frais CB puis RIB|3 prochains paiements sur votre RIB/i);
+  }
 
   await markPaymentPaid(order_id, {
     method: 'payplug',

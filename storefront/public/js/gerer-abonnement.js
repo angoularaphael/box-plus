@@ -406,8 +406,15 @@
     const showPaypalOnce = portetViaCawl ? false : changePayFlags.showPaypal;
     const showPaypalFour = portetViaCawl ? portetPaypal4x : changePayFlags.showPaypal;
     const showPaypal = showPaypalOnce;
-    // 4× CB puis RIB retiré — PayPal 4× uniquement pour le changement d’offre.
-    const fourPayplugAvailable = false;
+    const cents = Number(product?.price_cents || 0);
+    const quart = cents > 0 ? (cents / 400).toFixed(2).replace('.', ',') : '';
+    const installment =
+      product?.supports_installment_choice === true ||
+      product?.id === 'offre-saison' ||
+      /259|12\s*mois|baby|educative|éducative/i.test(String(product?.name || product?.id || ''));
+    const payplug4xPrelev =
+      installment && !portetViaCawl && !portetPaypal4x && changePayFlags.payplug4xPrelevement === true;
+    const fourPayplugAvailable = showCard && payplug4xPrelev;
     const portetViaPaypal = !portetViaCawl && changePayFlags.portetViaPaypal === true && showPaypal;
     const cardLogoKind = portetViaPaypal ? 'card-paypal' : 'card';
     const cardSmall = portetViaCawl
@@ -415,12 +422,6 @@
       : portetViaPaypal
         ? 'Carte via PayPal'
         : 'Carte bancaire';
-    const cents = Number(product?.price_cents || 0);
-    const quart = cents > 0 ? (cents / 400).toFixed(2).replace('.', ',') : '';
-    const installment =
-      product?.supports_installment_choice === true ||
-      product?.id === 'offre-saison' ||
-      /259|12\s*mois|baby|educative|éducative/i.test(String(product?.name || product?.id || ''));
 
     const methodRow = (name, value, checked, title, small, logoKind) => `
       <label class="billing-choice">
@@ -479,8 +480,12 @@
             'change_payment_plan',
             '4x',
             false,
-            'PayPal 4× sans frais',
-            'Pay Later · distinct du CB plusieurs fois · si éligible'
+            fourPayplugAvailable || showPaypalFour ? 'En 4× sans frais' : 'PayPal 4× sans frais',
+            fourPayplugAvailable
+              ? quart
+                ? `4× ${quart} € PayPal ou CB`
+                : '4× PayPal ou CB'
+              : 'Pay Later · si éligible'
           )}
         </div>
         <div id="changeFourXSchedule" class="fourx-schedule" style="display:none;margin-top:10px"></div>
@@ -489,7 +494,22 @@
           ${methods('change_pay_method_once', 'payplug', 'paypal', 'Carte bancaire', cardSmall, cardLogoKind, 'Paiement sécurisé')}
         </div>
         <div id="changeFourMethods" class="billing-choice-row" style="display:none">
-          ${methods('change_pay_method_4x', 'payplug', 'paypal', 'Carte', '', 'card', '4× sans frais via PayPal (Pay Later si éligible)', { showCard: false, showPaypal: showPaypalFour, preferPaypal: true })}
+          ${methods(
+            'change_pay_method_4x',
+            portetViaCawl ? 'cawl' : 'payplug',
+            'paypal',
+            '4× sans frais CB puis RIB',
+            portetViaCawl
+              ? 'Carte bancaire'
+              : `${quart} € aujourd’hui<br>3 prochains paiements sur votre RIB`,
+            'card',
+            '4× sans frais via PayPal (Pay Later si éligible)',
+            {
+              showCard: fourPayplugAvailable,
+              showPaypal: showPaypalFour,
+              preferPaypal: !fourPayplugAvailable && showPaypalFour,
+            }
+          )}
         </div>
         ${
           showCard && portetViaCawl
@@ -533,8 +553,28 @@
         if (schedule) {
           schedule.style.display = plan === '4x' ? '' : 'none';
           if (plan === '4x') {
-            schedule.innerHTML = `<p class="fourx-schedule__title">PayPal 4× sans frais</p>
-                <p class="fourx-schedule__note">Distinct du paiement CB en plusieurs fois. PayPal affiche le montant total. Le 4× n’apparaît que si votre compte est éligible (Pay Later) — aucun frais supplémentaire.</p>`;
+            const fourMethod =
+              document.querySelector('input[name="change_pay_method_4x"]:checked')?.value || 'payplug';
+            if (payplug4xPrelev && fourMethod === 'payplug') {
+              const today = new Date();
+              const dates = [0, 30, 60, 90].map((d) => {
+                const x = new Date(today);
+                x.setDate(x.getDate() + d);
+                return x.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+              });
+              schedule.innerHTML = `<p class="fourx-schedule__title">Pour le 4× sans frais CB</p>
+                <p class="fourx-schedule__lead"><strong>Aujourd’hui : ${quart}&nbsp;€ CB</strong></p>
+                <p class="fourx-schedule__note">Puis saisissez votre RIB dans le formulaire d’inscription pour les 3 autres paiements de ${quart}&nbsp;€.</p>
+                <ul>
+                  <li><strong>${dates[0]}</strong> — 1) CB : ${quart}&nbsp;€</li>
+                  <li><strong>${dates[1]}</strong> — 2) Prélèvement sur votre RIB : ${quart}&nbsp;€</li>
+                  <li><strong>${dates[2]}</strong> — 3) Prélèvement sur votre RIB : ${quart}&nbsp;€</li>
+                  <li><strong>${dates[3]}</strong> — 4) Prélèvement sur votre RIB : ${quart}&nbsp;€</li>
+                </ul>`;
+            } else {
+              schedule.innerHTML = `<p class="fourx-schedule__title">PayPal 4× sans frais</p>
+                <p class="fourx-schedule__note">PayPal affiche le montant total. Le 4× n’apparaît que si votre compte est éligible (Pay Later) — aucun frais supplémentaire.</p>`;
+            }
           }
         }
         if (addr) addr.style.display = 'none';
