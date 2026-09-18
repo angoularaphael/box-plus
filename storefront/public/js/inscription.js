@@ -518,11 +518,27 @@
       'Si Scalapay refuse votre carte, écrivez à boxingcenter31@gmail.com en expliquant votre situation : nous allons vous proposer une solution de paiement alternative.';
     return `<div class="scalapay-help" role="note">
       <p class="scalapay-help__fees"><strong>Frais Scalapay :</strong> ${esc(fees)}</p>
+      <p class="scalapay-help__mobile">Sur mobile (surtout iPhone), laissez charger 2 à 5&nbsp;s : la page de connexion s’affiche ensuite. Si elle reste blanche, revenez et appuyez sur « Continuer le paiement ».</p>
       <p class="scalapay-help__refusal">${esc(help).replace(
         /boxingcenter31@gmail\.com/g,
         '<a href="mailto:boxingcenter31@gmail.com">boxingcenter31@gmail.com</a>'
       )}</p>
     </div>`;
+  }
+
+  /** Navigation PSP : assign + top frame (évite pages blanches Safari / iframes). */
+  function goToPaymentUrl(url) {
+    const target = String(url || '').trim();
+    if (!target) return;
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.assign(target);
+        return;
+      }
+    } catch {
+      /* cross-origin frame */
+    }
+    window.location.assign(target);
   }
 
   function scalapayAddressFieldsHtml(full = {}) {
@@ -1693,10 +1709,10 @@
         return;
       }
       if (data.redirect) {
-        window.location.href = data.redirect;
+        goToPaymentUrl(data.redirect);
         return;
       }
-      if (data.url) window.location.href = data.url;
+      if (data.url) goToPaymentUrl(data.url);
     };
     bindBackButtons();
     const skipPayBtn = document.getElementById('aventureDossierBtn');

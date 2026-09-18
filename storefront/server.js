@@ -91,6 +91,10 @@ const {
   formatPayplugError,
 } = require('./lib/payplug');
 const {
+  buildPaymentRedirectUrl,
+  isPayplugTestPaymentUrl,
+} = require('./lib/payment-redirect');
+const {
   isPaypalEnabled,
   publicClientId: paypalPublicClientId,
   paypalAccountForGym,
@@ -4335,9 +4339,28 @@ function createApp() {
             };
           }
           await saveOrderAsync(order);
-          const url = hostedPaymentUrl(payment);
-          if (!url) {
+          const payUrl = hostedPaymentUrl(payment);
+          if (!payUrl) {
             return res.status(502).json({ ok: false, error: 'payplug_url_missing' });
+          }
+          // Page intermédiaire same-origin : évite les pages blanches iOS
+          // sur l’enchaînement PayPlug → portal.scalapay.com.
+          const cancelUrl = `${baseUrl}/inscription?order=${encodeURIComponent(order.order_id)}&token=${encodeURIComponent(order.access_token || '')}&bc_token=${encodeURIComponent(order.access_token || '')}&cancelled=1`;
+          const url = buildPaymentRedirectUrl(baseUrl, payUrl, {
+            kind: 'scalapay',
+            cancelUrl,
+          });
+          if (isPayplugTestPaymentUrl(payUrl) && !testPaymentsInfo().active) {
+            try {
+              const { sendAlert } = require('../lib/logger');
+              await sendAlert('Scalapay : URL PayPlug test en dehors du studio', {
+                order_id: order.order_id,
+                payment_id: payment.id,
+                action: 'scalapay_test_url_live',
+              });
+            } catch {
+              /* ignore */
+            }
           }
           return res.json({
             ok: true,
