@@ -58,8 +58,30 @@ describe('séance offerte — info_compta + défauts ami', () => {
     assert.deepEqual(validateOrder(order), []);
   });
 
+  it('autorise le dispatch d’une séance offerte même sans signature boutique', () => {
+    const { boutiqueSaleDispatchAllowed } = require('../lib/sale-dispatch-policy');
+    assert.equal(
+      boutiqueSaleDispatchAllowed({
+        order_id: 'SO-99',
+        sale_type: 'none',
+        create_sale: false,
+        product_id: 'seance-essai-offerte',
+      }),
+      true
+    );
+    assert.equal(boutiqueSaleDispatchAllowed({ order_id: 'BC-1' }), false);
+  });
+
   it('une séance offerte réussie sans vente n’est pas une revue manuelle', () => {
-    const { lifecycleFromBotOutcome, STATES } = require('../lib/job-lifecycle');
+    const { lifecycleFromBotOutcome, coerceCompletedTrialLifecycle, STATES } = require('../lib/job-lifecycle');
+    assert.equal(
+      coerceCompletedTrialLifecycle({
+        status: 'completed',
+        member_id: '22341',
+        lifecycle_state: STATES.MANUAL_REVIEW,
+      }),
+      STATES.VERIFIED
+    );
     assert.equal(
       lifecycleFromBotOutcome({ status: 'success', deciplus_member_id: '18178', deciplus_sale_id: null }),
       STATES.VERIFIED
