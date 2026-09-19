@@ -1814,7 +1814,7 @@ function createApp() {
         withTimeout(summarizeVisits(30), 4000, { unique_visitors: 0, pageviews: 0, top_pages: [], total: 0 }),
         withTimeout(
           require('./lib/seance-offerte-visits').summarizeSeanceOfferteVisits(14),
-          3000,
+          10000,
           { days: [], total: 0, flyer: 0, email: 0, whatsapp: 0, sms: 0, other: 0, inscriptions: { total: 0, flyer: 0, email: 0, whatsapp: 0, sms: 0, other: 0 }, conversion_pct: 0 }
         ),
         withTimeout(summarizeFunnelEvents(30), 3000, null),

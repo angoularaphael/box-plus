@@ -148,5 +148,36 @@ test('backoffice expose un onglet dédié et une API authentifiée paginée', ()
   assert.match(server, /app\.get\('\/api\/admin\/free-trials'/);
   assert.match(server, /isAuthorizedAdmin\(req\)/);
   assert.match(persistence, /listFreeTrialCandidatesPage/);
+  assert.match(persistence, /tunnel_leads/);
   assert.match(persistence, /\.range\(from, from \+ safePageSize - 1\)/);
+});
+
+test('orderFromTunnelLead reconstruit une séance offerte pour le backoffice', () => {
+  const { orderFromTunnelLead, isFreeTrialOrder, toFreeTrialAdminRow } = require('../storefront/lib/admin-free-trials');
+  const order = orderFromTunnelLead(
+    {
+      id: 'uuid-1',
+      created_at: '2026-09-19T15:24:48.976Z',
+      prenom: 'Milhan',
+      nom: 'Nomballais',
+      email: 'majda.o@gmx.fr',
+      telephone: '+33778185826',
+      salle: 'Boxing Center Portet',
+      meta: {
+        id: 'SO-1789831488273',
+        src: 'sms',
+        salle: 'portet',
+        status: 'confirmed',
+        product_id: 'seance-essai-offerte',
+      },
+    },
+    { member_id: '22353', status: 'completed', lifecycle_state: 'VERIFIED' }
+  );
+  assert.equal(isFreeTrialOrder(order), true);
+  assert.equal(order.order_id, 'SO-1789831488273');
+  assert.equal(order.deciplus_member_id, '22353');
+  const row = toFreeTrialAdminRow(order);
+  assert.equal(row.campaign_src, 'SMS');
+  assert.equal(row.name, 'Milhan Nomballais');
+  assert.equal(row.bot_status, 'success');
 });

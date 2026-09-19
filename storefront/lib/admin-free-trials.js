@@ -116,6 +116,75 @@ function campaignSrcLabel(order = {}) {
   return kind;
 }
 
+function leadStatusLabel(status) {
+  const st = String(status || '').toLowerCase();
+  if (st === 'confirmed' || st === 'done' || st === 'success') return 'Confirmée';
+  if (st === 'queued' || st === 'pending') return 'En file Deciplus';
+  if (st === 'error' || st === 'failed') return 'Erreur';
+  if (st === 'dry_run') return 'Test';
+  return status ? String(status) : 'Reçue';
+}
+
+/**
+ * Les inscriptions séance offerte vivent dans tunnel_leads (pas boxplus_orders).
+ * On normalise en « commande » pour réutiliser isFreeTrialOrder / toFreeTrialAdminRow.
+ */
+function orderFromTunnelLead(row = {}, job = null) {
+  const meta = row.meta && typeof row.meta === 'object' ? row.meta : {};
+  const orderId = String(meta.id || row.id || '').trim();
+  if (!orderId || /^pv-/i.test(orderId)) return null;
+  const src = meta.src || meta.source || meta.utm_source || '';
+  const memberId = job?.member_id || meta.deciplus_member_id || null;
+  const saleId = job?.sale_id || meta.deciplus_sale_id || null;
+  const jobState = String(job?.lifecycle_state || job?.status || '').toLowerCase();
+  let botStatus = meta.bot_status || null;
+  if (!botStatus && job) {
+    if (jobState === 'verified' || job?.status === 'completed') botStatus = 'success';
+    else if (jobState === 'manual_review' || job?.status === 'manual_review') botStatus = 'manual_review';
+    else if (jobState === 'failed' || job?.status === 'failed') botStatus = 'error';
+    else botStatus = job.status || job.lifecycle_state || null;
+  }
+  return {
+    order_id: orderId,
+    created_at: row.created_at || meta.created_at || null,
+    updated_at: meta.updated_at || row.created_at || null,
+    product_id: meta.product_id || 'seance-essai-offerte',
+    product_name: meta.product_name || 'SEANCE D ESSAI GRATUITE WEB',
+    product_snapshot: {
+      id: meta.product_id || 'seance-essai-offerte',
+      name: 'Séance d’essai offerte',
+      display_name: 'Séance d’essai offerte',
+      price_cents: 0,
+      requires_payment: false,
+    },
+    source: 'seance-offerte-web',
+    requires_payment: false,
+    payment: { amount: 0, status: 'free' },
+    customer_short: {
+      first_name: row.prenom || meta.prenom || '',
+      last_name: row.nom || meta.nom || '',
+      email: row.email || meta.email || null,
+      phone: row.telephone || meta.tel || null,
+    },
+    customer_full: {
+      gym: meta.salle || null,
+      address: meta.adresse || meta.address || null,
+      postal_code: meta.code_postal || meta.postal_code || null,
+      city: meta.ville || meta.city || null,
+    },
+    gym: meta.salle || null,
+    utm: { source: src },
+    status: leadStatusLabel(meta.status),
+    deciplus_member_id: memberId,
+    deciplus_sale_id: saleId,
+    bot_status: botStatus,
+    bot_error: job?.error_message || meta.last_error || null,
+    signature: meta.signed_at ? { signed_at: meta.signed_at } : null,
+    visit_date: meta.visit_date || null,
+    ami: meta.ami || null,
+  };
+}
+
 function toFreeTrialAdminRow(order = {}) {
   const customer = customerDetails(order);
   const step = Number(order.step || 0);
@@ -163,6 +232,7 @@ module.exports = {
   hasExplicitZeroAmount,
   hasFreeTrialIdentity,
   isFreeTrialOrder,
+  orderFromTunnelLead,
   toFreeTrialAdminRow,
   buildFreeTrialRows,
   compareNewestFirst,

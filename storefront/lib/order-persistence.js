@@ -617,36 +617,101 @@ const FREE_TRIAL_ZERO_FILTER = [
   'payload->>requires_payment.eq.false',
 ].join(',');
 
+async function enrichFreeTrialsWithJobs(orders = []) {
+  if (!useRemoteStore() || !orders.length) return orders;
+  const ids = [...new Set(orders.map((o) => o.order_id).filter(Boolean))];
+  if (!ids.length) return orders;
+  const sb = getSupabase();
+  const jobMap = new Map();
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100);
+    const { data, error } = await sb
+      .from('boxplus_job_actions')
+      .select('order_id, status, lifecycle_state, error_message, member_id, sale_id')
+      .in('order_id', chunk)
+      .eq('action', 'sale');
+    if (error) {
+      logWarn('Enrichissement jobs séances offertes', { error: error.message });
+      break;
+    }
+    for (const job of data || []) jobMap.set(job.order_id, job);
+  }
+  return orders.map((order) => {
+    const job = jobMap.get(order.order_id);
+    if (!job) return order;
+    const state = String(job.lifecycle_state || job.status || '').toLowerCase();
+    let botStatus = order.bot_status;
+    if (!botStatus) {
+      if (state === 'verified' || job.status === 'completed') botStatus = 'success';
+      else if (state === 'manual_review' || job.status === 'manual_review') botStatus = 'manual_review';
+      else if (state === 'failed' || job.status === 'failed') botStatus = 'error';
+      else botStatus = job.status || job.lifecycle_state || null;
+    }
+    return {
+      ...order,
+      deciplus_member_id: order.deciplus_member_id || job.member_id || null,
+      deciplus_sale_id: order.deciplus_sale_id || job.sale_id || null,
+      bot_status: botStatus,
+      bot_error: order.bot_error || job.error_message || null,
+    };
+  });
+}
+
 /**
- * Candidats séances gratuites, paginés côté stockage.
- * Le filtre métier définitif reste appliqué après reconstruction de la commande.
+ * Séances d’essai offertes : source de vérité = tunnel_leads (bc-seance-offerte).
+ * Repli boxplus_orders pour d’éventuels dossiers legacy.
  */
 async function listFreeTrialCandidatesPage({ page = 1, pageSize = 25 } = {}) {
   const safePage = Math.max(1, Math.trunc(Number(page) || 1));
   const safePageSize = Math.min(100, Math.max(1, Math.trunc(Number(pageSize) || 25)));
   const from = (safePage - 1) * safePageSize;
+  const { orderFromTunnelLead, isFreeTrialOrder, compareNewestFirst } = require('./admin-free-trials');
 
   if (useRemoteStore()) {
     const sb = getSupabase();
     const { data, error, count } = await sb
-      .from('boxplus_orders')
-      .select(SLIM_SELECT, { count: 'exact' })
-      .or(FREE_TRIAL_CANDIDATE_FILTER)
-      .or(FREE_TRIAL_ZERO_FILTER)
-      .not('order_id', 'ilike', 'TEST-%')
-      .not('order_id', 'ilike', 'DEMO-%')
+      .from('tunnel_leads')
+      .select('*', { count: 'exact' })
+      .eq('tunnel', 'seance_essai')
       .order('created_at', { ascending: false })
       .range(from, from + safePageSize - 1);
     if (error) throw error;
+
+    let orders = (data || [])
+      .map((row) => orderFromTunnelLead(row))
+      .filter(Boolean)
+      .filter(isFreeTrialOrder);
+
+    if (!orders.length && Number(count || 0) === 0) {
+      const legacy = await sb
+        .from('boxplus_orders')
+        .select(SLIM_SELECT, { count: 'exact' })
+        .or(FREE_TRIAL_CANDIDATE_FILTER)
+        .or(FREE_TRIAL_ZERO_FILTER)
+        .not('order_id', 'ilike', 'TEST-%')
+        .not('order_id', 'ilike', 'DEMO-%')
+        .order('created_at', { ascending: false })
+        .range(from, from + safePageSize - 1);
+      if (legacy.error) throw legacy.error;
+      orders = (legacy.data || []).map(reconstructOrderFromListRow).filter(Boolean);
+      orders = await enrichFreeTrialsWithJobs(orders);
+      return {
+        orders,
+        total: Number(legacy.count || 0),
+        page: safePage,
+        page_size: safePageSize,
+      };
+    }
+
+    orders = await enrichFreeTrialsWithJobs(orders);
     return {
-      orders: (data || []).map(reconstructOrderFromListRow).filter(Boolean),
+      orders,
       total: Number(count || 0),
       page: safePage,
       page_size: safePageSize,
     };
   }
 
-  const { isFreeTrialOrder, compareNewestFirst } = require('./admin-free-trials');
   const all = listOrdersFromFs()
     .filter(isFreeTrialOrder)
     .sort(compareNewestFirst)

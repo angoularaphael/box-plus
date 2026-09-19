@@ -2,6 +2,27 @@
 
 const { getSupabase } = require('./supabase');
 
+const PAGE_SIZE = 1000;
+const MAX_ROWS = 20000;
+
+/**
+ * Supabase plafonne à 1000 lignes par défaut — sans pagination les stats
+ * séances offertes « n’avancent plus » une fois le plafond atteint.
+ */
+async function fetchAllSince(sb, table, { select, filters = [], since, orderCol = 'created_at' } = {}) {
+  const out = [];
+  for (let from = 0; from < MAX_ROWS; from += PAGE_SIZE) {
+    let q = sb.from(table).select(select).gte(orderCol, since).order(orderCol, { ascending: true });
+    for (const apply of filters) q = apply(q);
+    const { data, error } = await q.range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const batch = data || [];
+    out.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+  }
+  return out;
+}
+
 async function summarizeSeanceOfferteVisits(days = 14) {
   let supabase;
   try {
@@ -11,21 +32,27 @@ async function summarizeSeanceOfferteVisits(days = 14) {
   }
   if (!supabase) return emptySummary();
   const since = new Date(Date.now() - days * 86400000).toISOString();
-  const [visitsRes, leadsRes] = await Promise.all([
-    supabase
-      .from('seance_offerte_leads')
-      .select('src,created_at')
-      .eq('status', 'pageview')
-      .gte('created_at', since),
-    supabase
-      .from('tunnel_leads')
-      .select('created_at,meta')
-      .eq('tunnel', 'seance_essai')
-      .gte('created_at', since),
-  ]);
+  let visits = [];
+  let leads = [];
+  try {
+    [visits, leads] = await Promise.all([
+      fetchAllSince(supabase, 'seance_offerte_leads', {
+        select: 'src,created_at',
+        since,
+        filters: [(q) => q.eq('status', 'pageview')],
+      }),
+      fetchAllSince(supabase, 'tunnel_leads', {
+        select: 'created_at,meta',
+        since,
+        filters: [(q) => q.eq('tunnel', 'seance_essai')],
+      }),
+    ]);
+  } catch {
+    return emptySummary();
+  }
 
-  const clicks = summarizeVisitRows(visitsRes.error ? [] : visitsRes.data);
-  const inscriptions = summarizeInscriptionRows(leadsRes.error ? [] : leadsRes.data);
+  const clicks = summarizeVisitRows(visits);
+  const inscriptions = summarizeInscriptionRows(leads);
   return {
     ...clicks,
     clicks,
@@ -152,4 +179,5 @@ module.exports = {
   campaignSrcOf,
   visitSourceLabel,
   conversionPct,
+  fetchAllSince,
 };
