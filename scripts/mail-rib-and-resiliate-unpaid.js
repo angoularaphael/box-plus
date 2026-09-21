@@ -246,13 +246,36 @@ async function openEcheanceDetail(frame, page, eid) {
   return text;
 }
 
+async function resolveEcheanceFrame(page, { needRows = false } = {}) {
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
+    const frames = page
+      .frames()
+      .filter((f) => /presta_echeance\.php/i.test(f.url()) && !/legacy/i.test(f.url()));
+    for (const f of frames) {
+      const meta = await f
+        .evaluate(() => ({
+          d1: (document.querySelector('input[name="datec1"]') || {}).value || '',
+          tr: document.querySelectorAll('table tr').length,
+        }))
+        .catch(() => null);
+      if (!meta) continue;
+      if (needRows && meta.tr < 5) continue;
+      if (meta.d1 || meta.tr > 0) return f;
+    }
+    await page.waitForTimeout(400);
+  }
+  return (
+    page.frames().find((f) => /presta_echeance\.php\?_vue_iframe/i.test(f.url())) ||
+    page.frames().find((f) => /presta_echeance\.php/i.test(f.url()) && !/legacy/i.test(f.url())) ||
+    null
+  );
+}
+
 async function findEcheanceContext(page) {
   const deadline = Date.now() + 20000;
   while (Date.now() < deadline) {
-    const frame =
-      page.frames().find((f) => /presta_echeance\.php\?_vue_iframe/i.test(f.url())) ||
-      page.frames().find((f) => /presta_echeance\.php/i.test(f.url()) && !/legacy/i.test(f.url())) ||
-      page.frames().find((f) => /payments-schedules/i.test(f.url()) && f !== page.mainFrame());
+    const frame = await resolveEcheanceFrame(page);
     if (frame) {
       const ready = await frame
         .locator('input[name="datec1"], #btFilter')
@@ -316,10 +339,7 @@ async function applyUnpaidDateFilter(frame) {
 async function scrapeUnpaidWithIds(page) {
   let frame = await openEcheancierPage(page);
   await applyUnpaidDateFilter(frame);
-  frame =
-    page.frames().find((f) => /presta_echeance\.php\?_vue_iframe/i.test(f.url())) ||
-    page.frames().find((f) => /presta_echeance\.php/i.test(f.url()) && !/legacy/i.test(f.url())) ||
-    frame;
+  frame = (await resolveEcheanceFrame(page, { needRows: true })) || frame;
   const formState = await frame.evaluate(() => ({
     d1: (document.querySelector('input[name="datec1"]') || {}).value || '',
     etat: [...(document.querySelector('select[name="etat[]"]') || { options: [] }).options]
@@ -328,12 +348,9 @@ async function scrapeUnpaidWithIds(page) {
     tr: document.querySelectorAll('table tr').length,
   }));
   console.log('FRAME', frame.url(), JSON.stringify(formState));
-  if (formState.d1 !== '01/06/2026' || formState.tr < 5) {
+  if (formState.tr < 5) {
     await applyUnpaidDateFilter(frame);
-    frame =
-      page.frames().find((f) => /presta_echeance\.php\?_vue_iframe/i.test(f.url())) ||
-      page.frames().find((f) => /presta_echeance\.php/i.test(f.url()) && !/legacy/i.test(f.url())) ||
-      frame;
+    frame = (await resolveEcheanceFrame(page, { needRows: true })) || frame;
   }
 
   const all = [];
@@ -420,24 +437,10 @@ async function scrapeUnpaidWithIds(page) {
     );
     const nextNum = String(pageNo + 2);
     const numbered = frame.locator('a').filter({ hasText: new RegExp(`^\\s*${nextNum}\\s*$`) }).first();
-    const next = frame.locator('a').filter({ hasText: /^\s*>\s*$|^suivant$/i }).first();
-    let clicked = false;
-    if ((await numbered.count()) > 0) {
-      await Promise.all([
-        frame.waitForLoadState('domcontentloaded').catch(() => {}),
-        numbered.click({ force: true }),
-      ]);
-      clicked = true;
-    } else if ((await next.count()) > 0 && (await next.isVisible().catch(() => false))) {
-      await Promise.all([
-        frame.waitForLoadState('domcontentloaded').catch(() => {}),
-        next.click({ force: true }),
-      ]);
-      clicked = true;
-    }
-    if (!clicked) break;
-    await frame.waitForTimeout(3500);
-    frame = page.frames().find((f) => /presta_echeance\.php\?_vue_iframe/i.test(f.url())) || frame;
+    if ((await numbered.count()) === 0) break;
+    await numbered.click({ force: true });
+    await page.waitForTimeout(3500);
+    frame = (await resolveEcheanceFrame(page, { needRows: true })) || frame;
   }
 
   const byMember = {};
