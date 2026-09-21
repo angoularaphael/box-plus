@@ -5,8 +5,8 @@
  * 2) Résilie les contrats Impayé AVEC RIB (mandat) — hors Balma.
  *    Clique « Résilier » sur abo et badge (jamais « Annuler la vente »).
  *    Politique SEPA (lib/sepa-unpaid-policy.js) :
- *    AM04 + MD01 → 3 impayés ; MD06/MS02/MS03/AC04/JSON → immédiat ;
- *    AC01 + RC01 → mail RIB au 1er impayé, résil au 2e ; AC06 → résil au 2e ;
+ *    2 impayés consécutifs → résilier, peu importe le motif ;
+ *    MD06/MS02/MS03/AC04/JSON → immédiat ; AC01 + RC01 → mail RIB au 1er ;
  *    fiche sans e-mail ni téléphone → immédiat.
  *
  *   node scripts/mail-rib-and-resiliate-unpaid.js --apply
@@ -306,7 +306,8 @@ async function scrapeUnpaidWithIds(page) {
         const eid = ((etatEl.name || '').match(/etat_(\d+)/) || [])[1] || '';
         const combined = `${pending.text} ${text}`;
         const gym = ((combined.match(/BOXING CENTER ([A-Za-zÉé\- ]+?)(?:\s+Non|\s+Oui|$)/i) || [])[1] || '').trim();
-        const rum = ((combined.match(/RUM\s*:?\s*(MND-[A-Za-z0-9]+)/i) || [])[1] || '');
+          const date = ((combined.match(/(\d{2}\/\d{2}\/\d{4})/) || [])[1] || '');
+          const rum = ((combined.match(/RUM\s*:?\s*(MND-[A-Za-z0-9]+)/i) || [])[1] || '');
         const product = (
           (combined.match(
             /(OFFRE(?:\s+(?:PROMO|DUO|A))?[^\d]*\d[\d.,]*€?|Badge(?:\s+[\d.]+)?|Etudiants[^\d]*\d[\d.,]*€[^\s]*|44,?99€[^P]*|Abonnement[^P]{0,70}|259€[^P]{0,40})/i
@@ -321,6 +322,7 @@ async function scrapeUnpaidWithIds(page) {
           name: pending.name,
           gym,
           product,
+          date,
           rum,
           active: String((activeEl && activeEl.value) || '') === '1',
           raw: combined.slice(0, 220),
@@ -340,11 +342,13 @@ async function scrapeUnpaidWithIds(page) {
       counts[r.idm] = (counts[r.idm] || 0) + 1;
     }
     for (const h of hits) {
-      if (!h.rum || skipResiliateName(h.name)) continue;
+      if (!h.rum) continue;
       const n = counts[h.idm] || 0;
+      if (n >= 2) continue;
+      if (skipResiliateName(h.name)) continue;
       const remarksSoFar = all.filter((x) => x.idm === h.idm).flatMap((x) => x.remarks || []);
       const sepa = classifySepaFromCandidate({ remarks: remarksSoFar, unpaid_count: n });
-      if (n >= (sepa.policy?.cancelAt ?? 3)) continue;
+      if (n >= (sepa.policy?.cancelAt ?? 2)) continue;
       const remark = await openEcheanceDetail(frame, page, h.eid);
       if (remark) h.remarks = [remark];
     }
@@ -374,7 +378,6 @@ async function scrapeUnpaidWithIds(page) {
   const byMember = {};
   for (const r of all) {
     if (!r.rum) continue;
-    if (skipResiliateName(r.name)) continue;
     const key = r.idm;
     if (!byMember[key]) {
       byMember[key] = {
@@ -384,6 +387,7 @@ async function scrapeUnpaidWithIds(page) {
         product: r.product,
         n: 0,
         unpaid_count: 0,
+        dates: [],
         active: false,
         badge: /^badge$/i.test(String(r.product || '').trim()),
         rum: r.rum,
@@ -392,6 +396,7 @@ async function scrapeUnpaidWithIds(page) {
     }
     byMember[key].n += 1;
     byMember[key].unpaid_count += 1;
+    if (r.date && !byMember[key].dates.includes(r.date)) byMember[key].dates.push(r.date);
     for (const remark of r.remarks || []) {
       if (!byMember[key].remarks.includes(remark)) byMember[key].remarks.push(remark);
     }
@@ -399,7 +404,7 @@ async function scrapeUnpaidWithIds(page) {
     if (r.product && !byMember[key].product) byMember[key].product = r.product;
     if (!/^badge$/i.test(String(r.product || '').trim())) byMember[key].badge = false;
   }
-  return Object.values(byMember);
+  return Object.values(byMember).filter((t) => t.n >= 2 || !skipResiliateName(t.name));
 }
 
 async function sendRibMails(page, report) {
@@ -543,12 +548,10 @@ async function resiliateUnpaid(page, report) {
       row.resiliate_why = decision.why;
       const contracts = await findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => []);
       const live = contracts.filter((c) => !isStaleOrInactiveAbo(c.label));
-      const badge = Boolean(t.badge);
       const pick = live.filter((c) => {
         const isBadge = Boolean(c.isBadge) || isDeciplusBadgeLabel(c.label);
         if (looksLikeComptant(c.label) && !isBadge) return false;
-        if (badge) return isBadge;
-        return !isBadge;
+        return true;
       });
       if (!pick.length) {
         row.error = 'no_active_prelev_contract';
@@ -566,7 +569,7 @@ async function resiliateUnpaid(page, report) {
         continue;
       }
       for (const c of pick) {
-        const result = await cancelOneContract(page, c, { neverVoid: true });
+        const result = await cancelOneContract(page, c, { neverVoid: true, forceVoid: false });
         row.cancelled.push({
           idc: c.idc,
           ok: Boolean(result.cancelled),
