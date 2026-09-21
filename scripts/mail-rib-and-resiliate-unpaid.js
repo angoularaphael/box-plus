@@ -253,8 +253,15 @@ async function findEcheanceContext(page) {
       page.frames().find((f) => /presta_echeance\.php\?_vue_iframe/i.test(f.url())) ||
       page.frames().find((f) => /presta_echeance\.php/i.test(f.url()) && !/legacy/i.test(f.url())) ||
       page.frames().find((f) => /payments-schedules/i.test(f.url()) && f !== page.mainFrame());
-    if (frame) return frame;
-    const hasForm = await page.locator('input[name="datec1"], select[name="etat[]"], #btFilter').count();
+    if (frame) {
+      const ready = await frame
+        .locator('input[name="datec1"], #btFilter')
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if (ready) return frame;
+    }
+    const hasForm = await page.locator('input[name="datec1"], #btFilter').count();
     if (hasForm > 0) return page;
     await page.waitForTimeout(500);
   }
@@ -279,8 +286,8 @@ async function openEcheancierPage(page) {
   throw new Error(`iframe échéances introuvable url=${page.url()} frames=${frames.join(' | ')}`);
 }
 
-async function scrapeUnpaidWithIds(page) {
-  let frame = await openEcheancierPage(page);
+async function applyUnpaidDateFilter(frame) {
+  await frame.locator('input[name="datec1"]').first().waitFor({ state: 'visible', timeout: 15000 });
   await frame.evaluate(() => {
     const d1 = document.querySelector('input[name="datec1"]');
     const d2 = document.querySelector('input[name="datec2"]');
@@ -290,7 +297,11 @@ async function scrapeUnpaidWithIds(page) {
       d1.dispatchEvent(new Event('input', { bubbles: true }));
       d1.dispatchEvent(new Event('change', { bubbles: true }));
     }
-    if (d2) d2.value = '';
+    if (d2) {
+      d2.value = '';
+      d2.dispatchEvent(new Event('input', { bubbles: true }));
+      d2.dispatchEvent(new Event('change', { bubbles: true }));
+    }
     if (sel) {
       [...sel.options].forEach((o) => {
         o.selected = o.value === 'I';
@@ -298,13 +309,32 @@ async function scrapeUnpaidWithIds(page) {
       sel.dispatchEvent(new Event('change', { bubbles: true }));
     }
   });
-  await Promise.all([
-    frame.waitForLoadState('domcontentloaded').catch(() => {}),
-    frame.locator('#btFilter').click({ force: true }),
-  ]);
-  await frame.waitForTimeout(3500);
-  frame = page.frames().find((f) => /presta_echeance\.php\?_vue_iframe/i.test(f.url())) || frame;
-  console.log('FRAME', frame.url());
+  await frame.locator('#btFilter').first().click({ force: true });
+  await frame.waitForTimeout(4000);
+}
+
+async function scrapeUnpaidWithIds(page) {
+  let frame = await openEcheancierPage(page);
+  await applyUnpaidDateFilter(frame);
+  frame =
+    page.frames().find((f) => /presta_echeance\.php\?_vue_iframe/i.test(f.url())) ||
+    page.frames().find((f) => /presta_echeance\.php/i.test(f.url()) && !/legacy/i.test(f.url())) ||
+    frame;
+  const formState = await frame.evaluate(() => ({
+    d1: (document.querySelector('input[name="datec1"]') || {}).value || '',
+    etat: [...(document.querySelector('select[name="etat[]"]') || { options: [] }).options]
+      .filter((o) => o.selected)
+      .map((o) => o.value),
+    tr: document.querySelectorAll('table tr').length,
+  }));
+  console.log('FRAME', frame.url(), JSON.stringify(formState));
+  if (formState.d1 !== '01/06/2026' || formState.tr < 5) {
+    await applyUnpaidDateFilter(frame);
+    frame =
+      page.frames().find((f) => /presta_echeance\.php\?_vue_iframe/i.test(f.url())) ||
+      page.frames().find((f) => /presta_echeance\.php/i.test(f.url()) && !/legacy/i.test(f.url())) ||
+      frame;
+  }
 
   const all = [];
   let lastSignature = '';
@@ -390,11 +420,22 @@ async function scrapeUnpaidWithIds(page) {
     );
     const nextNum = String(pageNo + 2);
     const numbered = frame.locator('a').filter({ hasText: new RegExp(`^\\s*${nextNum}\\s*$`) }).first();
-    if ((await numbered.count()) === 0) break;
-    await Promise.all([
-      frame.waitForLoadState('domcontentloaded').catch(() => {}),
-      numbered.click({ force: true }),
-    ]);
+    const next = frame.locator('a').filter({ hasText: /^\s*>\s*$|^suivant$/i }).first();
+    let clicked = false;
+    if ((await numbered.count()) > 0) {
+      await Promise.all([
+        frame.waitForLoadState('domcontentloaded').catch(() => {}),
+        numbered.click({ force: true }),
+      ]);
+      clicked = true;
+    } else if ((await next.count()) > 0 && (await next.isVisible().catch(() => false))) {
+      await Promise.all([
+        frame.waitForLoadState('domcontentloaded').catch(() => {}),
+        next.click({ force: true }),
+      ]);
+      clicked = true;
+    }
+    if (!clicked) break;
     await frame.waitForTimeout(3500);
     frame = page.frames().find((f) => /presta_echeance\.php\?_vue_iframe/i.test(f.url())) || frame;
   }
