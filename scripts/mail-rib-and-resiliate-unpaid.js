@@ -29,7 +29,7 @@ const path = require('path');
 const browsers = path.join(process.env.USERPROFILE || '', 'AppData', 'Local', 'ms-playwright');
 if (fs.existsSync(browsers)) process.env.PLAYWRIGHT_BROWSERS_PATH = browsers;
 
-const { login } = require('../bot/auth');
+const { login, gotoDeciplus } = require('../bot/auth');
 const { runWithSession, closeBrowser } = require('../bot/browser-pool');
 const { openMemberCheck, closeGreyboxIfOpen } = require('../bot/wallet');
 const {
@@ -246,17 +246,41 @@ async function openEcheanceDetail(frame, page, eid) {
   return text;
 }
 
-async function scrapeUnpaidWithIds(page) {
+async function findEcheanceContext(page) {
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
+    const frame =
+      page.frames().find((f) => /presta_echeance\.php\?_vue_iframe/i.test(f.url())) ||
+      page.frames().find((f) => /presta_echeance\.php/i.test(f.url()) && !/legacy/i.test(f.url())) ||
+      page.frames().find((f) => /payments-schedules/i.test(f.url()) && f !== page.mainFrame());
+    if (frame) return frame;
+    const hasForm = await page.locator('input[name="datec1"], select[name="etat[]"], #btFilter').count();
+    if (hasForm > 0) return page;
+    await page.waitForTimeout(500);
+  }
+  return null;
+}
+
+async function openEcheancierPage(page) {
   const origin = new URL(page.url()).origin;
-  await page.goto(`${origin}/nextgen/legacy?path=${encodeURIComponent('/presta_echeance.php')}`, {
-    waitUntil: 'domcontentloaded',
-    timeout: 60000,
-  });
-  await page.waitForTimeout(2000);
-  let frame =
-    page.frames().find((f) => /presta_echeance\.php\?_vue_iframe/i.test(f.url())) ||
-    page.frames().find((f) => /presta_echeance\.php/i.test(f.url()) && !/legacy/i.test(f.url()));
-  if (!frame) throw new Error('iframe échéances introuvable');
+  const paths = [
+    'nextgen/legacy?path=' + encodeURIComponent('/presta_echeance.php'),
+    'nextgen/presta_echeance.php',
+    'nextgen/manager/payments-schedules',
+  ];
+  for (const rel of paths) {
+    await page
+      .goto(`${origin}/${rel}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+      .catch(() => {});
+    const ctx = await findEcheanceContext(page);
+    if (ctx) return ctx;
+  }
+  const frames = page.frames().map((f) => f.url()).slice(0, 8);
+  throw new Error(`iframe échéances introuvable url=${page.url()} frames=${frames.join(' | ')}`);
+}
+
+async function scrapeUnpaidWithIds(page) {
+  let frame = await openEcheancierPage(page);
   await frame.evaluate(() => {
     const d1 = document.querySelector('input[name="datec1"]');
     const d2 = document.querySelector('input[name="datec2"]');
@@ -306,8 +330,8 @@ async function scrapeUnpaidWithIds(page) {
         const eid = ((etatEl.name || '').match(/etat_(\d+)/) || [])[1] || '';
         const combined = `${pending.text} ${text}`;
         const gym = ((combined.match(/BOXING CENTER ([A-Za-zÉé\- ]+?)(?:\s+Non|\s+Oui|$)/i) || [])[1] || '').trim();
-          const date = ((combined.match(/(\d{2}\/\d{2}\/\d{4})/) || [])[1] || '');
-          const rum = ((combined.match(/RUM\s*:?\s*(MND-[A-Za-z0-9]+)/i) || [])[1] || '');
+        const date = ((combined.match(/(\d{2}\/\d{2}\/\d{4})/) || [])[1] || '');
+        const rum = ((combined.match(/RUM\s*:?\s*(MND-[A-Za-z0-9]+)/i) || [])[1] || '');
         const product = (
           (combined.match(
             /(OFFRE(?:\s+(?:PROMO|DUO|A))?[^\d]*\d[\d.,]*€?|Badge(?:\s+[\d.]+)?|Etudiants[^\d]*\d[\d.,]*€[^\s]*|44,?99€[^P]*|Abonnement[^P]{0,70}|259€[^P]{0,40})/i
@@ -608,6 +632,7 @@ async function resiliateUnpaid(page, report) {
   };
   await runWithSession('mail-rib-resiliate', async (page) => {
     await login(page, { siteLabel: 'Minimes' }).catch(() => login(page, { siteLabel: 'Saint-Cyprien' }));
+    await gotoDeciplus(page, 'nextgen/home').catch(() => {});
     if (!RESILIATE_ONLY) await sendRibMails(page, report);
     if (!MAIL_ONLY) await resiliateUnpaid(page, report);
   });
