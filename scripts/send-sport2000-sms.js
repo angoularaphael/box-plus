@@ -333,6 +333,23 @@ async function startCampaignWave(token, campaignId) {
   });
 }
 
+async function stopOtherSport2000Campaigns(token, keepCampaignId) {
+  const list = await sms('/api/campaigns', { token });
+  const sport = (Array.isArray(list) ? list : []).filter(
+    (c) => /sport2000|seance offerte/i.test(c.name || '') && c.id !== keepCampaignId
+  );
+  for (const c of sport) {
+    if (!['RUNNING', 'DRAFT', 'PAUSED', 'SCHEDULED'].includes(c.status)) continue;
+    try {
+      await sms(`/api/campaigns/${c.id}/cancel`, { method: 'POST', token });
+      await sms(`/api/campaigns/${c.id}`, { method: 'DELETE', token });
+      console.log(JSON.stringify({ stopped_old_campaign: c.id, name: c.name, was: c.status }));
+    } catch (err) {
+      console.log(JSON.stringify({ stop_old_failed: c.id, error: String(err.message || err) }));
+    }
+  }
+}
+
 async function setSimSendPace(token, intervalSec) {
   const rpm = Math.min(60, Math.max(1, Math.round(60 / intervalSec)));
   const devices = await sms('/api/devices', { token });
@@ -429,6 +446,12 @@ async function main() {
   let state = RESUME ? loadState() : null;
   if (RESUME && !state?.campaignId) {
     throw new Error('Reprise impossible: pas de campagne dans sport2000-sms-campaign.json');
+  }
+
+  if (!RESUME) {
+    await stopOtherSport2000Campaigns(token, null);
+  } else if (state?.campaignId) {
+    await stopOtherSport2000Campaigns(token, state.campaignId);
   }
 
   const campaign = RESUME
