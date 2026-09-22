@@ -6,6 +6,7 @@
  *
  *   node scripts/send-sport2000-sms.js --dry
  *   node scripts/send-sport2000-sms.js --now
+ *   node scripts/send-sport2000-sms.js --now --every-min=2
  *   node scripts/send-sport2000-sms.js --at=10:00
  *   node scripts/send-sport2000-sms.js --status
  */
@@ -60,6 +61,15 @@ const NOW = process.argv.includes('--now');
 const AT = process.argv.find((a) => a.startsWith('--at='))?.slice(5) || (NOW ? '' : '10:00');
 const LIMIT = Number(process.argv.find((a) => a.startsWith('--limit='))?.slice(8) || 0);
 const CHUNK = Math.max(20, Number(process.argv.find((a) => a.startsWith('--chunk='))?.slice(8) || 80));
+const EVERY_MIN = Math.max(
+  1,
+  Number(
+    process.argv.find((a) => a.startsWith('--every-min='))?.slice(12) ||
+      process.env.SPORT2000_SMS_EVERY_MIN ||
+      2
+  )
+);
+const WAVE_PAUSE_MS = EVERY_MIN * 60 * 1000;
 const XLSX_PATH = path.resolve(
   process.argv.find((a) => a.startsWith('--xlsx='))?.slice(7) || DEFAULT_XLSX
 );
@@ -273,6 +283,31 @@ async function importChunk(token, campaignId, rows, index, totalChunks) {
   return out;
 }
 
+async function waitQueueDrain(token, campaignId) {
+  for (let attempt = 0; attempt < 720; attempt += 1) {
+    const stats = await sms(`/api/campaigns/${campaignId}/stats`, { token });
+    const pending = Number(stats?.queued ?? 0);
+    if (pending === 0) {
+      console.log(JSON.stringify({ queue_drained: true, stats }));
+      return stats;
+    }
+    if (attempt % 3 === 0) {
+      console.log(JSON.stringify({ queue_pending: pending, sent: stats?.sent ?? 0 }));
+    }
+    await sleep(10_000);
+  }
+  throw new Error('Delai depasse: file SMS toujours en attente');
+}
+
+async function startCampaignWave(token, campaignId) {
+  return sms(`/api/campaigns/${campaignId}/start`, {
+    method: 'POST',
+    token,
+    body: {},
+    timeoutMs: 20 * 60 * 1000,
+  });
+}
+
 async function main() {
   const message = sport2000SmsText();
   if (STATUS_ONLY) {
@@ -310,6 +345,8 @@ async function main() {
     at: AT || 'now',
     waitMs,
     gateway: SMS_API,
+    every_min: EVERY_MIN,
+    chunk: CHUNK,
     mode: DRY ? 'dry' : 'send',
   };
   console.log(JSON.stringify({ summary }, null, 2));
@@ -353,22 +390,27 @@ async function main() {
   saveState(state);
 
   const totalChunks = Math.ceil(list.length / CHUNK);
+  let totalQueued = 0;
   for (let i = 0; i < list.length; i += CHUNK) {
+    const wave = Math.floor(i / CHUNK);
+    if (wave > 0) {
+      await waitQueueDrain(token, campaign.id);
+      console.log(JSON.stringify({ pause_before_wave: wave + 1, pause_ms: WAVE_PAUSE_MS }));
+      await sleep(WAVE_PAUSE_MS);
+    }
     const slice = list.slice(i, i + CHUNK);
-    const out = await importChunk(token, campaign.id, slice, Math.floor(i / CHUNK), totalChunks);
+    const out = await importChunk(token, campaign.id, slice, wave, totalChunks);
     state.imported += Number(out.created || 0);
     saveState(state);
+    const started = await startCampaignWave(token, campaign.id);
+    totalQueued += Number(started.queued || 0);
+    if (!state.startedAt) state.startedAt = new Date().toISOString();
+    state.queued = totalQueued;
+    state.wave = wave + 1;
+    state.waves = totalChunks;
+    saveState(state);
+    console.log(JSON.stringify({ wave_started: wave + 1, of: totalChunks, queued: started.queued }));
   }
-
-  const started = await sms(`/api/campaigns/${campaign.id}/start`, {
-    method: 'POST',
-    token,
-    body: {},
-    timeoutMs: 20 * 60 * 1000,
-  });
-  state.startedAt = new Date().toISOString();
-  state.queued = started.queued;
-  saveState(state);
 
   const stats = await sms(`/api/campaigns/${campaign.id}/stats`, { token }).catch(() => null);
   console.log(
@@ -377,7 +419,8 @@ async function main() {
         ok: true,
         campaignId: campaign.id,
         name: campaign.name,
-        queued: started.queued,
+        queued: totalQueued,
+        every_min: EVERY_MIN,
         imported: state.imported,
         stats,
         devices: dash.devices,
