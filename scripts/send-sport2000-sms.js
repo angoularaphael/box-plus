@@ -285,9 +285,22 @@ async function importChunk(token, campaignId, rows, index, totalChunks) {
   return out;
 }
 
+async function campaignStats(token, campaignId) {
+  for (let retry = 0; retry < 8; retry += 1) {
+    try {
+      return await sms(`/api/campaigns/${campaignId}/stats`, { token, timeoutMs: 180_000 });
+    } catch (err) {
+      if (retry >= 7) throw err;
+      console.log(JSON.stringify({ stats_retry: retry + 1, error: String(err.message || err) }));
+      await sleep(8000);
+    }
+  }
+  return null;
+}
+
 async function waitQueueDrain(token, campaignId) {
   for (let attempt = 0; attempt < 720; attempt += 1) {
-    const stats = await sms(`/api/campaigns/${campaignId}/stats`, { token });
+    const stats = await campaignStats(token, campaignId);
     const pending = Number(stats?.queued ?? 0);
     if (pending === 0) {
       console.log(JSON.stringify({ queue_drained: true, stats }));
