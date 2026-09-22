@@ -6,7 +6,8 @@
  *
  *   node scripts/send-sport2000-sms.js --dry
  *   node scripts/send-sport2000-sms.js --now
- *   node scripts/send-sport2000-sms.js --now --every-min=2
+ *   node scripts/send-sport2000-sms.js --now --every-min=6
+ *   node scripts/send-sport2000-sms.js --resume --now
  *   node scripts/send-sport2000-sms.js --at=10:00
  *   node scripts/send-sport2000-sms.js --status
  */
@@ -57,6 +58,7 @@ const DEFAULT_XLSX = path.join(ROOT, '..', 'sport2000 France City and dob Filter
 
 const DRY = process.argv.includes('--dry') || process.argv.includes('--dry-run');
 const STATUS_ONLY = process.argv.includes('--status');
+const RESUME = process.argv.includes('--resume');
 const NOW = process.argv.includes('--now');
 const AT = process.argv.find((a) => a.startsWith('--at='))?.slice(5) || (NOW ? '' : '10:00');
 const LIMIT = Number(process.argv.find((a) => a.startsWith('--limit='))?.slice(8) || 0);
@@ -66,7 +68,7 @@ const EVERY_MIN = Math.max(
   Number(
     process.argv.find((a) => a.startsWith('--every-min='))?.slice(12) ||
       process.env.SPORT2000_SMS_EVERY_MIN ||
-      2
+      6
   )
 );
 const WAVE_PAUSE_MS = EVERY_MIN * 60 * 1000;
@@ -326,12 +328,19 @@ async function main() {
     return;
   }
 
-  if (!fs.existsSync(XLSX_PATH)) {
+  if (!RESUME && !fs.existsSync(XLSX_PATH)) {
     throw new Error(`Fichier introuvable: ${XLSX_PATH}`);
   }
+  if (RESUME && !fs.existsSync(AUDIENCE_FILE)) {
+    throw new Error(`Reprise impossible: audience manquante (${AUDIENCE_FILE})`);
+  }
 
-  console.log(JSON.stringify({ export: XLSX_PATH }));
-  const exported = exportAudience(XLSX_PATH, AUDIENCE_FILE);
+  if (!RESUME) {
+    console.log(JSON.stringify({ export: XLSX_PATH }));
+    exportAudience(XLSX_PATH, AUDIENCE_FILE);
+  } else {
+    console.log(JSON.stringify({ resume: true, audience: AUDIENCE_FILE }));
+  }
   const { meta, list } = loadAudience();
   const waitMs = waitMsUntilParis(AT);
   const summary = {
@@ -374,25 +383,47 @@ async function main() {
     );
   }
 
-  const campaign = await sms('/api/campaigns', {
-    method: 'POST',
-    token,
-    body: { name: CAMPAIGN_NAME, message },
-  });
-  const state = {
-    campaignId: campaign.id,
-    name: campaign.name,
-    startedAt: null,
-    imported: 0,
-    audience: list.length,
-    at: new Date().toISOString(),
-  };
-  saveState(state);
+  let state = RESUME ? loadState() : null;
+  if (RESUME && !state?.campaignId) {
+    throw new Error('Reprise impossible: pas de campagne dans sport2000-sms-campaign.json');
+  }
+
+  const campaign = RESUME
+    ? { id: state.campaignId, name: state.name }
+    : await sms('/api/campaigns', {
+        method: 'POST',
+        token,
+        body: { name: CAMPAIGN_NAME, message },
+      });
+
+  if (!RESUME) {
+    state = {
+      campaignId: campaign.id,
+      name: campaign.name,
+      startedAt: null,
+      imported: 0,
+      audience: list.length,
+      at: new Date().toISOString(),
+      every_min: EVERY_MIN,
+    };
+    saveState(state);
+  } else {
+    state.every_min = EVERY_MIN;
+    saveState(state);
+    console.log(
+      JSON.stringify({
+        resume_campaign: campaign.id,
+        from_wave: state.wave || 0,
+        every_min: EVERY_MIN,
+      })
+    );
+  }
 
   const totalChunks = Math.ceil(list.length / CHUNK);
-  let totalQueued = 0;
-  for (let i = 0; i < list.length; i += CHUNK) {
-    const wave = Math.floor(i / CHUNK);
+  const startWave = RESUME ? Math.max(0, Number(state.wave) || 0) : 0;
+  let totalQueued = Number(state.queued) || 0;
+  for (let wave = startWave; wave < totalChunks; wave += 1) {
+    const i = wave * CHUNK;
     if (wave > 0) {
       await waitQueueDrain(token, campaign.id);
       console.log(JSON.stringify({ pause_before_wave: wave + 1, pause_ms: WAVE_PAUSE_MS }));
@@ -408,6 +439,7 @@ async function main() {
     state.queued = totalQueued;
     state.wave = wave + 1;
     state.waves = totalChunks;
+    state.every_min = EVERY_MIN;
     saveState(state);
     console.log(JSON.stringify({ wave_started: wave + 1, of: totalChunks, queued: started.queued }));
   }
