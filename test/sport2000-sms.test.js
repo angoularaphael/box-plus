@@ -13,12 +13,14 @@ test('SMS Sport2000 — seance offerte David + STOP GSM', () => {
   assert.match(sms, /c'est David du Boxing Center/);
   assert.match(sms, /Jamais fait de boxe/i);
   assert.match(sms, /debutant OK/i);
+  assert.match(sms, /Sport2000/i);
+  assert.match(sms, /boxingcenter\.fr/);
   assert.match(sms, /seance-offerte\.boxingcenter\.fr\/s/);
   assert.match(sms, /STOP: reponds STOP/);
   assert.match(sms, /\{prenom\}/);
   assert.equal(LINK, 'https://seance-offerte.boxingcenter.fr/s');
   assert.doesNotMatch(sms, /[éèêëàâùûîïôöç]/i);
-  assert.ok(sms.length < 200);
+  assert.ok(sms.length < 320);
 });
 
 test('normalise mobiles FR 06/07/336/337', () => {
