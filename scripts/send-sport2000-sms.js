@@ -333,6 +333,15 @@ async function startCampaignWave(token, campaignId) {
   });
 }
 
+async function purgeSport2000Queue(token) {
+  try {
+    const out = await sms('/api/ops/purge-sport2000', { method: 'POST', token, body: {} });
+    console.log(JSON.stringify({ purge_sport2000: out }));
+  } catch (err) {
+    console.log(JSON.stringify({ purge_sport2000_skipped: String(err.message || err) }));
+  }
+}
+
 async function stopOtherSport2000Campaigns(token, keepCampaignId) {
   const list = await sms('/api/campaigns', { token });
   const sport = (Array.isArray(list) ? list : []).filter(
@@ -448,6 +457,7 @@ async function main() {
     throw new Error('Reprise impossible: pas de campagne dans sport2000-sms-campaign.json');
   }
 
+  await purgeSport2000Queue(token);
   if (!RESUME) {
     await stopOtherSport2000Campaigns(token, null);
   } else if (state?.campaignId) {
