@@ -44,11 +44,11 @@ const SMS_API = (process.env.SMS_GATEWAY_URL || 'http://prem-eu2.bot-hosting.net
 const SMS_EMAIL = process.env.SMS_GATEWAY_EMAIL || 'angoularaphael05@gmail.com';
 const SMS_PASSWORD = process.env.SMS_GATEWAY_PASSWORD || 'Fareno12';
 const {
-  seanceOfferteLink,
+  seanceOfferteSmsLink,
   sport2000SmsTemplate,
 } = require('../../boxing-center-bot/lib/sport2000-seance-offerte');
 
-const LINK = seanceOfferteLink('sms');
+const LINK = seanceOfferteSmsLink();
 const CAMPAIGN_NAME = `Sport2000 seance offerte ${parisStamp()}`;
 const STATE_FILE = path.join(ROOT, 'data', 'sport2000-sms-campaign.json');
 const AUDIENCE_FILE = path.join(ROOT, 'data', 'sport2000-sms-audience.json');
