@@ -10,7 +10,12 @@ function amountsMatch(paidCents, expectedCents, tolerance = 1) {
 
 function expectedChargeCents(order, product) {
   const plan = String(order?.payment?.payment_plan || 'once').toLowerCase();
-  const price = Number(product?.price_cents || order?.product_snapshot?.price_cents || 0);
+  const list = Number(product?.price_cents || order?.product_snapshot?.price_cents || 0);
+  const discounted = Number(order?.payment?.charge_cents);
+  const price =
+    order?.payment?.pass_sport === true && Number.isFinite(discounted) && discounted > 0
+      ? discounted
+      : list;
   if (!price) return null;
   const quarter = Math.round(price / 4);
   // Pay Later 4× peut encaisser le quart (64,75 €) même si la commande boutique est restée en « once ».

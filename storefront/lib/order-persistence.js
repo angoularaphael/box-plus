@@ -81,6 +81,10 @@ function pickPayment(payment) {
     paid_at: p.paid_at || null,
     amount: p.amount ?? null,
     amount_cents: p.amount_cents ?? null,
+    pass_sport: p.pass_sport === true,
+    pass_sport_cents: p.pass_sport === true ? Number(p.pass_sport_cents || 5000) : null,
+    charge_cents: p.pass_sport === true ? p.charge_cents ?? null : null,
+    list_price_cents: p.pass_sport === true ? p.list_price_cents ?? null : null,
     billing_plan: p.billing_plan || null,
     payment_plan: p.payment_plan || null,
     stripe_subscription_id: p.stripe_subscription_id || null,
@@ -158,6 +162,12 @@ function buildOrderSummary(order) {
           order.documents?.photo_base64 ||
           order.documents?.photo_filename ||
           order.documents?.photo_url
+      ),
+      pass_sport_url: order.documents?.pass_sport_url || null,
+      has_pass_sport: Boolean(
+        order.documents?.pass_sport ||
+          order.documents?.pass_sport_url ||
+          order.documents?.pass_sport_filename
       ),
       id_document_url: order.documents?.id_document_url || null,
       has_id_document: Boolean(

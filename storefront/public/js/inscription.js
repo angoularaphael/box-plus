@@ -541,6 +541,16 @@
     return false;
   }
 
+  function supportsPassSport(p) {
+    if (!p) return false;
+    const id = String(p.id || '').toLowerCase();
+    const legacy = String(p.legacy_id || '').toLowerCase();
+    const title = String(p.name || p.display_name || '');
+    if (id === 'baby-boxe' || legacy === 'baby-boxe' || id === 'dp-93') return true;
+    if (id === 'boxe-educative' || legacy === 'boxe-educative' || id === 'dp-45') return true;
+    return /BABY\s*BOXE/i.test(title) || /BOXE\s*[EÉ]DUCATIVE/i.test(title);
+  }
+
   function scalapayHelpHtml(feesHint, refusalHelp) {
     const fees =
       feesHint ||
@@ -1410,7 +1420,7 @@
               <input type="radio" name="payment_plan" value="once" ${defaultPlan === 'once' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>En une seule fois</strong>
-                <small>${priceLabel(p)} · carte${showPaypalOnce ? ' ou PayPal' : ''}</small>
+                <small id="oncePriceSmall">${priceLabel(p)} · carte${showPaypalOnce ? ' ou PayPal' : ''}</small>
               </span>
             </label>
             ${
@@ -1430,7 +1440,7 @@
               <input type="radio" name="payment_plan" value="4x-rib" ${defaultPlan === '4x-rib' ? 'checked' : ''} />
               <span class="billing-choice-text">
                 <strong>4× sans frais CB puis RIB</strong>
-                <small>${quart}&nbsp;€ aujourd’hui · 3 prochains paiements sur votre RIB</small>
+                <small id="ribQuartSmall">${quart}&nbsp;€ aujourd’hui · 3 prochains paiements sur votre RIB</small>
               </span>
             </label>`
                 : ''
@@ -1558,10 +1568,30 @@
           ? `<div class="notice-important" style="margin:0 0 16px"><strong>Dossier enregistré</strong><p>Pas de téléphone ni d’e-mail sur la fiche Minimes — on ajoute « Balma » à ton prénom. Le club te recontacte. Tu peux aussi payer maintenant.</p></div>`
           : ''
       }
-      <p class="sub">${firstPaymentCaption(p)}</p>
+      <p class="sub" id="payCaption">${firstPaymentCaption(p)}</p>
       ${balmaBadgeNotice}
       <form id="payForm">
         ${aventureEmailHtml}
+        ${
+          supportsPassSport(p)
+            ? `<div class="pass-sport-block full">
+          <label class="pass-sport-check" for="passSport">
+            <input type="checkbox" id="passSport" name="pass_sport" ${
+              state.order?.payment?.pass_sport ? 'checked' : ''
+            } />
+            <span>Je possède un Pass Sport de 50&nbsp;€ et souhaite le déduire</span>
+          </label>
+          <div id="passSportUpload" class="pass-sport-upload" ${
+            state.order?.payment?.pass_sport ? '' : 'hidden'
+          }>
+            <label for="passSportFile">Photo du Pass Sport de l'enfant</label>
+            <input id="passSportFile" type="file" accept="image/jpeg,image/png,image/webp,image/*" />
+            <p class="sub">Photo obligatoire. 50&nbsp;€ sont déduits, puis vous payez le reste en une fois ou en 4 fois.</p>
+            <p class="pass-sport-due" id="passSportDue"></p>
+          </div>
+        </div>`
+            : ''
+        }
         ${billingHtml}
         ${
           portetPaused
@@ -1577,6 +1607,39 @@
         }
         ${backButton('← Retour', 3)}
       </form>`;
+    const passSportOn = () => Boolean(document.getElementById('passSport')?.checked);
+    const dueCentsNow = () => {
+      const list = Number(p?.price_cents || 0);
+      return passSportOn() && supportsPassSport(p) ? Math.max(0, list - 5000) : list;
+    };
+    const moneyFromCents = (cents) => `${(Number(cents) / 100).toFixed(2).replace('.', ',')} €`;
+    const quartNow = () => ((dueCentsNow() / 100) / 4).toFixed(2).replace('.', ',');
+    const dueLabelNow = () => moneyFromCents(dueCentsNow());
+    const syncPassSportPrices = () => {
+      if (!supportsPassSport(p)) return;
+      const on = passSportOn();
+      const upload = document.getElementById('passSportUpload');
+      if (upload) upload.hidden = !on;
+      const fileInput = document.getElementById('passSportFile');
+      if (fileInput) fileInput.required = false;
+      const due = document.getElementById('passSportDue');
+      if (due) due.textContent = on ? `Reste à payer : ${dueLabelNow()}` : '';
+      const once = document.getElementById('oncePriceSmall');
+      if (once) {
+        const withPaypal = /PayPal/i.test(once.textContent);
+        once.textContent = `${dueLabelNow()} · carte${withPaypal ? ' ou PayPal' : ''}`;
+      }
+      const rib = document.getElementById('ribQuartSmall');
+      if (rib) {
+        rib.innerHTML = `${quartNow()}&nbsp;€ aujourd'hui · 3 prochains paiements sur votre RIB`;
+      }
+      const cap = document.getElementById('payCaption');
+      if (cap) {
+        cap.innerHTML = on
+          ? `Montant restant : <strong>${dueLabelNow()}</strong> après Pass Sport de 50&nbsp;€ — une fois ou 4 fois`
+          : firstPaymentCaption(p);
+      }
+    };
     bindBillingPlanForm();
     if (multiChoice && !portetPaused) {
       const syncInstallmentUi = () => {
@@ -1605,11 +1668,11 @@
         if (schedule) {
           schedule.style.display = isScalapay || isPaypalFour || isRibFour ? '' : 'none';
           if (isScalapay) {
-            schedule.innerHTML = buildFourXScheduleHtml(quart, 'scalapay', priceLabel(p));
+            schedule.innerHTML = buildFourXScheduleHtml(quartNow(), 'scalapay', dueLabelNow());
           } else if (isRibFour) {
-            schedule.innerHTML = buildFourXScheduleHtml(quart, 'payplug_prelevement', priceLabel(p));
+            schedule.innerHTML = buildFourXScheduleHtml(quartNow(), 'payplug_prelevement', dueLabelNow());
           } else if (isPaypalFour) {
-            schedule.innerHTML = buildFourXScheduleHtml(quart, 'paypal', priceLabel(p));
+            schedule.innerHTML = buildFourXScheduleHtml(quartNow(), 'paypal', dueLabelNow());
           }
         }
         if (addrBox) {
@@ -1624,7 +1687,7 @@
             payBtn.textContent = 'Continuer vers le paiement CB';
           } else if (isRibFour) {
             payBtn.classList.add('pay-btn--4x-cb');
-            payBtn.innerHTML = `${quart}&nbsp;€ aujourd'hui<br><span class="pay-btn-sub">3 prochains paiements sur votre RIB</span>`;
+            payBtn.innerHTML = `${quartNow()}&nbsp;€ aujourd'hui<br><span class="pay-btn-sub">3 prochains paiements sur votre RIB</span>`;
           } else if (isPaypalFour) {
             payBtn.textContent = 'Payer via PayPal 4× sans frais';
           } else {
@@ -1635,12 +1698,27 @@
       document.querySelectorAll('input[name="payment_plan"]').forEach((el) => {
         el.addEventListener('change', syncInstallmentUi);
       });
+      syncPassSportPrices();
       syncInstallmentUi();
+      const passSportBox = document.getElementById('passSport');
+      if (passSportBox) {
+        passSportBox.addEventListener('change', () => {
+          syncPassSportPrices();
+          syncInstallmentUi();
+        });
+      }
       if (showPaypalFour) {
         loadPaypalMessaging((Number(p.price_cents || 0) / 100).toFixed(2)).catch(() => {});
       }
     } else if (showPaypalOnce) {
       loadPaypalMessaging((Number(p?.price_cents || 0) / 100).toFixed(2)).catch(() => {});
+      syncPassSportPrices();
+      const passSportBox = document.getElementById('passSport');
+      if (passSportBox) passSportBox.addEventListener('change', syncPassSportPrices);
+    } else {
+      syncPassSportPrices();
+      const passSportBox = document.getElementById('passSport');
+      if (passSportBox) passSportBox.addEventListener('change', syncPassSportPrices);
     }
     const payBtnEl = document.getElementById('payBtn');
     if (payBtnEl && !showCard && !showPaypalOnce && !showPaypalFour && !scalapayAvailable && !payplug4xPrelev) {
@@ -1732,6 +1810,39 @@
       } else {
         body.badge_timing = 'deferred';
         body.badge_method = 'iban';
+      }
+      const passSportBox = document.getElementById('passSport');
+      if (passSportBox) {
+        if (passSportBox.checked) {
+          const file = document.getElementById('passSportFile')?.files?.[0];
+          const already = Boolean(
+            state.passSportUploaded ||
+              state.order?.documents?.pass_sport ||
+              state.order?.documents?.pass_sport_url
+          );
+          if (!file && !already) {
+            setMsg('Ajoutez la photo du Pass Sport de votre enfant pour déduire 50 €.', 'err');
+            return;
+          }
+          if (file) {
+            setMsg('Envoi de la photo du Pass Sport…');
+            const fd = new FormData();
+            fd.append('pass_sport', file);
+            fd.append('token', state.token);
+            const upRes = await fetch(`/api/orders/${state.orderId}/pass-sport`, { method: 'POST', body: fd });
+            const upData = await upRes.json().catch(() => ({}));
+            if (!upRes.ok || !upData.ok) {
+              setMsg(upData.message || 'Impossible d\'enregistrer la photo du Pass Sport.', 'err');
+              return;
+            }
+            state.passSportUploaded = true;
+            state.order = state.order || {};
+            state.order.documents = { ...(state.order.documents || {}), pass_sport: true };
+          }
+          body.pass_sport = true;
+        } else {
+          body.pass_sport = false;
+        }
       }
       const res = await fetch(`/api/orders/${state.orderId}/pay`, {
         method: 'POST',

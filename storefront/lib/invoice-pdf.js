@@ -68,7 +68,11 @@ function renderInscriptionInvoice(doc, order) {
   const product = order.product_snapshot || {};
   const invoiceDate = order.signature?.signed_at || order.payment?.paid_at || order.updated_at;
   const invoiceNo = `FAC-${order.order_id}`;
-  const priceCents = product.price_cents || 0;
+  const listCents = Number(product.price_cents || 0);
+  const passSportOn = order.payment?.pass_sport === true;
+  const priceCents = passSportOn
+    ? Number(order.payment?.charge_cents || Math.max(0, listCents - 5000))
+    : listCents;
   const priceHt = Math.round(priceCents / 1.2);
   const copy = offerDocumentCopy(product, order);
   const badgeTiming = order.payment?.badge_timing || order.badge_timing;
@@ -104,7 +108,9 @@ function renderInscriptionInvoice(doc, order) {
   const rows = [
     {
       type: copy.typeLabel || invoiceTypeLabel(product, order.payment?.billing_plan),
-      description: copy.description,
+      description: passSportOn
+        ? `${copy.description}\nPass Sport : 50,00 € déduits (tarif saison ${formatEuros(listCents)} TTC). Montant réglé en ligne : ${formatEuros(priceCents)} TTC.`
+        : copy.description,
       unit: formatEuros(priceHt),
       qty: '1',
       vat: '20 %',

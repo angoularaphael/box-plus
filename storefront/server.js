@@ -452,6 +452,7 @@ function makeIdUploader() {
 
 const upload = makeUploader('ribs');
 const uploadPhoto = makeUploader('photos');
+const uploadPassSport = makeUploader('pass-sport');
 const uploadIdDocument = makeIdUploader();
 
 function stripeForGym(gym) {
@@ -3277,6 +3278,106 @@ function createApp() {
     }
   });
 
+  app.post('/api/orders/:id/pass-sport', (req, res, next) => {
+    uploadPassSport.single('pass_sport')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({
+          ok: false,
+          error: 'invalid_image_type',
+          message: 'Envoyez une photo JPEG, PNG ou WebP du Pass Sport (max 3,5 Mo).',
+        });
+      }
+      next();
+    });
+  }, async (req, res) => {
+    try {
+      const token = req.body.token || req.query.token;
+      const order = await loadOrderOrRecover(req.params.id, {
+        token,
+        stripe,
+        findProduct,
+      });
+      if (!order) return res.status(404).json({ ok: false, error: 'not_found' });
+      if (!verifyAccess(order, token)) {
+        return res.status(403).json({ ok: false, error: 'forbidden' });
+      }
+      const product = findProduct(order.product_id) || order.product_snapshot;
+      const { productSupportsPassSport } = require('../lib/pass-sport');
+      if (!productSupportsPassSport(product)) {
+        return res.status(400).json({
+          ok: false,
+          error: 'pass_sport_ineligible',
+          message: 'Le Pass Sport de 50 € est réservé aux abonnements Baby Boxe et Boxe enfants.',
+        });
+      }
+      if (!req.file) {
+        return res.status(400).json({
+          ok: false,
+          error: 'pass_sport_photo_required',
+          message: 'Ajoutez la photo du Pass Sport de votre enfant.',
+        });
+      }
+
+      const { isCloudinaryConfigured, uploadImageBuffer } = require('./lib/cloudinary');
+      let buf;
+      try {
+        buf = fs.readFileSync(req.file.path);
+      } catch (readErr) {
+        return res.status(400).json({ ok: false, error: 'photo_unreadable', message: readErr.message });
+      }
+      if (!looksLikeAllowedImage(buf, req.file.mimetype)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {
+          /* ignore */
+        }
+        return res.status(400).json({
+          ok: false,
+          error: 'invalid_image_type',
+          message: 'Envoyez une photo JPEG, PNG ou WebP du Pass Sport.',
+        });
+      }
+
+      const documents = {
+        ...(order.documents || {}),
+        pass_sport: req.file.path,
+        pass_sport_filename: req.file.filename,
+      };
+
+      if (isCloudinaryConfigured()) {
+        try {
+          const uploaded = await uploadImageBuffer({
+            buffer: buf,
+            mime: req.file.mimetype || 'image/jpeg',
+            filename: req.file.filename || 'pass-sport.jpg',
+            publicId: `boxplus/pass-sport/${order.order_id}`,
+          });
+          documents.pass_sport_url = uploaded.url || uploaded.secure_url;
+        } catch (cloudErr) {
+          logError('Upload Pass Sport Cloudinary', { order_id: order.order_id, error: cloudErr.message });
+          return res.status(502).json({
+            ok: false,
+            error: 'cloudinary_failed',
+            message: 'Impossible d’enregistrer la photo du Pass Sport. Réessayez dans un instant.',
+          });
+        }
+      } else if (process.env.VERCEL) {
+        return res.status(503).json({
+          ok: false,
+          error: 'cloudinary_not_configured',
+          message: 'Stockage photo indisponible. Réessayez dans un instant.',
+        });
+      }
+
+      order.documents = documents;
+      const { saveOrderAsync } = require('./lib/order-lifecycle');
+      await saveOrderAsync(order);
+      res.json({ ok: true, pass_sport: true, stored: Boolean(documents.pass_sport_url || documents.pass_sport) });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
   app.post('/api/orders/:id/id-document', (req, res, next) => {
     uploadIdDocument.single('id_document')(req, res, (err) => {
       if (err) {
@@ -4269,6 +4370,55 @@ function createApp() {
         delete order.badge_timing;
         delete order.badge_method;
       }
+
+      const {
+        productSupportsPassSport,
+        passSportChargeCents,
+        wantsPassSport,
+        orderHasPassSportPhoto,
+        PASS_SPORT_CENTS,
+      } = require('../lib/pass-sport');
+      const passSportWanted = wantsPassSport(req.body);
+      let dueCents = Number(product.price_cents || 0);
+      if (passSportWanted) {
+        if (!productSupportsPassSport(product)) {
+          return res.status(400).json({
+            ok: false,
+            error: 'pass_sport_ineligible',
+            message: 'Le Pass Sport de 50 € est réservé aux abonnements Baby Boxe et Boxe enfants.',
+          });
+        }
+        if (!orderHasPassSportPhoto(order)) {
+          return res.status(400).json({
+            ok: false,
+            error: 'pass_sport_photo_required',
+            message: 'Ajoutez la photo du Pass Sport de votre enfant pour déduire 50 €.',
+          });
+        }
+        dueCents = passSportChargeCents(product);
+        order.payment = {
+          ...(order.payment || {}),
+          pass_sport: true,
+          pass_sport_cents: PASS_SPORT_CENTS,
+          list_price_cents: Number(product.price_cents || 0),
+          charge_cents: dueCents,
+        };
+      } else if (order.payment?.pass_sport) {
+        order.payment = {
+          ...order.payment,
+          pass_sport: false,
+          pass_sport_cents: null,
+          charge_cents: null,
+        };
+      }
+      const pricedProduct = order.payment?.pass_sport
+        ? {
+            ...product,
+            price_cents: dueCents,
+            price_label: `${(dueCents / 100).toFixed(2).replace('.', ',')} €`,
+            stripe_price_label: `${(dueCents / 100).toFixed(2).replace('.', ',')} €`,
+          }
+        : product;
       await saveOrderAsync(order);
 
       const isFreeProduct =
@@ -4331,7 +4481,7 @@ function createApp() {
             suggest_card: true,
           });
         }
-        if (!isAmountEligibleForScalapay(product.price_cents)) {
+        if (!isAmountEligibleForScalapay(dueCents)) {
           return res.status(400).json({
             ok: false,
             error: `Le paiement CB en plusieurs fois est disponible entre ${SCALAPAY_MIN_CENTS / 100} € et ${
@@ -4359,8 +4509,8 @@ function createApp() {
               ...order,
               customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
             },
-            product,
-            amountCents: product.price_cents,
+            product: pricedProduct,
+            amountCents: dueCents,
             description: product.display_name || product.name || 'Offre Boxing Center',
             baseUrl,
             metadata: {
@@ -4489,14 +4639,14 @@ function createApp() {
             : {}),
         };
         const cawl4xRib = false;
-        const amountCents = Number(product.price_cents || 0);
+        const amountCents = dueCents;
         try {
           const hosted = await createCawlHostedCheckout({
             order: {
               ...order,
               customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
             },
-            product,
+            product: pricedProduct,
             amountCents,
             baseUrl,
             paymentPlan: 'once',
@@ -4578,8 +4728,8 @@ function createApp() {
             (Boolean(display.portetViaPaypal) && landing !== 'login' && payMethod !== 'paypal'));
         const ppOrder = await createPaypalOrder({
           order,
-          product,
-          amountCents: product.price_cents,
+          product: pricedProduct,
+          amountCents: dueCents,
           baseUrl,
           paymentPlan: planLabel === '4x' ? '4x' : 'once',
           gym,
@@ -4655,13 +4805,13 @@ function createApp() {
       try {
         let payment;
         if (payplug4xPrelev) {
-          const quarterCents = Math.round(Number(product.price_cents || 0) / 4);
+          const quarterCents = Math.round(Number(dueCents || 0) / 4);
           payment = await createHostedPayment({
             order: {
               ...order,
               customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
             },
-            product,
+            product: pricedProduct,
             baseUrl,
             amountCents: quarterCents,
             description: `${product.display_name || product.name || 'Offre 12 mois'} — 1ʳᵉ échéance 4×`,
@@ -4678,7 +4828,7 @@ function createApp() {
               ...order,
               customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
             },
-            product,
+            product: pricedProduct,
             baseUrl,
             customerOverrides,
           });
@@ -4688,9 +4838,9 @@ function createApp() {
               ...order,
               customer_full: { ...(order.customer_full || {}), gym, ...customerOverrides },
             },
-            product,
+            product: pricedProduct,
             baseUrl,
-            amountCents: product.price_cents,
+            amountCents: dueCents,
             metadata: {
               payment_plan: 'once',
               billing_plan: billingPlan || '',

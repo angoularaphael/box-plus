@@ -46,6 +46,7 @@ function initDirs() {
   ensureDir(UPLOADS_DIR);
   ensureDir(path.join(UPLOADS_DIR, 'ribs'));
   ensureDir(path.join(UPLOADS_DIR, 'photos'));
+  ensureDir(path.join(UPLOADS_DIR, 'pass-sport'));
   ensureDir(path.join(UPLOADS_DIR, 'id-docs'));
   ensureDir(path.join(UPLOADS_DIR, 'signatures'));
 }
@@ -298,6 +299,12 @@ async function markPaymentPaidAsync(orderId, paymentData) {
     }
   } catch {
     /* notification coaching ne doit pas bloquer le paiement */
+  }
+  try {
+    const { notifyPassSportIfNeeded } = require('./pass-sport-mail');
+    await notifyPassSportIfNeeded(saved);
+  } catch {
+    /* l'email Pass Sport ne doit pas bloquer le paiement */
   }
   return saved;
 }

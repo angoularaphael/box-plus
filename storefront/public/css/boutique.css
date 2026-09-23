@@ -494,6 +494,55 @@ input:focus, select:focus, textarea:focus {
   margin-bottom: 12px;
 }
 
+.pass-sport-block {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 2px solid var(--bc-border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.pass-sport-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 44px;
+  margin: 0;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.pass-sport-check input {
+  width: 22px;
+  height: 22px;
+  margin: 2px 0 0;
+  flex-shrink: 0;
+  accent-color: var(--bc-navy);
+}
+
+.pass-sport-upload {
+  margin-top: 12px;
+}
+
+.pass-sport-upload label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+
+.pass-sport-upload input[type='file'] {
+  width: 100%;
+  min-height: 44px;
+  font-size: 14px;
+}
+
+.pass-sport-due {
+  margin: 8px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
 .billing-choice-row {
   display: flex;
   flex-direction: row;
