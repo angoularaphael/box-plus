@@ -362,7 +362,7 @@ async function sendResumeEmail(order, { kind = 'resume', to } = {}) {
     const result = await sendEmailViaResend({
       to: dest,
       subject: copy.subject,
-      html: undefined,
+      html: copy.html,
       text: copy.emailText,
       fromName: copy.fromName,
       tags: TRANSACTIONAL_EMAIL_TAGS,
@@ -507,7 +507,7 @@ async function sendNudgeEmail(order) {
     const result = await sendEmailViaResend({
       to: item.email,
       subject: copy.subject,
-      html: undefined,
+      html: copy.html,
       text: copy.emailText,
       fromName: copy.fromName,
       tags: TRANSACTIONAL_EMAIL_TAGS,

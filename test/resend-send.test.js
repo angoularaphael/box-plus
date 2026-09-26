@@ -54,6 +54,8 @@ test('relance inscription e-mail passe par Resend, pas Brevo', () => {
   assert.match(src, /resend-send/);
   assert.match(src, /sendEmailViaResend/);
   assert.doesNotMatch(src, /sendEmailViaBrevo/);
+  assert.match(src, /html: copy\.html/);
+  assert.doesNotMatch(src, /html:\s*undefined/);
 });
 
 test('relance inscription SMS (« vous n’avez pas finalisé ») coupée', () => {

@@ -65,35 +65,42 @@ function buildDavidPlainEmail({ name, lines }) {
 }
 
 function buildInscriptionNudgeEmail({ name, url, paidDossier = false, kind } = {}) {
+  const who = firstNameOf(name);
+  const greeting = who ? `Bonjour ${who},` : 'Bonjour,';
   const link = String(url || '').trim();
-  let lines;
+  let subject;
+  let lead;
+  let ctaLabel;
   if (kind === 'pay') {
-    lines = [
-      'C’est David.',
-      '',
-      'Tu as commencé ton inscription. Il reste juste le paiement.',
-      '',
-      'C’est ici :',
-      link,
-    ];
+    subject = 'Il reste le paiement de votre inscription — Boxing Center';
+    lead = 'Vous avez commencé votre inscription. Il reste le paiement pour la terminer.';
+    ctaLabel = 'Reprendre mon inscription';
   } else if (paidDossier) {
-    lines = [
-      'C’est David.',
-      '',
-      'Le règlement est bon. Il reste juste le dossier.',
-      '',
-      'C’est ici :',
-      link,
-    ];
+    subject = 'Il reste le dossier de votre inscription — Boxing Center';
+    lead =
+      'Votre règlement est bien reçu. Il reste le dossier et la signature pour être inscrit en salle.';
+    ctaLabel = 'Terminer mon inscription';
   } else {
-    lines = [
-      'C’est David.',
-      '',
-      'Tu t’es arrêté en chemin. Tu peux reprendre ici, sans tout refaire :',
-      link,
-    ];
+    subject = 'Il reste une étape pour votre inscription — Boxing Center';
+    lead = 'Vous n’avez pas terminé votre inscription. Vous pouvez reprendre là où vous en étiez.';
+    ctaLabel = 'Reprendre mon inscription';
   }
-  return buildDavidPlainEmail({ name, lines });
+  const html = `<p>${escapeHtml(greeting)}</p>
+    <p>${escapeHtml(lead)}</p>
+    <p><a href="${escapeHtml(link)}">${escapeHtml(ctaLabel)}</a></p>
+    <p>Si le lien ne s’ouvre pas, copiez cette adresse :<br/>${escapeHtml(link)}</p>
+    <p>Sportivement,<br/>Boxing Center</p>`;
+  const emailText = [greeting, '', lead, '', `${ctaLabel} :`, link, '', 'Sportivement,', 'Boxing Center'].join(
+    '\n'
+  );
+  return {
+    fromName: 'Boxing Center',
+    subject,
+    html,
+    emailText,
+    headers: undefined,
+    attachments: [],
+  };
 }
 
 function offerLink(hubUrl) {
