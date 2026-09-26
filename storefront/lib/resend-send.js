@@ -71,13 +71,15 @@ async function sendEmailViaResend({
   attachments,
   tags,
   fromName,
+  fromEmail,
   cc,
 }) {
   if (!to) throw new Error('Destinataire email manquant');
   if (!isConfigured()) throw new Error('RESEND_API_KEY manquant');
 
+  const fromAddress = String(fromEmail || senderEmail()).trim();
   const body = {
-    from: `${fromName || senderName()} <${senderEmail()}>`,
+    from: `${fromName || senderName()} <${fromAddress}>`,
     to: [to],
     subject: subject || 'Message Boxing Center',
     text: text || undefined,
@@ -109,7 +111,7 @@ async function sendEmailViaResend({
     sent: true,
     messageId: data.id,
     via: 'resend',
-    sender: senderEmail(),
+    sender: fromAddress,
   };
 }
 

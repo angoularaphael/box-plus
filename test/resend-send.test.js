@@ -55,7 +55,10 @@ test('relance inscription e-mail passe par Resend, pas Brevo', () => {
   assert.match(src, /sendEmailViaResend/);
   assert.doesNotMatch(src, /sendEmailViaBrevo/);
   assert.match(src, /html: copy\.html/);
+  assert.match(src, /fromEmail: copy\.fromEmail/);
   assert.doesNotMatch(src, /html:\s*undefined/);
+  const copy = fs.readFileSync(path.join(__dirname, '../storefront/lib/campaign-email.js'), 'utf8');
+  assert.match(copy, /david@boxingcenter\.fr/);
 });
 
 test('relance inscription SMS (« vous n’avez pas finalisé ») coupée', () => {

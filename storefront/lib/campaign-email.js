@@ -94,7 +94,8 @@ function buildInscriptionNudgeEmail({ name, url, paidDossier = false, kind } = {
     '\n'
   );
   return {
-    fromName: 'Boxing Center',
+    fromName: 'David',
+    fromEmail: 'david@boxingcenter.fr',
     subject,
     html,
     emailText,

@@ -87,7 +87,8 @@ test('mails reprise / relance : transactionnel Boxing Center, comme la résiliat
     url: 'https://boutique.boxingcenter.fr/inscription?order=BC-MAIL&step=4&pay=1',
     kind: 'pay',
   });
-  assert.equal(payMail.fromName, 'Boxing Center');
+  assert.equal(payMail.fromName, 'David');
+  assert.equal(payMail.fromEmail, 'david@boxingcenter.fr');
   assert.equal(payMail.subject, 'Il reste le paiement de votre inscription — Boxing Center');
   assert.match(payMail.html, /Bonjour Diego/);
   assert.match(payMail.html, /paiement/);
@@ -115,7 +116,8 @@ test('mails reprise / relance : transactionnel Boxing Center, comme la résiliat
   assert.match(nudgeMail.subject, /dossier/);
   assert.match(nudgeMail.html, /règlement est bien reçu/);
   assert.match(nudgeMail.emailText, /règlement est bien reçu/);
-  assert.equal(nudgeMail.fromName, 'Boxing Center');
+  assert.equal(nudgeMail.fromName, 'David');
+  assert.equal(nudgeMail.fromEmail, 'david@boxingcenter.fr');
   const wa = nudgeWhatsAppText(paid);
   assert.match(wa, /Bonjour Diego/);
   assert.match(wa, /pas finalisé/);
@@ -309,7 +311,8 @@ test('envoi relance / reprise : HTML Boxing Center, destinataire le client', () 
     payment: { status: 'failed' },
   };
   const pay = nudgeEmailCopy(unpaid, { kind: 'pay' });
-  assert.equal(pay.fromName, 'Boxing Center');
+  assert.equal(pay.fromName, 'David');
+  assert.equal(pay.fromEmail, 'david@boxingcenter.fr');
   assert.match(pay.subject, /paiement/);
   assert.match(pay.subject, /Boxing Center/);
   assert.match(pay.html, /<p>Bonjour Diego/);
@@ -323,7 +326,8 @@ test('envoi relance / reprise : HTML Boxing Center, destinataire le client', () 
     payment: { status: 'paid', paid_at: '2026-08-16T08:00:00.000Z' },
   };
   const nudge = nudgeEmailCopy(paid);
-  assert.equal(nudge.fromName, 'Boxing Center');
+  assert.equal(nudge.fromName, 'David');
+  assert.equal(nudge.fromEmail, 'david@boxingcenter.fr');
   assert.match(nudge.html, /règlement est bien reçu/);
   assert.match(nudge.emailText, /règlement est bien reçu/);
   if (prev === undefined) delete process.env.STORE_URL;

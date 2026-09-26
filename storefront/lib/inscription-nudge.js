@@ -365,6 +365,7 @@ async function sendResumeEmail(order, { kind = 'resume', to } = {}) {
       html: copy.html,
       text: copy.emailText,
       fromName: copy.fromName,
+      fromEmail: copy.fromEmail,
       tags: TRANSACTIONAL_EMAIL_TAGS,
       headers: TRANSACTIONAL_EMAIL_HEADERS,
     });
@@ -510,6 +511,7 @@ async function sendNudgeEmail(order) {
       html: copy.html,
       text: copy.emailText,
       fromName: copy.fromName,
+      fromEmail: copy.fromEmail,
       tags: TRANSACTIONAL_EMAIL_TAGS,
       headers: TRANSACTIONAL_EMAIL_HEADERS,
     });
