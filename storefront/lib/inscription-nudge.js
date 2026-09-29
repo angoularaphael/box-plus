@@ -203,6 +203,7 @@ function customerPhone(order) {
       order?.customer_full?.phone ||
       order?.customer_full?.mobile ||
       order?.customer?.phone ||
+      order?.customer_full?.guardian?.phone ||
       ''
   ).trim();
 }

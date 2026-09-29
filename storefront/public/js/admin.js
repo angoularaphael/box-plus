@@ -78,6 +78,27 @@
     return `<a href="tel:${escapeHtml(tel)}" style="color:var(--bc-cta);font-weight:600;white-space:nowrap">${escapeHtml(raw)}</a>`;
   }
 
+  function smsAddress(phone) {
+    let raw = String(phone || '').replace(/[^\d+]/g, '');
+    if (raw.startsWith('00')) raw = `+${raw.slice(2)}`;
+    else if (raw.startsWith('0')) raw = `+33${raw.slice(1)}`;
+    else if (raw && !raw.startsWith('+')) raw = `+${raw}`;
+    return raw;
+  }
+
+  function openSmsDraft(phone, text) {
+    const to = smsAddress(phone);
+    if (!to) return false;
+    const href = `sms:${to}?body=${encodeURIComponent(String(text || ''))}`;
+    const a = document.createElement('a');
+    a.href = href;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return true;
+  }
+
   function headers(json = true) {
     const h = {};
     if (json) h['Content-Type'] = 'application/json';
@@ -212,6 +233,36 @@
       }
       if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
       return null;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function openPersonalizedSms(orderId, btn) {
+    const msg = document.getElementById('ordersMsg');
+    const id = String(orderId || '').trim();
+    if (!id) return;
+    if (btn) btn.disabled = true;
+    try {
+      const data = await fetchResumeLink(id, 'resume');
+      if (!data.phone) throw new Error('Pas de numéro de téléphone sur ce dossier');
+      const text = String(data.sms_text || '').trim();
+      if (!text) throw new Error('Message personnalisé indisponible');
+      const opened = openSmsDraft(data.phone, text);
+      if (!opened) throw new Error('Numéro de téléphone invalide');
+      if (msg) {
+        msg.textContent = `SMS ouvert pour ${data.name || data.phone} — le message contient le lien de reprise.`;
+        msg.className = 'form-msg ok';
+      }
+      if (typeof window.panToast === 'function') {
+        window.panToast('SMS ouvert avec le message et le lien de reprise', 'ok');
+      }
+    } catch (err) {
+      if (msg) {
+        msg.textContent = err.message;
+        msg.className = 'form-msg err';
+      }
+      if (typeof window.panToast === 'function') window.panToast(err.message, 'err');
     } finally {
       if (btn) btn.disabled = false;
     }
@@ -663,7 +714,7 @@
         return false;
       }
       if (!q) return true;
-      const hay = `${o.order_id} ${o.name} ${o.email} ${o.product} ${o.gym || ''} ${o.gym_label || gymLabel(o.gym)} ${o.aventure ? 'aventure balma' : ''}`.toLowerCase();
+      const hay = `${o.order_id} ${o.name} ${o.email} ${o.phone || ''} ${o.product} ${o.gym || ''} ${o.gym_label || gymLabel(o.gym)} ${o.aventure ? 'aventure balma' : ''}`.toLowerCase();
       return hay.includes(q);
     });
   }
@@ -919,7 +970,7 @@
 
     if (!list.length) {
       tbody.innerHTML =
-        '<tr><td colspan="13" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription trouvée</td></tr>';
+        '<tr><td colspan="14" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription trouvée</td></tr>';
       return;
     }
 
@@ -942,6 +993,16 @@
               : '<span class="badge pending">Boutique</span>'
         }</td>
         <td><a href="mailto:${encodeURIComponent(o.email)}" style="color:var(--bc-cta)">${escapeHtml(o.email)}</a></td>
+        <td class="admin-phone-cell">
+          <div class="admin-phone-cell__stack">
+            ${phoneLink(o.phone)}
+            ${
+              o.phone && !o.action
+                ? `<button type="button" class="btn sm sms-person" data-id="${escapeHtml(o.order_id)}">Message personnalisé</button>`
+                : ''
+            }
+          </div>
+        </td>
         <td>${escapeHtml(o.product)}</td>
         <td>${escapeHtml(o.gym_label || gymLabel(o.gym))}</td>
         <td>${escapeHtml(o.step_label || STEP_LABELS[o.step] || o.step)}</td>
@@ -996,6 +1057,9 @@
 
     tbody.querySelectorAll('.resume-order').forEach((btn) => {
       btn.onclick = () => generateResumeLink(btn.dataset.id, btn);
+    });
+    tbody.querySelectorAll('.sms-person').forEach((btn) => {
+      btn.onclick = () => openPersonalizedSms(btn.dataset.id, btn);
     });
     tbody.querySelectorAll('.pay-order').forEach((btn) => {
       btn.onclick = () => generateResumeLink(btn.dataset.id, btn, 'pay');

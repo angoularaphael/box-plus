@@ -735,6 +735,11 @@ button.pan-kpi:hover {
 
   .pan-table--cartes tbody td[style*="nowrap"] { white-space: normal; }
 
+  .pan-table--cartes .admin-phone-cell__stack {
+    align-items: flex-end;
+    max-width: 66%;
+  }
+
   #productEditModal {
     padding: max(12px, env(safe-area-inset-top, 0px)) 12px max(12px, env(safe-area-inset-bottom, 0px));
     align-items: start;
@@ -1017,3 +1022,24 @@ button.pan-kpi:hover {
 .dossier-dl dd { margin: 0; font-weight: 600; }
 .dossier-media { display: flex; flex-wrap: wrap; gap: 12px; margin: 12px 0; }
 .dossier-media img { max-width: 180px; border-radius: 8px; }
+
+.admin-phone-cell {
+  min-width: 11rem;
+  vertical-align: top;
+}
+.admin-phone-cell__stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.admin-phone-cell .sms-person {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.2;
+}

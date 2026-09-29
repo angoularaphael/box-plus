@@ -2311,7 +2311,7 @@ function createApp() {
     if (!order) {
       return res.status(404).json({ ok: false, error: 'not_found', message: 'Référence introuvable' });
     }
-    const { describeResume, canPayOrder, productNeedsPayment } = require('./lib/inscription-nudge');
+    const { describeResume, canPayOrder, productNeedsPayment, resumeWhatsAppText } = require('./lib/inscription-nudge');
     if (order.action || !order.access_token) {
       return res.status(400).json({
         ok: false,
@@ -2338,6 +2338,7 @@ function createApp() {
     res.json({
       ok: true,
       ...info,
+      sms_text: resumeWhatsAppText(order, { kind }),
       message:
         kind === 'pay'
           ? 'Lien de paiement — étape Paiement'

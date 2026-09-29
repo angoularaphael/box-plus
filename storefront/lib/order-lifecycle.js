@@ -620,7 +620,7 @@ function toAdminSummary(order) {
     step_label: actionStepLabel(order),
     product,
     email,
-    phone: short.phone || customer.phone || full.phone || full.mobile || null,
+    phone: short.phone || customer.phone || full.phone || full.mobile || full.guardian?.phone || null,
     name: nameFromCustomer,
     gym: full.gym || order.gym || customer.gym || null,
     gym_label: gymLabel(full.gym || order.gym || customer.gym),
