@@ -501,6 +501,7 @@
   /** Offres éligibles Scalapay : 259 €, 400 €, Boxe éducative, Baby boxe. */
   function supportsScalapay(p) {
     if (!p) return false;
+    if (p.supports_scalapay === true) return true;
     const id = String(p.id || '').toLowerCase();
     const legacy = String(p.legacy_id || '').toLowerCase();
     const title = String(p.name || p.display_name || '');

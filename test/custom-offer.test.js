@@ -64,6 +64,26 @@ test('buildCustomOfferProduct comptant 1× ou 4×', () => {
   assert.equal(p.price_cents, 25900);
 });
 
+test('offre perso Scalapay 4× : flag, copie, bornes 5–2000 €', () => {
+  const { productSnapshot } = require('../storefront/lib/order-lifecycle');
+  const { productSupportsScalapay } = require('../lib/billing-plan');
+  assert.equal(normalizeMode('scalapay_4x'), 'comptant_scalapay');
+  const p = buildCustomOfferProduct({ price_euros: 150, mode: 'comptant_scalapay' });
+  assert.equal(p.supports_scalapay, true);
+  assert.equal(p.supports_installment_choice, true);
+  assert.equal(p.requires_iban, false);
+  assert.equal(p.installments_note, 'En une fois, PayPal 4× sans frais ou CB 3×/4×');
+  assert.match(p.description, /CB 3× sans frais \/ 4×/);
+  assert.equal(productSnapshot(p).supports_scalapay, true);
+  assert.equal(productSupportsScalapay(productSnapshot(p)), true);
+  assert.throws(
+    () => buildCustomOfferProduct({ price_euros: 2500, mode: 'comptant_scalapay' }),
+    /Scalapay est disponible entre 5 € et 2000 €/
+  );
+  assert.equal(buildCustomOfferProduct({ price_euros: 5, mode: 'scalapay' }).supports_scalapay, true);
+  assert.equal(buildCustomOfferProduct({ price_euros: 2000, mode: 'scalapay' }).supports_scalapay, true);
+});
+
 test('buildCustomOfferProduct 150 € — PayPal 4× seulement (pas Scalapay)', () => {
   const p = buildCustomOfferProduct({ price_euros: 150, mode: 'comptant_4x' });
   assert.equal(p.supports_installment_choice, true);

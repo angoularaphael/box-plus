@@ -520,6 +520,7 @@
                 <select id="co_mode" name="mode" required>
                   <option value="comptant">Comptant (une fois)</option>
                   <option value="comptant_4x">Comptant — 1× ou fractionné (PayPal 4×)</option>
+                  <option value="comptant_scalapay">Comptant — 1×, PayPal 4× ou Scalapay (CB 3× / 4×)</option>
                   <option value="abonnement">Abonnement (4 semaines + IBAN)</option>
                 </select>
                 <p id="co_mode_hint" class="admin-section-desc" style="margin:6px 0 0;font-size:13px" hidden>
@@ -850,7 +851,7 @@
   </div>
 
   <script src="../js/contract-open.js?v=9"></script>
-  <script src="/js/admin.js?v=36"></script>
+  <script src="/js/admin.js?v=37"></script>
   <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
        reecrit pas une ligne (un autre developpeur y travaille). -->
   <script src="/js/admin-shell.js?v=20"></script>

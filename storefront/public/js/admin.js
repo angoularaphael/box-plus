@@ -2725,7 +2725,19 @@
   function syncCustomOfferModeHint() {
     const mode = document.getElementById('co_mode')?.value;
     const hint = document.getElementById('co_mode_hint');
-    if (hint) hint.hidden = mode !== 'comptant_4x';
+    if (!hint) return;
+    if (mode === 'comptant_scalapay') {
+      hint.hidden = false;
+      hint.textContent =
+        '1×, PayPal 4× sans frais, ou CB Scalapay (3× sans frais, 4× avec 1,5 % de frais). Montant entre 5 € et 2 000 €. À Portet : PayPal 4× seulement.';
+    } else if (mode === 'comptant_4x') {
+      hint.hidden = false;
+      hint.textContent =
+        'PayPal 4× sans frais pour tout montant. CB Scalapay uniquement à 259 € ou 400 €. À Portet : PayPal 4× seulement.';
+    } else {
+      hint.hidden = true;
+      hint.textContent = '';
+    }
   }
   document.getElementById('co_mode')?.addEventListener('change', syncCustomOfferModeHint);
   syncCustomOfferModeHint();
@@ -2774,11 +2786,13 @@
           <p><strong>${escapeHtml(data.product?.display_name || 'Offre personnalisée')}</strong>
             — ${escapeHtml(data.price_label || '')}
             · ${
-              data.product?.supports_installment_choice
-                ? escapeHtml(data.product?.installments_note || 'Comptant — 1× ou fractionné')
-                : data.mode === 'comptant'
-                  ? 'Comptant'
-                  : 'Abonnement 4 semaines'
+              data.product?.supports_scalapay
+                ? escapeHtml(data.product?.installments_note || '1×, PayPal 4× ou Scalapay')
+                : data.product?.supports_installment_choice
+                  ? escapeHtml(data.product?.installments_note || 'Comptant — 1× ou fractionné')
+                  : data.mode === 'comptant'
+                    ? 'Comptant'
+                    : 'Abonnement 4 semaines'
             }
             · ${Number(data.party_size || data.product?.party_size || 1) > 1
               ? `${Number(data.party_size || data.product?.party_size)} personnes`
@@ -2800,6 +2814,7 @@
         msg.className = 'form-msg ok';
       }
       form.reset();
+      syncCustomOfferModeHint();
       if (typeof window.panToast === 'function') window.panToast('Lien d’offre personnalisée prêt');
     } catch (err) {
       if (msg) {

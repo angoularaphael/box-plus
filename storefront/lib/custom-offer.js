@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { adultOfferAgeError } = require('../../lib/billing-plan');
 
 const CLUB_CUSTOM_OFFER_EMAIL = 'boxingcenter31@gmail.com';
+const { SCALAPAY_MIN_CENTS, SCALAPAY_MAX_CENTS } = require('./payplug');
 
 const GYM_SLUGS = new Set([
   'minimes',
@@ -42,6 +43,17 @@ function parsePriceCents(input = {}) {
 
 function normalizeMode(value) {
   const mode = String(value || '').toLowerCase().trim();
+  if (
+    mode === 'comptant_scalapay' ||
+    mode === 'comptant-scalapay' ||
+    mode === 'scalapay' ||
+    mode === 'scalapay_4x' ||
+    mode === 'scalapay-4x' ||
+    mode === 'scala_pay' ||
+    mode === 'scala-pay'
+  ) {
+    return 'comptant_scalapay';
+  }
   if (mode === 'comptant_4x' || mode === 'comptant-4x' || mode === '4x' || mode === 'fourx') {
     return 'comptant_4x';
   }
@@ -54,7 +66,7 @@ function normalizeMode(value) {
 
 function parseAllow4x(input = {}, mode = '') {
   if (mode === 'abonnement') return false;
-  if (mode === 'comptant_4x') return true;
+  if (mode === 'comptant_4x' || mode === 'comptant_scalapay') return true;
   const raw = input.allow_4x ?? input.four_x ?? input.installments;
   if (raw === true || raw === 1 || raw === '1' || raw === 'true' || raw === 'oui' || raw === 'on') return true;
   return false;
@@ -158,8 +170,8 @@ function customOfferSupportsScalapay(cents) {
   return n === 25900 || n === 40000;
 }
 
-function installmentCopyForPrice(cents, priceLabel, quartLabel) {
-  const scalapay = customOfferSupportsScalapay(cents);
+function installmentCopyForPrice(cents, priceLabel, quartLabel, forceScalapay) {
+  const scalapay = forceScalapay === true || customOfferSupportsScalapay(cents);
   const note = scalapay
     ? 'En une fois, PayPal 4× sans frais ou CB 3×/4×'
     : 'En une fois ou PayPal 4× sans frais';
@@ -316,19 +328,30 @@ function buildCustomOfferProduct(input = {}) {
   }
   const allow4x = parseAllow4x(input, mode);
   const allowMinors = parseAllowMinors(input);
-  const comptant = mode === 'comptant' || mode === 'comptant_4x';
+  const comptant = mode === 'comptant' || mode === 'comptant_4x' || mode === 'comptant_scalapay';
+  const allowScalapay =
+    mode === 'comptant_scalapay' || (mode === 'comptant_4x' && customOfferSupportsScalapay(cents));
+  if (mode === 'comptant_scalapay' && (cents < SCALAPAY_MIN_CENTS || cents > SCALAPAY_MAX_CENTS)) {
+    const err = new Error(
+      `Scalapay est disponible entre ${SCALAPAY_MIN_CENTS / 100} € et ${SCALAPAY_MAX_CENTS / 100} €. Pour ce prix, choisis PayPal 4× ou le comptant.`
+    );
+    err.status = 400;
+    throw err;
+  }
   const priceLabel = formatPriceLabel(cents);
   const customName = String(input.label || input.name || '').trim();
   const id = `custom-${crypto.randomBytes(4).toString('hex')}`;
   const quartLabel = formatPriceLabel(Math.round(cents / 4));
-  const installment = allow4x ? installmentCopyForPrice(cents, priceLabel, quartLabel) : null;
+  const installment = allow4x ? installmentCopyForPrice(cents, priceLabel, quartLabel, allowScalapay) : null;
   const name =
     customName ||
     (!comptant
       ? `Offre personnalisée ${priceLabel} / 4 semaines`
-      : allow4x
-        ? `Offre personnalisée ${priceLabel} (1× ou fractionné)`
-        : `Offre personnalisée ${priceLabel} comptant`);
+      : allowScalapay
+        ? `Offre personnalisée ${priceLabel} (1×, PayPal 4× ou Scalapay)`
+        : allow4x
+          ? `Offre personnalisée ${priceLabel} (1× ou fractionné)`
+          : `Offre personnalisée ${priceLabel} comptant`);
   const partySize = parsePartySize(input);
   const people = peopleLabel(partySize);
   const peopleNote =
@@ -351,6 +374,7 @@ function buildCustomOfferProduct(input = {}) {
     requires_payment: true,
     supports_billing_choice: false,
     supports_installment_choice: Boolean(comptant && allow4x),
+    supports_scalapay: Boolean(comptant && allowScalapay),
     installments_note: comptant && allow4x ? installment.note : null,
     tab: 'abonnements',
     subsection: comptant ? 'comptant' : 'prelevement',

@@ -72,6 +72,7 @@ function productSnapshot(product) {
     requires_iban: product.requires_iban,
     supports_billing_choice: product.supports_billing_choice,
     supports_installment_choice: product.supports_installment_choice,
+    supports_scalapay: product.supports_scalapay === true,
     badge: product.badge || null,
     benefits: product.benefits || [],
     deciplus_total_note: product.deciplus_total_note || null,
