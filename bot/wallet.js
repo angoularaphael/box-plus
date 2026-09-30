@@ -80,6 +80,27 @@ async function hasPostalAddressBlocker(ctx) {
   return (await msg.count()) > 0 && (await msg.isVisible().catch(() => false));
 }
 
+async function ribValiderDisabled(ctx) {
+  return ctx
+    .evaluate(() => {
+      const btn = [...document.querySelectorAll('input[type="submit"], button')].find((el) =>
+        /^valider$/i.test(String(el.value || el.textContent || '').trim())
+      );
+      return Boolean(btn && btn.disabled);
+    })
+    .catch(() => false);
+}
+
+/** IBAN visible != mandat enregistré : bandeau rouge + Valider grisé = RIB pas appliqué. */
+async function ribMandateNeedsSave(ctx) {
+  const blocked = await hasPostalAddressBlocker(ctx);
+  const addrOk = await ribMandateAddressReady(ctx);
+  const validerOff = await ribValiderDisabled(ctx);
+  if (blocked && (!addrOk || validerOff)) return true;
+  if (validerOff && !addrOk) return true;
+  return false;
+}
+
 /**
  * Deciplus affiche parfois le bandeau alors que adr_line1/CP/ville sont déjà remplis.
  * Dans ce cas le submit UI est disabled, mais le serveur accepte quand même le mandat
@@ -696,7 +717,9 @@ async function fillRibForm(ctx, iban, customer, gymConfig) {
 
   await fillFirst(ctx, sel('rib_form.address'), addr.address);
   await fillFormField(ctx, 'input[name="adr_line1"]', addr.address);
-  await fillFirst(ctx, sel('rib_form.address2'), '');
+  const line2 = String(customer.address2 || customer.adresse2 || '').trim();
+  await fillFirst(ctx, sel('rib_form.address2'), line2);
+  await fillFormField(ctx, 'input[name="adr_line2"]', line2);
   await fillFirst(ctx, sel('rib_form.city'), addr.city.toUpperCase());
   await fillFormField(ctx, 'input[name="adr_town"]', addr.city.toUpperCase());
   await fillFirst(ctx, sel('rib_form.zip'), addr.postal_code);
@@ -824,7 +847,8 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
     const ibanAlready =
       existingIban === value ||
       (existingIban && value && existingIban.startsWith(value.slice(0, 20)));
-    if (existingMeta.rum && ibanAlready) {
+    const needsSave = await ribMandateNeedsSave(ribCtx);
+    if (existingMeta.rum && ibanAlready && !needsSave) {
       logInfo('IBAN déjà enregistré sur le mandat Deciplus', {
         member_id: memberId,
         rum: existingMeta.rum || null,
@@ -832,17 +856,45 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
       await closeGreyboxIfOpen(page);
       return true;
     }
+    if (ibanAlready && needsSave) {
+      logWarn('RIB visible mais mandat non enregistré — adresse + Valider', {
+        member_id: memberId,
+        rum: existingMeta.rum || null,
+        attempt,
+      });
+      await fillRibForm(ribCtx, value, customer, gymConfig);
+      await submitRibForm(ribCtx, page);
+      const posted = await postCurrentRibForm(ribCtx);
+      await closeGreyboxIfOpen(page);
+      const ribCheck = await openRibForm(page, memberId, { forceFresh: true });
+      const afterNeed = await ribMandateNeedsSave(ribCheck);
+      const after = await readMandateMeta(ribCheck);
+      await closeGreyboxIfOpen(page);
+      if (after.rum && !afterNeed) {
+        logInfo('RIB validé sur le mandat Deciplus', { member_id: memberId, rum: after.rum });
+        return true;
+      }
+      logWarn('Valider RIB encore bloqué après soumission', {
+        member_id: memberId,
+        post_ok: posted?.ok || false,
+        attempt,
+      });
+      continue;
+    }
     if (ibanAlready && !existingMeta.rum) {
       logInfo('IBAN saisi mais mandat non validé — enregistrement', {
         member_id: memberId,
         attempt,
       });
+      await fillRibForm(ribCtx, value, customer, gymConfig);
       await submitRibForm(ribCtx, page);
+      await postCurrentRibForm(ribCtx);
       await closeGreyboxIfOpen(page);
       const ribCheck = await openRibForm(page, memberId, { forceFresh: true });
       const after = await readMandateMeta(ribCheck);
+      const afterNeed = await ribMandateNeedsSave(ribCheck);
       await closeGreyboxIfOpen(page);
-      if (after.rum) {
+      if (after.rum && !afterNeed) {
         logInfo('RIB validé sur le mandat Deciplus', { member_id: memberId, rum: after.rum });
         return true;
       }
@@ -923,6 +975,8 @@ module.exports = {
   openRibForm,
   fillRibForm,
   submitRibForm,
+  hasPostalAddressBlocker,
+  ribMandateNeedsSave,
   getRibFrame,
   ribAddressFields,
   ensureMemberPostalAddress,
