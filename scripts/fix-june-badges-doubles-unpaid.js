@@ -204,7 +204,7 @@ function unpaidMembers() {
 
         for (const c of uniq) {
           const raw = contracts.find((x) => String(x.idc) === String(c.idc)) || c;
-          const out = await cancelOneContract(page, raw, { forceVoid: true });
+          const out = await cancelOneContract(page, raw, { neverVoid: true });
           row.cancelled.push({ idc: c.idc, why: c.why, ...out });
           console.log('  cancel', c.why, c.idc, out.cancelled ? 'OK' : out.reason);
           await closeGreyboxIfOpen(page).catch(() => {});

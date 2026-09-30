@@ -335,7 +335,8 @@ test('carte : prélèvement 72 h (J+3), pas J+7', () => {
 
 test('badge impayé : Résilier, jamais Annuler la vente', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/cancel-sale.js'), 'utf8');
-  assert.match(src, /!contract\.isBadge/);
+  assert.match(src, /!c\.isBadge/);
   assert.doesNotMatch(src, /badge_voided/);
   assert.match(src, /Résilier — jamais « Annuler la vente »/);
+  assert.match(src, /Annuler la vente interdit/);
 });

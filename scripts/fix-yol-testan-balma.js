@@ -240,7 +240,7 @@ async function fixJuliette(page, catalog, payload, report) {
   }
 
   for (const c of classified.toCancel) {
-    const res = await cancelOneContract(page, c, { forceVoid: true });
+    const res = await cancelOneContract(page, c, { neverVoid: true });
     report.actions = report.actions || [];
     report.actions.push({ cancel: { idc: c.idc, ...res } });
     await closeGreyboxIfOpen(page).catch(() => {});

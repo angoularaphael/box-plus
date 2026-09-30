@@ -103,7 +103,7 @@ async function loadRawContracts(page, memberId, gym) {
 async function cancelListedContracts(page, memberId, gym, contracts, label) {
   const out = [];
   for (const c of contracts) {
-    const res = await cancelOneContract(page, c, { forceVoid: true });
+    const res = await cancelOneContract(page, c, { neverVoid: true });
     out.push({ idc: c.idc, ...res });
     console.log(`  ${label}`, c.idc, res.cancelled ? 'OK' : res.reason || 'fail');
     await closeGreyboxIfOpen(page).catch(() => {});
