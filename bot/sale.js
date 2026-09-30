@@ -1048,8 +1048,14 @@ async function waitForBadgeModalClosed(page, timeoutMs = 12000) {
 }
 
 function extractBadgePaymentDate(text) {
-  const m = String(text || '').match(/Date de paiement\s*(\d{2}\/\d{2}\/\d{4})/i);
-  return m ? m[1] : null;
+  const src = String(text || '').replace(/\s+/g, ' ');
+  const direct = src.match(/Date de paiement\s*(\d{2}\/\d{2}\/\d{4})/i);
+  if (direct) return direct[1];
+  // nextgen : « Date de paiement Prélèvement Automatique 34,99€ 03/10/2026 »
+  const nextgen = src.match(
+    /Date de paiement[\s\S]{0,120}?(\d{2}\/\d{2}\/\d{4})/i
+  );
+  return nextgen ? nextgen[1] : null;
 }
 
 function modalShowsImmediateBadgePayment(text) {
