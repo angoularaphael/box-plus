@@ -155,9 +155,10 @@ test('fiche sans e-mail ni téléphone → immédiat', () => {
 
 test('résiliation impayés : Résilier abo + badge, jamais Annuler la vente', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/cancel-sale.js'), 'utf8');
-  assert.match(src, /neverVoid/);
+  assert.match(src, /function resolveCancelNeverVoid\([\s\S]*?\{\s*return true;\s*\}/);
   assert.match(src, /!c\.isBadge/);
   assert.doesNotMatch(src, /badge_voided/);
+  assert.doesNotMatch(src, /forceVoid|voidPendingSaleIfPossible|confirmAnnulationModal/);
   const script = require('fs').readFileSync(
     require('path').join(__dirname, '../scripts/mail-rib-and-resiliate-unpaid.js'),
     'utf8'

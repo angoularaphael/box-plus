@@ -24,8 +24,9 @@ test('cancel-sale.js ne clique plus Annuler la vente', () => {
   assert.doesNotMatch(src, /vente annulée/);
   assert.match(src, /Clic Annuler la vente interdit — Résilier uniquement/);
   assert.match(src, /if \(\/annuler la vente\/i\.test\(t\)\) continue/);
-  assert.match(src, /forceVoid:\s*false/);
-  assert.doesNotMatch(src, /forceVoid:\s*true/);
+  assert.doesNotMatch(src, /forceVoid/);
+  assert.doesNotMatch(src, /voidPendingSaleIfPossible|confirmAnnulationModal|clickAnnulationRefundMode|shouldVoidSale/);
+  assert.match(src, /clickActionTile\(page, \[\/\^Résilier\$\/i/);
 });
 
 test('processCancelJob boutique → neverVoid: true', () => {

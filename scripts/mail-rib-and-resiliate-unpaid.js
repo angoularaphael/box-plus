@@ -637,7 +637,7 @@ async function resiliateUnpaid(page, report) {
         continue;
       }
       for (const c of pick) {
-        const result = await cancelOneContract(page, c, { neverVoid: true, forceVoid: false });
+        const result = await cancelOneContract(page, c, { neverVoid: true });
         row.cancelled.push({
           idc: c.idc,
           ok: Boolean(result.cancelled),
