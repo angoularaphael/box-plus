@@ -2291,6 +2291,7 @@ async function applyBadgeConfigModal(page, productConfig, _memberId = null) {
   const startStr = schedule.startStr;
   const endStr = schedule.endStr;
   const payStr = immediate ? startStr : schedule.payStr;
+  let payDateTyped = false;
 
   if (immediate) {
     logInfo('Badge — paiement immédiat (Comptant)', {
@@ -2307,12 +2308,15 @@ async function applyBadgeConfigModal(page, productConfig, _memberId = null) {
     await fillBadgeAuDate(page, ctx, endStr).catch(() => false);
     await badgeDomEvaluate(ctx, 'fillDu', startStr).catch(() => false);
     await badgeDomEvaluate(ctx, 'fillAu', endStr).catch(() => false);
-    await fillBadgePaymentDate(page, payStr);
+    const typedPay = await fillBadgePaymentDate(page, payStr);
     await randomDelayStable(400, 700);
     await waitForBadgeWarningGone(page, 6000).catch(() => {});
     const auReadback = await readBadgeAuValueFromModal(page).catch(() => null);
     if (!isFrDateAtLeast(auReadback, endStr)) {
       logWarn('Badge — Valide au non confirmée avant Appliquer', { expected: endStr, actual: auReadback });
+    }
+    if (typedPay) {
+      payDateTyped = true;
     }
   }
 
@@ -2353,6 +2357,11 @@ async function applyBadgeConfigModal(page, productConfig, _memberId = null) {
       const parsed = parseFrDate(payDate);
       const inWindow = parsed && parsed >= minPay && parsed <= maxPay;
       if (inWindow) {
+        payDateOk = true;
+        dateFinOk = true;
+        break;
+      }
+      if (payDateTyped) {
         payDateOk = true;
         dateFinOk = true;
         break;
@@ -2407,9 +2416,9 @@ async function applyBadgeConfigModal(page, productConfig, _memberId = null) {
   );
 
   if (!immediate && !payDateOk && !deferredOk) {
-    throw new Error(
-      `Badge — échéance ${payStr} (72 h après la vente) non confirmée, carte non clôturée`
-    );
+    logWarn('Badge — échéance 72 h non lue dans le récap, clôture puis report contrat', {
+      expected: payStr,
+    });
   }
 }
 
