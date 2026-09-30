@@ -3201,6 +3201,7 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
       if (!enforce.ok) {
         result.manual_review = true;
         result.badge_error = `Échéance badge J+${resolveBadgePrelevementDelayDays(productConfig)} non confirmée (${enforce.reason || 'inconnue'})`;
+        result.error = result.badge_error;
       }
     } else {
       // Essai / coaching : prestation carte, pas le contrat Badge
@@ -3397,6 +3398,7 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
           if (!enforce.ok) {
             result.manual_review = true;
             result.badge_error = `Échéance badge J+${resolveBadgePrelevementDelayDays(badgeProductConfig)} non confirmée (${enforce.reason || 'inconnue'})`;
+            result.error = result.badge_error;
           }
         } catch (err) {
           logWarn('Badge non créé — prélèvement différé requis', {
@@ -3406,6 +3408,7 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
           });
           result.badge_action = 'badge_failed';
           result.badge_error = err.message;
+          result.error = err.message;
           result.manual_review = true;
         }
       }

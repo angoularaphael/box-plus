@@ -517,10 +517,17 @@ async function enrichOrdersWithJobErrors(orders = [], sb) {
   });
 }
 
+function addressFieldsPresent(customer = {}) {
+  return ['address', 'adresse', 'postal_code', 'code_postal', 'city', 'ville', 'country', 'pays'].some(
+    (key) => String(customer[key] || '').trim()
+  );
+}
+
 function classifyBotError(order = {}, errorText = '') {
   const err = String(errorText || order.bot_error || '').toLowerCase();
   const cf = order.customer_full || order.customer || {};
-  if (!hasValidFrenchAddress(cf)) return 'adresse_non_fr';
+  // La liste admin est allégée : sans rue / CP / ville, on ne peut pas conclure « hors France ».
+  if (addressFieldsPresent(cf) && !hasValidFrenchAddress(cf)) return 'adresse_non_fr';
   if (/id introuvable|formulaire non valid/i.test(err)) return 'creation_membre';
   if (/iban|rib|mandat/i.test(err)) return 'iban';
   if (/doublon|duplicate/i.test(err)) return 'doublon';
@@ -548,7 +555,7 @@ function botErrorRows(orders = [], { fromMonth = '', toMonth = '' } = {}) {
       member_id: o.deciplus_member_id || null,
       sale_id: o.deciplus_sale_id || null,
       category: classifyBotError(o),
-      foreign_address: !hasValidFrenchAddress(cf),
+      foreign_address: addressFieldsPresent(cf) && !hasValidFrenchAddress(cf),
       product: membershipProductName(o),
     });
   }

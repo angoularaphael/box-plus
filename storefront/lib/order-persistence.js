@@ -119,6 +119,10 @@ function buildOrderSummary(order) {
     customer_full: {
       gym: full.gym || null,
       email: full.email || null,
+      address: full.address || full.adresse || null,
+      postal_code: full.postal_code || full.code_postal || null,
+      city: full.city || full.ville || null,
+      country: full.country || full.pays || null,
     },
     customer: {
       name: customer.name || null,
@@ -257,6 +261,22 @@ function reconstructOrderFromListRow(row) {
     customer_full: stripHeavyFields({
       gym: rowValue(row, 'customer_gym', 'gym_full') || (rowValue(row, 'customer_full', 'payload->customer_full') || {}).gym || null,
       email: rowValue(row, 'customer_email') || (rowValue(row, 'customer_full', 'payload->customer_full') || {}).email || null,
+      address:
+        rowValue(row, 'customer_address') ||
+        (rowValue(row, 'customer_full', 'payload->customer_full') || {}).address ||
+        null,
+      postal_code:
+        rowValue(row, 'customer_postal_code') ||
+        (rowValue(row, 'customer_full', 'payload->customer_full') || {}).postal_code ||
+        null,
+      city:
+        rowValue(row, 'customer_city') ||
+        (rowValue(row, 'customer_full', 'payload->customer_full') || {}).city ||
+        null,
+      country:
+        rowValue(row, 'customer_country') ||
+        (rowValue(row, 'customer_full', 'payload->customer_full') || {}).country ||
+        null,
     }),
     customer: stripHeavyFields(rowValue(row, 'customer', 'payload->customer') || {}),
     gym: rowValue(row, 'gym', 'payload->gym') || rowValue(row, 'customer_gym') || null,
@@ -341,6 +361,10 @@ const SLIM_SELECT = [
   'customer:payload->customer',
   'customer_gym:payload->customer_full->gym',
   'customer_email:payload->customer_full->email',
+  'customer_address:payload->customer_full->address',
+  'customer_postal_code:payload->customer_full->postal_code',
+  'customer_city:payload->customer_full->city',
+  'customer_country:payload->customer_full->country',
   'product_snapshot:payload->product_snapshot',
   'funnel:payload->funnel',
   'signed_at:payload->signature->signed_at',

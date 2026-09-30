@@ -800,7 +800,7 @@ async function processSaleJob(page, order, jobMeta = {}) {
   return {
     status: finalStatus,
     action: 'sale',
-    error: ibanError || saleResult.error || null,
+    error: ibanError || saleResult.error || saleResult.badge_error || null,
     deciplus_member_id: memberId || null,
     deciplus_sale_id: saleResult.sale_id || null,
     member_action: memberResult.action,
@@ -1354,7 +1354,7 @@ async function pushBotSaleStatus(order, outcome = {}) {
       body: JSON.stringify({
         order_id: order.order_id,
         status: outcome.status || null,
-        error: outcome.error || outcome.sale?.error || null,
+        error: outcome.error || outcome.badge_error || outcome.sale?.error || outcome.sale?.badge_error || null,
         deciplus_member_id: outcome.deciplus_member_id || null,
         deciplus_sale_id: outcome.deciplus_sale_id || outcome.sale?.sale_id || null,
         action,

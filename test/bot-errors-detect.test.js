@@ -33,6 +33,26 @@ describe('bot error detection', () => {
     );
   });
 
+  it('ne classe pas hors France une fiche sans adresse (liste allégée)', () => {
+    assert.equal(
+      classifyBotError({
+        customer_full: { gym: 'minimes' },
+        bot_status: 'manual_review',
+      }),
+      'autre'
+    );
+  });
+
+  it('garde une adresse française valide hors de la catégorie adresse', () => {
+    assert.equal(
+      classifyBotError({
+        customer_full: { address: '2 chemin des syndics', postal_code: '31700', city: 'Cornebarrieu' },
+        bot_error: 'Échéance badge non confirmée',
+      }),
+      'badge'
+    );
+  });
+
   it('liste les erreurs bot', () => {
     const rows = botErrorRows([
       {
