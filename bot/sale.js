@@ -799,24 +799,24 @@ async function preparePrelevementDespiteUnpaid(page, memberId, gymConfig, produc
 }
 
 function resolveBadgePrelevementDelayDays(productConfig = {}) {
-  // Défaut : 7 jours — le J+3 (~72h) passait avant le 1er SEPA et restait « À faire ».
+  // Carte : prélèvement 72 h après la vente (J+3), pas J+7.
   const min = Number(
     productConfig.prelevement_delay_days_min ||
       process.env.BADGE_PRELEVEMENT_DELAY_MIN ||
-      7
+      3
   );
   const max = Number(
     productConfig.prelevement_delay_days_max ||
       process.env.BADGE_PRELEVEMENT_DELAY_MAX ||
-      7
+      3
   );
   const raw = Number(
     productConfig.prelevement_delay_days ||
       process.env.BADGE_PRELEVEMENT_DELAY_DAYS ||
-      7
+      3
   );
-  const delay = Number.isFinite(raw) ? raw : 7;
-  const lo = Number.isFinite(min) ? min : 7;
+  const delay = Number.isFinite(raw) ? raw : 3;
+  const lo = Number.isFinite(min) ? min : 3;
   const hi = Number.isFinite(max) ? Math.max(lo, max) : lo;
   return Math.min(hi, Math.max(lo, delay));
 }
@@ -840,7 +840,7 @@ function resolveBadgeValidityExtraDays(productConfig = {}) {
 /**
  * Badge différé :
  * - début = aujourd’hui
- * - échéance / débit = J+7 (le J+3 restait « À faire » avant le 1er SEPA)
+ * - échéance / débit = 72 h après la vente (J+3)
  * - fin = échéance + 13 mois (ex. 09/08/2026 → 09/09/2027)
  */
 function badgeScheduleDates(delayDays = 3, validityMonthsOrExtra = null) {
@@ -1964,11 +1964,11 @@ async function waitForBadgeWarningGone(page, timeoutMs = 8000) {
   return false;
 }
 
-async function verifyBadgeConfigModalReady(page, delayDays = 7) {
+async function verifyBadgeConfigModalReady(page, delayDays = 3) {
   return waitForBadgeModalRecapReady(page, delayDays, 2000);
 }
 
-async function verifyBadgeDeferredSetup(page, delayDays = 7) {
+async function verifyBadgeDeferredSetup(page, delayDays = 3) {
   if (await isBadgeConfigModalOpen(page)) {
     return waitForBadgeModalRecapReady(page, delayDays, 2000);
   }
@@ -2128,10 +2128,14 @@ async function finalizeBadgePayment(page, productConfig = {}, gymConfig = {}) {
     );
   }
   if (!clotured) {
-    throw new Error('Badge — « Clôturer la note » introuvable');
+    logWarn('Badge — « Clôturer la note » introuvable, tentative Terminer puis vérification du contrat', {
+      screenshot: await captureSaleDebugScreenshot(page, 'badge-deferred-cloturer-missing'),
+      ui: await venteUiSnapshot(page).catch(() => []),
+    });
+  } else {
+    logInfo('Badge — note clôturée');
+    await randomDelay(800, 1400);
   }
-  logInfo('Badge — note clôturée');
-  await randomDelay(800, 1400);
   await dismissPostApplyDialogs(page, { allowRib: false }).catch(() => {});
 
   let done = false;
@@ -2403,9 +2407,9 @@ async function applyBadgeConfigModal(page, productConfig, _memberId = null) {
   );
 
   if (!immediate && !payDateOk && !deferredOk) {
-    logWarn('Badge — Date de paiement peut encore être au défaut Deciplus (ex. fin de mois)', {
-      expected: payStr,
-    });
+    throw new Error(
+      `Badge — échéance ${payStr} (72 h après la vente) non confirmée, carte non clôturée`
+    );
   }
 }
 
@@ -2462,6 +2466,77 @@ async function openSaleFlow(page, productConfig, gymConfig, saleKind) {
   }
 
   await selectProductInCatalog(page, productConfig);
+}
+
+async function registerSaleRibIfAsked(page, productConfig = {}) {
+  const needsRib =
+    productConfig.requires_iban === true &&
+    productConfig.paiement_comptant !== true &&
+    productConfig.skip_rib_prompt !== true;
+
+  const work = await resolveDeciplusWorkPage(page);
+  if (!needsRib) {
+    let ignored = await clickFirst(work, sel('sale_config_modal.ignorer_continuer'), {
+      force: true,
+    }).catch(() => false);
+    if (!ignored) {
+      ignored = await clickVenteFooterAction(page, /Ignorer et continuer/i, {
+        exact: true,
+      }).catch(() => false);
+    }
+    if (ignored) {
+      logInfo('Vente Deciplus — étape impayés ignorée');
+      await randomDelayStable(600, 1000);
+    }
+    return;
+  }
+
+  let registered = await clickFirst(work, sel('sale_config_modal.enregistrer_rib'), {
+    force: true,
+  }).catch(() => false);
+  if (!registered) {
+    registered = await clickVenteFooterAction(
+      page,
+      /Enregistrer le RIB|Enregistrer le mandat|Saisir le RIB|Valider le RIB/i
+    ).catch(() => false);
+  }
+  if (!registered) {
+    registered = await clickFirst(page, sel('sale_config_modal.saisir_rib')).catch(() => false);
+  }
+  if (!registered) {
+    logWarn('Vente Deciplus — RIB à enregistrer, bouton introuvable (Ignorer non cliqué)');
+    return;
+  }
+
+  logInfo('Vente Deciplus — enregistrement du RIB');
+  await randomDelayStable(500, 900);
+
+  const iban = String(productConfig.member_iban || '').replace(/\s+/g, '');
+  const ribWork = await resolveDeciplusWorkPage(page);
+  const ibanField = ribWork.locator('input[name="iban"]').first();
+  const fieldVisible =
+    (await ibanField.count().catch(() => 0)) > 0 &&
+    (await ibanField.isVisible().catch(() => false));
+  if (fieldVisible && iban) {
+    const { fillRibForm, submitRibForm } = require('./wallet');
+    const current = String(await ibanField.inputValue().catch(() => '') || '').replace(/\s+/g, '');
+    if (current.length < 10) {
+      await fillRibForm(
+        ribWork,
+        iban,
+        productConfig.member_customer || {},
+        productConfig.gymConfig || {}
+      );
+    }
+    await submitRibForm(ribWork, page);
+    logInfo('Vente Deciplus — formulaire RIB validé');
+    return;
+  }
+
+  const saved = await clickFirst(ribWork, sel('rib_form.save'), { force: true }).catch(() => false);
+  if (!saved) {
+    await clickVenteFooterAction(page, /^\s*Valider\s*$/i).catch(() => false);
+  }
 }
 
 async function applyConfigModal(page, productConfig, memberId = null) {
@@ -2550,18 +2625,7 @@ async function applyConfigModal(page, productConfig, memberId = null) {
   }
   logInfo('Vente Deciplus — configuration appliquée');
   await randomDelayStable(600, 1000);
-  let ignored = await clickFirst(work, sel('sale_config_modal.ignorer_continuer'), {
-    force: true,
-  }).catch(() => false);
-  if (!ignored) {
-    ignored = await clickVenteFooterAction(page, /Ignorer et continuer/i, {
-      exact: true,
-    }).catch(() => false);
-  }
-  if (ignored) {
-    logInfo('Vente Deciplus — étape RIB / impayés ignorée');
-    await randomDelayStable(600, 1000);
-  }
+  await registerSaleRibIfAsked(page, productConfig);
 }
 
 async function nf525HeadingScope(page) {
@@ -2899,7 +2963,7 @@ async function reconcileActiveBadges(page, memberId, gymConfig, { keepOne = fals
   const ids = new Set(toCancel.map((c) => String(c.idc)));
   await cancelSale(page, memberId, {
     cancelReason: 'change_badge_policy',
-    forceVoid: true,
+    neverVoid: true,
     filter: (c) => c?.isBadge && ids.has(String(c.idc)),
   });
 
@@ -3076,6 +3140,10 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
   const { assertNotBalmaSale, resolveSaleGymConfig } = require('../lib/gym-slugs');
   gymConfig = resolveSaleGymConfig(gymConfig, order);
   assertNotBalmaSale(gymConfig, order);
+  productConfig.member_iban =
+    order.payment?.iban || order.customer?.iban || order.customer_full?.iban || null;
+  productConfig.member_customer = order.customer || order.customer_full || {};
+  productConfig.gymConfig = gymConfig;
   if (productConfig.create_sale === false || productConfig.sale_type === 'none') {
     logInfo('Essai — fiche membre seulement', { order_id: order.order_id });
     if (memberId) {
@@ -3255,6 +3323,7 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
       });
       const cancelOutcome = await cancelSale(page, memberId, {
         cancelReason: 'change_replace_existing',
+        neverVoid: true,
         filter: (c) => c && !c.isBadge && cancelIds.has(String(c.idc)),
       });
       const ghostIds = new Set(
@@ -3293,6 +3362,7 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
         const leftoverIds = new Set(leftover.map((c) => String(c.idc)));
         await cancelSale(page, memberId, {
           cancelReason: 'change_replace_existing',
+          neverVoid: true,
           filter: (c) => c && !c.isBadge && leftoverIds.has(String(c.idc)),
         }).catch((err) => {
           logWarn('Second essai résiliation échoué', { error: err.message });
@@ -3369,7 +3439,10 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
 
     const badgePolicy = await reconcileActiveBadges(page, memberId, gymConfig, {
       keepOne: Boolean(badgeProductConfig),
-      removeAll: productConfig.sale_type === 'abonnement' && !badgeProductConfig,
+      removeAll:
+        productConfig.sale_type === 'abonnement' &&
+        !badgeProductConfig &&
+        productConfig.auto_badge !== true,
     });
 
     if (badgeProductConfig) {
@@ -3412,6 +3485,10 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
           result.manual_review = true;
         }
       }
+    } else if (badgeAllowed) {
+      result.manual_review = true;
+      result.badge_error = 'Badge requis pour cette offre — produit Badge introuvable';
+      result.error = result.badge_error;
     }
   } else {
     return { sale_id: null, action: 'unknown_sale_type', manual_review: true };

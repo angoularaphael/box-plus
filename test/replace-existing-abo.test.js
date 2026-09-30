@@ -318,6 +318,20 @@ test('prélèvement : impayés ne bloquent pas la vente', () => {
   assert.match(src, /ensurePaiementComptantOff\(page, \{ strict: true \}\)/);
 });
 
+test('carte : prélèvement 72 h (J+3), pas J+7', () => {
+  const defaults = require('../config/sale-defaults.json');
+  assert.equal(defaults.carte.prelevement_delay_days, 3);
+  assert.equal(defaults.carte.prelevement_delay_days_min, 3);
+  assert.equal(defaults.carte.prelevement_delay_days_max, 3);
+  const sale = require('fs').readFileSync(require('path').join(__dirname, '../bot/sale.js'), 'utf8');
+  assert.match(sale, /72 h après la vente/);
+  assert.match(sale, /Enregistrer le RIB/);
+  assert.match(sale, /RIB à enregistrer, bouton introuvable \(Ignorer non cliqué\)/);
+  assert.match(sale, /change_replace_existing[\s\S]{0,80}neverVoid:\s*true/);
+  assert.match(sale, /change_badge_policy[\s\S]{0,80}neverVoid:\s*true/);
+  assert.doesNotMatch(sale, /change_badge_policy[\s\S]{0,120}forceVoid:\s*true/);
+});
+
 test('badge impayé : Résilier, jamais Annuler la vente', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/cancel-sale.js'), 'utf8');
   assert.match(src, /!contract\.isBadge/);

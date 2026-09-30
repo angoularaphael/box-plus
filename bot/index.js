@@ -709,9 +709,9 @@ async function processSaleJob(page, order, jobMeta = {}) {
   const needsSale =
     productConfig.create_sale !== false && String(productConfig.sale_type || '').toLowerCase() !== 'none';
 
-  const badgeDone =
-    !badgeProductConfig ||
-    /created|already_on_file/i.test(String(checkpoint.badge_action || saleResult?.badge_action || ''));
+  const badgeAction = String(checkpoint.badge_action || saleResult?.badge_action || '');
+  const badgeConfirmed = /created|already_on_file|badge_already_active/i.test(badgeAction);
+  const badgeDone = productConfig.auto_badge ? badgeConfirmed : !badgeProductConfig || badgeConfirmed;
   if (checkpoint.sale_done && checkpoint.deciplus_sale_id && badgeDone) {
     logInfo('Reprise job — vente déjà enregistrée', {
       order_id: order.order_id,

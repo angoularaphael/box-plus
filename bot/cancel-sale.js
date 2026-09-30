@@ -1120,7 +1120,8 @@ function resolveCancelNeverVoid(options = {}, cancelReason = '') {
   if (options.pendingOnly === true || options.forceVoid === true) return false;
   const reason = String(cancelReason || '').toLowerCase();
   if (/echeancier|impay|resiliation/.test(reason)) return true;
-  if (reason === 'change_to_comptant' || reason.startsWith('change_')) return false;
+  // Remplacement d’abo ou de badge : Résilier. Jamais « Annuler la vente ».
+  if (reason === 'change_to_comptant' || reason.startsWith('change_')) return true;
   return true;
 }
 

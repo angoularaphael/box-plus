@@ -297,9 +297,9 @@ function resolveBadgeProductConfig(catalog, overrides = {}) {
   }
 
   const defaults = loadJson('config/sale-defaults.json').carte;
-  // Toujours différé ~7 jours / IBAN — le J+3 passait trop tôt pour le 1er SEPA.
+  // Carte différée : prélèvement 72 h après la vente.
   const delayDays = Number(
-    overrides.prelevement_delay_days || defaults.prelevement_delay_days || 7
+    overrides.prelevement_delay_days || defaults.prelevement_delay_days || 3
   );
 
   return {

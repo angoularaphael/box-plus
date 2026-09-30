@@ -19,6 +19,12 @@ test('scripts pendingOnly / forceVoid → peuvent encore annuler la vente', () =
   assert.equal(resolveCancelNeverVoid({ forceVoid: true }, 'change_badge_policy'), false);
 });
 
+test('remplacement d’abo ou de badge → résiliation, pas annulation', () => {
+  assert.equal(resolveCancelNeverVoid({}, 'change_replace_existing'), true);
+  assert.equal(resolveCancelNeverVoid({}, 'change_badge_policy'), true);
+  assert.equal(resolveCancelNeverVoid({}, 'change_to_comptant'), true);
+});
+
 test('impayés → neverVoid', () => {
   assert.equal(resolveCancelNeverVoid({}, 'echeancier_impaye'), true);
   assert.equal(resolveCancelNeverVoid({}, 'impaye_sepa'), true);

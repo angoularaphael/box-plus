@@ -821,13 +821,32 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
     const ribCtx = await openRibForm(page, memberId, { forceFresh: true });
     const existingMeta = await readMandateMeta(ribCtx);
     const existingIban = normalizeIban(existingMeta.iban);
-    if (existingIban === value || (existingMeta.rum && existingIban && existingIban.startsWith(value.slice(0, 20)))) {
+    const ibanAlready =
+      existingIban === value ||
+      (existingIban && value && existingIban.startsWith(value.slice(0, 20)));
+    if (existingMeta.rum && ibanAlready) {
       logInfo('IBAN déjà enregistré sur le mandat Deciplus', {
         member_id: memberId,
         rum: existingMeta.rum || null,
       });
       await closeGreyboxIfOpen(page);
       return true;
+    }
+    if (ibanAlready && !existingMeta.rum) {
+      logInfo('IBAN saisi mais mandat non validé — enregistrement', {
+        member_id: memberId,
+        attempt,
+      });
+      await submitRibForm(ribCtx, page);
+      await closeGreyboxIfOpen(page);
+      const ribCheck = await openRibForm(page, memberId, { forceFresh: true });
+      const after = await readMandateMeta(ribCheck);
+      await closeGreyboxIfOpen(page);
+      if (after.rum) {
+        logInfo('RIB validé sur le mandat Deciplus', { member_id: memberId, rum: after.rum });
+        return true;
+      }
+      continue;
     }
 
     // Ancien mandat (souvent 0 échéance / IBAN différent) : Deciplus refuse l’édition.
@@ -902,6 +921,8 @@ module.exports = {
   openMemberCheck,
   setMemberIban,
   openRibForm,
+  fillRibForm,
+  submitRibForm,
   getRibFrame,
   ribAddressFields,
   ensureMemberPostalAddress,
