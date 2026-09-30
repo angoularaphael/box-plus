@@ -39,7 +39,16 @@ describe('bot error detection', () => {
         customer_full: { gym: 'minimes' },
         bot_status: 'manual_review',
       }),
-      'autre'
+      'a_finir'
+    );
+  });
+
+  it('classe un échec de connexion Deciplus', () => {
+    assert.equal(
+      classifyBotError({
+        bot_error: 'Job impossible à traiter après 3 tentatives — Échec connexion Deciplus — vérifier identifiants',
+      }),
+      'connexion'
     );
   });
 

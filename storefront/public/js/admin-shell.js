@@ -184,7 +184,7 @@
       <div class="pan-head">
         <div>
           <h1>Aujourd’hui</h1>
-          <p>Ce qui demande une décision maintenant. Le reste attend.</p>
+          <p>Les dossiers qui bloquent, en clair. Le reste est dans Inscriptions.</p>
         </div>
       </div>
       <div class="pan-kpis" id="panKpis">
@@ -196,8 +196,8 @@
       <div class="pan-bloc">
         <div class="pan-bloc__head">
           <div>
-            <h2 class="pan-bloc__title">À traiter</h2>
-            <p class="pan-bloc__desc">Paiement en échec, accès bloqué, ou dossier signé qui attend d’être transmis.</p>
+            <h2 class="pan-bloc__title">À finir</h2>
+            <p class="pan-bloc__desc">Carte non posée, RIB non confirmé, paiement non reçu, ou fiche pas encore dans Deciplus.</p>
           </div>
           <div class="pan-bloc__tools">
             <button type="button" class="btn secondary sm" id="panRefresh">Actualiser</button>
@@ -268,22 +268,15 @@
     if (!zoneA) return;
 
     let commandes = [];
-    let places = null;
     try {
       commandes = await lireCommandes();
     } catch {
       zoneA.innerHTML = `<div class="pan-vide"><p class="pan-vide__t">La liste n’a pas pu être chargée</p><p class="pan-vide__d">Vérifiez la connexion, puis réessayez avec « Actualiser ».</p></div>`;
       return;
     }
-    try {
-      const r = await fetch("/api/admin/offre-rentree", { credentials: "include" });
-      const d = await r.json();
-      if (d.ok) places = d;
-    } catch { /* le compteur est optionnel : on continue sans */ }
 
-    /* Ce qui demande une action, dans cet ordre : l'argent qui n'est pas
-       rentré, l'accès bloqué, puis les dossiers signés non transmis.
-       Les VERIFY / CANCEL / COACH n'ont pas de vrai paiement : exclus. */
+    /* Dossiers payés dont Deciplus n'est pas fini, paiements non reçus,
+       accès bloqué, fiches absentes. Les coachings sont à part. */
     const inscriptions = commandes.filter(
       (o) =>
         !o.archived &&
@@ -298,22 +291,27 @@
           (o.booking_date && /coaching/i.test(String(o.product || ""))))
     );
     const refuse = (st) => st === "past_due" || st === "failed" || st === "refused" || st === "unpaid";
-    const impayes = inscriptions.filter((o) => refuse(o.payment_status) || o.access_blocked);
+    const botBloque = (o) => {
+      if (o.manual_migration) return false;
+      const st = String(o.bot_status || "");
+      if (st === "success" || st === "manual_ok") return false;
+      if (o.bot_error) return true;
+      return st === "manual_review" || st === "error" || st === "failed";
+    };
+    const impayes = inscriptions.filter((o) => refuse(o.payment_status));
     const bloques = inscriptions.filter((o) => o.access_blocked);
-    const aTransmettre = inscriptions.filter((o) => o.signed && !o.dispatched);
+    const bot = inscriptions.filter(botBloque);
     const sansFiche = inscriptions.filter(
-      (o) => o.payment_status === "paid" && !o.deciplus_member_id && !o.manual_migration
+      (o) => o.payment_status === "paid" && !o.deciplus_member_id && !o.manual_migration && !botBloque(o)
     );
-    const aFaire = [...new Map([...impayes, ...bloques, ...aTransmettre, ...sansFiche].map((o) => [o.order_id, o])).values()];
+    const aFaire = [...new Map([...bot, ...impayes, ...bloques, ...sansFiche].map((o) => [o.order_id, o])).values()]
+      .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
 
     const semaine = Date.now() - 7 * 864e5;
     const recentes = inscriptions.filter((o) => new Date(o.created_at).getTime() >= semaine).length;
     const coachSemaine = coachings.filter((o) => new Date(o.created_at).getTime() >= semaine).length;
 
-    const aventure = inscriptions.filter((o) => o.aventure || o.source === "balma_retour");
-    const aventureSemaine = aventure.filter((o) => new Date(o.created_at).getTime() >= semaine).length;
-
-    peindreKpis(aFaire.length, impayes.length, recentes, places, aventure.length, aventureSemaine);
+    peindreKpis(aFaire.length, impayes.length, recentes, bot.length);
     peindreAFaire(zoneA, aFaire);
     peindreDernieres(zoneD, inscriptions);
     peindreCoachingsRecents(coachings);
@@ -345,83 +343,63 @@
     });
   }
 
-  function peindreKpis(nAFaire, nImpayes, nSemaine, places, nAventure, nAventureSemaine) {
+  function peindreKpis(nAFaire, nImpayes, nSemaine, nBot) {
     const box = $("#panKpis");
     if (!box) return;
-    const tuile = (l, v, s, cls, sec, extra = "") =>
-      `<${sec ? "button type=\"button\"" : "div"} class="pan-kpi${cls ? " " + cls : ""}"${sec ? ` data-va="${sec}"` : ""}${extra}>
+    const tuile = (l, v, s, cls, sec) =>
+      `<button type="button" class="pan-kpi${cls ? " " + cls : ""}" data-va="${sec}">
          <span class="pan-kpi__l">${esc(l)}</span>
          <span class="pan-kpi__v">${esc(v)}</span>
          <span class="pan-kpi__s">${esc(s)}</span>
-       </${sec ? "button" : "div"}>`;
+       </button>`;
     box.innerHTML =
-      tuile("À traiter", nAFaire, nAFaire ? "Dossiers qui attendent une décision" : "Rien ne traîne. Bonne journée.", nAFaire ? "pan-kpi--alerte" : "pan-kpi--ok", "inscriptions") +
-      tuile("Paiements en échec", nImpayes, nImpayes ? "À relancer avant que l’accès saute" : "Tout est encaissé", nImpayes ? "pan-kpi--alerte" : "pan-kpi--ok", "inscriptions") +
-      tuile("Cette semaine", nSemaine, "Dossiers ouverts sur sept jours", "", "ventes") +
-      tuile(
-        "Aventure Balma",
-        nAventure || 0,
-        nAventureSemaine ? `${nAventureSemaine} cette semaine` : "Retours Balma → 5 salles",
-        "",
-        "inscriptions",
-        ' data-filtre="aventure"'
-      ) +
-      tuilePlaces(places);
-    function tuilePlaces(p) {
-      /* Trois etats, et surtout PAS deux. Un compteur jamais regle
-         affichait « Complet — les sites n'affichent plus rien » : le
-         patron aurait lu que son offre etait epuisee alors qu'il ne
-         l'avait simplement jamais ouverte. Zero et « pas encore » se
-         ressemblent dans les donnees, jamais dans la tete du lecteur. */
-      if (!p || !p.reglage || !p.reglage.maj) {
-        return tuile("Places de rentrée", "—", "Jamais réglées : les sites n’affichent aucun compteur", "", "reglages");
-      }
-      if (p.affiche <= 0) {
-        return tuile("Places de rentrée", "0", "Complet — les sites n’affichent plus rien", "pan-kpi--alerte", "reglages");
-      }
-      return tuile("Places de rentrée", p.affiche,
-        p.affiche <= 5 ? "Bientôt complet — pensez à réajuster" : "Ce que les sites affichent",
-        p.affiche <= 5 ? "pan-kpi--alerte" : "", "reglages");
-    }
-    $$("button.pan-kpi", box).forEach((b) => (b.onclick = () => {
-      if (b.dataset.filtre === "aventure") {
-        const sel = $("#ordersFilter");
-        if (sel) {
-          sel.value = "aventure";
-          sel.dispatchEvent(new Event("change"));
-        }
-      }
-      aller(b.dataset.va);
-    }));
+      tuile("À finir", nAFaire, nAFaire ? "Carte, RIB, paiement ou fiche Deciplus" : "Rien ne bloque.", nAFaire ? "pan-kpi--alerte" : "pan-kpi--ok", "inscriptions") +
+      tuile("Deciplus incomplet", nBot || 0, nBot ? "Carte ou RIB pas confirmé" : "Les dossiers transmis sont à jour", nBot ? "pan-kpi--alerte" : "pan-kpi--ok", "ventes") +
+      tuile("Paiements non reçus", nImpayes, nImpayes ? "Le client n’a pas payé" : "Tout est encaissé", nImpayes ? "pan-kpi--alerte" : "pan-kpi--ok", "inscriptions") +
+      tuile("Cette semaine", nSemaine, "Inscriptions ouvertes sur 7 jours", "", "ventes");
+    $$("button.pan-kpi", box).forEach((b) => (b.onclick = () => aller(b.dataset.va)));
+  }
+
+  function motifClair(o) {
+    const err = String(o.bot_error || "");
+    const st = String(o.bot_status || "");
+    if (/connexion deciplus|identifiants|job impossible/i.test(err)) return "Connexion Deciplus en échec";
+    if (/badge|cloturer|clôturer|carte/i.test(err)) return "Carte d'accès non posée";
+    if (/iban|rib|mandat/i.test(err)) return "RIB non enregistré";
+    if (st === "manual_review" || st === "error" || st === "failed") return "Carte ou RIB pas encore confirmé";
+    if (o.access_blocked) return "Accès salle bloqué";
+    if (o.payment_status && o.payment_status !== "paid" && o.payment_status !== "free") return "Paiement non reçu";
+    if (o.signed && !o.deciplus_member_id && !o.manual_migration) return "Pas encore dans Deciplus";
+    return "À vérifier";
+  }
+
+  function paiementClair(o) {
+    const st = String(o.payment_status || "");
+    if (st === "paid" || st === "free") return "Payé";
+    if (!st) return "—";
+    if (st === "failed" || st === "refused" || st === "past_due" || st === "unpaid") return "Non reçu";
+    if (st === "pending") return "En attente";
+    return "En cours";
   }
 
   function peindreAFaire(zone, liste) {
     if (!liste.length) {
       zone.innerHTML = `<div class="pan-vide">
-        <p class="pan-vide__t">Rien à traiter</p>
-        <p class="pan-vide__d">Aucun paiement en échec, aucun accès bloqué, aucun dossier en attente de transmission.</p>
+        <p class="pan-vide__t">Rien à finir</p>
+        <p class="pan-vide__d">Aucune carte manquante, aucun RIB en attente, aucun paiement non reçu.</p>
       </div>`;
       return;
     }
     zone.innerHTML = `<div class="pan-tablewrap"><table class="pan-table pan-table--cartes">
-      <thead><tr><th>Adhérent</th><th>Offre</th><th>Salle</th><th>Motif</th><th>Ouvert le</th><th></th></tr></thead>
+      <thead><tr><th>Adhérent</th><th>Téléphone</th><th>Offre</th><th>Salle</th><th>Problème</th><th>Depuis</th></tr></thead>
       <tbody>${liste.slice(0, 25).map((o) => {
-        const motif = o.payment_status && o.payment_status !== "paid"
-          ? `<span class="pan-tag pan-tag--ko">Paiement ${esc(o.payment_status === "failed" ? "refusé" : o.payment_status)}</span>`
-          : o.access_blocked
-            ? `<span class="pan-tag pan-tag--ko">Accès bloqué</span>`
-            : `<span class="pan-tag pan-tag--att">Signé, à transmettre</span>`;
         return `<tr>
-          <td data-l="Adhérent"><strong>${esc(o.name)}</strong>${o.aventure || o.source === "balma_retour" ? ' <span class="pan-tag pan-tag--aventure">Aventure Balma</span>' : ""}${o.manual_migration || o.bot_status === "manual_ok" ? ' <span class="pan-tag pan-tag--neutre">Migré à la main</span>' : ""}<br><span style="color:var(--pan-mute);font-size:12px">${esc(o.email)}</span></td>
+          <td data-l="Adhérent"><strong>${esc(o.name)}</strong></td>
+          <td data-l="Téléphone">${o.phone ? `<a href="tel:${esc(String(o.phone).replace(/\s/g, ""))}">${esc(o.phone)}</a>` : "—"}</td>
           <td data-l="Offre">${esc(o.product)}</td>
           <td data-l="Salle">${esc(o.gym_label || o.gym || "—")}</td>
-          <td data-l="Motif">${motif}</td>
-          <td data-l="Ouvert le">${esc(dateCourte(o.created_at))}</td>
-          <td data-l="">${o.can_resume
-            ? `<button type="button" class="btn sm resume-dash" data-id="${esc(o.order_id)}">Lien de reprise</button>`
-            : ""}${o.can_pay
-            ? `<button type="button" class="btn sm resume-dash pay-dash" data-id="${esc(o.order_id)}">Payer</button>`
-            : ""}<a class="btn sm secondary" href="mailto:${encodeURIComponent(o.email)}">Écrire</a></td>
+          <td data-l="Problème"><span class="pan-tag pan-tag--att">${esc(motifClair(o))}</span></td>
+          <td data-l="Depuis">${esc(dateCourte(o.created_at))}</td>
         </tr>`;
       }).join("")}</tbody></table></div>`;
     if (liste.length > 25) {
@@ -444,11 +422,11 @@
         <td data-l="Offre">${esc(o.product)}</td>
         <td data-l="Salle">${esc(o.gym_label || o.gym || "—")}</td>
         <td data-l="Étape"><span class="pan-tag pan-tag--neutre">${esc(o.step_label || LIB_ETAPE[o.step] || o.step)}</span></td>
-        <td data-l="Paiement">${o.payment_status === "paid"
+        <td data-l="Paiement">${paiementClair(o) === "Payé"
           ? '<span class="pan-tag pan-tag--ok">Payé</span>'
-          : !o.payment_status
+          : paiementClair(o) === "—"
             ? '<span class="pan-tag pan-tag--neutre">—</span>'
-          : `<span class="pan-tag pan-tag--att">${esc(o.payment_status || "en attente")}</span>`}</td>
+          : `<span class="pan-tag pan-tag--att">${esc(paiementClair(o))}</span>`}</td>
         <td data-l="Ouvert le">${esc(dateCourte(o.created_at))}</td>
         <td data-l="">${o.can_resume
           ? `<button type="button" class="btn sm resume-dash" data-id="${esc(o.order_id)}">Lien de reprise</button>`

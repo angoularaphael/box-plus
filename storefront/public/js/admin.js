@@ -2409,13 +2409,15 @@
       const botErrorsSum = document.getElementById('botErrorsSummary');
       const botErrors = data.bot_errors || [];
       const botCategoryLabel = {
-        adresse_non_fr: 'Adresse non FR',
-        creation_membre: 'Création membre',
-        iban: 'IBAN / RIB',
+        adresse_non_fr: 'Adresse',
+        connexion: 'Connexion Deciplus',
+        creation_membre: 'Fiche adhérent',
+        iban: 'RIB',
         doublon: 'Doublon',
         ancien_abo: 'Ancien abo',
-        badge: 'Badge',
-        autre: 'Autre',
+        badge: "Carte d'accès",
+        a_finir: 'Carte ou RIB',
+        autre: 'À vérifier',
       };
       if (botErrorsBody) {
         botErrorsBody.innerHTML = botErrors.length
@@ -2429,7 +2431,7 @@
               <td>${b.paid_at ? new Date(b.paid_at).toLocaleString('fr-FR') : '—'}</td>
               <td>${b.signed ? 'Signé' : 'Non signé'}</td>
               <td>${escapeHtml(botCategoryLabel[b.category] || b.category || '—')}</td>
-              <td title="${escapeHtml(b.bot_error || '')}">${escapeHtml(b.bot_error || b.bot_status || 'Erreur bot')}</td>
+              <td title="${escapeHtml(b.bot_error || '')}">${escapeHtml(b.issue || b.bot_error || 'À vérifier')}</td>
             </tr>`
               )
               .join('')

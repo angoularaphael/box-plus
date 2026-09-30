@@ -525,15 +525,33 @@ function addressFieldsPresent(customer = {}) {
 
 function classifyBotError(order = {}, errorText = '') {
   const err = String(errorText || order.bot_error || '').toLowerCase();
+  const status = String(order.bot_status || '').toLowerCase();
   const cf = order.customer_full || order.customer || {};
   // La liste admin est allégée : sans rue / CP / ville, on ne peut pas conclure « hors France ».
   if (addressFieldsPresent(cf) && !hasValidFrenchAddress(cf)) return 'adresse_non_fr';
+  if (/connexion deciplus|identifiants|job impossible/i.test(err)) return 'connexion';
   if (/id introuvable|formulaire non valid/i.test(err)) return 'creation_membre';
   if (/iban|rib|mandat/i.test(err)) return 'iban';
   if (/doublon|duplicate/i.test(err)) return 'doublon';
   if (/ancien abo|contrat actif/i.test(err)) return 'ancien_abo';
-  if (/badge/i.test(err)) return 'badge';
+  if (/badge|cl[oô]turer|carte/i.test(err)) return 'badge';
+  if (!err && /manual_review|failed|^error$/.test(status)) return 'a_finir';
   return 'autre';
+}
+
+function humanBotIssue(order = {}, errorText = '') {
+  const labels = {
+    adresse_non_fr: 'Adresse à remplacer par une adresse française',
+    connexion: 'Connexion Deciplus en échec',
+    creation_membre: 'Fiche adhérent non créée',
+    iban: 'RIB non enregistré',
+    doublon: 'Doublon de fiche',
+    ancien_abo: 'Ancien abonnement encore actif',
+    badge: "Carte d'accès non posée",
+    a_finir: 'Carte ou RIB pas encore confirmé',
+    autre: 'À vérifier dans Deciplus',
+  };
+  return labels[classifyBotError(order, errorText)] || labels.autre;
 }
 
 function botErrorRows(orders = [], { fromMonth = '', toMonth = '' } = {}) {
@@ -555,6 +573,7 @@ function botErrorRows(orders = [], { fromMonth = '', toMonth = '' } = {}) {
       member_id: o.deciplus_member_id || null,
       sale_id: o.deciplus_sale_id || null,
       category: classifyBotError(o),
+      issue: humanBotIssue(o),
       foreign_address: addressFieldsPresent(cf) && !hasValidFrenchAddress(cf),
       product: membershipProductName(o),
     });
@@ -823,6 +842,7 @@ module.exports = {
   missingFicheReason,
   isBotErrorOrder,
   classifyBotError,
+  humanBotIssue,
   botErrorRows,
   enrichOrdersWithJobErrors,
   hasDeciplusFiche,
