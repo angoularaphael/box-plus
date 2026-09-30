@@ -62,6 +62,10 @@ test('ventes du jour + plus vendu + aventure sans vente Deciplus', () => {
   });
 
   assert.equal(extras.today.count, 3);
+  assert.equal(extras.today.inscriptions, 2);
+  assert.equal(extras.today.materiel, 1);
+  assert.equal(extras.today_sales.length, 3);
+  assert.equal(extras.today_by_gym.length >= 1, true);
   assert.equal(extras.aventure.paid, 1);
   assert.equal(extras.aventure.missing_sale, 1);
   assert.equal(extras.missing_deciplus_sale, 1);

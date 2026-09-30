@@ -1880,6 +1880,8 @@ function createApp() {
         funnel_events: funnelEvents,
         unpaid: [],
         today: extras.today,
+        today_sales: extras.today_sales || [],
+        today_by_gym: extras.today_by_gym || [],
         lookup_day: extras.lookup_day,
         best_day: extras.best_day,
         top_products: extras.top_products,

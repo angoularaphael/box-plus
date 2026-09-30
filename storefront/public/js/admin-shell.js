@@ -11,8 +11,8 @@
 
    CE QUE ÇA CORRIGE, ET QUI SE MESURE DANS L'ANCIEN PANNEAU :
    1. Il s'ouvrait sur « Offres », un catalogue. On n'ouvre pas son
-      backoffice le matin pour lire un catalogue : on l'ouvre pour savoir
-      ce qui demande une action. → l'écran « Aujourd'hui ».
+      backoffice le matin pour lire un catalogue : on l'ouvre pour le
+      chiffre et les ventes du jour. → l'écran « Aujourd'hui ».
    2. Quatre-vingt-quatre inscriptions tombaient dans un tableau sans tri.
       Au-delà de vingt lignes, un tableau sans tri est une archive, pas un
       outil. → tri sur chaque colonne, au clic ET au clavier.
@@ -174,7 +174,15 @@
   /* ==================================================================
      2. L'ÉCRAN DU MATIN
      ================================================================== */
-  const EUR = (c) => (Number(c || 0) / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+  const EUR = (c) => {
+    const n = Number(c || 0) / 100;
+    return n.toLocaleString("fr-FR", {
+      style: "currency",
+      currency: "EUR",
+      minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+      maximumFractionDigits: 2,
+    });
+  };
 
   function ecranAujourdhui() {
     const s = document.createElement("section");
@@ -184,8 +192,9 @@
       <div class="pan-head">
         <div>
           <h1>Aujourd’hui</h1>
-          <p>Les dossiers qui bloquent, en clair. Le reste est dans Inscriptions.</p>
+          <p id="panJourLabel">Chiffre et ventes encaissés aujourd’hui.</p>
         </div>
+        <button type="button" class="btn secondary sm" id="panRefresh">Actualiser</button>
       </div>
       <div class="pan-kpis" id="panKpis">
         <div class="pan-kpi"><span class="pan-kpi__l">Chargement</span><span class="pan-kpi__v">—</span></div>
@@ -196,39 +205,33 @@
       <div class="pan-bloc">
         <div class="pan-bloc__head">
           <div>
-            <h2 class="pan-bloc__title">À finir</h2>
-            <p class="pan-bloc__desc">Carte non posée, RIB non confirmé, paiement non reçu, ou fiche pas encore dans Deciplus.</p>
-          </div>
-          <div class="pan-bloc__tools">
-            <button type="button" class="btn secondary sm" id="panRefresh">Actualiser</button>
+            <h2 class="pan-bloc__title">Par salle</h2>
+            <p class="pan-bloc__desc">Abonnements, matériel et chiffre de la journée.</p>
           </div>
         </div>
-        <div class="pan-bloc__body" id="panAFaire">
-          <div class="pan-squelette"><span></span><span></span><span></span><span></span></div>
-        </div>
-      </div>
-      <div class="pan-bloc">
-        <div class="pan-bloc__head">
-          <div>
-            <h2 class="pan-bloc__title">Dernières inscriptions</h2>
-            <p class="pan-bloc__desc">Les huit derniers dossiers ouverts, du plus récent au plus ancien.</p>
-          </div>
-        </div>
-        <div class="pan-bloc__body" id="panDernieres">
+        <div class="pan-bloc__body" id="panSalles">
           <div class="pan-squelette"><span></span><span></span><span></span></div>
         </div>
       </div>
       <div class="pan-bloc">
         <div class="pan-bloc__head">
           <div>
-            <h2 class="pan-bloc__title">Ventes matériel</h2>
-            <p class="pan-bloc__desc">Retrait en salle — le manager de la salle choisie est prévenu sur WhatsApp.</p>
-          </div>
-          <div class="pan-bloc__tools">
-            <button type="button" class="btn secondary sm" data-va="catalogue">Voir le catalogue</button>
+            <h2 class="pan-bloc__title">Ventes du jour</h2>
+            <p class="pan-bloc__desc">Chaque encaissement, du plus récent au plus ancien.</p>
           </div>
         </div>
-        <div class="pan-bloc__body" id="panMaterielVentes">
+        <div class="pan-bloc__body" id="panVentesJour">
+          <div class="pan-squelette"><span></span><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <div class="pan-bloc">
+        <div class="pan-bloc__head">
+          <div>
+            <h2 class="pan-bloc__title">Sept derniers jours</h2>
+            <p class="pan-bloc__desc">Pour comparer la journée aux jours d’avant.</p>
+          </div>
+        </div>
+        <div class="pan-bloc__body" id="panSeptJours">
           <div class="pan-squelette"><span></span><span></span><span></span></div>
         </div>
       </div>`;
@@ -262,72 +265,41 @@
     return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short" });
   }
 
-  async function chargerAujourdhui() {
-    const zoneA = $("#panAFaire");
-    const zoneD = $("#panDernieres");
-    if (!zoneA) return;
+  function jourLong(iso) {
+    if (!iso) return "";
+    const d = new Date(`${iso}T12:00:00`);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  }
 
-    let commandes = [];
+  function heureCourte(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? "—" : d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  async function chargerAujourdhui() {
+    const zoneS = $("#panSalles");
+    const zoneV = $("#panVentesJour");
+    if (!zoneS || !zoneV) return;
+
+    let data = null;
     try {
-      commandes = await lireCommandes();
+      const r = await fetch("/api/admin/stats", { credentials: "include" });
+      data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.error || "stats");
     } catch {
-      zoneA.innerHTML = `<div class="pan-vide"><p class="pan-vide__t">La liste n’a pas pu être chargée</p><p class="pan-vide__d">Vérifiez la connexion, puis réessayez avec « Actualiser ».</p></div>`;
+      zoneV.innerHTML = `<div class="pan-vide"><p class="pan-vide__t">Les chiffres n’ont pas pu être chargés</p><p class="pan-vide__d">Réessayez avec « Actualiser ».</p></div>`;
       return;
     }
 
-    /* Dossiers payés dont Deciplus n'est pas fini, paiements non reçus,
-       accès bloqué, fiches absentes. Les coachings sont à part. */
-    const inscriptions = commandes.filter(
-      (o) =>
-        !o.archived &&
-        o.action !== "coaching_booking" &&
-        !String(o.order_id || "").startsWith("COACH-")
-    );
-    const coachings = commandes.filter(
-      (o) =>
-        !o.archived &&
-        (o.action === "coaching_booking" ||
-          String(o.order_id || "").startsWith("COACH-") ||
-          (o.booking_date && /coaching/i.test(String(o.product || ""))))
-    );
-    const refuse = (st) => st === "past_due" || st === "failed" || st === "refused" || st === "unpaid";
-    const botBloque = (o) => {
-      if (o.manual_migration) return false;
-      const st = String(o.bot_status || "");
-      if (st === "success" || st === "manual_ok") return false;
-      if (o.bot_error) return true;
-      return st === "manual_review" || st === "error" || st === "failed";
-    };
-    const impayes = inscriptions.filter((o) => refuse(o.payment_status));
-    const bloques = inscriptions.filter((o) => o.access_blocked);
-    const bot = inscriptions.filter(botBloque);
-    const sansFiche = inscriptions.filter(
-      (o) => o.payment_status === "paid" && !o.deciplus_member_id && !o.manual_migration && !botBloque(o)
-    );
-    const aFaire = [...new Map([...bot, ...impayes, ...bloques, ...sansFiche].map((o) => [o.order_id, o])).values()]
-      .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
-
-    const semaine = Date.now() - 7 * 864e5;
-    const recentes = inscriptions.filter((o) => new Date(o.created_at).getTime() >= semaine).length;
-    const coachSemaine = coachings.filter((o) => new Date(o.created_at).getTime() >= semaine).length;
-
-    peindreKpis(aFaire.length, impayes.length, recentes, bot.length);
-    peindreAFaire(zoneA, aFaire);
-    peindreDernieres(zoneD, inscriptions);
-    peindreCoachingsRecents(coachings);
-    brancherLiensReprise();
-    void peindreVentesMateriel();
-
-    const pastille = $('.pan-nav__n[data-n="inscriptions"]');
-    if (pastille) {
-      pastille.textContent = String(aFaire.length);
-      pastille.hidden = aFaire.length === 0;   // « 0 » est du bruit, pas une information
-    }
-    const pastilleCoach = $('.pan-nav__n[data-n="coachings"]');
-    if (pastilleCoach) {
-      pastilleCoach.textContent = String(coachSemaine);
-      pastilleCoach.hidden = coachSemaine === 0;
-    }
+    const jour = data.today || {};
+    const label = $("#panJourLabel");
+    if (label) label.textContent = jourLong(jour.day) || "Chiffre et ventes encaissés aujourd’hui.";
+    peindreKpis(jour);
+    peindreSalles(zoneS, data.today_by_gym || []);
+    peindreVentesDuJour(zoneV, data.today_sales || []);
+    peindreSeptJours($("#panSeptJours"), data.daily_sales || [], jour.day);
   }
 
   function brancherLiensReprise(racine) {
@@ -343,21 +315,73 @@
     });
   }
 
-  function peindreKpis(nAFaire, nImpayes, nSemaine, nBot) {
+  function peindreKpis(jour) {
     const box = $("#panKpis");
     if (!box) return;
-    const tuile = (l, v, s, cls, sec) =>
-      `<button type="button" class="pan-kpi${cls ? " " + cls : ""}" data-va="${sec}">
+    const tuile = (l, v, s) =>
+      `<div class="pan-kpi">
          <span class="pan-kpi__l">${esc(l)}</span>
          <span class="pan-kpi__v">${esc(v)}</span>
          <span class="pan-kpi__s">${esc(s)}</span>
-       </button>`;
+       </div>`;
+    const n = Number(jour.count || 0);
     box.innerHTML =
-      tuile("À finir", nAFaire, nAFaire ? "Carte, RIB, paiement ou fiche Deciplus" : "Rien ne bloque.", nAFaire ? "pan-kpi--alerte" : "pan-kpi--ok", "inscriptions") +
-      tuile("Deciplus incomplet", nBot || 0, nBot ? "Carte ou RIB pas confirmé" : "Les dossiers transmis sont à jour", nBot ? "pan-kpi--alerte" : "pan-kpi--ok", "ventes") +
-      tuile("Paiements non reçus", nImpayes, nImpayes ? "Le client n’a pas payé" : "Tout est encaissé", nImpayes ? "pan-kpi--alerte" : "pan-kpi--ok", "inscriptions") +
-      tuile("Cette semaine", nSemaine, "Inscriptions ouvertes sur 7 jours", "", "ventes");
-    $$("button.pan-kpi", box).forEach((b) => (b.onclick = () => aller(b.dataset.va)));
+      tuile("Ventes", String(n), n ? "Encaissements du jour" : "Aucun encaissement pour l’instant") +
+      tuile("Chiffre", EUR(jour.revenue), "Abonnements et matériel") +
+      tuile("Abonnements", String(jour.inscriptions || 0), "Inscriptions payées") +
+      tuile("Matériel", String(jour.materiel || 0), "Gants et destockage");
+  }
+
+  function peindreSalles(zone, salles) {
+    if (!zone) return;
+    if (!salles.length) {
+      zone.innerHTML = `<div class="pan-vide"><p class="pan-vide__t">Aucune salle n’a vendu aujourd’hui</p><p class="pan-vide__d">Les chiffres apparaîtront dès le premier encaissement.</p></div>`;
+      return;
+    }
+    zone.innerHTML = `<div class="pan-tablewrap"><table class="pan-table pan-table--cartes">
+      <thead><tr><th>Salle</th><th>Abonnements</th><th>Matériel</th><th>Chiffre</th></tr></thead>
+      <tbody>${salles.map((g) => `<tr>
+        <td data-l="Salle"><strong>${esc(g.label || g.gym || "—")}</strong></td>
+        <td data-l="Abonnements">${esc(g.inscriptions || 0)}</td>
+        <td data-l="Matériel">${esc(g.materiel || 0)}</td>
+        <td data-l="Chiffre">${esc(EUR(g.revenue))}</td>
+      </tr>`).join("")}</tbody></table></div>`;
+  }
+
+  function peindreVentesDuJour(zone, ventes) {
+    if (!zone) return;
+    if (!ventes.length) {
+      zone.innerHTML = `<div class="pan-vide"><p class="pan-vide__t">Aucune vente aujourd’hui</p><p class="pan-vide__d">Les abonnements et le matériel payés dans la journée s’affichent ici.</p></div>`;
+      return;
+    }
+    const kind = { abonnement: "Abonnement", aventure: "Aventure Balma", materiel: "Matériel" };
+    zone.innerHTML = `<div class="pan-tablewrap"><table class="pan-table pan-table--cartes">
+      <thead><tr><th>Heure</th><th>Client</th><th>Offre</th><th>Salle</th><th>Montant</th></tr></thead>
+      <tbody>${ventes.map((v) => `<tr>
+        <td data-l="Heure">${esc(heureCourte(v.paid_at))}</td>
+        <td data-l="Client"><strong>${esc(v.name || "—")}</strong></td>
+        <td data-l="Offre">${esc(v.product || "—")} <span class="pan-tag pan-tag--neutre">${esc(kind[v.kind] || "Vente")}</span></td>
+        <td data-l="Salle">${esc(v.gym_label || v.gym || "—")}</td>
+        <td data-l="Montant">${esc(EUR(v.revenue))}</td>
+      </tr>`).join("")}</tbody></table></div>`;
+  }
+
+  function peindreSeptJours(zone, jours, aujourdhui) {
+    if (!zone) return;
+    const lignes = [...jours].slice(-7).reverse();
+    if (!lignes.length) {
+      zone.innerHTML = `<div class="pan-vide"><p class="pan-vide__t">Pas encore d’historique</p></div>`;
+      return;
+    }
+    zone.innerHTML = `<div class="pan-tablewrap"><table class="pan-table pan-table--cartes">
+      <thead><tr><th>Jour</th><th>Abonnements</th><th>Matériel</th><th>Total</th><th>Chiffre</th></tr></thead>
+      <tbody>${lignes.map((j) => `<tr>
+        <td data-l="Jour"><strong>${esc(jourLong(j.day))}</strong>${j.day === aujourdhui ? ' <span class="pan-tag pan-tag--ok">Aujourd’hui</span>' : ""}</td>
+        <td data-l="Abonnements">${esc(j.inscriptions || 0)}</td>
+        <td data-l="Matériel">${esc(j.materiel || 0)}</td>
+        <td data-l="Total">${esc(j.total || 0)}</td>
+        <td data-l="Chiffre">${esc(EUR(j.revenue))}</td>
+      </tr>`).join("")}</tbody></table></div>`;
   }
 
   function motifClair(o) {
@@ -848,7 +872,7 @@
     deplacerVersReglages();
     poserSousOnglets();
 
-    $("#panRefresh").onclick = () => { oublierCommandes(); chargerAujourdhui(); toast("Liste actualisée", "ok"); };
+    $("#panRefresh").onclick = () => { oublierCommandes(); chargerAujourdhui(); toast("Chiffres actualisés", "ok"); };
     $("#panGongReglages")?.addEventListener("click", () => {
       const on = $("#panGongReglages")?.classList.contains("is-on");
       basculerGong(!on);

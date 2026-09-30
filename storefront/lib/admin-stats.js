@@ -674,6 +674,7 @@ function buildAdminSalesExtras({
   const today = parisTodayKey();
   let today_count = 0;
   let today_revenue = 0;
+  const todaySales = [];
   const materielWithAddons = [...materielOrders, ...collectInscriptionMaterielOrders(inscriptionOrders)];
 
   function dayTotal(row) {
@@ -713,8 +714,19 @@ function buildAdminSalesExtras({
     const paidAt = membershipPaidAt(o);
     const day = parisDayKey(paidAt);
     if (day === today) {
+      const revenueNow = membershipRevenueCents(o);
+      const gym = gymSlugFromOrder(o);
       today_count += 1;
-      today_revenue += membershipRevenueCents(o);
+      today_revenue += revenueNow;
+      todaySales.push({
+        name: orderDisplayName(o),
+        product: membershipProductName(o),
+        gym,
+        gym_label: GYM_DISPLAY[gym] || gym,
+        kind: isAventureOrder(o) ? 'aventure' : 'abonnement',
+        revenue: revenueNow,
+        paid_at: paidAt,
+      });
     }
     if (day) {
       if (!byDay[day]) byDay[day] = { day, inscriptions: 0, materiel: 0, revenue: 0 };
@@ -744,6 +756,21 @@ function buildAdminSalesExtras({
     if (day === today) {
       today_count += 1;
       today_revenue += revenue;
+      const gym = gymSlugFromOrder(o);
+      const cust = o.customer || {};
+      const itemName = (Array.isArray(o.items) ? o.items : [])
+        .map((item) => item && item.name)
+        .filter(Boolean)
+        .join(', ');
+      todaySales.push({
+        name: [cust.first_name, cust.last_name].filter(Boolean).join(' ') || o.customer_name || '—',
+        product: itemName || o.product || 'Matériel',
+        gym,
+        gym_label: GYM_DISPLAY[gym] || gym,
+        kind: 'materiel',
+        revenue,
+        paid_at: paidAt,
+      });
     }
     if (day) {
       if (!byDay[day]) byDay[day] = { day, inscriptions: 0, materiel: 0, revenue: 0 };
@@ -810,8 +837,34 @@ function buildAdminSalesExtras({
   });
   const bot_errors = botErrorRows(inscriptionOrders, { fromMonth, toMonth });
 
+  const todayGym = {};
+  for (const sale of todaySales) {
+    const key = sale.gym || 'unknown';
+    if (!todayGym[key]) {
+      todayGym[key] = {
+        gym: key,
+        label: sale.gym_label || GYM_DISPLAY[key] || key,
+        inscriptions: 0,
+        materiel: 0,
+        revenue: 0,
+      };
+    }
+    if (sale.kind === 'materiel') todayGym[key].materiel += 1;
+    else todayGym[key].inscriptions += 1;
+    todayGym[key].revenue += sale.revenue || 0;
+  }
+  todaySales.sort((a, b) => Date.parse(b.paid_at || 0) - Date.parse(a.paid_at || 0));
+
   return {
-    today: { day: today, count: today_count, revenue: today_revenue },
+    today: {
+      day: today,
+      count: today_count,
+      revenue: today_revenue,
+      inscriptions: todaySales.filter((sale) => sale.kind !== 'materiel').length,
+      materiel: todaySales.filter((sale) => sale.kind === 'materiel').length,
+    },
+    today_sales: todaySales,
+    today_by_gym: Object.values(todayGym).sort((a, b) => b.revenue - a.revenue || b.inscriptions - a.inscriptions),
     lookup_day,
     best_day,
     top_products,
