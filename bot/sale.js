@@ -2128,12 +2128,35 @@ async function finalizeBadgePayment(page, productConfig = {}, gymConfig = {}) {
     );
   }
   if (!clotured) {
+    clotured = await clickVenteFooterAction(page, /^Facturer$/i);
+  }
+  if (!clotured) {
+    const work = await resolveDeciplusWorkPage(page);
+    for (const ctx of [work, page, ...(page.frames?.() || [])]) {
+      const ok = await ctx
+        .evaluate(() => {
+          const nodes = [...document.querySelectorAll('button, a, span, div, [role="button"]')];
+          const el = nodes.find((n) =>
+            /^(facturer|encaisser)$/i.test(String(n.innerText || n.textContent || '').replace(/\s+/g, ' ').trim())
+          );
+          if (!el) return false;
+          el.click();
+          return true;
+        })
+        .catch(() => false);
+      if (ok) {
+        clotured = true;
+        break;
+      }
+    }
+  }
+  if (!clotured) {
     logWarn('Badge — « Clôturer la note » introuvable, tentative Terminer puis vérification du contrat', {
       screenshot: await captureSaleDebugScreenshot(page, 'badge-deferred-cloturer-missing'),
       ui: await venteUiSnapshot(page).catch(() => []),
     });
   } else {
-    logInfo('Badge — note clôturée');
+    logInfo('Badge — note clôturée / facturée');
     await randomDelay(800, 1400);
   }
   await dismissPostApplyDialogs(page, { allowRib: false }).catch(() => {});

@@ -326,6 +326,7 @@ test('carte : prélèvement 72 h (J+3), pas J+7', () => {
   const sale = require('fs').readFileSync(require('path').join(__dirname, '../bot/sale.js'), 'utf8');
   assert.match(sale, /72 h après la vente/);
   assert.match(sale, /Enregistrer le RIB/);
+  assert.match(sale, /note clôturée \/ facturée/);
   assert.match(sale, /RIB à enregistrer, bouton introuvable \(Ignorer non cliqué\)/);
   assert.match(sale, /change_replace_existing[\s\S]{0,80}neverVoid:\s*true/);
   assert.match(sale, /change_badge_policy[\s\S]{0,80}neverVoid:\s*true/);
