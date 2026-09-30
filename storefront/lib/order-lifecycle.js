@@ -359,11 +359,25 @@ async function updateFullProfileAsync(orderId, customer_full) {
       ? customer_full.iban
       : order.customer_full?.iban || order.payment?.iban;
   const cleanIban = sanitizeFrenchIban(ibanCandidate);
-  const nextFull = {
+  let nextFull = {
     ...(order.customer_full || {}),
     ...customer_full,
     gym: customer_full.gym || order.customer_full?.gym,
   };
+  const { applyFrenchAddressFallback, hasValidFrenchAddress } = require('../../lib/fr-address');
+  const addressGiven = ['address', 'adresse', 'postal_code', 'code_postal', 'city', 'ville', 'country', 'pays'].some(
+    (key) => String(nextFull[key] || '').trim()
+  );
+  if (addressGiven && !hasValidFrenchAddress(nextFull)) {
+    let gymConfig = {};
+    try {
+      const { getGymConfig } = require('../../lib/normalize');
+      gymConfig = getGymConfig(nextFull.gym || order.gym || 'minimes');
+    } catch {
+      gymConfig = {};
+    }
+    nextFull = applyFrenchAddressFallback(nextFull, gymConfig);
+  }
   if (cleanIban) {
     nextFull.iban = cleanIban;
     order.payment = { ...(order.payment || {}), iban: cleanIban };
