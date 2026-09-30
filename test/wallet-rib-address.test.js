@@ -19,6 +19,9 @@ describe('ribAddressFields', () => {
     assert.match(src, /RIB visible mais mandat non enregistré — adresse \+ Valider/);
     assert.match(src, /async function ribMandateNeedsSave/);
     assert.match(src, /existingMeta\.rum && ibanAlready && !needsSave/);
+    assert.match(src, /memberAsksToRegisterRib/);
+    assert.match(src, /if \(blocked \|\| validerOff\) return true/);
+    assert.match(src, /after\.rum && !stillAsks/);
   });
 
   it('falls back to gym when city is the postal code', () => {
