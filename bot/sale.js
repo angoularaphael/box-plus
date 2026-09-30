@@ -2992,10 +2992,10 @@ async function reconcileActiveBadges(page, memberId, gymConfig, { keepOne = fals
   }
   if (!toCancel.length) return { keeper, cancelled: 0, kept_existing: Boolean(keeper) };
 
-  logWarn('Badges en trop à annuler — le badge payé conservé n’est pas recréé', {
+  logWarn('Badges en trop à résilier — aucune vente annulée', {
     member_id: memberId,
     keep: keeper?.idc || null,
-    void: toCancel.map((c) => c.idc),
+    resilier: toCancel.map((c) => c.idc),
   });
 
   const ids = new Set(toCancel.map((c) => String(c.idc)));
