@@ -108,7 +108,7 @@ describe('billing-plan', () => {
     assert.equal(isNoblartPaypalOfferProduct({ id: 'offre-saison' }), false);
   });
 
-  it('IBAN manquant : 29 € / 4 semaines restent en prélèvement, 259 € reste comptant', () => {
+  it('IBAN manquant : 29 € et 259 4× restent prélèvement, 259 1× reste comptant', () => {
     assert.equal(
       shouldFallbackToComptantOnIbanError(
         { product_name: 'Sans engagement — 29 €', product_id: 'offre-duo' },
@@ -128,7 +128,20 @@ describe('billing-plan', () => {
         { payment: { payment_plan: '4x', billing_plan: 'rib' }, product_name: 'OFFRE PROMO 12 MOIS' },
         { paiement_comptant: false, name: '259€ EN 4X PRELEVEMENT' }
       ),
-      true
+      false
+    );
+    assert.equal(
+      shouldFallbackToComptantOnIbanError(
+        {
+          payment_plan: '4x',
+          payment: { method: 'payplug', amount: 64.75, payment_plan: '4x' },
+          product_name: 'OFFRE PROMO 12 MOIS',
+          product_snapshot: { price_cents: 25900 },
+          requires_iban: true,
+        },
+        { paiement_comptant: false, name: '259€ EN 4X PRELEVEMENT', payplug_4x_prelevement: true }
+      ),
+      false
     );
     assert.equal(
       shouldFallbackToComptantOnIbanError(

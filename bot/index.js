@@ -740,6 +740,14 @@ async function processSaleJob(page, order, jobMeta = {}) {
         });
       }
     }
+    // Garde-fou : 259 4× sans frais ne doit JAMAIS basculer en OFFRE PROMO comptant.
+    if (isPayplug4xPrelevementOrder(order) || productConfig.payplug_4x_prelevement === true) {
+      productConfig.paiement_comptant = false;
+      productConfig.requires_iban = true;
+      productConfig.skip_rib_prompt = false;
+      productConfig.payplug_4x_prelevement = true;
+      productConfig.auto_badge = false;
+    }
     if (checkpoint.sale_done && checkpoint.deciplus_sale_id && !order.deciplus_sale_id) {
       order.deciplus_sale_id = checkpoint.deciplus_sale_id;
     }
