@@ -387,7 +387,9 @@
   function motifClair(o) {
     const err = String(o.bot_error || "");
     const st = String(o.bot_status || "");
-    if (/connexion deciplus|identifiants|job impossible/i.test(err)) return "Connexion Deciplus en échec";
+    if (/connexion deciplus|identifiants/i.test(err)) return "Connexion Deciplus en échec";
+    if (/job impossible|appliquer_quitter|résiliation impossible|resiliation impossible/i.test(err))
+      return "Ancien contrat à résilier";
     if (/badge|cloturer|clôturer|carte/i.test(err)) return "Carte d'accès non posée";
     if (/iban|rib|mandat/i.test(err)) return "RIB non enregistré";
     if (st === "manual_review" || st === "error" || st === "failed") return "Carte ou RIB pas encore confirmé";
