@@ -30,17 +30,22 @@ function paidMatchesExpected(paidCents, expectedCents) {
   return amountsMatch(paidCents, expectedCents);
 }
 
-function payplugMatches({ payment, orderId, expectedCents, storedPaymentId }) {
+function payplugMatches({ payment, orderId, expectedCents, storedPaymentId, storedPaymentIds }) {
   if (!payment?.id) return { ok: false, error: 'payment_mismatch' };
   const meta = payment.metadata || {};
   const metaOrder = String(meta.lifecycle_order_id || meta.order_id || meta.verify_order_id || '').trim();
   const wanted = String(orderId || '').trim();
   const stored = String(storedPaymentId || '').trim();
-  const idMatch = Boolean(stored) && stored === String(payment.id);
+  const hist = Array.isArray(storedPaymentIds)
+    ? storedPaymentIds.map((id) => String(id || '').trim()).filter(Boolean)
+    : [];
+  const paymentId = String(payment.id);
+  const idMatch =
+    (Boolean(stored) && stored === paymentId) || (hist.length > 0 && hist.includes(paymentId));
   const metaMatch = Boolean(wanted) && Boolean(metaOrder) && metaOrder === wanted;
 
   // Double page PayPlug : le client paie pay_A alors que la commande stocke pay_B.
-  // On accepte l’id déjà lié, OU les metadata qui pointent vers CETTE commande.
+  // On accepte l’id courant, un id d’historique, OU les metadata de CETTE commande.
   // Un paiement d’une autre commande (metadata + id différents) reste refusé.
   if (!idMatch && !metaMatch) {
     return { ok: false, error: 'payment_mismatch' };

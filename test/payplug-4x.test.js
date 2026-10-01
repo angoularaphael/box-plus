@@ -66,6 +66,11 @@ function run() {
   assert.equal(isPayplugPaymentPaid({ is_paid: true }), true);
   assert.equal(isPayplugPaymentPaid({ is_paid: false, failure: { message: 'refused' } }), false);
   assert.equal(
+    isPayplugPaymentPaid({ is_paid: true, failure: { message: 'stale' } }),
+    true,
+    'is_paid prime sur un failure résiduel'
+  );
+  assert.equal(
     isPayplugPaymentPaid({
       is_paid: false,
       auto_capture: true,

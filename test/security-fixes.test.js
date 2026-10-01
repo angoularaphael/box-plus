@@ -127,6 +127,16 @@ test('PayPlug refuse un paiement lié à une autre commande', () => {
   });
   assert.equal(rebound.ok, true);
 
+  // Historique explicite sans metadata (ancienne tentative payée).
+  const histOnly = payplugMatches({
+    payment: { id: 'pay_A', amount: 25900, metadata: {} },
+    orderId: 'BC-X',
+    expectedCents: 25900,
+    storedPaymentId: 'pay_B',
+    storedPaymentIds: ['pay_A'],
+  });
+  assert.equal(histOnly.ok, true);
+
   const wrongAmountStored = payplugMatches({
     payment: { id: 'pay_ok', amount: 1000, metadata: { lifecycle_order_id: 'BC-EXPENSIVE' } },
     orderId: 'BC-EXPENSIVE',

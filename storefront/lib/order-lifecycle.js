@@ -262,6 +262,8 @@ async function markPaymentPaidAsync(orderId, paymentData) {
     ...order.payment,
     ...cleanPayment,
     status: 'paid',
+    failure: null,
+    failed_at: null,
     paid_at: order.payment?.paid_at || cleanPayment.paid_at || new Date().toISOString(),
   };
   advanceOrder(order, STATES.PAID);
@@ -317,6 +319,30 @@ function markPaymentFailed(orderId, paymentData) {
 async function markPaymentFailedAsync(orderId, paymentData = {}) {
   const order = await loadOrderAsync(orderId);
   if (!order) return null;
+  const st = String(order.payment?.status || '').toLowerCase();
+  // Jamais rétrograder un paiement déjà encaissé (webhook d’échec en retard).
+  if (st === 'paid' || st === 'free') return order;
+
+  const failingPayplugId = String(paymentData.payplug_payment_id || '').trim();
+  const currentPayplugId = String(order.payment?.payplug_payment_id || '').trim();
+  // Ancienne tentative PayPlug alors qu’une autre page est ouverte : on journalise
+  // l’échec sans écraser l’id courant ni marquer toute la commande « failed »
+  // (sinon admin = échoué alors que le client a été / va être débité sur pay_B).
+  if (failingPayplugId && currentPayplugId && failingPayplugId !== currentPayplugId) {
+    const hist = Array.isArray(order.payment?.payplug_payment_ids)
+      ? order.payment.payplug_payment_ids.map((id) => String(id || '').trim()).filter(Boolean)
+      : [];
+    if (!hist.includes(failingPayplugId)) hist.push(failingPayplugId);
+    order.payment = {
+      ...order.payment,
+      payplug_payment_ids: hist.slice(-8),
+      last_failure: paymentData.failure || paymentData.failure_reason || null,
+      last_failed_payment_id: failingPayplugId,
+      last_failed_at: new Date().toISOString(),
+    };
+    return saveOrderAsync(order);
+  }
+
   order.payment = {
     ...order.payment,
     ...paymentData,

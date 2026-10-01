@@ -498,6 +498,70 @@ async function refreshPaymentFromStripe(order, sessionIdHint) {
   return order;
 }
 
+/**
+ * Même idée que Stripe : si le webhook PayPlug est en retard (ou qu’une ancienne
+ * tentative a marqué failed), on re-lit tous les ids PayPlug liés à la commande.
+ */
+async function refreshPaymentFromPayplug(order) {
+  if (!order || order.payment?.status === 'paid' || order.payment?.status === 'free') return order;
+  if (!isPayplugEnabled()) return order;
+  const ids = payplugIdCandidates(order);
+  if (!ids.length) return order;
+  const expected = expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot);
+  for (const id of ids) {
+    try {
+      const got = await retrievePaymentLiveOrTest(id);
+      const payment = got?.payment || got;
+      if (!payment || !isPayplugPaymentPaid(payment)) continue;
+      const bound = payplugMatches({
+        payment,
+        orderId: order.order_id,
+        expectedCents: expected,
+        storedPaymentId: order.payment?.payplug_payment_id,
+        storedPaymentIds: order.payment?.payplug_payment_ids,
+      });
+      if (!bound.ok) {
+        const amountOk = paidMatchesExpected(payment.amount || payment.authorized_amount, expected);
+        const metaOrder = String(
+          payment.metadata?.lifecycle_order_id || payment.metadata?.order_id || ''
+        ).trim();
+        const metaOk = !metaOrder || metaOrder === order.order_id;
+        if (!amountOk || !metaOk) continue;
+      }
+      const hist = rememberPreviousPayplugId(order.payment, payment.id);
+      const meta = payment.metadata || {};
+      const plan = meta.payment_plan || order.payment?.payment_plan || 'once';
+      const updated = await markPaymentPaid(order.order_id, {
+        method: 'payplug',
+        payment_plan: plan === '4x' ? '4x' : plan,
+        billing_plan: order.payment?.billing_plan || meta.billing_plan || null,
+        payplug_payment_ids: hist,
+        payplug_payment_id: payment.id,
+        failure: null,
+        failed_at: null,
+      });
+      logInfo('Paiement confirmé via revérification PayPlug', {
+        order_id: order.order_id,
+        payment_id: payment.id,
+      });
+      return updated || order;
+    } catch (err) {
+      logWarn('Revérification PayPlug échouée', {
+        order_id: order.order_id,
+        payment_id: id,
+        error: err.message,
+      });
+    }
+  }
+  return order;
+}
+
+async function refreshPaymentStatus(order, sessionIdHint) {
+  let next = await refreshPaymentFromStripe(order, sessionIdHint);
+  if (next?.payment?.status === 'paid') return next;
+  return refreshPaymentFromPayplug(next || order);
+}
+
 function inscriptionRedirect(order, stepOverride) {
   const step = stepOverride || order.step || STEPS.PAYMENT;
   const tok = encodeURIComponent(order.access_token || '');
@@ -822,6 +886,7 @@ async function fulfillMaterielPayplug(paymentId, paymentHint = null) {
     orderId: order.order_id,
     expectedCents: order.total_cents,
     storedPaymentId: order.payment?.payplug_payment_id,
+    storedPaymentIds: order.payment?.payplug_payment_ids,
   });
   if (!bound.ok) return { ok: false, error: bound.error };
 
@@ -3149,7 +3214,7 @@ function createApp() {
       }
       let orderRef = order;
       if (order.payment?.status !== 'paid' && order.product_snapshot?.requires_payment !== false) {
-        orderRef = await refreshPaymentFromStripe(order, req.body.session_id || req.query.session_id);
+        orderRef = await refreshPaymentStatus(order, req.body.session_id || req.query.session_id);
       }
       if (orderRef.payment?.status !== 'paid' && orderRef.product_snapshot?.requires_payment !== false) {
         return res.status(402).json({
@@ -3773,9 +3838,9 @@ function createApp() {
 
       if (product?.requires_payment !== false && order.payment?.status !== 'paid') {
         if (!aventureOrder) {
-          const refreshed = await refreshPaymentFromStripe(order, req.body.session_id || req.query.session_id);
+          const refreshed = await refreshPaymentStatus(order, req.body.session_id || req.query.session_id);
           if (refreshed?.payment?.status === 'paid') {
-            // Ne pas perdre l'IBAN lors d'une revérif Stripe
+            // Ne pas perdre l'IBAN lors d'une revérif Stripe / PayPlug
             order.payment = {
               ...refreshed.payment,
               iban: refreshed.payment?.iban || full.iban || existingIban || null,
@@ -3988,7 +4053,7 @@ function createApp() {
         return res.status(400).json({ ok: false, error: ageErr, code: 'adult_offer_age' });
       }
       if (product?.requires_payment !== false && order.payment?.status !== 'paid') {
-        const refreshed = await refreshPaymentFromStripe(order, req.body.session_id);
+        const refreshed = await refreshPaymentStatus(order, req.body.session_id);
         if (refreshed?.payment?.status === 'paid') {
           order.payment = refreshed.payment;
         } else {
@@ -6289,6 +6354,7 @@ function createApp() {
       orderId: order.order_id,
       expectedCents: expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot),
       storedPaymentId: order.payment?.payplug_payment_id,
+      storedPaymentIds: order.payment?.payplug_payment_ids,
     });
     if (!bound.ok) {
       const metaOrder = String(meta.lifecycle_order_id || meta.order_id || meta.verify_order_id || '').trim();
@@ -6341,6 +6407,7 @@ function createApp() {
       .toLowerCase();
     if (!email || !email.includes('@')) return null;
     const amount = payment.amount || payment.authorized_amount;
+    const payId = String(payment?.id || '').trim();
     const hits = orders.filter((order) => {
       if (String(order.payment?.status) === 'paid' || String(order.payment?.status) === 'free') {
         return false;
@@ -6352,7 +6419,18 @@ function createApp() {
       );
       return paidMatchesExpected(amount, expected);
     });
-    return hits.length === 1 ? hits[0] : null;
+    if (!hits.length) return null;
+    if (hits.length === 1) return hits[0];
+    // Plusieurs brouillons (tentatives failed) : l’id PayPlug stocké, sinon le plus récent.
+    if (payId) {
+      const byStored = hits.find((o) => payplugIdCandidates(o).includes(payId));
+      if (byStored) return byStored;
+    }
+    hits.sort(
+      (a, b) =>
+        Date.parse(b.updated_at || b.created_at || 0) - Date.parse(a.updated_at || a.created_at || 0)
+    );
+    return hits[0];
   }
 
   async function retrievePayplugPaymentSafe(paymentId) {
@@ -6451,7 +6529,7 @@ function createApp() {
       if (loaded) wantedOrderList.push(loaded);
     }
     if ((wantedOrders.size || listRecent) && isPayplugEnabled()) {
-      const maxPages = wantedOrders.size ? 6 : 1;
+      const maxPages = wantedOrders.size ? 6 : 4;
       for (let page = 0; page < maxPages; page += 1) {
         let listing;
         try {
@@ -6890,36 +6968,80 @@ function createApp() {
       if (!isPayplugEnabled()) {
         return res.status(503).json({ ok: false, error: 'payplug_not_configured' });
       }
-      const id = sanitizePaymentId(paymentId || order.payment?.payplug_payment_id);
-      if (!id) return res.status(400).json({ ok: false, error: 'payment_id manquant' });
-      const payment = await retrievePayment(id);
-      const bound = payplugMatches({
-        payment,
-        orderId: order.order_id,
-        expectedCents: expectedChargeCents(order, findProduct(order.product_id) || order.product_snapshot),
-        storedPaymentId: order.payment?.payplug_payment_id,
-      });
-      if (!bound.ok) {
-        return res.status(409).json({ ok: false, error: bound.error });
-      }
-      if (isPayplugPaymentPaid(payment)) {
-        order = await markPayplugOrderPaid(order, payment);
+      // Avant de conclure à un échec : re-lire tous les ids (ancienne tentative
+      // failed + nouvelle page payée = bug « échoué mais débité »).
+      order = (await refreshPaymentFromPayplug(order)) || order;
+      if (order.payment?.status === 'paid') {
         return res.json({
           ok: true,
           paid: true,
           redirect: inscriptionRedirect(order),
         });
       }
-      if (payment.failure) {
+
+      const preferred = sanitizePaymentId(paymentId || order.payment?.payplug_payment_id);
+      const ids = [];
+      if (preferred) ids.push(preferred);
+      for (const cid of payplugIdCandidates(order)) {
+        if (!ids.includes(cid)) ids.push(cid);
+      }
+      if (!ids.length) return res.status(400).json({ ok: false, error: 'payment_id manquant' });
+
+      const expected = expectedChargeCents(
+        order,
+        findProduct(order.product_id) || order.product_snapshot
+      );
+      let lastFailure = null;
+      let pendingPayment = null;
+      for (const id of ids) {
+        let payment;
+        try {
+          const got = await retrievePaymentLiveOrTest(id);
+          payment = got?.payment || got;
+        } catch {
+          continue;
+        }
+        if (!payment) continue;
+        const bound = payplugMatches({
+          payment,
+          orderId: order.order_id,
+          expectedCents: expected,
+          storedPaymentId: order.payment?.payplug_payment_id,
+          storedPaymentIds: order.payment?.payplug_payment_ids,
+        });
+        if (!bound.ok) continue;
+        if (isPayplugPaymentPaid(payment)) {
+          order = await markPayplugOrderPaid(order, payment);
+          return res.json({
+            ok: true,
+            paid: true,
+            redirect: inscriptionRedirect(order),
+          });
+        }
+        if (payment.failure) {
+          lastFailure = payment.failure;
+          continue;
+        }
+        if (!pendingPayment) pendingPayment = payment;
+      }
+      if (pendingPayment) {
+        return res.json({
+          ok: true,
+          pending: true,
+          message:
+            'Votre paiement est en cours de validation. Merci de patienter quelques instants.',
+        });
+      }
+      if (lastFailure) {
         return res.status(402).json({
           ok: false,
           error: 'payment_failed',
-          message: payment.failure?.message || 'Paiement refusé',
+          message: lastFailure?.message || 'Paiement refusé',
         });
       }
       return res.json({
         ok: true,
-        pending: isPayplugPaymentPending(payment) || true,
+        pending: true,
         message:
           'Votre paiement est en cours de validation. Merci de patienter quelques instants.',
       });

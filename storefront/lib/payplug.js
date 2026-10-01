@@ -490,8 +490,11 @@ async function listPayments({ page = 0, perPage = 10 } = {}) {
 }
 
 function isPayplugPaymentPaid(payment) {
-  if (!payment || payment.failure) return false;
+  if (!payment) return false;
+  // L'encaissement réel prime : un failure résiduel / course entre tentatives
+  // ne doit pas faire passer pour « échoué » un paiement déjà débité.
   if (payment.is_paid === true) return true;
+  if (payment.failure) return false;
   // Oney : une fois autorisé, auto_capture encaisse le total pour le marchand.
   const authorizedAt = payment.authorization?.authorized_at || payment.authorized_at;
   const pending = payment.payment_method?.is_pending === true;
