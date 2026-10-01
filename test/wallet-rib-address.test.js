@@ -14,7 +14,7 @@ describe('ribAddressFields', () => {
     assert.equal(addr.postal_code, '31170');
   });
 
-  it('RIB déjà saisi n’est pas ignoré si Valider est bloqué', () => {
+  it('RIB deja saisi n est pas ignore si Valider est bloque', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/wallet.js'), 'utf8');
     assert.match(src, /RIB visible mais mandat non enregistré — adresse \+ Valider/);
     assert.match(src, /async function ribMandateNeedsSave/);
@@ -22,6 +22,23 @@ describe('ribAddressFields', () => {
     assert.match(src, /memberAsksToRegisterRib/);
     assert.match(src, /if \(blocked \|\| validerOff\) return true/);
     assert.match(src, /after\.rum && !stillAsks/);
+    assert.match(src, /RUM présent mais fiche demande encore le RIB/);
+    assert.match(src, /la fiche demande encore d enregistrer le RIB/);
+  });
+
+  it('empreinte carte PayPlug sans PAN', () => {
+    const { cardFingerprintFromPayplug } = require('../storefront/lib/payplug');
+    assert.equal(cardFingerprintFromPayplug(null), null);
+    const fp = cardFingerprintFromPayplug({
+      card: { last4: '4242', brand: 'visa', exp_month: 12, exp_year: 2030, country: 'FR' },
+    });
+    assert.deepEqual(fp, {
+      card_last4: '4242',
+      card_brand: 'visa',
+      card_exp_month: 12,
+      card_exp_year: 2030,
+      card_country: 'FR',
+    });
   });
 
   it('falls back to gym when city is the postal code', () => {

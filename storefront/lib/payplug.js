@@ -514,6 +514,24 @@ function hostedPaymentUrl(payment) {
   return payment?.hosted_payment?.payment_url || null;
 }
 
+/** Empreinte carte (last4 / marque / exp) — jamais le numéro complet (PCI). */
+function cardFingerprintFromPayplug(payment) {
+  const c = payment?.card || payment?.payment_method?.card || {};
+  const last4 = c.last4 || c.last_4 || null;
+  const brand = c.brand || c.scheme || c.card_type || null;
+  const expMonth = c.exp_month || c.expMonth || null;
+  const expYear = c.exp_year || c.expYear || null;
+  const country = c.country || null;
+  if (last4 == null && brand == null) return null;
+  return {
+    card_last4: last4 != null ? String(last4) : null,
+    card_brand: brand != null ? String(brand) : null,
+    card_exp_month: expMonth != null ? Number(expMonth) || null : null,
+    card_exp_year: expYear != null ? Number(expYear) || null : null,
+    card_country: country != null ? String(country) : null,
+  };
+}
+
 module.exports = {
   createFourTimesPayment,
   createScalapayPayment,
@@ -538,4 +556,5 @@ module.exports = {
   validateOneyCustomer,
   formatPayplugError,
   hostedPaymentUrl,
+  cardFingerprintFromPayplug,
 };

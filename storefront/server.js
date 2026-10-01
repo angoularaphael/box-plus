@@ -89,6 +89,7 @@ const {
   SCALAPAY_MAX_CENTS,
   hostedPaymentUrl,
   formatPayplugError,
+  cardFingerprintFromPayplug,
 } = require('./lib/payplug');
 const {
   buildPaymentRedirectUrl,
@@ -6169,6 +6170,7 @@ function createApp() {
       plan === 'scalapay' || isScalapayOrder(order) || String(payment.payment_method?.type || '') === 'scalapay'
         ? scalapayInstallmentCount(payment) || scalapayInstallmentCount(order) || null
         : null;
+    const cardFp = cardFingerprintFromPayplug(payment);
     const paid = await markPaymentPaid(order.order_id, {
       method: 'payplug',
       payment_plan: payplug4xPrelev || plan === '4x' ? '4x' : plan,
@@ -6178,6 +6180,9 @@ function createApp() {
       payplug_payment_id: payment.id,
       status: 'paid',
       ...(scalapayInstallments ? { scalapay_installments: scalapayInstallments } : {}),
+      ...(cardFp || {}),
+      // Conserver l’IBAN déjà saisi au tunnel (prélèvement).
+      iban: order.payment?.iban || order.customer_full?.iban || undefined,
     });
     if (payplug4xPrelev && paid) {
       paid.requires_iban = true;

@@ -2543,7 +2543,8 @@ async function registerSaleRibIfAsked(page, productConfig = {}) {
   }
   if (!registered) {
     logWarn('Vente Deciplus — RIB à enregistrer, bouton introuvable (Ignorer non cliqué)');
-    return;
+    // Ne pas « réussir » silencieusement : le RIB doit déjà être sur la fiche.
+    return { ok: false, reason: 'rib_button_missing' };
   }
 
   logInfo('Vente Deciplus — enregistrement du RIB');
@@ -2556,7 +2557,8 @@ async function registerSaleRibIfAsked(page, productConfig = {}) {
     (await ibanField.count().catch(() => 0)) > 0 &&
     (await ibanField.isVisible().catch(() => false));
   if (fieldVisible && iban) {
-    const { fillRibForm, submitRibForm } = require('./wallet');
+    const { fillRibForm, submitRibForm, memberAsksToRegisterRib, closeGreyboxIfOpen, openMemberCheck } =
+      require('./wallet');
     const current = String(await ibanField.inputValue().catch(() => '') || '').replace(/\s+/g, '');
     if (current.length < 10) {
       await fillRibForm(
@@ -2567,14 +2569,29 @@ async function registerSaleRibIfAsked(page, productConfig = {}) {
       );
     }
     await submitRibForm(ribWork, page);
+    await closeGreyboxIfOpen(page).catch(() => {});
+    const memberId = productConfig.member_id || null;
+    if (memberId) {
+      await openMemberCheck(page, memberId, productConfig.gymConfig || {}).catch(() => {});
+      if (await memberAsksToRegisterRib(page)) {
+        logWarn('Vente Deciplus — alerte RIB encore visible après Valider dans la vente');
+        return { ok: false, reason: 'rib_alert_persists' };
+      }
+    }
     logInfo('Vente Deciplus — formulaire RIB validé');
-    return;
+    return { ok: true };
+  }
+
+  if (!iban) {
+    logWarn('Vente Deciplus — pas d IBAN pour remplir le formulaire RIB');
+    return { ok: false, reason: 'iban_missing' };
   }
 
   const saved = await clickFirst(ribWork, sel('rib_form.save'), { force: true }).catch(() => false);
   if (!saved) {
     await clickVenteFooterAction(page, /^\s*Valider\s*$/i).catch(() => false);
   }
+  return { ok: true };
 }
 
 async function applyConfigModal(page, productConfig, memberId = null) {
@@ -3182,6 +3199,7 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
     order.payment?.iban || order.customer?.iban || order.customer_full?.iban || null;
   productConfig.member_customer = order.customer || order.customer_full || {};
   productConfig.gymConfig = gymConfig;
+  productConfig.member_id = memberId;
   if (productConfig.create_sale === false || productConfig.sale_type === 'none') {
     logInfo('Essai — fiche membre seulement', { order_id: order.order_id });
     if (memberId) {
