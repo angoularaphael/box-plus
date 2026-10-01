@@ -111,12 +111,12 @@ async function readBodyText(page) {
   let text = '';
   for (const frame of [page, ...page.frames()]) {
     try {
-      text += ` ${(await frame.locator('body').innerText().catch(() => '')) || ''}`;
+      text += ` ${(await frame.locator('body').innerText({ timeout: 3000 }).catch(() => '')) || ''}`;
     } catch {
       /* frame */
     }
   }
-  return text.replace(/\s+/g, ' ');
+  return text.replace(/\s+/g, ' ').trim();
 }
 
 function parseContractMoney(text) {
@@ -128,13 +128,16 @@ function parseContractMoney(text) {
     const n = Number(String(v).replace(/\s/g, '').replace(',', '.'));
     return Number.isFinite(n) ? n : null;
   };
+  const prestation = ((t.match(/Prestation\s*:\s*(.+?)(?=\s+Total encaiss|\s+Restant d|$)/i) || [])[1] || '')
+    .trim()
+    .slice(0, 80);
   return {
     restant: toNum(restant),
     encaisse: toNum(encaisse),
     waiting: /3\s*EN\s*ATTENTE|en attente\s*64/i.test(t),
     noEch: /Aucune information trouv[eé]e pour ce contrat/i.test(t),
-    fourX: /64[,.]75/.test(t),
-    prestation: ((t.match(/Prestation\s*:\s*([^\n]+)/i) || [])[1] || '').trim().slice(0, 80),
+    fourX: /64[,.]75/.test(t) || /3\s*EN\s*ATTENTE/i.test(t),
+    prestation,
   };
 }
 
@@ -143,16 +146,29 @@ function looksComptant(info) {
   if (!info) return null;
   if (info.waiting || info.fourX) return false;
   if (info.restant != null && info.restant > 1) return false;
-  if (info.restant === 0) return true;
+  if (info.encaisse != null && Math.abs(info.encaisse - 64.75) < 0.2) return false;
+  if (info.restant === 0 && info.encaisse != null && Math.abs(info.encaisse - 259) < 0.5) return true;
   if (info.encaisse != null && Math.abs(info.encaisse - 259) < 0.5 && !info.fourX) return true;
-  if (info.noEch) return true;
+  if (info.noEch && info.encaisse != null && info.encaisse >= 200) return true;
   return null;
 }
 
 async function inspectContractMoney(page, idc) {
   const { contractUrl } = require('../bot/cancel-sale');
-  await page.goto(contractUrl(idc), { waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => {});
-  await page.waitForTimeout(700);
+  const { closeGreyboxIfOpen } = require('../bot/wallet');
+  await closeGreyboxIfOpen(page).catch(() => {});
+  const url = contractUrl(idc);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {});
+    await page.waitForTimeout(attempt === 0 ? 1200 : 2000);
+    for (let i = 0; i < 10; i += 1) {
+      const text = await readBodyText(page);
+      if (/Total encaiss|Restant d[uû]|Prestation\s*:/i.test(text)) {
+        return parseContractMoney(text);
+      }
+      await page.waitForTimeout(400);
+    }
+  }
   return parseContractMoney(await readBodyText(page));
 }
 
@@ -410,6 +426,7 @@ async function inspectOrRepair(page, catalog, target) {
 
   const needsRepair =
     wrongToCancel.length > 0 || (!hasReal4x && !target.oney_full && unknown.length === 0);
+  const needsRecheck = !hasReal4x && !wrongToCancel.length && unknown.length > 0 && !target.oney_full;
 
   const summary = {
     name: target.name,
@@ -436,6 +453,7 @@ async function inspectOrRepair(page, catalog, target) {
     })),
     has_4x_prelev: hasReal4x,
     fake_4x_comptant: fake4x.length,
+    needs_recheck: needsRecheck,
   };
 
   console.log('\n===', target.name, target.order_id, '===');
@@ -447,6 +465,7 @@ async function inspectOrRepair(page, catalog, target) {
         wrong: summary.wrong_comptant.map((c) => c.label),
         real_4x: hasReal4x,
         fake_4x: fake4x.length,
+        needs_recheck: needsRecheck,
         details: summary.contract_details,
         oney_full: target.oney_full,
       },
@@ -461,6 +480,10 @@ async function inspectOrRepair(page, catalog, target) {
 
   if (hasReal4x && !wrongToCancel.length) {
     return { ...summary, skipped: 'already_4x_prelev' };
+  }
+
+  if (needsRecheck) {
+    return { ...summary, skipped: 'needs_recheck', needs_repair: true };
   }
 
   if (CHECK || !APPLY) {
