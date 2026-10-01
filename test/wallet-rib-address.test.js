@@ -21,9 +21,10 @@ describe('ribAddressFields', () => {
     assert.match(src, /existingMeta\.rum && ibanAlready && !needsSave/);
     assert.match(src, /memberAsksToRegisterRib/);
     assert.match(src, /if \(blocked \|\| validerOff\) return true/);
-    assert.match(src, /after\.rum && !stillAsks/);
-    assert.match(src, /RUM présent mais fiche demande encore le RIB/);
-    assert.match(src, /la fiche demande encore d enregistrer le RIB/);
+    assert.match(src, /async function ficheRibCleared/);
+    assert.match(src, /openMemberDetail/);
+    assert.match(src, /Valider grisé mais fiche sans alerte RIB/);
+    assert.match(src, /Valider grisé ignoré \(fiche sans alerte\)/);
   });
 
   it('empreinte carte PayPlug sans PAN', () => {

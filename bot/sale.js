@@ -2557,8 +2557,7 @@ async function registerSaleRibIfAsked(page, productConfig = {}) {
     (await ibanField.count().catch(() => 0)) > 0 &&
     (await ibanField.isVisible().catch(() => false));
   if (fieldVisible && iban) {
-    const { fillRibForm, submitRibForm, memberAsksToRegisterRib, closeGreyboxIfOpen, openMemberCheck } =
-      require('./wallet');
+    const { fillRibForm, submitRibForm, ficheRibCleared, closeGreyboxIfOpen } = require('./wallet');
     const current = String(await ibanField.inputValue().catch(() => '') || '').replace(/\s+/g, '');
     if (current.length < 10) {
       await fillRibForm(
@@ -2572,8 +2571,7 @@ async function registerSaleRibIfAsked(page, productConfig = {}) {
     await closeGreyboxIfOpen(page).catch(() => {});
     const memberId = productConfig.member_id || null;
     if (memberId) {
-      await openMemberCheck(page, memberId, productConfig.gymConfig || {}).catch(() => {});
-      if (await memberAsksToRegisterRib(page)) {
+      if (!(await ficheRibCleared(page, memberId, productConfig.gymConfig || {}))) {
         logWarn('Vente Deciplus — alerte RIB encore visible après Valider dans la vente');
         return { ok: false, reason: 'rib_alert_persists' };
       }

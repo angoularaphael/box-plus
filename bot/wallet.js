@@ -103,15 +103,41 @@ async function memberAsksToRegisterRib(page) {
   const parts = [];
   for (const ctx of [page, ...(page.frames?.() || [])]) {
     try {
-      const t = await ctx.locator('body').innerText({ timeout: 2000 });
+      const t = await ctx.locator('body').innerText({ timeout: 2500 });
       if (t) parts.push(t);
     } catch {
       /* frame */
     }
   }
+  // Aussi le HTML : parfois le bandeau est dans un nœud peu exposé à innerText.
+  try {
+    const html = await page.content();
+    if (html) parts.push(html);
+  } catch {
+    /* ignore */
+  }
   const text = parts.join('\n');
   // Bandeau Deciplus : « ---- VEUILLEZ ENREGISTRER LE RIB DU MEMBRE ---- »
-  return /enregistrer le rib|veuillez enregistrer le rib/i.test(text);
+  return /veuillez\s+enregistrer\s+le\s+rib|enregistrer\s+le\s+rib\s+du\s+membre|enregistrer le rib/i.test(
+    text
+  );
+}
+
+/** Après toute « réussite » mandat : la fiche ne doit plus demander le RIB. */
+async function ficheRibCleared(page, memberId, gymConfig = {}) {
+  await closeGreyboxIfOpen(page).catch(() => {});
+  await openMemberCheck(page, memberId, gymConfig).catch(() => {});
+  await randomDelay(400, 700);
+  if (await memberAsksToRegisterRib(page)) return false;
+  // Double check sur joueurs.php (écran « Visualiser la fiche membre »).
+  try {
+    await openMemberDetail(page, memberId);
+    await randomDelay(400, 700);
+    if (await memberAsksToRegisterRib(page)) return false;
+  } catch {
+    /* detail optionnel */
+  }
+  return true;
 }
 
 /** Empreinte carte PayPlug (jamais le PAN complet — PCI). */
@@ -811,36 +837,43 @@ async function readMandateMeta(ctx) {
 
 async function verifyIbanOnMandate(page, memberId, expectedIban) {
   const ribCtx = await openRibForm(page, memberId, { forceFresh: true });
-  if (await ribMandateNeedsSave(ribCtx)) return false;
   const saved = await readIbanFromRib(ribCtx);
-  if (saved === expectedIban) {
-    await closeGreyboxIfOpen(page);
-    await openMemberCheck(page, memberId).catch(() => {});
-    if (await memberAsksToRegisterRib(page)) return false;
-    return true;
-  }
-  // Mandat créé (RUM) même si l'IBAN affiché est tronqué / reformaté
   const meta = await readMandateMeta(ribCtx);
+  const needsSave = await ribMandateNeedsSave(ribCtx).catch(() => false);
+  const expected = normalizeIban(expectedIban);
+  const ibanMatch =
+    saved === expected ||
+    (saved && expected && saved.startsWith(expected.slice(0, 20)));
+  // Mandat créé (RUM) même si l'IBAN affiché est tronqué / reformaté
   const rumLooksOk =
     Boolean(meta.rum) &&
-    (normalizeIban(meta.iban).startsWith(expectedIban.slice(0, 20)) ||
-      (saved && normalizeIban(saved).includes(expectedIban.slice(4, 14))));
-  if (!rumLooksOk) return false;
+    (ibanMatch ||
+      normalizeIban(meta.iban).startsWith(expected.slice(0, 20)) ||
+      (saved && normalizeIban(saved).includes(expected.slice(4, 14))));
+  if (!ibanMatch && !rumLooksOk) return false;
+
   await closeGreyboxIfOpen(page);
-  await openMemberCheck(page, memberId).catch(() => {});
-  // RUM seul ne suffit pas : Deciplus peut afficher le mandat ET le bandeau rouge.
-  if (await memberAsksToRegisterRib(page)) {
+  // Source de vérité : bandeau fiche (check.php + joueurs.php), pas Valider grisé.
+  if (!(await ficheRibCleared(page, memberId, {}))) {
     logWarn('RUM présent mais fiche demande encore le RIB', {
       member_id: memberId,
       rum: meta.rum,
+      needs_save: needsSave,
     });
     return false;
   }
-  logWarn('IBAN mandat partiellement affiché — RUM présent et fiche sans alerte RIB', {
-    member_id: memberId,
-    rum: meta.rum,
-    saved: meta.iban,
-  });
+  if (needsSave) {
+    logWarn('Valider grisé mais fiche sans alerte RIB — considéré OK', {
+      member_id: memberId,
+      rum: meta.rum,
+    });
+  } else if (!ibanMatch && rumLooksOk) {
+    logWarn('IBAN mandat partiellement affiché — RUM présent et fiche sans alerte RIB', {
+      member_id: memberId,
+      rum: meta.rum,
+      saved: meta.iban,
+    });
+  }
   return true;
 }
 
@@ -900,20 +933,32 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
     let ficheAsks = false;
     if (existingMeta.rum && ibanAlready && !needsSave) {
       await closeGreyboxIfOpen(page);
-      await openMemberCheck(page, memberId, gymConfig).catch(() => {});
-      ficheAsks = await memberAsksToRegisterRib(page);
-      if (!ficheAsks) {
+      // check.php seul ne suffit pas : l alerte est souvent sur joueurs.php.
+      if (await ficheRibCleared(page, memberId, gymConfig)) {
         logInfo('IBAN déjà enregistré sur le mandat Deciplus', {
           member_id: memberId,
           rum: existingMeta.rum || null,
         });
         return true;
       }
+      ficheAsks = true;
       logWarn('Fiche demande encore d enregistrer le RIB — validation SEPA relancée', {
         member_id: memberId,
         rum: existingMeta.rum || null,
         attempt,
       });
+    }
+    // RUM + IBAN OK mais Valider encore grisé : la fiche (pas le bouton) décide.
+    if (existingMeta.rum && ibanAlready && needsSave && !ficheAsks) {
+      await closeGreyboxIfOpen(page);
+      if (await ficheRibCleared(page, memberId, gymConfig)) {
+        logInfo('IBAN + RUM OK — Valider grisé ignoré (fiche sans alerte)', {
+          member_id: memberId,
+          rum: existingMeta.rum || null,
+        });
+        return true;
+      }
+      ficheAsks = true;
     }
     if (ibanAlready && (needsSave || ficheAsks)) {
       logWarn('RIB visible mais mandat non enregistré — adresse + Valider', {
@@ -930,15 +975,19 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
       const afterNeed = await ribMandateNeedsSave(ribCheck);
       const after = await readMandateMeta(ribCheck);
       await closeGreyboxIfOpen(page);
-      await openMemberCheck(page, memberId, gymConfig).catch(() => {});
-      const stillAsks = await memberAsksToRegisterRib(page);
-      if (after.rum && !stillAsks) {
-        logInfo('RIB validé sur le mandat Deciplus', { member_id: memberId, rum: after.rum, post_ok: Boolean(posted?.ok) });
+      if (after.rum && (await ficheRibCleared(page, memberId, gymConfig))) {
+        logInfo('RIB validé sur le mandat Deciplus', {
+          member_id: memberId,
+          rum: after.rum,
+          post_ok: Boolean(posted?.ok),
+          needs_save: afterNeed,
+        });
         return true;
       }
       logWarn('Valider RIB encore bloqué après soumission', {
         member_id: memberId,
         post_ok: posted?.ok || false,
+        needs_save: afterNeed,
         attempt,
       });
       continue;
@@ -956,8 +1005,14 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
       const after = await readMandateMeta(ribCheck);
       const afterNeed = await ribMandateNeedsSave(ribCheck);
       await closeGreyboxIfOpen(page);
-      if (after.rum && !afterNeed) {
-        logInfo('RIB validé sur le mandat Deciplus', { member_id: memberId, rum: after.rum });
+      // RUM seul = insuffisant : la fiche joueurs.php doit perdre l alerte.
+      // Valider grisé (afterNeed) n empêche pas le succès si l alerte a disparu.
+      if (after.rum && (await ficheRibCleared(page, memberId, gymConfig))) {
+        logInfo('RIB validé sur le mandat Deciplus', {
+          member_id: memberId,
+          rum: after.rum,
+          needs_save: afterNeed,
+        });
         return true;
       }
       continue;
@@ -1003,16 +1058,14 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
     const saved = await verifyIbanOnMandate(page, memberId, value);
     await closeGreyboxIfOpen(page);
     if (saved) {
-      await openMemberCheck(page, memberId, gymConfig).catch(() => {});
-      if (await memberAsksToRegisterRib(page)) {
-        logWarn('verifyIban OK mais alerte RIB encore visible — nouvel essai', {
-          member_id: memberId,
-          attempt,
-        });
-      } else {
+      if (await ficheRibCleared(page, memberId, gymConfig)) {
         logInfo('RIB saisi sur fiche membre', { member_id: memberId, attempt });
         return true;
       }
+      logWarn('verifyIban OK mais alerte RIB encore visible — nouvel essai', {
+        member_id: memberId,
+        attempt,
+      });
     }
 
     logWarn('IBAN non confirmé après soumission mandat', { member_id: memberId, attempt });
@@ -1023,8 +1076,7 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
     const savedAfterPost = await verifyIbanOnMandate(page, memberId, value);
     await closeGreyboxIfOpen(page);
     if (savedAfterPost) {
-      await openMemberCheck(page, memberId, gymConfig).catch(() => {});
-      if (!(await memberAsksToRegisterRib(page))) {
+      if (await ficheRibCleared(page, memberId, gymConfig)) {
         logInfo('RIB saisi sur fiche membre (POST mandat)', { member_id: memberId, attempt });
         return true;
       }
@@ -1040,10 +1092,9 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
     await ensureMemberPostalAddress(page, memberId, addr);
   }
 
-  // Dernière lecture : si le bandeau a disparu malgré les retries, OK.
+  // Dernière lecture : check.php + joueurs.php sans bandeau + IBAN confirmé.
   await closeGreyboxIfOpen(page);
-  await openMemberCheck(page, memberId, gymConfig).catch(() => {});
-  if (!(await memberAsksToRegisterRib(page))) {
+  if (await ficheRibCleared(page, memberId, gymConfig)) {
     const finalOk = await verifyIbanOnMandate(page, memberId, value).catch(() => false);
     if (finalOk) {
       logInfo('RIB finalement OK sur fiche (alerte disparue)', { member_id: memberId });
@@ -1067,6 +1118,7 @@ module.exports = {
   hasPostalAddressBlocker,
   ribMandateNeedsSave,
   memberAsksToRegisterRib,
+  ficheRibCleared,
   cardFingerprintFromPayplug,
   getRibFrame,
   ribAddressFields,

@@ -193,26 +193,44 @@ async function readRibState(page, memberId) {
           currentSite = site;
         }
         await closeGreyboxIfOpen(page).catch(() => {});
+        const { openMemberDetail, ficheRibCleared } = require('../bot/wallet');
         await openMemberCheck(page, row.member_id, gym);
-        const before = await pageBlob(page);
-        entry.alert_before = FORCE || alertOn(before);
+        const beforeCheck = await pageBlob(page);
+        await openMemberDetail(page, row.member_id).catch(() => {});
+        const beforeDetail = await pageBlob(page);
+        const before = `${beforeCheck}\n${beforeDetail}`;
+        const alert = alertOn(before);
         entry.snippet = alertSnippet(before);
-        if (!entry.alert_before) {
-          entry.status = 'ok';
-          console.log(`ok | ${row.name} | ${row.member_id}`);
-          results.push(entry);
-          continue;
-        }
         const rib = await readRibState(page, row.member_id).catch((err) => ({ error: err.message }));
         entry.rib_before = {
           rum: rib.rum || '',
           needs_save: Boolean(rib.needs_save),
           has_iban: Boolean(rib.iban),
+          iban_suffix: rib.iban ? String(rib.iban).slice(-4) : '',
           error: rib.error || null,
         };
+        // Vraie erreur = bandeau fiche « enregistrer le RIB » (check.php OU joueurs.php),
+        // ou pas de RUM alors qu’on attend un mandat.
+        const broken =
+          FORCE ||
+          alert ||
+          Boolean(rib.error) ||
+          (!rib.rum && Boolean(rib.needs_save)) ||
+          (Boolean(rib.rum) && !rib.iban);
+        entry.alert_before = broken;
+        if (!broken) {
+          entry.status = 'ok';
+          console.log(
+            `ok | ${row.name} | ${row.member_id} | rum=${rib.rum || '-'} needs_save=${Boolean(rib.needs_save)}`
+          );
+          results.push(entry);
+          continue;
+        }
+        console.log(
+          `mandat_a_revalider | ${row.name} | ${row.member_id} | alert=${alert} needs_save=${Boolean(rib.needs_save)} rum=${rib.rum || '-'} iban=${Boolean(rib.iban)}`
+        );
         if (!APPLY) {
           entry.status = 'alerte';
-          console.log(`alerte | ${row.name} | ${row.member_id} | ${entry.snippet.slice(0, 120)}`);
           results.push(entry);
           continue;
         }
@@ -226,22 +244,30 @@ async function readRibState(page, memberId) {
           const { postCurrentRibForm } = require('../bot/wallet');
           await postCurrentRibForm(ctx);
           await closeGreyboxIfOpen(page).catch(() => {});
-          saved = 'force_post';
+          saved = saved?.error ? `force_post:${saved.error}` : 'force_post';
         }
         await closeGreyboxIfOpen(page).catch(() => {});
-        await openMemberCheck(page, row.member_id, gym);
-        const after = await pageBlob(page);
-        entry.alert_after = alertOn(after);
-        entry.snippet_after = alertSnippet(after);
+        const cleared = await ficheRibCleared(page, row.member_id, gym).catch(() => false);
+        const ribAfter = await readRibState(page, row.member_id).catch(() => ({}));
+        const stillBroken =
+          !cleared || (!ribAfter.rum && Boolean(ribAfter.needs_save)) || (Boolean(ribAfter.rum) && !ribAfter.iban);
+        entry.alert_after = stillBroken;
+        entry.rib_after = {
+          rum: ribAfter.rum || '',
+          needs_save: Boolean(ribAfter.needs_save),
+          has_iban: Boolean(ribAfter.iban),
+        };
+        entry.snippet_after = '';
         entry.saved = saved === true ? 'ok' : saved;
-        entry.status = entry.alert_after ? 'encore' : 'fixe';
+        entry.status = stillBroken ? 'encore' : 'fixe';
         console.log(`${entry.status} | ${row.name} | ${row.member_id} | ${entry.saved}`);
+        results.push(entry);
       } catch (err) {
         entry.status = 'erreur';
         entry.error = String(err.message || err).slice(0, 180);
         console.log(`erreur | ${row.name} | ${row.member_id} | ${entry.error}`);
+        results.push(entry);
       }
-      results.push(entry);
     }
   });
 
