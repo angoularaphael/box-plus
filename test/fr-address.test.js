@@ -61,6 +61,17 @@ describe('fr-address', () => {
     assert.equal(out.country, 'France');
   });
 
+  it('réconcilie Villeneuve-Tolosane coincée dans la rue + ville Toulouse', () => {
+    const out = ribAddressFields({
+      address: '66 ter route de portet villeneuve tolosone',
+      postal_code: '31270',
+      city: 'TOULOUSE',
+    });
+    assert.equal(out.city, 'Villeneuve-Tolosane');
+    assert.equal(out.postal_code, '31270');
+    assert.equal(out.address, '66 ter route de portet');
+  });
+
   it('rejette un code postal à 5 chiffres si le pays n’est pas la France', () => {
     assert.equal(
       hasValidFrenchAddress({

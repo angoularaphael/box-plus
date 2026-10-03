@@ -1,6 +1,6 @@
 const { randomDelay, loadJson } = require('../lib/utils');
 const { logInfo, logWarn } = require('../lib/logger');
-const { normalizeIban, isValidFrenchIban } = require('../lib/iban');
+const { normalizeIban, isValidFrenchIban, frenchIbanToRibParts } = require('../lib/iban');
 const { dismissJqueryUiOverlay } = require('./ui');
 const { getAccessToken } = require('./auth');
 
@@ -119,13 +119,12 @@ async function memberAsksToRegisterRib(page) {
         if (/veuillez\s+enregistrer\s+le\s+rib(\s+du\s+membre)?/i.test(text)) return true;
 
         // Source de vérité : icones du header fiche (#icon-list)
+        // Ne PAS utiliser title="Alerte Paiement" : Deciplus l'affiche aussi pour les IMPAYES.
         const header = document.querySelector('#icon-list');
         if (header) {
-          const nok = header.querySelector(
-            '[alt="Rib-nok"], [alt="RIB-nok"], .icon-bank.is-alert, [title="Alerte Paiement"]'
-          );
+          const nok = header.querySelector('[alt="Rib-nok"], [alt="RIB-nok"], .icon-bank.is-alert');
           if (nok) return true;
-          // Si Rib-ok present dans le header → pas d’alerte
+          // Si Rib-ok present dans le header → pas d’alerte RIB
           if (header.querySelector('[alt="Rib-ok"], [title="RIB enregistré"]')) return false;
         }
 
@@ -677,14 +676,22 @@ async function ensureMemberPostalAddress(page, memberId, addr) {
 }
 
 async function getRibFrame(page) {
-  const iframe = page.locator('#GB_frame, iframe[src*="rib.php"]').first();
-  if ((await iframe.count()) > 0) {
-    const handle = await iframe.elementHandle();
-    const frame = handle ? await handle.contentFrame() : null;
-    if (frame) return frame;
+  // Top page + iframes nextgen (check.php) : la greybox GB_frame est souvent imbriquée.
+  const roots = [page, ...(page.frames?.() || [])];
+  for (const root of roots) {
+    try {
+      const iframe = root.locator('#GB_frame, iframe[src*="rib.php"]').first();
+      if ((await iframe.count()) > 0) {
+        const handle = await iframe.elementHandle();
+        const frame = handle ? await handle.contentFrame() : null;
+        if (frame) return frame;
+      }
+    } catch {
+      /* frame détachée */
+    }
   }
   for (const frame of page.frames()) {
-    if (frame.url().includes('rib.php')) return frame;
+    if (/rib\.php/i.test(frame.url() || '')) return frame;
   }
   return null;
 }
@@ -712,38 +719,55 @@ async function openRibForm(page, memberId, { forceFresh = false } = {}) {
     }
   }
 
-  // Preferer greybox depuis check.php / joueurs.php : le POST rib.php declenche
-  // alors le callback parent « Mettre à jour » qui passe l’icone Rib-nok -> Rib-ok.
-  await openMemberCheck(page, memberId).catch(() => {});
-  if (await clickFirst(page, sel('member_check.saisir_mandat_sepa'))) {
-    const frame = await waitForRibFrame(page, 10000);
-    if (frame) return frame;
-  }
-  // Icone / lien SEPA sur la fiche (souvent present meme sans bouton « Saisir mandat »)
-  if (
-    await clickFirst(
-      page,
-      [
-        'a:has-text("Saisir le mandat")',
-        'a:has-text("Saisir mandat")',
-        'button:has-text("SEPA")',
-        'a[href*="rib.php"]',
-        'img[title*="RIB" i]',
-        'img[alt*="RIB" i]',
-        '.payments-mode-icon[alt="Rib-nok"]',
-        'span[title="Alerte Paiement"]',
-        'span[alt="Rib-nok"]',
-      ].join(', ')
-    )
-  ) {
-    const frame = await waitForRibFrame(page, 10000);
-    if (frame) return frame;
-  }
+  // IMPORTANT : ouvrir rib.php depuis joueurs.php (pas check.php).
+  // Le callback Deciplus ne clique « Mettre à jour » (Rib-nok -> Rib-ok)
+  // que si window.parent est joueurs.php?idj=...
+  const ribOpenSelectors = [
+    'a:has-text("Saisir le mandat")',
+    'a:has-text("Saisir mandat")',
+    'a:has-text("Saisir le mandat SEPA")',
+    'button:has-text("SEPA")',
+    'a[href*="rib.php"]',
+    'img[title*="RIB" i]',
+    'img[alt*="RIB" i]',
+    '#icon-list [alt="Rib-nok"]',
+    '.payments-mode-icon[alt="Rib-nok"]',
+    'span[alt="Rib-nok"]',
+  ].join(', ');
 
   await openMemberDetail(page, memberId).catch(() => {});
   if (await clickFirst(page, sel('member_detail.saisir_rib_button'))) {
     const frame = await waitForRibFrame(page, 10000);
     if (frame) return frame;
+  }
+  if (await clickFirst(page, ribOpenSelectors)) {
+    const frame = await waitForRibFrame(page, 10000);
+    if (frame) return frame;
+  }
+  for (const ctx of page.frames?.() || []) {
+    if (!/joueurs\.php/i.test(ctx.url() || '')) continue;
+    if (await clickFirst(ctx, ribOpenSelectors)) {
+      const frame = await waitForRibFrame(page, 12000);
+      if (frame) return frame;
+    }
+  }
+
+  // Fallback check.php (greybox possible mais sans auto Mettre à jour)
+  await openMemberCheck(page, memberId).catch(() => {});
+  if (await clickFirst(page, sel('member_check.saisir_mandat_sepa'))) {
+    const frame = await waitForRibFrame(page, 10000);
+    if (frame) return frame;
+  }
+  if (await clickFirst(page, ribOpenSelectors)) {
+    const frame = await waitForRibFrame(page, 10000);
+    if (frame) return frame;
+  }
+  for (const ctx of page.frames?.() || []) {
+    if (!/check\.php/i.test(ctx.url() || '')) continue;
+    if (await clickFirst(ctx, ribOpenSelectors)) {
+      const frame = await waitForRibFrame(page, 12000);
+      if (frame) return frame;
+    }
   }
 
   // Fallback : rib.php direct (moins fiable pour clear Rib-nok)
@@ -913,6 +937,31 @@ async function fillRibForm(ctx, iban, customer, gymConfig) {
       }, value)
       .catch(() => {});
     await randomDelay(400, 800);
+  }
+
+  // Deciplus garde parfois un ancien n° de compte RIB incompatible avec l'IBAN saisi.
+  const parts = frenchIbanToRibParts(value);
+  if (parts) {
+    await ctx
+      .evaluate((p) => {
+        const form = document.querySelector('form');
+        if (!form) return;
+        const set = (name, val) => {
+          const el = form.querySelector(`input[name="${name}"]`);
+          if (!el) return;
+          el.disabled = false;
+          el.readOnly = false;
+          el.value = val;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        set('iban', p.iban);
+        set('etablissement', p.etablissement);
+        set('guichet', p.guichet);
+        set('numero', p.numero);
+        set('cle', p.cle);
+      }, parts)
+      .catch(() => {});
   }
 }
 
@@ -1089,11 +1138,38 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
         rum: existingMeta.rum || null,
         attempt,
       });
-      // Alerte Rib-nok avec mandat fantôme : régénérer puis revalider.
+      // Alerte Rib-nok avec mandat fantôme : revalider ; si échec, régénérer le RUM.
       if (ficheAsks) {
         await ensureMemberPostalAddress(page, memberId, addr);
-        // Ne pas regenerer : ca repasse souvent Rib-ok -> Rib-nok. Juste revalider.
-        const formCtx = await openRibForm(page, memberId, { forceFresh: true });
+        let formCtx = await openRibForm(page, memberId, { forceFresh: true });
+        // N° compte RIB désynchronisé de l'IBAN -> régénérer avant Valider.
+        const staleRib = await formCtx
+          .evaluate((expectedIban) => {
+            const iban = String(
+              document.querySelector('input[name="iban"]')?.value || ''
+            )
+              .replace(/\s+/g, '')
+              .toUpperCase();
+            const numero = String(document.querySelector('input[name="numero"]')?.value || '');
+            const want = String(expectedIban || '')
+              .replace(/\s+/g, '')
+              .toUpperCase();
+            if (!/^FR\d{25}$/.test(want) || !numero) return false;
+            return numero !== want.slice(14, 25);
+          }, value)
+          .catch(() => false);
+        if (staleRib || attempt >= 2) {
+          const regenerated = await clickReplaceMandate(formCtx);
+          logWarn('Mandat SEPA régénéré (Rib-nok bloqué)', {
+            member_id: memberId,
+            stale_rib: Boolean(staleRib),
+            regenerated: Boolean(regenerated),
+            attempt,
+          });
+          await closeGreyboxIfOpen(page);
+          await randomDelay(500, 900);
+          formCtx = await openRibForm(page, memberId, { forceFresh: true });
+        }
         const posted = await submitAndFinalizeRib(page, memberId, formCtx, value, customer, gymConfig);
         await closeGreyboxIfOpen(page);
         const ribCheck = await openRibForm(page, memberId, { forceFresh: true });

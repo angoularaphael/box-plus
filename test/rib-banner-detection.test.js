@@ -21,13 +21,18 @@ describe('RIB banner detection anti-regression', () => {
     assert.equal(BANNER_RE.test('Modifier le mandat SEPA'), false);
   });
 
-  it('wallet.js detecte aussi l icone Rib-nok / Alerte Paiement', () => {
+  it('wallet.js detecte Rib-nok via #icon-list sans confondre Alerte Paiement (impaye)', () => {
     const src = fs.readFileSync(path.join(__dirname, '../bot/wallet.js'), 'utf8');
     assert.match(src, /#icon-list/);
     assert.match(src, /alt="Rib-nok"/);
     assert.match(src, /payments-mode-wrapper/);
     assert.match(src, /veuillez\\s\+enregistrer\\s\+le\\s\+rib/);
     assert.doesNotMatch(src, /page\.content\(\)/);
+    // Impaye Deciplus utilise aussi title="Alerte Paiement" — ne pas le traiter comme Rib-nok
+    assert.doesNotMatch(
+      src,
+      /header\.querySelector\(\s*[\s\S]{0,120}\[title="Alerte Paiement"\]/
+    );
   });
 
   it('wallet.js n utilise plus page.content ni regex trop large', () => {
