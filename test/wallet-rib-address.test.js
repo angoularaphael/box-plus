@@ -20,7 +20,9 @@ describe('ribAddressFields', () => {
     assert.match(src, /async function ribMandateNeedsSave/);
     assert.match(src, /existingMeta\.rum && ibanAlready && !needsSave/);
     assert.match(src, /memberAsksToRegisterRib/);
-    assert.match(src, /if \(blocked \|\| validerOff\) return true/);
+    assert.match(src, /veuillez\\s\+enregistrer\\s\+le\\s\+rib/);
+    assert.doesNotMatch(src, /page\.content\(\)/);
+    assert.match(src, /hasRum && hasIban/);
     assert.match(src, /async function ficheRibCleared/);
     assert.match(src, /openMemberDetail/);
     assert.match(src, /Valider grisé mais fiche sans alerte RIB/);

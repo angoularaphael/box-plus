@@ -91,36 +91,38 @@ async function ribValiderDisabled(ctx) {
     .catch(() => false);
 }
 
-/** IBAN visible != mandat enregistré : bandeau rouge ou Valider grisé = RIB pas appliqué. */
+/**
+ * True si le formulaire mandat doit encore être validé.
+ * Valider grisé seul + RUM déjà présent = mandat en lecture (normal Deciplus), pas un échec.
+ * On ne force le « needs save » que si le bandeau adresse bloque encore l’édition.
+ */
 async function ribMandateNeedsSave(ctx) {
-  const blocked = await hasPostalAddressBlocker(ctx);
-  const validerOff = await ribValiderDisabled(ctx);
-  if (blocked || validerOff) return true;
-  return false;
+  if (await hasPostalAddressBlocker(ctx)) return true;
+  const meta = await readMandateMeta(ctx).catch(() => ({ rum: '', iban: '' }));
+  const hasRum = Boolean(String(meta.rum || '').trim());
+  const hasIban = Boolean(normalizeIban(meta.iban || ''));
+  // Mandat déjà posé : Valider grisé n’indique pas un RIB manquant.
+  if (hasRum && hasIban) return false;
+  return ribValiderDisabled(ctx);
 }
 
+/**
+ * Bandeau rouge Deciplus uniquement (texte visible).
+ * Ne pas scanner le HTML brut : menus / templates / scripts contiennent souvent
+ * « enregistrer le rib » même quand le mandat est déjà valide (faux positif depuis 2026-10-01).
+ */
 async function memberAsksToRegisterRib(page) {
-  const parts = [];
+  const bannerRe =
+    /veuillez\s+enregistrer\s+le\s+rib|enregistrer\s+le\s+rib\s+du\s+membre/i;
   for (const ctx of [page, ...(page.frames?.() || [])]) {
     try {
       const t = await ctx.locator('body').innerText({ timeout: 2500 });
-      if (t) parts.push(t);
+      if (t && bannerRe.test(t)) return true;
     } catch {
       /* frame */
     }
   }
-  // Aussi le HTML : parfois le bandeau est dans un nœud peu exposé à innerText.
-  try {
-    const html = await page.content();
-    if (html) parts.push(html);
-  } catch {
-    /* ignore */
-  }
-  const text = parts.join('\n');
-  // Bandeau Deciplus : « ---- VEUILLEZ ENREGISTRER LE RIB DU MEMBRE ---- »
-  return /veuillez\s+enregistrer\s+le\s+rib|enregistrer\s+le\s+rib\s+du\s+membre|enregistrer le rib/i.test(
-    text
-  );
+  return false;
 }
 
 /** Après toute « réussite » mandat : la fiche ne doit plus demander le RIB. */

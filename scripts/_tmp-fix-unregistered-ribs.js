@@ -143,7 +143,8 @@ async function pageBlob(page) {
 }
 
 function alertOn(text) {
-  return /enregistrer le rib/i.test(text);
+  // Bandeau rouge uniquement — pas le texte générique des menus HTML.
+  return /veuillez\s+enregistrer\s+le\s+rib|enregistrer\s+le\s+rib\s+du\s+membre/i.test(text);
 }
 
 function alertSnippet(text) {
