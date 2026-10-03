@@ -22,7 +22,7 @@ describe('ribAddressFields', () => {
     assert.match(src, /memberAsksToRegisterRib/);
     assert.match(src, /veuillez\\s\+enregistrer\\s\+le\\s\+rib/);
     assert.doesNotMatch(src, /page\.content\(\)/);
-    assert.match(src, /hasRum && hasIban/);
+    assert.match(src, /hasRum && hasIban\) return false/);
     assert.match(src, /async function ficheRibCleared/);
     assert.match(src, /openMemberDetail/);
     assert.match(src, /Valider grisé mais fiche sans alerte RIB/);

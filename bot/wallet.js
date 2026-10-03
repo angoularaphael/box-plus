@@ -93,16 +93,16 @@ async function ribValiderDisabled(ctx) {
 
 /**
  * True si le formulaire mandat doit encore être validé.
- * Valider grisé seul + RUM déjà présent = mandat en lecture (normal Deciplus), pas un échec.
- * On ne force le « needs save » que si le bandeau adresse bloque encore l’édition.
+ * Valider grisé / bandeau adresse collé + RUM+IBAN déjà présents = lecture seule Deciplus,
+ * pas un RIB manquant (le bandeau fiche rouge reste la source de vérité).
  */
 async function ribMandateNeedsSave(ctx) {
-  if (await hasPostalAddressBlocker(ctx)) return true;
   const meta = await readMandateMeta(ctx).catch(() => ({ rum: '', iban: '' }));
   const hasRum = Boolean(String(meta.rum || '').trim());
   const hasIban = Boolean(normalizeIban(meta.iban || ''));
-  // Mandat déjà posé : Valider grisé n’indique pas un RIB manquant.
+  // Mandat déjà posé : ni Valider grisé ni le faux bandeau adresse ne comptent.
   if (hasRum && hasIban) return false;
+  if (await hasPostalAddressBlocker(ctx)) return true;
   return ribValiderDisabled(ctx);
 }
 
