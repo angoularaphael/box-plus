@@ -21,12 +21,20 @@ describe('RIB banner detection anti-regression', () => {
     assert.equal(BANNER_RE.test('Modifier le mandat SEPA'), false);
   });
 
+  it('wallet.js detecte aussi l icone Rib-nok / Alerte Paiement', () => {
+    const src = fs.readFileSync(path.join(__dirname, '../bot/wallet.js'), 'utf8');
+    assert.match(src, /#icon-list/);
+    assert.match(src, /alt="Rib-nok"/);
+    assert.match(src, /payments-mode-wrapper/);
+    assert.match(src, /veuillez\\s\+enregistrer\\s\+le\\s\+rib/);
+    assert.doesNotMatch(src, /page\.content\(\)/);
+  });
+
   it('wallet.js n utilise plus page.content ni regex trop large', () => {
     const src = fs.readFileSync(path.join(__dirname, '../bot/wallet.js'), 'utf8');
     assert.match(src, /veuillez\\s\+enregistrer\\s\+le\\s\+rib/);
-    assert.match(src, /enregistrer\\s\+le\\s\+rib\\s\+du\\s\+membre/);
+    assert.match(src, /#icon-list/);
     assert.doesNotMatch(src, /page\.content\(\)/);
-    // Ancienne regex trop large qui matchait les menus
     assert.doesNotMatch(
       src,
       /return \/veuillez\\s\+enregistrer\\s\+le\\s\+rib\|enregistrer\\s\+le\\s\+rib\\s\+du\\s\+membre\|enregistrer le rib\/i/
