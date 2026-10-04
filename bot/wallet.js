@@ -142,7 +142,7 @@ async function memberAsksToRegisterRib(page) {
   return false;
 }
 
-/** Attend l’iframe check.php (bloc Mandat) avant de lire Rib-nok. */
+/** Attend l’iframe check.php (bloc Mandat + #icon-list) avant de lire Rib-ok/nok. */
 async function waitForMemberCheckReady(page, timeoutMs = 12000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -151,6 +151,15 @@ async function waitForMemberCheckReady(page, timeoutMs = 12000) {
         const url = ctx.url?.() || '';
         if (!/check\.php/i.test(url)) continue;
         const ready = await ctx.evaluate(() => {
+          const header = document.querySelector('#icon-list');
+          if (
+            header &&
+            header.querySelector(
+              '[alt="Rib-ok"], [alt="Rib-nok"], [alt="RIB-ok"], [alt="RIB-nok"], .icon-bank'
+            )
+          ) {
+            return true;
+          }
           const text = document.body?.innerText || '';
           return (
             /Mandat|Moyens de paiements|Achat Abonnement|Abonnements/i.test(text) ||
@@ -167,14 +176,45 @@ async function waitForMemberCheckReady(page, timeoutMs = 12000) {
   return false;
 }
 
-/** Après toute « réussite » mandat : plus d’icone Rib-nok / Alerte Paiement sur check.php. */
+/**
+ * Succès RIB = Rib-ok visible dans #icon-list (pas seulement « pas de Rib-nok »).
+ * Sans icone header chargée, on refuse le succès (évite bot_status=success à tort).
+ */
 async function ficheRibCleared(page, memberId, gymConfig = {}) {
   await closeGreyboxIfOpen(page).catch(() => {});
   await openMemberCheck(page, memberId, gymConfig).catch(() => {});
-  await waitForMemberCheckReady(page, 12000);
-  await randomDelay(400, 700);
+  await waitForMemberCheckReady(page, 15000);
+  await randomDelay(500, 900);
+
+  for (const ctx of [page, ...(page.frames?.() || [])]) {
+    try {
+      const state = await ctx.evaluate(() => {
+        if (/veuillez\s+enregistrer\s+le\s+rib(\s+du\s+membre)?/i.test(document.body?.innerText || '')) {
+          return 'asks_text';
+        }
+        const header = document.querySelector('#icon-list');
+        if (!header) return null;
+        if (header.querySelector('[alt="Rib-nok"], [alt="RIB-nok"], .icon-bank.is-alert')) {
+          return 'nok';
+        }
+        if (header.querySelector('[alt="Rib-ok"], [title="RIB enregistré"]')) {
+          return 'ok';
+        }
+        return 'header_no_rib';
+      });
+      if (state === 'ok') return true;
+      if (state === 'nok' || state === 'asks_text') return false;
+    } catch {
+      /* frame */
+    }
+  }
+
+  // Fallback : si aucune frame n'a #icon-list Rib-ok, ne pas valider.
   if (await memberAsksToRegisterRib(page)) return false;
-  return true;
+  logWarn('ficheRibCleared: #icon-list Rib-ok introuvable — non validé', {
+    member_id: memberId,
+  });
+  return false;
 }
 
 /** Empreinte carte PayPlug (jamais le PAN complet — PCI). */

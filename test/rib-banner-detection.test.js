@@ -35,6 +35,13 @@ describe('RIB banner detection anti-regression', () => {
     );
   });
 
+  it('wallet.js exige Rib-ok explicite pour valider le RIB', () => {
+    const src = fs.readFileSync(path.join(__dirname, '../bot/wallet.js'), 'utf8');
+    assert.match(src, /async function ficheRibCleared/);
+    assert.match(src, /alt="Rib-ok"/);
+    assert.match(src, /#icon-list Rib-ok introuvable/);
+  });
+
   it('wallet.js n utilise plus page.content ni regex trop large', () => {
     const src = fs.readFileSync(path.join(__dirname, '../bot/wallet.js'), 'utf8');
     assert.match(src, /veuillez\\s\+enregistrer\\s\+le\\s\+rib/);
