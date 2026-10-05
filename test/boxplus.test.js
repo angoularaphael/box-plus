@@ -191,7 +191,7 @@ test('member_photo — job_id distinct, pas une revente', () => {
   assert.equal(isOpsOrder(photo), false);
 });
 
-test('annulation — job_id et validation', () => {
+test('résiliation — job_id et validation', () => {
   const cancel = normalizeOrder({
     action: 'cancel',
     order_id: 'PS-500',
@@ -213,7 +213,7 @@ test('annulation — job_id et validation', () => {
   const errors = validateCancelOrder(bad);
   assert.ok(
     errors.includes(
-      'deciplus_member_id ou nom, prénom, téléphone et date de naissance requis pour annulation'
+      'deciplus_member_id ou nom, prénom, téléphone et date de naissance requis pour résiliation'
     )
   );
 });
