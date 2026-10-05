@@ -50,6 +50,13 @@ describe('extractMemberIdFromUrl / legacy nextgen', () => {
     assert.equal(extractMemberIdFromUrl(url), null);
   });
 
+  it('extrait idj depuis onclick VueBridge nextgen', () => {
+    assert.equal(
+      extractMemberIdFromUrl("VueBridge.navigateToLegacy('check.php?idj=22712'); return false;"),
+      '22712'
+    );
+  });
+
   it('select.php sans id → pas de faux positif', () => {
     assert.equal(
       extractMemberIdFromUrl(
@@ -138,7 +145,51 @@ describe('memberSearchHitMatches — pas de réutilisation sur email de couple',
     );
   });
 
-  it('accepte une typo de nom si le téléphone est le même (Duou / Dufou)', () => {
+  it('accepte Lajabi / Ladjabi si le téléphone est le même', () => {
+    assert.equal(
+      memberSearchHitMatches(
+        {
+          lastName: 'LADJABI',
+          firstName: 'nail',
+          email: 'sparrow10@live.fr',
+          phone: '0783200808',
+          birth: '22/06/2023',
+          fromMemberForm: true,
+        },
+        {
+          last_name: 'Lajabi',
+          first_name: 'Nail',
+          email: 'sparrow10@live.fr',
+          phone: '0783200808',
+          birthdate: '2023-06-22',
+        }
+      ),
+      true
+    );
+  });
+
+  it('accepte Ladjabi enfant sans mail ni tel si nom proche + naissance', () => {
+    assert.equal(
+      memberSearchHitMatches(
+        {
+          lastName: 'LADJABI',
+          firstName: 'nail',
+          birth: '22/06/2023',
+          fromMemberForm: true,
+        },
+        {
+          last_name: 'Lajabi',
+          first_name: 'Nail',
+          email: 'sparrow10@live.fr',
+          phone: '0783200808',
+          birthdate: '2023-06-22',
+        }
+      ),
+      true
+    );
+  });
+
+  it('accepte DUOU / Dufou si le mail est le même', () => {
     assert.equal(
       memberSearchHitMatches(
         {

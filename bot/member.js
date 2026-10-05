@@ -383,8 +383,8 @@ async function searchHitMatchesCustomer(page, customer = {}, opts = {}) {
   return memberSearchHitMatches(form, customer, opts);
 }
 
-async function searchMember(page, query) {
-  if (!query) return { found: false };
+async function searchMember(page, query, { listOnly = false } = {}) {
+  if (!query) return { found: false, ids: [] };
   logInfo('Recherche membre Deciplus', { query: query.includes('@') ? query : '***phone***' });
 
   const sel = getSelectors();
@@ -399,6 +399,10 @@ async function searchMember(page, query) {
   }
 
   await submitMemberSearch(page);
+  const ids = await listScopedSearchMemberIds(page);
+  if (listOnly) {
+    return { found: ids.length > 0, ids, member_id: ids[0] || null };
+  }
 
   const hit = await readSearchHit(page);
   if (!hit.found) {
@@ -408,7 +412,7 @@ async function searchMember(page, query) {
       search_ctx: typeof ctx.url === 'function' ? ctx.url() : null,
     });
   }
-  return hit;
+  return { ...hit, ids };
 }
 
 async function runNameSearch(page, lastName, firstName) {
@@ -441,7 +445,7 @@ async function listScopedSearchMemberIds(page) {
   const ids = [];
   const seen = new Set();
   const add = (raw) => {
-    const id = String(raw || '');
+    const id = extractMemberIdFromUrl(String(raw || '')) || String(raw || '');
     if (!/^\d+$/.test(id) || seen.has(id)) return;
     seen.add(id);
     ids.push(id);
@@ -451,12 +455,17 @@ async function listScopedSearchMemberIds(page) {
   if (fromUrl && /joueurs\.php|check\.php/i.test(urlHay)) add(fromUrl);
   const contexts = [page, ...page.frames().filter((f) => f !== page.mainFrame())];
   for (const ctx of contexts) {
-    const links = ctx.locator(SCOPED_RESULT_LINKS);
-    const count = await links.count().catch(() => 0);
-    for (let i = 0; i < Math.min(count, 12); i += 1) {
-      const href = (await links.nth(i).getAttribute('href').catch(() => '')) || '';
-      add(extractMemberIdFromUrl(href));
-    }
+    const snippets = await ctx
+      .evaluate(() => {
+        const out = [];
+        for (const el of document.querySelectorAll('a[href], [onclick]')) {
+          out.push(el.getAttribute('href') || '');
+          out.push(el.getAttribute('onclick') || '');
+        }
+        return out;
+      })
+      .catch(() => []);
+    for (const snippet of snippets) add(snippet);
   }
   return ids;
 }
@@ -770,6 +779,41 @@ async function extractMemberIdFromForm(page) {
     if (/^\d+$/.test(value)) return value;
   }
   return null;
+}
+
+async function collectScopedResultMemberIds(page) {
+  const ids = [];
+  const seen = new Set();
+  const contexts = [page, ...page.frames().filter((f) => f !== page.mainFrame())];
+  for (const ctx of contexts) {
+    let links;
+    try {
+      links = ctx.locator(SCOPED_RESULT_LINKS);
+    } catch {
+      continue;
+    }
+    const count = await links.count().catch(() => 0);
+    for (let i = 0; i < Math.min(count, 12); i += 1) {
+      const href = (await links.nth(i).getAttribute('href').catch(() => '')) || '';
+      const oc = (await links.nth(i).getAttribute('onclick').catch(() => '')) || '';
+      const id = extractMemberIdFromUrl(href) || extractMemberIdFromUrl(oc);
+      if (!id || id === 'new' || seen.has(id)) continue;
+      seen.add(id);
+      ids.push(id);
+    }
+    const snippets = await ctx
+      .evaluate(() =>
+        [...document.querySelectorAll('[onclick*="idj"]')].map((el) => el.getAttribute('onclick') || '')
+      )
+      .catch(() => []);
+    for (const snippet of snippets) {
+      const id = extractMemberIdFromUrl(snippet);
+      if (!id || id === 'new' || seen.has(id)) continue;
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  return ids;
 }
 
 async function clickFirstMemberResult(page) {
@@ -1566,9 +1610,15 @@ async function submitMemberForm(page, options = {}) {
 }
 
 async function detectDuplicateError(page) {
-  const err = page.locator('text=/existe déjà|doublon|duplicate|déjà utilisé/i').first();
-  if ((await err.count()) > 0 && (await err.isVisible().catch(() => false))) {
-    return err.innerText().catch(() => 'Doublon détecté');
+  for (const ctx of deciplusScopes(page)) {
+    const text = ((await ctx.locator('body').innerText().catch(() => '')) || '').replace(/\s+/g, ' ');
+    if (/existe déjà|doublons?\s+d[eé]t[eé]ct|déjà utilisé|cr[eé]er quand m[eê]me/i.test(text)) {
+      const loc = ctx.locator('text=/existe déjà|doublons?|Créer quand même/i').first();
+      if ((await loc.count()) > 0) {
+        return ((await loc.innerText().catch(() => '')) || text).trim().slice(0, 400);
+      }
+      return text.slice(0, 400);
+    }
   }
   return null;
 }
@@ -1600,19 +1650,48 @@ async function findExistingMemberOnCurrentSite(page, customer, opts = {}) {
     return { member_id: hit.member_id, action };
   }
 
+  async function tryIds(ids, action) {
+    for (const member_id of ids || []) {
+      const accepted = await acceptHit({ found: true, member_id }, action);
+      if (accepted) return accepted;
+    }
+    return null;
+  }
+
   if (customer.email) {
-    const accepted = await acceptHit(await searchMember(page, customer.email), 'found_email');
+    const listed = await searchMember(page, customer.email, { listOnly: true });
+    const accepted = await tryIds(listed.ids, 'found_email');
     if (accepted) return accepted;
   }
   if (customer.phone) {
-    const accepted = await acceptHit(await searchMember(page, customer.phone), 'found_phone');
+    const listed = await searchMember(page, customer.phone, { listOnly: true });
+    const accepted = await tryIds(listed.ids, 'found_phone');
     if (accepted) return accepted;
   }
   if (customer.last_name || customer.first_name) {
-    const accepted = await acceptHit(
-      await searchMemberByName(page, customer.last_name, customer.first_name),
-      'found_name'
-    );
+    const seen = new Set();
+    const pass = async (ids, action) => {
+      const fresh = (ids || []).filter((id) => {
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+      return tryIds(fresh, action);
+    };
+    const accepted =
+      (await pass(
+        await listNameSearchMemberIds(page, customer.last_name, customer.first_name),
+        'found_name'
+      )) ||
+      (customer.first_name
+        ? await (async () => {
+            logInfo('Recherche membre Deciplus', {
+              via: 'name_first_only',
+              first_name: nameForDeciplusSearch(customer.first_name),
+            });
+            return pass(await listNameSearchMemberIds(page, '', customer.first_name), 'found_first');
+          })()
+        : null);
     if (accepted) return accepted;
   }
   return null;

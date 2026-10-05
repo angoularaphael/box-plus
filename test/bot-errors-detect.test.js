@@ -52,6 +52,16 @@ describe('bot error detection', () => {
     );
   });
 
+  it('classe ID introuvable comme fiche non créée, pas connexion', () => {
+    assert.equal(
+      classifyBotError({
+        bot_error:
+          'Job impossible à traiter après 3 tentatives — Création membre Deciplus: ID introuvable après Valider. Le membre n’apparaît peut-être pas (formulaire non validé).',
+      }),
+      'creation_membre'
+    );
+  });
+
   it('garde une adresse française valide hors de la catégorie adresse', () => {
     assert.equal(
       classifyBotError({

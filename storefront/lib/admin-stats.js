@@ -529,8 +529,8 @@ function classifyBotError(order = {}, errorText = '') {
   const cf = order.customer_full || order.customer || {};
   // La liste admin est allégée : sans rue / CP / ville, on ne peut pas conclure « hors France ».
   if (addressFieldsPresent(cf) && !hasValidFrenchAddress(cf)) return 'adresse_non_fr';
-  if (/connexion deciplus|identifiants|job impossible/i.test(err)) return 'connexion';
   if (/id introuvable|formulaire non valid/i.test(err)) return 'creation_membre';
+  if (/connexion deciplus|identifiants/i.test(err)) return 'connexion';
   if (/iban|rib|mandat/i.test(err)) return 'iban';
   if (/doublon|duplicate/i.test(err)) return 'doublon';
   if (/ancien abo|contrat actif/i.test(err)) return 'ancien_abo';
