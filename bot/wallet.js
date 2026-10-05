@@ -1,6 +1,12 @@
 const { randomDelay, loadJson } = require('../lib/utils');
 const { logInfo, logWarn } = require('../lib/logger');
-const { normalizeIban, isValidFrenchIban, frenchIbanToRibParts } = require('../lib/iban');
+const {
+  normalizeIban,
+  isValidFrenchIban,
+  frenchIbanToRibParts,
+  isLikelyBic,
+  bicFromFrenchIban,
+} = require('../lib/iban');
 const { dismissJqueryUiOverlay } = require('./ui');
 const { getAccessToken } = require('./auth');
 
@@ -97,11 +103,13 @@ async function ribValiderDisabled(ctx) {
  * pas un RIB manquant (le bandeau fiche rouge reste la source de vérité).
  */
 async function ribMandateNeedsSave(ctx) {
-  const meta = await readMandateMeta(ctx).catch(() => ({ rum: '', iban: '' }));
+  const meta = await readMandateMeta(ctx).catch(() => ({ rum: '', iban: '', bic: '' }));
   const hasRum = Boolean(String(meta.rum || '').trim());
   const hasIban = Boolean(normalizeIban(meta.iban || ''));
-  // Mandat déjà posé : ni Valider grisé ni le faux bandeau adresse ne comptent.
-  if (hasRum && hasIban) return false;
+  const hasBic = isLikelyBic(meta.bic);
+  if (hasIban && !hasBic) return true;
+  // Mandat déjà posé (IBAN + BIC + RUM) : ni Valider grisé ni le faux bandeau adresse ne comptent.
+  if (hasRum && hasIban && hasBic) return false;
   if (await hasPostalAddressBlocker(ctx)) return true;
   return ribValiderDisabled(ctx);
 }
@@ -974,19 +982,55 @@ async function fillRibForm(ctx, iban, customer, gymConfig) {
         el.dispatchEvent(new Event('input', { bubbles: true }));
         el.dispatchEvent(new Event('change', { bubbles: true }));
         el.dispatchEvent(new Event('blur', { bubbles: true }));
+        el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
+        if (typeof window.jQuery === 'function') {
+          window.jQuery(el).trigger('input').trigger('change').trigger('blur');
+        }
       }, value)
       .catch(() => {});
-    await randomDelay(400, 800);
+  }
+
+  // Laisser Deciplus résoudre le BIC (lookup agence) avant de poster.
+  const deadline = Date.now() + 3500;
+  let bic = '';
+  while (Date.now() < deadline) {
+    bic = String((await ctx.locator('input[name="bic"]').first().inputValue().catch(() => '')) || '')
+      .replace(/\s+/g, '')
+      .toUpperCase();
+    if (isLikelyBic(bic)) break;
+    await ctx.waitForTimeout(200).catch(() => {});
+  }
+  if (!isLikelyBic(bic)) bic = bicFromFrenchIban(value);
+  if (isLikelyBic(bic)) {
+    await fillFirst(ctx, sel('rib_form.bic'), bic);
+    await fillFormField(ctx, 'input[name="bic"]', bic);
+  } else {
+    logWarn('BIC mandat introuvable après saisie IBAN', {
+      bank: value.slice(4, 9),
+    });
+  }
+
+  const dateEl = ctx.locator('input[name="date_mandat"]').first();
+  if ((await dateEl.count()) > 0) {
+    const currentDate = String((await dateEl.inputValue().catch(() => '')) || '').trim();
+    if (!currentDate) {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const today = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+      await fillFormField(ctx, 'input[name="date_mandat"]', today);
+    }
   }
 
   // Deciplus garde parfois un ancien n° de compte RIB incompatible avec l'IBAN saisi.
   const parts = frenchIbanToRibParts(value);
   if (parts) {
+    if (isLikelyBic(bic)) parts.bic = bic;
     await ctx
       .evaluate((p) => {
         const form = document.querySelector('form');
         if (!form) return;
         const set = (name, val) => {
+          if (!val) return;
           const el = form.querySelector(`input[name="${name}"]`);
           if (!el) return;
           el.disabled = false;
@@ -1000,6 +1044,7 @@ async function fillRibForm(ctx, iban, customer, gymConfig) {
         set('guichet', p.guichet);
         set('numero', p.numero);
         set('cle', p.cle);
+        set('bic', p.bic);
       }, parts)
       .catch(() => {});
   }
@@ -1031,6 +1076,11 @@ async function submitRibForm(ctx, page) {
 
 async function submitAndFinalizeRib(page, memberId, ribCtx, iban, customer, gymConfig) {
   await fillRibForm(ribCtx, iban, customer, gymConfig);
+  const before = await readMandateMeta(ribCtx);
+  if (!isLikelyBic(before.bic)) {
+    logWarn('Mandat SEPA sans BIC — pas de POST', { member_id: memberId });
+    return { ok: false, error: 'bic_missing' };
+  }
   await submitRibForm(ribCtx, page);
   const posted = await postCurrentRibForm(ribCtx);
   await finalizeRibParentMemberUpdate(page, memberId);
@@ -1041,10 +1091,13 @@ async function readMandateMeta(ctx) {
   return ctx
     .evaluate(() => ({
       iban: document.querySelector('input[name="iban"]')?.value || '',
+      bic: document.querySelector('input[name="bic"]')?.value || '',
       rum: document.querySelector('input[name="rum"]')?.value || '',
       date_mandat: document.querySelector('input[name="date_mandat"]')?.value || '',
+      etablissement: document.querySelector('input[name="etablissement"]')?.value || '',
+      numero: document.querySelector('input[name="numero"]')?.value || '',
     }))
-    .catch(() => ({ iban: '', rum: '', date_mandat: '' }));
+    .catch(() => ({ iban: '', bic: '', rum: '', date_mandat: '' }));
 }
 
 async function verifyIbanOnMandate(page, memberId, expectedIban) {
@@ -1056,6 +1109,14 @@ async function verifyIbanOnMandate(page, memberId, expectedIban) {
   const ibanMatch =
     saved === expected ||
     (saved && expected && saved.startsWith(expected.slice(0, 20)));
+  if (!isLikelyBic(meta.bic)) {
+    logWarn('Mandat sans BIC — RIB considéré incomplet', {
+      member_id: memberId,
+      rum: meta.rum || null,
+    });
+    await closeGreyboxIfOpen(page);
+    return false;
+  }
   // Mandat créé (RUM) même si l'IBAN affiché est tronqué / reformaté
   const rumLooksOk =
     Boolean(meta.rum) &&
@@ -1143,7 +1204,7 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
       (existingIban && value && existingIban.startsWith(value.slice(0, 20)));
     const needsSave = await ribMandateNeedsSave(ribCtx);
     let ficheAsks = false;
-    if (existingMeta.rum && ibanAlready && !needsSave) {
+    if (existingMeta.rum && ibanAlready && isLikelyBic(existingMeta.bic) && !needsSave) {
       await closeGreyboxIfOpen(page);
       // check.php seul ne suffit pas : l alerte est souvent sur joueurs.php.
       if (await ficheRibCleared(page, memberId, gymConfig)) {
@@ -1161,7 +1222,7 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
       });
     }
     // RUM + IBAN OK mais Valider encore grisé : la fiche (pas le bouton) décide.
-    if (existingMeta.rum && ibanAlready && needsSave && !ficheAsks) {
+    if (existingMeta.rum && ibanAlready && isLikelyBic(existingMeta.bic) && needsSave && !ficheAsks) {
       await closeGreyboxIfOpen(page);
       if (await ficheRibCleared(page, memberId, gymConfig)) {
         logInfo('IBAN + RUM OK — Valider grisé ignoré (fiche sans alerte)', {
@@ -1313,6 +1374,16 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
         member_id: memberId,
         attempt,
       });
+    }
+
+    const filledMeta = await readMandateMeta(ribCtx);
+    if (!isLikelyBic(filledMeta.bic)) {
+      logWarn('Mandat SEPA sans BIC après remplissage — nouvel essai', {
+        member_id: memberId,
+        attempt,
+      });
+      await closeGreyboxIfOpen(page);
+      continue;
     }
 
     await submitRibForm(ribCtx, page);

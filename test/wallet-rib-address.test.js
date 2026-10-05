@@ -18,11 +18,14 @@ describe('ribAddressFields', () => {
     const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/wallet.js'), 'utf8');
     assert.match(src, /RIB visible mais mandat non enregistré — adresse \+ Valider/);
     assert.match(src, /async function ribMandateNeedsSave/);
-    assert.match(src, /existingMeta\.rum && ibanAlready && !needsSave/);
+    assert.match(src, /existingMeta\.rum && ibanAlready && isLikelyBic\(existingMeta\.bic\) && !needsSave/);
     assert.match(src, /memberAsksToRegisterRib/);
     assert.match(src, /veuillez\\s\+enregistrer\\s\+le\\s\+rib/);
     assert.doesNotMatch(src, /page\.content\(\)/);
-    assert.match(src, /hasRum && hasIban\) return false/);
+    assert.match(src, /hasRum && hasIban && hasBic\) return false/);
+    assert.match(src, /hasIban && !hasBic\) return true/);
+    assert.match(src, /BIC mandat introuvable après saisie IBAN/);
+    assert.match(src, /isLikelyBic\(existingMeta\.bic\)/);
     assert.match(src, /async function ficheRibCleared/);
     assert.match(src, /openMemberDetail/);
     assert.match(src, /Valider grisé mais fiche sans alerte RIB/);

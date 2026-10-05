@@ -2558,8 +2558,11 @@ async function registerSaleRibIfAsked(page, productConfig = {}) {
     (await ibanField.isVisible().catch(() => false));
   if (fieldVisible && iban) {
     const { fillRibForm, submitRibForm, ficheRibCleared, closeGreyboxIfOpen } = require('./wallet');
+    const { isLikelyBic } = require('../lib/iban');
     const current = String(await ibanField.inputValue().catch(() => '') || '').replace(/\s+/g, '');
-    if (current.length < 10) {
+    const bicField = ribWork.locator('input[name="bic"]').first();
+    const bicNow = String((await bicField.inputValue().catch(() => '')) || '').replace(/\s+/g, '');
+    if (current !== iban || !isLikelyBic(bicNow)) {
       await fillRibForm(
         ribWork,
         iban,

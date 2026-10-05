@@ -3,7 +3,15 @@
  */
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeIban, isValidFrenchIban, frenchIbanError, sanitizeFrenchIban } = require('../lib/iban');
+const {
+  normalizeIban,
+  isValidFrenchIban,
+  frenchIbanError,
+  sanitizeFrenchIban,
+  bicFromFrenchIban,
+  isLikelyBic,
+  frenchIbanToRibParts,
+} = require('../lib/iban');
 
 const SAMPLES = [
   { iban: 'FR76 3000 1007 9412 3456 7890 185', label: 'BNP Paribas' },
@@ -44,5 +52,12 @@ describe('French IBAN / RIB', () => {
 
   it('sanitizeFrenchIban conserve un IBAN valide', () => {
     assert.strictEqual(sanitizeFrenchIban('FR76 3000 1007 9412 3456 7890 185'), 'FR7630001007941234567890185');
+  });
+
+  it('déduit un BIC de repli depuis le code banque', () => {
+    assert.equal(frenchIbanToRibParts('FR7630004007640000111210734').bic, 'BNPAFRPPXXX');
+    assert.equal(bicFromFrenchIban('FR7630006000011234567890189'), 'AGRIFRPPXXX');
+    assert.equal(isLikelyBic('AGRIFRPP831'), true);
+    assert.equal(isLikelyBic(''), false);
   });
 });
