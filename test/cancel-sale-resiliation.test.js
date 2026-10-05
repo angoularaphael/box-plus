@@ -5,7 +5,13 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 
-const { resolveCancelNeverVoid } = require('../bot/cancel-sale');
+const {
+  resolveCancelNeverVoid,
+  isResilierTileLabel,
+  motifValueChosen,
+  resiliationCountsAsDone,
+  isAppliquerQuitterLabel,
+} = require('../bot/cancel-sale');
 
 test('toute résiliation → neverVoid (jamais Annuler la vente)', () => {
   assert.equal(resolveCancelNeverVoid({}, 'resiliation_web'), true);
@@ -27,6 +33,36 @@ test('cancel-sale.js ne clique plus Annuler la vente', () => {
   assert.doesNotMatch(src, /forceVoid/);
   assert.doesNotMatch(src, /voidPendingSaleIfPossible|confirmAnnulationModal|clickAnnulationRefundMode|shouldVoidSale/);
   assert.match(src, /clickActionTile\(page, \[\/\^Résilier\$\/i/);
+});
+
+test('tuile Résilier : libellé contrat accepté, mail et annulation refusés', () => {
+  assert.equal(isResilierTileLabel('Résilier'), true);
+  assert.equal(isResilierTileLabel('Résilier le contrat'), true);
+  assert.equal(isResilierTileLabel('Résilier\nÀ la date choisie'), true);
+  assert.equal(isResilierTileLabel('Annuler la vente'), false);
+  assert.equal(isResilierTileLabel('Résilier le contrat et envoyer le mail'), false);
+  assert.equal(isResilierTileLabel('Envoyer un e-mail'), false);
+});
+
+test('motif « Choisir » ne compte pas comme sélectionné', () => {
+  assert.equal(motifValueChosen(''), false);
+  assert.equal(motifValueChosen('Choisir'), false);
+  assert.equal(motifValueChosen('Ne souhaite pas reconduire'), true);
+});
+
+test('bouton Appliquer désactivé + mail absent = pas résilié', () => {
+  assert.equal(resiliationCountsAsDone({ applyEnabled: false, confirmSeen: false }), false);
+  assert.equal(resiliationCountsAsDone({ applyEnabled: true, confirmSeen: false }), false);
+  assert.equal(resiliationCountsAsDone({ applyEnabled: false, confirmSeen: true }), false);
+  assert.equal(resiliationCountsAsDone({ applyEnabled: true, confirmSeen: true }), true);
+  assert.equal(isAppliquerQuitterLabel('Appliquer et Quitter'), true);
+});
+
+test('le clic Appliquer ne retire plus l’attribut disabled', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../bot/cancel-sale.js'), 'utf8');
+  assert.doesNotMatch(src, /hit\.disabled = false/);
+  assert.doesNotMatch(src, /removeAttribute\('disabled'\)/);
+  assert.match(src, /reason: 'appliquer_disabled'/);
 });
 
 test('processCancelJob boutique → neverVoid: true', () => {
