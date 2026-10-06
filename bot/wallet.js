@@ -1039,8 +1039,13 @@ async function fillRibForm(ctx, iban, customer, gymConfig) {
         if (!form) return;
         const set = (name, val) => {
           if (!val) return;
-          const el = form.querySelector(`input[name="${name}"]`);
-          if (!el) return;
+          let el = form.querySelector(`input[name="${name}"]`);
+          if (!el) {
+            el = document.createElement('input');
+            el.type = 'hidden';
+            el.name = name;
+            form.appendChild(el);
+          }
           el.disabled = false;
           el.readOnly = false;
           el.value = val;
@@ -1086,6 +1091,27 @@ async function submitAndFinalizeRib(page, memberId, ribCtx, iban, customer, gymC
   await fillRibForm(ribCtx, iban, customer, gymConfig);
   const before = await readMandateMeta(ribCtx);
   if (!isLikelyBic(before.bic)) {
+    const fallback = bicFromFrenchIban(iban);
+    if (isLikelyBic(fallback)) {
+      await ribCtx
+        .evaluate((bic) => {
+          const form = document.querySelector('form');
+          if (!form) return;
+          let el = form.querySelector('input[name="bic"]');
+          if (!el) {
+            el = document.createElement('input');
+            el.type = 'hidden';
+            el.name = 'bic';
+            form.appendChild(el);
+          }
+          el.disabled = false;
+          el.value = bic;
+        }, fallback)
+        .catch(() => {});
+    }
+  }
+  const afterFill = await readMandateMeta(ribCtx);
+  if (!isLikelyBic(afterFill.bic)) {
     logWarn('Mandat SEPA sans BIC — pas de POST', { member_id: memberId });
     return { ok: false, error: 'bic_missing' };
   }
