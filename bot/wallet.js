@@ -731,6 +731,14 @@ async function ensureMemberPostalAddress(page, memberId, addr) {
   return true;
 }
 
+async function ribContextHasForm(ctx) {
+  try {
+    return (await ctx.locator('input[name="iban"], input[name="bic"]').count()) > 0;
+  } catch {
+    return false;
+  }
+}
+
 async function getRibFrame(page) {
   // Top page + iframes nextgen (check.php) : la greybox GB_frame est souvent imbriquée.
   const roots = [page, ...(page.frames?.() || [])];
@@ -740,14 +748,23 @@ async function getRibFrame(page) {
       if ((await iframe.count()) > 0) {
         const handle = await iframe.elementHandle();
         const frame = handle ? await handle.contentFrame() : null;
-        if (frame) return frame;
+        if (frame && (await ribContextHasForm(frame))) return frame;
       }
     } catch {
       /* frame détachée */
     }
   }
   for (const frame of page.frames()) {
-    if (/rib\.php/i.test(frame.url() || '')) return frame;
+    try {
+      const url = frame.url() || '';
+      if (!/rib\.php/i.test(url) && !/rib\.php/i.test(decodeURIComponent(url))) continue;
+      if (await ribContextHasForm(frame)) return frame;
+    } catch {
+      /* */
+    }
+  }
+  for (const ctx of [page, ...(page.frames?.() || [])]) {
+    if (await ribContextHasForm(ctx)) return ctx;
   }
   return null;
 }
@@ -826,15 +843,24 @@ async function openRibForm(page, memberId, { forceFresh = false } = {}) {
     }
   }
 
-  // Fallback : rib.php direct (moins fiable pour clear Rib-nok)
+  await page
+    .goto(`${new URL(base).origin}/nextgen/legacy?path=${encodeURIComponent(`/rib.php?idj=${memberId}`)}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
+    })
+    .catch(() => {});
+  await randomDelay();
+  const wrapped = await waitForRibFrame(page, 8000);
+  if (wrapped && (await ribContextHasForm(wrapped))) return wrapped;
+
   await page.goto(new URL(`rib.php?idj=${memberId}`, base).href, {
     waitUntil: 'domcontentloaded',
     timeout: 30000,
   });
   await randomDelay();
-  if (page.url().includes('rib.php')) return page;
-  const frame = await waitForRibFrame(page, 5000);
-  if (frame) return frame;
+  const direct = await waitForRibFrame(page, 8000);
+  if (direct && (await ribContextHasForm(direct))) return direct;
+  if (await ribContextHasForm(page)) return page;
 
   throw new Error(`Impossible d'ouvrir le formulaire RIB pour membre ${memberId}`);
 }

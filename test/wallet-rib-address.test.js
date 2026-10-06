@@ -29,6 +29,7 @@ describe('ribAddressFields', () => {
     assert.match(src, /async function ficheRibCleared/);
     assert.match(src, /openMemberDetail/);
     assert.match(src, /Valider grisé mais fiche sans alerte RIB/);
+    assert.match(src, /async function ribContextHasForm/);
     assert.match(src, /Valider grisé ignoré \(fiche sans alerte\)/);
   });
 
