@@ -57,7 +57,9 @@ describe('French IBAN / RIB', () => {
   it('déduit un BIC de repli depuis le code banque', () => {
     assert.equal(frenchIbanToRibParts('FR7630004007640000111210734').bic, 'BNPAFRPPXXX');
     assert.equal(bicFromFrenchIban('FR7630006000011234567890189'), 'AGRIFRPPXXX');
+    assert.equal(bicFromFrenchIban('FR7616908000010201130488364'), 'LBDIFRP1XXX');
     assert.equal(isLikelyBic('AGRIFRPP831'), true);
+    assert.equal(isLikelyBic('LBDIFRP1XXX'), true);
     assert.equal(isLikelyBic(''), false);
   });
 });
