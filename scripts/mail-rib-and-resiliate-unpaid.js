@@ -5,9 +5,8 @@
  * 2) Résilie les contrats Impayé AVEC RIB (mandat) — hors Balma.
  *    Clique « Résilier » sur abo et badge (jamais « Annuler la vente »).
  *    Politique SEPA (lib/sepa-unpaid-policy.js) :
- *    2 impayés consécutifs → résilier, peu importe le motif ;
- *    MD06/MS02/MS03/AC04/JSON → immédiat ; AC01 + RC01 → mail RIB au 1er ;
- *    fiche sans e-mail ni téléphone → immédiat.
+ *    tout motif sauf fonds insuffisant (AM04) → résilier dès le 1er impayé ;
+ *    AM04 seul → 2 impayés consécutifs ; fiche sans contact → immédiat.
  *
  *   node scripts/mail-rib-and-resiliate-unpaid.js --apply
  *   node scripts/mail-rib-and-resiliate-unpaid.js --apply --mail-only
@@ -407,19 +406,13 @@ async function scrapeUnpaidWithIds(page) {
     if (signature && signature === lastSignature) break;
     lastSignature = signature;
     all.push(...hits);
-    const counts = {};
-    for (const r of all) {
-      if (!r.rum) continue;
-      counts[r.idm] = (counts[r.idm] || 0) + 1;
-    }
     for (const h of hits) {
-      if (!h.rum) continue;
-      const n = counts[h.idm] || 0;
-      if (n >= 2) continue;
       if (skipResiliateName(h.name)) continue;
-      const remarksSoFar = all.filter((x) => x.idm === h.idm).flatMap((x) => x.remarks || []);
-      const sepa = classifySepaFromCandidate({ remarks: remarksSoFar, unpaid_count: n });
-      if (n >= (sepa.policy?.cancelAt ?? 2)) continue;
+      const memberRows = all.filter((x) => x.idm === h.idm);
+      const remarks = memberRows.flatMap((x) => x.remarks || []);
+      const sepa = classifySepaFromCandidate({ remarks, unpaid_count: memberRows.length });
+      if (remarks.length && sepa.policy.cancelAt === 1) continue;
+      if (remarks.length >= 2) continue;
       const remark = await openEcheanceDetail(frame, page, h.eid);
       if (remark) h.remarks = [remark];
     }
@@ -445,7 +438,6 @@ async function scrapeUnpaidWithIds(page) {
 
   const byMember = {};
   for (const r of all) {
-    if (!r.rum) continue;
     const key = r.idm;
     if (!byMember[key]) {
       byMember[key] = {

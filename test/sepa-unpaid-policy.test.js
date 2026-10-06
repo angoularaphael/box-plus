@@ -10,7 +10,7 @@ const {
   SEPA_REASON,
 } = require('../lib/sepa-unpaid-policy');
 
-test('1 impayé AM04 / MD01 : encore attendre', () => {
+test('1 impayé AM04 : encore attendre ; tout autre motif : résilier', () => {
   assert.equal(classifySepaRemark('AM04 Provision insuffisante'), SEPA_REASON.INSUFFICIENT_FUNDS);
   assert.equal(
     classifySepaRemark('MD01 Pas d’autorisation / Absence de mandat'),
@@ -26,8 +26,8 @@ test('1 impayé AM04 / MD01 : encore attendre', () => {
     unpaid_count: 1,
     remarks: ['MD01 Pas d’autorisation / Absence de mandat'],
   });
-  assert.equal(md01One.ok, false);
-  assert.equal(md01One.why, 'wait_two_unpaid');
+  assert.equal(md01One.ok, true);
+  assert.equal(md01One.why, 'sepa_immediate');
 });
 
 test('2 impayés consécutifs → résil peu importe le motif', () => {
@@ -44,7 +44,7 @@ test('2 impayés consécutifs → résil peu importe le motif', () => {
     remarks: ['MD01 Pas d’autorisation / Absence de mandat'],
   });
   assert.equal(md01.ok, true);
-  assert.equal(md01.why, 'two_consecutive_unpaid');
+  assert.equal(md01.why, 'sepa_immediate');
   const unknown = shouldResiliateUnpaid({
     unpaid_count: 2,
     months: ['2026-07', '2026-08'],
@@ -90,39 +90,31 @@ test('MD06 / MS02 / MS03 / AC04 / JSON → immédiat', () => {
   }
 });
 
-test('AC01 / RC01 : mail RIB au 1er impayé, résil au 2e consécutif', () => {
+test('AC01 / RC01 : résil dès le 1er impayé (pas un fonds insuffisant)', () => {
   assert.equal(classifySepaRemark('RC01 Code banque incorrect'), SEPA_REASON.INVALID_BANK_ID);
   const one = shouldResiliateUnpaid({
     unpaid_count: 1,
     remarks: ['AC01 Coordonnée Bancaire inexploitable'],
     email: 'a@b.fr',
   });
-  assert.equal(one.ok, false);
-  assert.equal(one.why, 'rib_email_wait_two');
+  assert.equal(one.ok, true);
+  assert.equal(one.why, 'sepa_immediate');
   const rib = shouldSendRibReminder(
     { unpaid_count: 1, remarks: ['AC01 Coordonnée Bancaire inexploitable'], email: 'a@b.fr' },
     null,
     {}
   );
-  assert.equal(rib.ok, true);
-  const two = shouldResiliateUnpaid({
-    unpaid_count: 2,
-    dates: ['06/07/2026', '03/08/2026'],
-    remarks: ['AC01 Coordonnée Bancaire inexploitable'],
-    email: 'a@b.fr',
-  });
-  assert.equal(two.ok, true);
-  assert.equal(two.why, 'two_consecutive_unpaid');
+  assert.equal(rib.ok, false);
 });
 
-test('AC06 : résil au 2e impayé consécutif sans mail RIB', () => {
+test('AC06 : résil dès le 1er impayé, sans mail RIB', () => {
   const one = shouldResiliateUnpaid({
     unpaid_count: 1,
     remarks: ['AC06 Opposition sur compte'],
     email: 'a@b.fr',
   });
-  assert.equal(one.ok, false);
-  assert.equal(one.why, 'wait_two_unpaid');
+  assert.equal(one.ok, true);
+  assert.equal(one.why, 'sepa_immediate');
   assert.equal(
     shouldSendRibReminder(
       { unpaid_count: 1, remarks: ['AC06 Opposition sur compte'], email: 'a@b.fr' },
@@ -130,15 +122,6 @@ test('AC06 : résil au 2e impayé consécutif sans mail RIB', () => {
       {}
     ).ok,
     false
-  );
-  assert.equal(
-    shouldResiliateUnpaid({
-      unpaid_count: 2,
-      dates: ['10/07/2026', '07/08/2026'],
-      remarks: ['AC06 Opposition sur compte'],
-      email: 'a@b.fr',
-    }).ok,
-    true
   );
 });
 
