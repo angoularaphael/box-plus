@@ -1044,7 +1044,14 @@ async function clickResilierEtEnvoyerMail(page, { timeoutMs = 15000 } = {}) {
       return true;
     }
 
-    await page.waitForTimeout(350);
+    try {
+      await page.waitForTimeout(350);
+    } catch (err) {
+      if (/has been closed|Target closed|browser has been closed/i.test(String(err.message || err))) {
+        return false;
+      }
+      throw err;
+    }
   }
 
   logWarn('Modale « Résilier le contrat et envoyer le mail » introuvable');
@@ -1314,7 +1321,16 @@ async function cancelAllMemberSales(page, memberId, { maxSales = 15, cancelDate 
 
     const target = contracts[0];
     const idcKey = String(target.idc);
-    const result = await cancelOneContract(page, target, { cancelDate });
+    let result;
+    try {
+      result = await cancelOneContract(page, target, { cancelDate });
+    } catch (err) {
+      const msg = String(err.message || err);
+      logWarn('Résiliation interrompue', { idc: idcKey, error: msg });
+      details.push({ cancelled: false, reason: 'cancel_crash', idc: idcKey, error: msg });
+      if (/has been closed|Target closed|browser has been closed/i.test(msg)) break;
+      throw err;
+    }
     details.push(result);
 
     if (result.cancelled) {
