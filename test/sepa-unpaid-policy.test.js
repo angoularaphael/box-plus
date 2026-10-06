@@ -125,15 +125,23 @@ test('AC06 : résil dès le 1er impayé, sans mail RIB', () => {
   );
 });
 
-test('fiche sans e-mail ni téléphone → immédiat', () => {
+test('fiche sans e-mail ni téléphone → immédiat, sauf fonds insuffisant', () => {
   const one = shouldResiliateUnpaid({
     unpaid_count: 1,
-    remarks: ['AM04 Provision insuffisante'],
+    remarks: ['MD01 Pas d’autorisation / Absence de mandat'],
     email: '',
     phone: '',
   });
   assert.equal(one.ok, true);
   assert.equal(one.why, 'missing_contact');
+  const am04 = shouldResiliateUnpaid({
+    unpaid_count: 1,
+    remarks: ['AM04 Provision insuffisante'],
+    email: '',
+    phone: '',
+  });
+  assert.equal(am04.ok, false);
+  assert.equal(am04.why, 'wait_two_unpaid');
 });
 
 test('résiliation impayés : Résilier abo + badge, jamais Annuler la vente', () => {
