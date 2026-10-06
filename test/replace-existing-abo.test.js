@@ -251,6 +251,61 @@ test('séance d’essai du jour (mêmes dates) n’est pas un abo annulé', () =
   assert.equal(leftoverBlocksNewSale(essai), true);
 });
 
+test('une carte essai « 1 crédit restant » est reconnue même si le bandeau dit EXPIRÉ', () => {
+  const {
+    isStaleOrInactiveAbo,
+    productNameFromContractWrapper,
+    contractDisplayLabel,
+  } = require('../lib/replace-existing-abo');
+  const wrapper =
+    "Cartes SEANCE D'ESSAI 20 ACTIF, 16 EXPIRÉ 20 crédits Contrat n°C2026-045526 1 crédit restant vendu le 05/10/2026 05/10/2026";
+  const item = 'Contrat n°C2026-045526 1 crédit restant vendu le 05/10/2026 05/10/2026';
+  assert.equal(productNameFromContractWrapper(wrapper), "SEANCE D'ESSAI");
+  const label = contractDisplayLabel(item, wrapper);
+  assert.match(label, /SEANCE D['’]ESSAI/i);
+  assert.equal(isStaleOrInactiveAbo(item), false);
+  assert.equal(isStaleOrInactiveAbo(label), false);
+  assert.equal(isStaleOrInactiveAbo(`${item} ${wrapper}`), false);
+});
+
+test('une séance d’essai déjà sur la fiche est détectée sans le mot essai dans la ligne contrat', () => {
+  const { isExistingTrialCarte } = require('../bot/sale');
+  const cfg = { sale_type: 'carte', deciplus_product_name: "SEANCE D'ESSAI GRATUITE WEB" };
+  assert.equal(
+    isExistingTrialCarte(
+      {
+        idc: '45526',
+        isBadge: false,
+        label: "SEANCE D'ESSAI Contrat n°C2026-045526 1 crédit restant vendu le 05/10/2026 05/10/2026",
+      },
+      cfg
+    ),
+    true
+  );
+  assert.equal(
+    isExistingTrialCarte(
+      {
+        idc: '45526',
+        isBadge: false,
+        label: 'Contrat n°C2026-045526 1 crédit restant vendu le 05/10/2026 05/10/2026',
+      },
+      cfg
+    ),
+    true
+  );
+  assert.equal(
+    isExistingTrialCarte(
+      {
+        idc: '1',
+        isBadge: false,
+        label: 'COACHING PRIVE 10 SEANCES 10 crédits restants',
+      },
+      { sale_type: 'carte', name: 'COACHING PRIVE 10 SEANCES' }
+    ),
+    false
+  );
+});
+
 test('le bot ventes résilie l’ancien abo avant de vendre le nouveau', () => {
   const src = require('fs').readFileSync(require('path').join(__dirname, '../bot/sale.js'), 'utf8');
   assert.match(src, /classifyMemberContracts/);

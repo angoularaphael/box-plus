@@ -42,6 +42,17 @@ function isTrialPrestationConfig(productConfig = {}) {
   );
 }
 
+function isExistingTrialCarte(item, productConfig) {
+  if (!item || item.isBadge || !isTrialPrestationConfig(productConfig)) return false;
+  const { isStaleOrInactiveAbo } = require('../lib/replace-existing-abo');
+  const lab = String(item.label || '');
+  if (isStaleOrInactiveAbo(lab)) return false;
+  return (
+    /s[eé]ance d['’]?\s*essai|\bessai\b/i.test(lab) ||
+    /\d+\s*cr[eé]dits?\s+restants?/i.test(lab)
+  );
+}
+
 function formatFrDate(date) {
   const pad = (n) => String(n).padStart(2, '0');
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
@@ -3176,7 +3187,9 @@ async function verifyCreatedContract(
       if (prior.has(String(item.idc))) return false;
       const itemLabel = String(item.label || '');
       if (badge) return Boolean(item.isBadge);
-      if (/essai/i.test(needle)) return /essai/i.test(itemLabel);
+      if (/essai/i.test(needle)) {
+        return /essai/i.test(itemLabel) || /\d+\s*cr[eé]dits?\s+restants?/i.test(itemLabel);
+      }
       if (/coaching/i.test(needle)) return /coaching/i.test(itemLabel);
       if (productConfig) return saleContractMatches(itemLabel, productConfig);
       return Boolean(item.isBadge) === false;
@@ -3298,17 +3311,10 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
     let contractsBefore = [];
     if (isCartePrestationConfig(productConfig)) {
       const { findActiveContracts } = require('./cancel-sale');
-      const { isStaleOrInactiveAbo } = require('../lib/replace-existing-abo');
       contractsBefore = await findActiveContracts(page, { includeExpiredPrestation: true }).catch(() => []);
       badgesBefore = contractsBefore.filter((item) => item.isBadge).length;
       if (isTrialPrestationConfig(productConfig)) {
-        existingTrial =
-          contractsBefore.find(
-            (item) =>
-              !item.isBadge &&
-              !isStaleOrInactiveAbo(item.label) &&
-              /s[eé]ance d['’]?\s*essai|\bessai\b/i.test(String(item.label || ''))
-          ) || null;
+        existingTrial = contractsBefore.find((item) => isExistingTrialCarte(item, productConfig)) || null;
       }
     }
 
@@ -3778,6 +3784,7 @@ module.exports = {
   memberHasActiveMembership,
   reconcileActiveBadges,
   isTrialPrestationConfig,
+  isExistingTrialCarte,
   annotateMember,
   saleWantsPrelevement,
 };

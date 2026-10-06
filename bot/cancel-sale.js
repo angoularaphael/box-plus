@@ -257,23 +257,23 @@ async function findActiveContracts(page, options = {}) {
           .trim();
         // Ne pas juger « annulé » sur le bandeau « 1 ANNULÉ, 1 ACTIF, 2 EN ATTENTE »
         // sinon on ignore les vrais contrats en attente.
-        const statusLabel = itemLabel || wrapperLabel;
-        const { isStaleOrInactiveAbo } = require('../lib/replace-existing-abo');
+        const { isStaleOrInactiveAbo, contractDisplayLabel } = require('../lib/replace-existing-abo');
+        const statusLabel = contractDisplayLabel(itemLabel, wrapperLabel);
         const summaryOnly = /\d+\s+annul/i.test(statusLabel) && !/contrat n/i.test(statusLabel);
         const expiredPrestation =
           options.includeExpiredPrestation &&
           /essai|coaching/i.test(`${itemLabel} ${wrapperLabel}`) &&
-          /expir/i.test(`${itemLabel} ${wrapperLabel}`) &&
-          !/r[eéÉ]sili|annul/i.test(`${itemLabel} ${wrapperLabel}`);
+          /expir/i.test(itemLabel) &&
+          !/r[eéÉ]sili|annul/i.test(itemLabel);
         if (
           !expiredPrestation &&
           !summaryOnly &&
-          isStaleOrInactiveAbo(`${itemLabel} ${wrapperLabel}`)
+          isStaleOrInactiveAbo(statusLabel)
         ) {
           continue;
         }
         const pendingHint = isPendingOrFutureContract(itemLabel);
-        const label = `${itemLabel || wrapperLabel.slice(0, 120)}${
+        const label = `${statusLabel}${
           pendingHint && !/en attente/i.test(itemLabel) ? ' EN ATTENTE' : ''
         }`;
         if (!label.trim()) continue;

@@ -55,6 +55,14 @@ test('une séance d’essai existante est reconnue avant toute nouvelle créatio
   assert.equal(isTrialPrestationConfig({ sale_type: 'carte', name: 'COACHING PRIVE 10 SEANCES' }), false);
 });
 
+test('le bot ventes relit le titre wrapper pour ne pas recréer une séance d’essai', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../bot/sale.js'), 'utf8');
+  assert.match(source, /isExistingTrialCarte/);
+  assert.match(source, /already_on_file/);
+  const cancelSrc = fs.readFileSync(path.join(__dirname, '../bot/cancel-sale.js'), 'utf8');
+  assert.match(cancelSrc, /contractDisplayLabel/);
+});
+
 test('la recherche membre n’inclut plus Balma par défaut', () => {
   const { uniqueDeciplusSearchConfigs } = require('../lib/deciplus-sites');
   const sites = uniqueDeciplusSearchConfigs('st-cyprien');
