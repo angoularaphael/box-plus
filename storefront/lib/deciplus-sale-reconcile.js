@@ -98,7 +98,11 @@ function withinLookback(order = {}, now = Date.now()) {
 }
 
 function saleRetryExhausted(order = {}) {
-  return Number(order.sale_reconcile_attempts || 0) >= MAX_SALE_RETRIES;
+  const attempts = Number(order.sale_reconcile_attempts || 0);
+  if (/fetch failed|econnrefused|enotfound|econnreset|etimedout/i.test(String(order.bot_error || ''))) {
+    return false;
+  }
+  return attempts >= MAX_SALE_RETRIES;
 }
 
 function shouldRedispatchMissingSale(order = {}, now = Date.now()) {

@@ -11,7 +11,7 @@ const {
   SALES_BOT_RAPHAEL,
   SALES_BOT_EDDY,
 } = require('../lib/sales-bot');
-const { pickBotBase, isOpsOrder } = require('../lib/bot-forward');
+const { pickBotBase, isOpsOrder, forwardJobToBot } = require('../lib/bot-forward');
 const {
   failoverAfterAttempts,
   failoverTarget,
@@ -218,6 +218,39 @@ describe('sales-bot split Raphaël / Eddy', () => {
       assert.equal(sent.body.sales_bot, 'eddy');
       assert.equal(sent.body.failover_count, 1);
       assert.equal(sent.body.attempts, 0);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  it('bot Raphaël injoignable : la vente signée part chez Eddy', async () => {
+    process.env.BOXPLUS_BOT_URL = 'http://raphael.test:22189';
+    process.env.BOXPLUS_BOT_URL_SALES_2 = 'http://eddy.test:21871';
+    process.env.SYNC_SECRET = 'test-secret';
+    const originalFetch = global.fetch;
+    const calls = [];
+    global.fetch = async (url, options) => {
+      calls.push({ url, body: JSON.parse(options.body) });
+      if (String(url).includes('raphael.test')) {
+        const err = new TypeError('fetch failed');
+        err.cause = { code: 'ECONNREFUSED' };
+        throw err;
+      }
+      return { ok: true, json: async () => ({ ok: true, queued: true }) };
+    };
+    try {
+      const order = {
+        order_id: 'BC-1791372894061-bc8282',
+        action: 'sale',
+        sales_bot: 'raphael',
+      };
+      const result = await forwardJobToBot(order);
+      assert.equal(result.forwarded, true);
+      assert.equal(result.queued, true);
+      assert.equal(calls.length, 2);
+      assert.match(calls[1].url, /eddy\.test:21871\/api\/jobs/);
+      assert.equal(calls[1].body.sales_bot, 'eddy');
+      assert.equal(order.sales_bot, 'eddy');
     } finally {
       global.fetch = originalFetch;
     }

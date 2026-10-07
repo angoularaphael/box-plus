@@ -171,6 +171,23 @@ test('force_requeue remplace un job PENDING (Aventure already_queued)', () => {
   assert.equal(again.queued, true);
 });
 
+test('fetch failed ne coupe pas les relances avant que l autre bot réponde', () => {
+  const { shouldRedispatchMissingSale } = require('../storefront/lib/deciplus-sale-reconcile');
+  const paidAt = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const order = {
+    order_id: 'BC-1791370238002-eff089',
+    action: 'sale',
+    step: 8,
+    signature: { signed_at: paidAt },
+    payment: { status: 'paid', paid_at: paidAt },
+    product_snapshot: { name: 'OFFRE A 29€', sale_type: 'abonnement' },
+    sale_reconcile_attempts: 12,
+    sale_reconcile_at: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+    bot_error: 'fetch failed',
+  };
+  assert.equal(shouldRedispatchMissingSale(order), true);
+});
+
 test('payé depuis plus de 15 min sans signature → pas de dispatch boutique', () => {
   const { paidUnsignedReady, orderNeedsDeciplusSale } = require('../storefront/lib/deciplus-sale-reconcile');
   const paidAt = new Date(Date.now() - 20 * 60 * 1000).toISOString();
