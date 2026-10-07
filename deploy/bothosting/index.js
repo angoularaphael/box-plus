@@ -13,8 +13,6 @@ const path = require('path');
 const ROOT = __dirname;
 const ENV_FILE = path.join(ROOT, '.env');
 const BOT_DIR = path.join(ROOT, 'boxi-deci-bot');
-const REPO = process.env.BOT_REPO_URL || 'https://github.com/angoularaphael/boxi-deci-bot.git';
-const BRANCH = process.env.BOT_REPO_BRANCH || 'main';
 
 function log(msg) {
   console.log(`[BOXPLUS bootstrap] ${msg}`);
@@ -113,15 +111,40 @@ ensureDataPaths();
 log(`.env ${fs.existsSync(ENV_FILE) ? 'OK' : 'MANQUANT'} (${ENV_FILE})`);
 log(`BOT_ROLE=${process.env.BOT_ROLE} BOT_ID=${process.env.BOT_ID}`);
 
+function repoSettings() {
+  const configured = process.env.BOT_REPO_URL || '';
+  const wanted = 'https://github.com/angoularaphael/box-plus.git';
+  const repo = !configured || /boxi-deci-bot\.git/i.test(configured) ? wanted : configured;
+  if (configured && repo !== configured) {
+    log('BOT_REPO_URL boxi-deci-bot ignore — chargement de box-plus');
+  }
+  return { repo, branch: process.env.BOT_REPO_BRANCH || 'main' };
+}
+
+function gitOrigin(dir) {
+  try {
+    return execSync('git remote get-url origin', { cwd: dir, encoding: 'utf8' }).trim();
+  } catch {
+    return '';
+  }
+}
+
 function ensureBotRepo() {
-  if (!fs.existsSync(path.join(BOT_DIR, 'bot', 'index.js'))) {
-    log(`Clone ${REPO} → ${BOT_DIR}`);
-    run(`git clone --depth 1 --branch ${BRANCH} ${REPO} "${BOT_DIR}"`);
+  const { repo, branch } = repoSettings();
+  const origin = fs.existsSync(BOT_DIR) ? gitOrigin(BOT_DIR) : '';
+  const wrong = Boolean(origin) && /box-plus\.git/i.test(repo) && !/box-plus\.git/i.test(origin);
+  if (!fs.existsSync(path.join(BOT_DIR, 'bot', 'index.js')) || wrong) {
+    if (fs.existsSync(BOT_DIR)) {
+      log(`Ancien depot retire (${origin || 'incomplet'})`);
+      fs.rmSync(BOT_DIR, { recursive: true, force: true });
+    }
+    log(`Clone ${repo} → ${BOT_DIR}`);
+    run(`git clone --depth 1 --branch ${branch} ${repo} "${BOT_DIR}"`);
     return;
   }
   log('Mise à jour repo bot…');
   try {
-    run(`git fetch origin && git reset --hard origin/${BRANCH}`, BOT_DIR);
+    run(`git fetch origin && git reset --hard origin/${branch}`, BOT_DIR);
   } catch {
     log('git pull ignoré — copie locale');
   }

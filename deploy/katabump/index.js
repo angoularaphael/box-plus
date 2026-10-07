@@ -10,8 +10,6 @@ const path = require('path');
 const ROOT = __dirname;
 const ENV_FILE = path.join(ROOT, '.env');
 const BOT_DIR = path.join(ROOT, 'boxi-deci-bot');
-const REPO = process.env.BOT_REPO_URL || 'https://github.com/angoularaphael/boxi-deci-bot.git';
-const BRANCH = process.env.BOT_REPO_BRANCH || 'main';
 
 function log(msg) {
   console.log(`[BOXPLUS bootstrap] ${msg}`);
@@ -82,16 +80,40 @@ loadEnvFile(ENV_FILE);
 ensureDataPaths();
 log(fs.existsSync(ENV_FILE) ? `.env chargé (${ENV_FILE})` : 'Pas de .env');
 
+function repoSettings() {
+  const configured = process.env.BOT_REPO_URL || '';
+  const wanted = 'https://github.com/angoularaphael/box-plus.git';
+  const repo = !configured || /boxi-deci-bot\.git/i.test(configured) ? wanted : configured;
+  if (configured && repo !== configured) {
+    log('BOT_REPO_URL boxi-deci-bot ignore — chargement de box-plus');
+  }
+  return { repo, branch: process.env.BOT_REPO_BRANCH || 'main' };
+}
+
+function gitOrigin(dir) {
+  try {
+    return execSync('git remote get-url origin', { cwd: dir, encoding: 'utf8' }).trim();
+  } catch {
+    return '';
+  }
+}
+
 function ensureBotRepo() {
-  const startFile = path.join(BOT_DIR, 'start.js');
-  if (!fs.existsSync(startFile)) {
-    log(`Clone ${REPO}`);
-    run(`git clone --depth 1 --branch ${BRANCH} ${REPO} "${BOT_DIR}"`);
+  const { repo, branch } = repoSettings();
+  const origin = fs.existsSync(BOT_DIR) ? gitOrigin(BOT_DIR) : '';
+  const wrong = Boolean(origin) && /box-plus\.git/i.test(repo) && !/box-plus\.git/i.test(origin);
+  if (!fs.existsSync(path.join(BOT_DIR, 'start.js')) || wrong) {
+    if (fs.existsSync(BOT_DIR)) {
+      log(`Ancien depot retire (${origin || 'incomplet'})`);
+      fs.rmSync(BOT_DIR, { recursive: true, force: true });
+    }
+    log(`Clone ${repo}`);
+    run(`git clone --depth 1 --branch ${branch} ${repo} "${BOT_DIR}"`);
     return;
   }
   log('Mise à jour repo bot…');
   try {
-    run(`git fetch origin && git reset --hard origin/${BRANCH}`, BOT_DIR);
+    run(`git fetch origin && git reset --hard origin/${branch}`, BOT_DIR);
   } catch {
     log('git pull ignoré');
   }
