@@ -108,56 +108,24 @@ function gymSpokenName(member = {}) {
   return '';
 }
 
-function ageYears(birthdate, now = new Date()) {
-  const born = parseBirthdate(birthdate);
-  if (!born?.year) return null;
-  const today = parisNow(now);
-  const age = today.year - born.year;
-  if (age < 3 || age > 90) return null;
-  return age;
-}
-
-function seeYouLine(member = {}) {
-  const salle = gymSpokenName(member);
-  const age = ageYears(member.birthdate);
-  const kid = age != null && age < 18;
-  if (salle && kid) {
-    return `Hâte de te revoir au cours 🥊, à ${salle}. Toute l’équipe est avec toi.`;
-  }
-  if (salle) {
-    return `Hâte de te revoir sur le ring 🥊, à ${salle}.`;
-  }
-  if (kid) {
-    return 'Hâte de te revoir au cours 🥊. Toute l’équipe est avec toi.';
-  }
-  return 'Hâte de te revoir sur le ring 🥊.';
-}
-
 function birthdayBodyLines(member = {}) {
   const who = firstNameOf(member.first_name || member.last_name || '');
   return {
     who,
     greeting: who ? `Salut ${who},` : 'Salut,',
     wish: 'Toute l’équipe du Boxing Center se joint à moi pour te souhaiter un très bel anniversaire 🎉',
-    seeYou: seeYouLine(member),
   };
 }
 
 function buildBirthdayEmail(member = {}) {
-  const { who, greeting, wish, seeYou } = birthdayBodyLines(member);
+  const { who, greeting, wish } = birthdayBodyLines(member);
   const subject = who ? `${who}, c’est David` : 'C’est David';
   const emailText = [
     greeting,
     '',
     wish,
     '',
-    'C’est un vrai plaisir de t’avoir avec nous, et toute la salle te le dit avec moi.',
-    '',
-    seeYou,
-    '',
-    'Profite bien de ta journée, prends le temps de souffler, et reviens dès que tu veux enchaîner.',
-    '',
-    'Nous te souhaitons une excellente journée et une très belle année à venir ✨',
+    'Nous te souhaitons une excellente journée et une très belle année à venir.',
     '',
     'Sportivement,',
     SIGN_OFF,
@@ -175,14 +143,13 @@ function buildBirthdayEmail(member = {}) {
 }
 
 function buildBirthdaySms(member = {}) {
-  const { who, greeting, wish, seeYou } = birthdayBodyLines(member);
+  const { who, greeting, wish } = birthdayBodyLines(member);
   const hello = who ? greeting : 'Salut,';
   return [
     hello,
     wish,
-    'C’est un vrai plaisir de t’avoir avec nous.',
-    seeYou,
-    'Profite bien de ta journée ✨',
+    'Nous te souhaitons une excellente journée et une très belle année à venir.',
+    'Sportivement,',
     SIGN_OFF,
   ].join(' ');
 }

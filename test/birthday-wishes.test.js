@@ -53,30 +53,18 @@ test('mail David, texte perso, pas de HTML promo', () => {
   assert.doesNotMatch(mail.subject, /Boxing Center|anniversaire|offre/i);
   assert.match(mail.emailText, /Salut Guillaume,/);
   assert.match(mail.emailText, /très bel anniversaire 🎉/);
-  assert.match(mail.emailText, /Hâte de te revoir sur le ring 🥊/);
-  assert.match(mail.emailText, /vrai plaisir de t’avoir avec nous/);
-  assert.match(mail.emailText, /Profite bien de ta journée/);
-  assert.match(mail.emailText, /année à venir ✨/);
+  assert.match(mail.emailText, /excellente journée et une très belle année à venir/);
+  assert.doesNotMatch(mail.emailText, /Hâte de te revoir|plaisir de t’avoir|Profite bien/);
   assert.match(mail.emailText, /Sportivement,/);
   assert.match(mail.emailText, /David et toute l’équipe du Boxing Center/);
   assert.doesNotMatch(mail.emailText, /unsubscribe|desinscription|promo|29 euros/i);
 });
 
-test('mail cite la salle du membre', () => {
-  const mail = buildBirthdayEmail({
-    first_name: 'Guillaume',
-    last_name: 'CESSAC',
-    zone: '2',
-    gym_label: 'Minimes',
-  });
-  assert.match(mail.emailText, /à Minimes/);
-});
-
 test('SMS signe David et l’equipe', () => {
-  const sms = buildBirthdaySms({ first_name: 'Guillaume', zone: '5' });
+  const sms = buildBirthdaySms({ first_name: 'Guillaume' });
   assert.match(sms, /Salut Guillaume/);
   assert.match(sms, /très bel anniversaire/);
-  assert.match(sms, /Saint-Cyprien/);
+  assert.match(sms, /très belle année à venir/);
   assert.match(sms, /David et toute l’équipe du Boxing Center/);
 });
 
