@@ -1104,6 +1104,13 @@ async function maybeTriggerEssaiFollowup() {
   }
 }
 
+async function maybeTriggerBirthdayWishes() {
+  const role = String(process.env.BOT_ROLE || 'all').toLowerCase();
+  if (role === 'sales') return;
+  const { maybeRunBirthdayWishes } = require('./birthday-wishes');
+  await maybeRunBirthdayWishes();
+}
+
 async function maybeTriggerDeciplusSaleReconcile() {
   // Vercel Hobby n’exécute pas le cron */15 — le bot ventes relance les fiches absentes.
   const storeBase = (
@@ -1133,6 +1140,8 @@ let lastEssaiFollowupPollAt = 0;
 const ESSAI_FOLLOWUP_POLL_MS = Number(process.env.BOT_ESSAI_FOLLOWUP_POLL_MS || 2 * 60 * 1000);
 let lastSaleReconcilePollAt = 0;
 const SALE_RECONCILE_POLL_MS = Number(process.env.BOT_SALE_RECONCILE_POLL_MS || 10 * 60 * 1000);
+let lastBirthdayPollAt = 0;
+const BIRTHDAY_POLL_MS = Number(process.env.BOT_BIRTHDAY_POLL_MS || 60 * 1000);
 
 async function processCheckSaleJob(page, order) {
   const { findActiveContracts } = require('./cancel-sale');
@@ -1954,6 +1963,12 @@ async function runLoop(once = false) {
       lastSaleReconcilePollAt = Date.now();
       void maybeTriggerDeciplusSaleReconcile().catch((err) => {
         logWarn('Poll ventes Deciplus (async)', { error: err.message });
+      });
+    }
+    if (Date.now() - lastBirthdayPollAt >= BIRTHDAY_POLL_MS) {
+      lastBirthdayPollAt = Date.now();
+      void maybeTriggerBirthdayWishes().catch((err) => {
+        logWarn('Poll anniversaires', { error: err.message });
       });
     }
     if (pending.length === 0) {
