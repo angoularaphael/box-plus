@@ -2553,8 +2553,34 @@ async function registerSaleRibIfAsked(page, productConfig = {}) {
     registered = await clickFirst(page, sel('sale_config_modal.saisir_rib')).catch(() => false);
   }
   if (!registered) {
+    const scopes = [page, ...(page.frames?.() || [])];
+    for (const ctx of scopes) {
+      const hit = await ctx
+        .evaluate(() => {
+          const nodes = [...document.querySelectorAll('button, a, input, span, div, [role="button"]')];
+          const el = nodes.find((n) => {
+            const t = String(n.value || n.innerText || n.textContent || '')
+              .replace(/\s+/g, ' ')
+              .trim();
+            return (
+              t.length > 0 &&
+              t.length < 80 &&
+              /enregistrer le rib|enregistrer le mandat|saisir le rib|valider le rib/i.test(t)
+            );
+          });
+          if (!el) return false;
+          el.click();
+          return true;
+        })
+        .catch(() => false);
+      if (hit) {
+        registered = true;
+        break;
+      }
+    }
+  }
+  if (!registered) {
     logWarn('Vente Deciplus — RIB à enregistrer, bouton introuvable (Ignorer non cliqué)');
-    // Ne pas « réussir » silencieusement : le RIB doit déjà être sur la fiche.
     return { ok: false, reason: 'rib_button_missing' };
   }
 
@@ -2596,13 +2622,14 @@ async function registerSaleRibIfAsked(page, productConfig = {}) {
 
   if (!iban) {
     logWarn('Vente Deciplus — pas d IBAN pour remplir le formulaire RIB');
-    return { ok: false, reason: 'iban_missing' };
   }
 
   const saved = await clickFirst(ribWork, sel('rib_form.save'), { force: true }).catch(() => false);
   if (!saved) {
     await clickVenteFooterAction(page, /^\s*Valider\s*$/i).catch(() => false);
   }
+  await closeGreyboxIfOpen(page).catch(() => {});
+  if (!iban) return { ok: false, reason: 'iban_missing' };
   return { ok: true };
 }
 
