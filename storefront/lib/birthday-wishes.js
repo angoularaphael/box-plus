@@ -151,7 +151,11 @@ function buildBirthdayEmail(member = {}) {
     '',
     wish,
     '',
+    'C’est un vrai plaisir de t’avoir avec nous, et toute la salle te le dit avec moi.',
+    '',
     seeYou,
+    '',
+    'Profite bien de ta journée, prends le temps de souffler, et reviens dès que tu veux enchaîner.',
     '',
     'Nous te souhaitons une excellente journée et une très belle année à venir ✨',
     '',
@@ -173,7 +177,14 @@ function buildBirthdayEmail(member = {}) {
 function buildBirthdaySms(member = {}) {
   const { who, greeting, wish, seeYou } = birthdayBodyLines(member);
   const hello = who ? greeting : 'Salut,';
-  return [hello, wish, seeYou, 'Belle journée à toi ✨', SIGN_OFF].join(' ');
+  return [
+    hello,
+    wish,
+    'C’est un vrai plaisir de t’avoir avec nous.',
+    seeYou,
+    'Profite bien de ta journée ✨',
+    SIGN_OFF,
+  ].join(' ');
 }
 
 function loadState() {

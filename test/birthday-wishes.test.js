@@ -54,6 +54,8 @@ test('mail David, texte perso, pas de HTML promo', () => {
   assert.match(mail.emailText, /Salut Guillaume,/);
   assert.match(mail.emailText, /très bel anniversaire 🎉/);
   assert.match(mail.emailText, /Hâte de te revoir sur le ring 🥊/);
+  assert.match(mail.emailText, /vrai plaisir de t’avoir avec nous/);
+  assert.match(mail.emailText, /Profite bien de ta journée/);
   assert.match(mail.emailText, /année à venir ✨/);
   assert.match(mail.emailText, /Sportivement,/);
   assert.match(mail.emailText, /David et toute l’équipe du Boxing Center/);
