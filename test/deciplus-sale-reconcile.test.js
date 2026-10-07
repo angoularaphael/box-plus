@@ -198,7 +198,7 @@ test('payé depuis plus de 15 min sans signature → pas de dispatch boutique', 
       ...unsigned,
       ready_for_dispatch: true,
     }),
-    true
+    false
   );
 });
 
