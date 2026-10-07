@@ -83,6 +83,13 @@ test('une demande de création Balma est forcée vers Minimes', () => {
   assert.match(source, /aucune nouvelle fiche ne peut être créée sur Balma/);
 });
 
+test('un succès bot clôture le job sale resté en processing', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../storefront/lib/order-lifecycle.js'), 'utf8');
+  assert.match(source, /closeCompletedSaleJob/);
+  assert.match(source, /status: 'completed'/);
+  assert.match(source, /await closeCompletedSaleJob\(order\)/);
+});
+
 test('une reprise après vente conserve le sale_id du checkpoint', () => {
   const source = fs.readFileSync(path.join(__dirname, '../bot/index.js'), 'utf8');
   assert.match(

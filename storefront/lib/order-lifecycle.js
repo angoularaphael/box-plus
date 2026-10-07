@@ -787,7 +787,42 @@ async function applyBotSaleStatus(orderId, patch = {}) {
   }
   order.bot_processed_at = new Date().toISOString();
   await saveOrderAsync(order);
+  await closeCompletedSaleJob(order);
   return order;
+}
+
+/** Evite qu un job resté « processing » relance une 2e vente alors que la commande est déjà OK. */
+async function closeCompletedSaleJob(order = {}) {
+  const status = String(order.bot_status || '').toLowerCase();
+  if (!['success', 'manual_ok', 'manual_coach'].includes(status)) return;
+  const memberId = String(order.deciplus_member_id || '').trim();
+  if (!memberId) return;
+  const saleId = String(order.deciplus_sale_id || '').trim();
+  try {
+    const { getSupabase } = require('./supabase');
+    const sb = getSupabase();
+    if (!sb) return;
+    await sb
+      .from('boxplus_job_actions')
+      .update({
+        status: 'completed',
+        lifecycle_state: saleId ? STATES.VERIFIED : STATES.MEMBER_CREATED,
+        error_message: null,
+        member_id: memberId,
+        sale_id: saleId || null,
+        lease_expires_at: new Date(Date.now() - 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('order_id', String(order.order_id))
+      .eq('action', 'sale')
+      .neq('status', 'completed');
+  } catch (err) {
+    const { logWarn } = require('../../lib/logger');
+    logWarn('Job sale non clos après succès commande', {
+      order_id: order.order_id,
+      error: err.message,
+    });
+  }
 }
 
 module.exports = {
