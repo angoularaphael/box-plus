@@ -4,10 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const { ROOT } = require('../../lib/utils');
 const { logInfo, logWarn } = require('../../lib/logger');
-const { sendEmailViaResend, isConfigured: resendConfigured } = require('./resend-send');
+const { sendEmailViaResend, isConfigured: resendConfigured, DEFAULT_SENDER_EMAIL } = require('./resend-send');
 
 const FROM_NAME = 'David';
-const FROM_EMAIL = 'david@boxingcenter.fr';
+const FROM_EMAIL = DEFAULT_SENDER_EMAIL;
 const REPLY_TO = 'boxingcentertls@gmail.com';
 const SIGN_OFF = 'David et toute l’equipe Boxing Center';
 

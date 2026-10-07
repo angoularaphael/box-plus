@@ -43,6 +43,7 @@ test('mail David, texte perso, pas de HTML promo', () => {
   const mail = buildBirthdayEmail({ first_name: 'Guillaume', last_name: 'CESSAC' });
   assert.equal(mail.fromName, FROM_NAME);
   assert.equal(mail.fromEmail, FROM_EMAIL);
+  assert.equal(mail.fromEmail, 'no-reply@boxingcenter.fr');
   assert.equal(mail.html, undefined);
   assert.equal(mail.headers, undefined);
   assert.match(mail.subject, /Guillaume, c’est David/);
