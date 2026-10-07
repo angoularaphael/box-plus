@@ -12,7 +12,15 @@ const {
 } = require('./resend-send');
 
 const FROM_NAME = 'Boxing Center';
-const SIGN_OFF = 'David et toute l’equipe Boxing Center';
+const SIGN_OFF = 'David et toute l’équipe du Boxing Center';
+
+const ZONE_SALLE = {
+  2: 'Minimes',
+  3: 'Portet',
+  4: 'Ramonville',
+  5: 'Saint-Cyprien',
+  7: 'Minimes',
+};
 
 function stateFile() {
   const dir = process.env.BOT_DATA_DIR || path.join(ROOT, 'data');
@@ -88,18 +96,66 @@ function shouldRunAt(now = new Date(), lastDateKey = '') {
   return today.hour <= 11;
 }
 
-function buildBirthdayEmail({ first_name, last_name } = {}) {
-  const who = firstNameOf(first_name || last_name || '');
-  const greeting = who ? `Salut ${who},` : 'Salut,';
+function gymSpokenName(member = {}) {
+  const fromZone = ZONE_SALLE[String(member.zone || '')];
+  if (fromZone) return fromZone;
+  const raw = String(member.gym_label || member.gym || '').trim();
+  if (/cyprien/i.test(raw)) return 'Saint-Cyprien';
+  if (/ramonville/i.test(raw)) return 'Ramonville';
+  if (/portet/i.test(raw)) return 'Portet';
+  if (/minimes/i.test(raw)) return 'Minimes';
+  if (/etats/i.test(raw)) return 'Minimes';
+  return '';
+}
+
+function ageYears(birthdate, now = new Date()) {
+  const born = parseBirthdate(birthdate);
+  if (!born?.year) return null;
+  const today = parisNow(now);
+  const age = today.year - born.year;
+  if (age < 3 || age > 90) return null;
+  return age;
+}
+
+function seeYouLine(member = {}) {
+  const salle = gymSpokenName(member);
+  const age = ageYears(member.birthdate);
+  const kid = age != null && age < 18;
+  if (salle && kid) {
+    return `Hâte de te revoir au cours, à ${salle}. Toute l’équipe est avec toi.`;
+  }
+  if (salle) {
+    return `Hâte de te revoir sur le ring, à ${salle}.`;
+  }
+  if (kid) {
+    return 'Hâte de te revoir au cours. Toute l’équipe est avec toi.';
+  }
+  return 'Hâte de te revoir sur le ring.';
+}
+
+function birthdayBodyLines(member = {}) {
+  const who = firstNameOf(member.first_name || member.last_name || '');
+  return {
+    who,
+    greeting: who ? `Salut ${who},` : 'Salut,',
+    wish: 'Toute l’équipe du Boxing Center se joint à moi pour te souhaiter un très bel anniversaire.',
+    seeYou: seeYouLine(member),
+  };
+}
+
+function buildBirthdayEmail(member = {}) {
+  const { who, greeting, wish, seeYou } = birthdayBodyLines(member);
   const subject = who ? `${who}, c’est David` : 'C’est David';
   const emailText = [
     greeting,
     '',
-    'David et toute l’equipe Boxing Center te souhaitent un joyeux anniversaire.',
+    `${wish} 🎉`,
     '',
-    'Passe une belle journee, on a hate de te revoir sur le ring.',
+    seeYou,
     '',
-    'A tres vite,',
+    'Nous te souhaitons une excellente journée et une très belle année à venir.',
+    '',
+    'Sportivement,',
     SIGN_OFF,
   ].join('\n');
   return {
@@ -114,15 +170,10 @@ function buildBirthdayEmail({ first_name, last_name } = {}) {
   };
 }
 
-function buildBirthdaySms({ first_name } = {}) {
-  const who = firstNameOf(first_name || '');
-  const hello = who ? `Salut ${who},` : 'Salut,';
-  return [
-    hello,
-    'David et toute l’equipe Boxing Center te souhaitent un joyeux anniversaire.',
-    'Passe une belle journee.',
-    SIGN_OFF,
-  ].join(' ');
+function buildBirthdaySms(member = {}) {
+  const { who, greeting, wish, seeYou } = birthdayBodyLines(member);
+  const hello = who ? greeting : 'Salut,';
+  return [hello, wish, seeYou, 'Belle journée à toi.', SIGN_OFF].join(' ');
 }
 
 function loadState() {
@@ -240,6 +291,7 @@ module.exports = {
   FROM_NAME,
   SIGN_OFF,
   firstNameOf,
+  gymSpokenName,
   parseBirthdate,
   isBirthdayToday,
   isSkipMember,

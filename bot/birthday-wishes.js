@@ -16,6 +16,7 @@ const {
   alreadySent,
   markSent,
   sendBirthdayWish,
+  gymSpokenName,
 } = require('../storefront/lib/birthday-wishes');
 
 function zoneIds() {
@@ -52,6 +53,7 @@ function mapRow(row, zone) {
     phone: row.mobile || row.phone || row.tel || '',
     birthdate: row.birthdate || row.birthDate || row.birthday || '',
     zone,
+    gym_label: gymSpokenName({ zone }),
   };
 }
 
