@@ -52,8 +52,9 @@ test('mail David, texte perso, pas de HTML promo', () => {
   assert.match(mail.subject, /Guillaume, c’est David/);
   assert.doesNotMatch(mail.subject, /Boxing Center|anniversaire|offre/i);
   assert.match(mail.emailText, /Salut Guillaume,/);
-  assert.match(mail.emailText, /très bel anniversaire/);
-  assert.match(mail.emailText, /Hâte de te revoir sur le ring/);
+  assert.match(mail.emailText, /très bel anniversaire 🎉/);
+  assert.match(mail.emailText, /Hâte de te revoir sur le ring 🥊/);
+  assert.match(mail.emailText, /année à venir ✨/);
   assert.match(mail.emailText, /Sportivement,/);
   assert.match(mail.emailText, /David et toute l’équipe du Boxing Center/);
   assert.doesNotMatch(mail.emailText, /unsubscribe|desinscription|promo|29 euros/i);

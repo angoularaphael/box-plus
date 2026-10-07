@@ -122,15 +122,15 @@ function seeYouLine(member = {}) {
   const age = ageYears(member.birthdate);
   const kid = age != null && age < 18;
   if (salle && kid) {
-    return `Hâte de te revoir au cours, à ${salle}. Toute l’équipe est avec toi.`;
+    return `Hâte de te revoir au cours 🥊, à ${salle}. Toute l’équipe est avec toi.`;
   }
   if (salle) {
-    return `Hâte de te revoir sur le ring, à ${salle}.`;
+    return `Hâte de te revoir sur le ring 🥊, à ${salle}.`;
   }
   if (kid) {
-    return 'Hâte de te revoir au cours. Toute l’équipe est avec toi.';
+    return 'Hâte de te revoir au cours 🥊. Toute l’équipe est avec toi.';
   }
-  return 'Hâte de te revoir sur le ring.';
+  return 'Hâte de te revoir sur le ring 🥊.';
 }
 
 function birthdayBodyLines(member = {}) {
@@ -138,7 +138,7 @@ function birthdayBodyLines(member = {}) {
   return {
     who,
     greeting: who ? `Salut ${who},` : 'Salut,',
-    wish: 'Toute l’équipe du Boxing Center se joint à moi pour te souhaiter un très bel anniversaire.',
+    wish: 'Toute l’équipe du Boxing Center se joint à moi pour te souhaiter un très bel anniversaire 🎉',
     seeYou: seeYouLine(member),
   };
 }
@@ -149,11 +149,11 @@ function buildBirthdayEmail(member = {}) {
   const emailText = [
     greeting,
     '',
-    `${wish} 🎉`,
+    wish,
     '',
     seeYou,
     '',
-    'Nous te souhaitons une excellente journée et une très belle année à venir.',
+    'Nous te souhaitons une excellente journée et une très belle année à venir ✨',
     '',
     'Sportivement,',
     SIGN_OFF,
@@ -173,7 +173,7 @@ function buildBirthdayEmail(member = {}) {
 function buildBirthdaySms(member = {}) {
   const { who, greeting, wish, seeYou } = birthdayBodyLines(member);
   const hello = who ? greeting : 'Salut,';
-  return [hello, wish, seeYou, 'Belle journée à toi.', SIGN_OFF].join(' ');
+  return [hello, wish, seeYou, 'Belle journée à toi ✨', SIGN_OFF].join(' ');
 }
 
 function loadState() {
