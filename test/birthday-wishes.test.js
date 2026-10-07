@@ -12,7 +12,6 @@ const {
   buildBirthdaySms,
   firstNameOf,
   FROM_NAME,
-  FROM_EMAIL,
 } = require('../storefront/lib/birthday-wishes');
 
 test('prenom Guillaume', () => {
@@ -40,12 +39,16 @@ test('fenetre ops minuit jusqu’a 11h Paris, une fois par jour', () => {
 });
 
 test('mail David, texte perso, pas de HTML promo', () => {
+  const prev = process.env.RESEND_SENDER_EMAIL;
+  delete process.env.RESEND_SENDER_EMAIL;
   const mail = buildBirthdayEmail({ first_name: 'Guillaume', last_name: 'CESSAC' });
+  if (prev == null) delete process.env.RESEND_SENDER_EMAIL;
+  else process.env.RESEND_SENDER_EMAIL = prev;
   assert.equal(mail.fromName, FROM_NAME);
-  assert.equal(mail.fromEmail, FROM_EMAIL);
+  assert.equal(mail.fromName, 'Boxing Center');
   assert.equal(mail.fromEmail, 'no-reply@boxingcenter.fr');
   assert.equal(mail.html, undefined);
-  assert.equal(mail.headers, undefined);
+  assert.equal(mail.headers['X-Transactional'], 'true');
   assert.match(mail.subject, /Guillaume, c’est David/);
   assert.doesNotMatch(mail.subject, /Boxing Center|anniversaire|offre/i);
   assert.match(mail.emailText, /Salut Guillaume,/);

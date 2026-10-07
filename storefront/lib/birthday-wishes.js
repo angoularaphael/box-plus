@@ -4,11 +4,14 @@ const fs = require('fs');
 const path = require('path');
 const { ROOT } = require('../../lib/utils');
 const { logInfo, logWarn } = require('../../lib/logger');
-const { sendEmailViaResend, isConfigured: resendConfigured, DEFAULT_SENDER_EMAIL } = require('./resend-send');
+const {
+  sendEmailViaResend,
+  isConfigured: resendConfigured,
+  senderEmail,
+  defaultReplyTo,
+} = require('./resend-send');
 
-const FROM_NAME = 'David';
-const FROM_EMAIL = DEFAULT_SENDER_EMAIL;
-const REPLY_TO = 'boxingcentertls@gmail.com';
+const FROM_NAME = 'Boxing Center';
 const SIGN_OFF = 'David et toute l’equipe Boxing Center';
 
 function stateFile() {
@@ -101,12 +104,13 @@ function buildBirthdayEmail({ first_name, last_name } = {}) {
   ].join('\n');
   return {
     fromName: FROM_NAME,
-    fromEmail: FROM_EMAIL,
-    replyTo: REPLY_TO,
+    fromEmail: senderEmail(),
+    replyTo: defaultReplyTo(),
     subject,
     html: undefined,
     emailText,
-    headers: undefined,
+    headers: { 'X-Transactional': 'true' },
+    tags: [{ name: 'category', value: 'transactional' }],
   };
 }
 
@@ -161,6 +165,7 @@ async function sendBirthdayEmail(member) {
     fromEmail: copy.fromEmail,
     replyTo: copy.replyTo,
     headers: copy.headers,
+    tags: copy.tags,
   });
   return { sent: true, via: out.via, messageId: out.messageId || null };
 }
@@ -233,7 +238,6 @@ async function sendBirthdayWish(member, { email = true, sms = true } = {}) {
 
 module.exports = {
   FROM_NAME,
-  FROM_EMAIL,
   SIGN_OFF,
   firstNameOf,
   parseBirthdate,
