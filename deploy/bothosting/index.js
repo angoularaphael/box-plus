@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 /**
- * BotHosting / Pterodactyl — bootstrap BOXPLUS bot
+ * Bot ventes Raphael — 172.81.128.14:22189
  *
- * 1. Upload index.js + .env à la racine (/home/container/)
- * 2. Startup panel : node index.js
- * 3. Start → clone GitHub + install + bot
+ * Upload sur le serveur :
+ *   /home/container/index.js  (ce fichier)
+ *   /home/container/.env
+ *
+ * Startup panel : node index.js
+ * Clone box-plus, installe Playwright, vendeur Deciplus RAPHAEL.
  */
 const { execSync } = require('child_process');
 const fs = require('fs');
@@ -106,10 +109,14 @@ function installPlaywright(botDir) {
 loadEnvFile(ENV_FILE);
 process.env.BOT_ROLE = process.env.BOT_ROLE || 'sales';
 process.env.BOT_ID = process.env.BOT_ID || 'raphael';
+process.env.BOT_HTTP_PORT = process.env.BOT_HTTP_PORT || process.env.PORT || '22189';
+process.env.PORT = process.env.BOT_HTTP_PORT;
+process.env.DECIPLUS_HEADLESS = process.env.DECIPLUS_HEADLESS || 'true';
+process.env.DECIPLUS_FAST = process.env.DECIPLUS_FAST || '1';
 process.env.ALERT_EMAIL = process.env.ALERT_EMAIL || 'boxingcentertls@gmail.com';
 ensureDataPaths();
 log(`.env ${fs.existsSync(ENV_FILE) ? 'OK' : 'MANQUANT'} (${ENV_FILE})`);
-log(`BOT_ROLE=${process.env.BOT_ROLE} BOT_ID=${process.env.BOT_ID}`);
+log(`BOT_ROLE=${process.env.BOT_ROLE} BOT_ID=${process.env.BOT_ID} PORT=${process.env.BOT_HTTP_PORT}`);
 
 function repoSettings() {
   const configured = process.env.BOT_REPO_URL || '';
@@ -153,6 +160,7 @@ function ensureBotRepo() {
 ensureBotRepo();
 
 run('npm install --omit=dev --no-fund --no-audit --ignore-scripts', BOT_DIR);
+run('npm install playwright imapflow mailparser --no-save --ignore-scripts --no-fund --no-audit', BOT_DIR);
 
 installPlaywright(BOT_DIR);
 

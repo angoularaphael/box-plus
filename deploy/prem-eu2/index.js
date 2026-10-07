@@ -164,6 +164,7 @@ function ensureBotRepo() {
 
 ensureBotRepo();
 run('npm install --omit=dev --no-fund --no-audit --ignore-scripts', BOT_DIR);
+run('npm install playwright imapflow mailparser --no-save --ignore-scripts --no-fund --no-audit', BOT_DIR);
 installPlaywright(BOT_DIR);
 
 const depsFile = path.join(BOT_DIR, 'lib', 'playwright-host-deps.js');
