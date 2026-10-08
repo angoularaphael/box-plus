@@ -88,7 +88,7 @@ async function listZoneMembers(page, headers, zoneId) {
 }
 
 async function hydrateMember(page, headers, member) {
-  if (member.email && member.phone && member.birthdate) return member;
+  if (member.email && member.birthdate) return member;
   const res = await page.context().request.get(`https://api.deciplus.pro/staff/v1/member/${member.member_id}`, {
     headers,
     timeout: 20000,
@@ -108,8 +108,10 @@ async function hydrateMember(page, headers, member) {
 async function collectBirthdayMembers(page, headers, now) {
   const out = [];
   const seen = new Set();
+  let scanned = 0;
   for (const zone of zoneIds()) {
     const rows = await listZoneMembers(page, headers, zone);
+    scanned += rows.length;
     for (const row of rows) {
       if (!row.member_id || seen.has(row.member_id)) continue;
       if (!isBirthdayToday(row.birthdate, now)) continue;
@@ -122,7 +124,9 @@ async function collectBirthdayMembers(page, headers, now) {
     if (isSkipMember(row)) continue;
     hydrated.push(await hydrateMember(page, headers, row));
   }
-  return hydrated.filter((m) => !isSkipMember(m));
+  const members = hydrated.filter((m) => !isSkipMember(m));
+  members._scanned = scanned;
+  return members;
 }
 
 async function runBirthdayWishes({ force = false } = {}) {
@@ -154,18 +158,19 @@ async function runBirthdayWishes({ force = false } = {}) {
     if (!token) throw new Error('Token Deciplus introuvable');
     const headers = apiHeaders(token);
     const members = await collectBirthdayMembers(page, headers, now);
+    report.scanned = members._scanned || 0;
     report.due = members.length;
     for (const member of members) {
       if (alreadySent(state, member.member_id, today.dateKey)) {
         report.results.push({ member_id: member.member_id, skipped: 'already_sent' });
         continue;
       }
-      const out = await sendBirthdayWish(member);
+      const out = await sendBirthdayWish(member, { email: true });
       markSent(state, member.member_id, today.dateKey, {
         email: Boolean(out.email?.sent),
-        sms: Boolean(out.sms?.sent),
+        sms: false,
       });
-      if (out.email?.sent || out.sms?.sent) report.sent += 1;
+      if (out.email?.sent) report.sent += 1;
       report.results.push(out);
       await page.waitForTimeout(400);
     }
@@ -194,6 +199,7 @@ async function maybeRunBirthdayWishes() {
 
 module.exports = {
   zoneIds,
+  collectBirthdayMembers,
   runBirthdayWishes,
   maybeRunBirthdayWishes,
 };

@@ -241,22 +241,18 @@ async function sendBirthdaySms(member) {
   return { sent: true, via: 'sms_gateway', campaignId: campaign.id, queued: start.queued || 0 };
 }
 
-async function sendBirthdayWish(member, { email = true, sms = true } = {}) {
-  const result = { member_id: member.member_id || null, name: `${member.first_name || ''} ${member.last_name || ''}`.trim() };
+async function sendBirthdayWish(member, { email = true } = {}) {
+  const result = {
+    member_id: member.member_id || null,
+    name: `${member.first_name || ''} ${member.last_name || ''}`.trim(),
+    sms: { sent: false, skipped: true, reason: 'sms_disabled' },
+  };
   if (email) {
     try {
       result.email = await sendBirthdayEmail(member);
     } catch (err) {
       result.email = { sent: false, error: err.message };
       logWarn('Anniversaire mail', { member_id: member.member_id, error: err.message });
-    }
-  }
-  if (sms) {
-    try {
-      result.sms = await sendBirthdaySms(member);
-    } catch (err) {
-      result.sms = { sent: false, error: err.message };
-      logWarn('Anniversaire SMS', { member_id: member.member_id, error: err.message });
     }
   }
   return result;

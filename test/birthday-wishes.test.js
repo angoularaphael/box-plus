@@ -9,7 +9,6 @@ const {
   isSkipMember,
   shouldRunAt,
   buildBirthdayEmail,
-  buildBirthdaySms,
   firstNameOf,
   FROM_NAME,
 } = require('../storefront/lib/birthday-wishes');
@@ -60,12 +59,23 @@ test('mail David, texte perso, pas de HTML promo', () => {
   assert.doesNotMatch(mail.emailText, /unsubscribe|desinscription|promo|29 euros/i);
 });
 
-test('SMS signe David et l’equipe', () => {
-  const sms = buildBirthdaySms({ first_name: 'Guillaume' });
-  assert.match(sms, /Salut Guillaume/);
-  assert.match(sms, /très bel anniversaire/);
-  assert.match(sms, /très belle année à venir/);
-  assert.match(sms, /David et toute l’équipe du Boxing Center/);
+test('anniversaire mail seulement, pas SMS', () => {
+  const lib = fs.readFileSync(path.join(__dirname, '../storefront/lib/birthday-wishes.js'), 'utf8');
+  const bot = fs.readFileSync(path.join(__dirname, '../bot/birthday-wishes.js'), 'utf8');
+  assert.match(lib, /sms_disabled/);
+  assert.doesNotMatch(lib, /await sendBirthdaySms/);
+  assert.match(bot, /sendBirthdayWish\(member, \{ email: true \}\)/);
+  assert.doesNotMatch(bot, /sms: Boolean\(out\.sms/);
+});
+
+test('parcours liste : zones BC 2/3/4/5/7, pas Balma, date sur la liste members', () => {
+  const bot = fs.readFileSync(path.join(__dirname, '../bot/birthday-wishes.js'), 'utf8');
+  const { zoneIds } = require('../bot/birthday-wishes');
+  const zones = zoneIds().map(String).sort();
+  assert.deepEqual(zones, ['2', '3', '4', '5', '7']);
+  assert.match(bot, /staff\/v1\/members\?zoneId=/);
+  assert.match(bot, /isBirthdayToday\(row\.birthdate/);
+  assert.match(bot, /hydrateMember/);
 });
 
 test('ignore les fiches test', () => {
