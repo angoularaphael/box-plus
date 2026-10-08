@@ -32,11 +32,7 @@ function loadEnvFile(file) {
 const ROOT = path.join(__dirname, '..');
 loadEnvFile(path.join(ROOT, '.env'));
 loadEnvFile(path.join(ROOT, '..', 'gestion-manager', '.env'));
-loadEnvFile(path.join(ROOT, '..', 'gestion-manager', 'bots', 'deploy', 'email-resend', '.env'));
 process.env.BOXPLUS_ORDERS_REMOTE = '1';
-process.env.RESEND_SENDER_NAME = process.env.RESEND_SENDER_NAME || 'David';
-process.env.RESEND_SENDER_EMAIL =
-  process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
 delete process.env.DRY_RUN;
 
 const SEND = process.argv.includes('--send');
@@ -65,11 +61,11 @@ async function main() {
     membershipKeysFromOrders,
     ESSAI_SINCE_MS,
   } = require('../storefront/lib/essai-followup');
-  const { isConfigured } = require('../storefront/lib/resend-send');
+  const { isConfigured } = require('../storefront/lib/brevo-send');
   const { buildOrderFromLifecycle } = require('../storefront/lib/orders');
   const { forwardJobToBot } = require('../lib/bot-forward');
 
-  if (SEND && !isConfigured()) throw new Error('RESEND_API_KEY manquant');
+  if (SEND && !isConfigured()) throw new Error('BREVO_API_KEY manquant');
 
   const now = Date.now();
   const since = new Date(Math.min(ESSAI_SINCE_MS, now - 21 * 24 * 60 * 60 * 1000)).toISOString();

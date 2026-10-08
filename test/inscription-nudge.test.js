@@ -56,14 +56,14 @@ test('lien de reprise : étape réelle, produit et jeton', () => {
   else process.env.STORE_URL = prev;
 });
 
-test('message erreur mail reprise — Resend, pas Brevo', () => {
+test('message erreur mail reprise — Brevo, pas Resend', () => {
   const { resumeEmailFailureMessage } = require('../storefront/lib/inscription-nudge');
   assert.equal(resumeEmailFailureMessage({ error: 'no_email' }), 'Pas d’e-mail sur ce dossier');
   assert.match(
-    resumeEmailFailureMessage({ error: 'resend_not_configured' }),
-    /RESEND_API_KEY/
+    resumeEmailFailureMessage({ error: 'brevo_not_configured' }),
+    /BREVO_API_KEY/
   );
-  assert.match(resumeEmailFailureMessage({ error: 'API key invalid' }), /Resend/);
+  assert.match(resumeEmailFailureMessage({ error: 'API key invalid' }), /Brevo/);
 });
 
 test('mails reprise / relance : transactionnel Boxing Center, comme la résiliation', () => {

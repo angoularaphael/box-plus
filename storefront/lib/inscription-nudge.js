@@ -216,11 +216,6 @@ function escapeHtml(value) {
     .replace(/"/g, '&quot;');
 }
 
-const TRANSACTIONAL_EMAIL_TAGS = [{ name: 'category', value: 'transactional' }];
-const TRANSACTIONAL_EMAIL_HEADERS = {
-  'X-Transactional': 'true',
-};
-
 function nudgeEmailCopy(order, { kind } = {}) {
   const { buildInscriptionNudgeEmail } = require('./campaign-email');
   const pay = kind === 'pay' || wantsPayCta(order, { kind });
@@ -338,13 +333,13 @@ function resumeEmailFailureMessage(result = {}) {
   if (code === 'no_email') return 'Pas d’e-mail sur ce dossier';
   if (code === 'invalid_email') return 'Adresse e-mail invalide sur ce dossier';
   if (code === 'test_email') return 'E-mail de test — envoi ignoré';
-  if (code === 'resend_not_configured') {
-    return 'Envoi e-mail impossible — configurez RESEND_API_KEY sur Vercel (boutique)';
+  if (code === 'brevo_not_configured' || code === 'resend_not_configured') {
+    return 'Envoi e-mail impossible — configurez BREVO_API_KEY sur Vercel (boutique)';
   }
-  if (result.error && !/brevo/i.test(String(result.error))) {
-    return `Envoi e-mail impossible (Resend) : ${result.error}`;
+  if (result.error) {
+    return `Envoi e-mail impossible (Brevo) : ${result.error}`;
   }
-  return 'Envoi e-mail impossible (Resend)';
+  return 'Envoi e-mail impossible (Brevo)';
 }
 
 async function sendResumeEmail(order, { kind = 'resume', to } = {}) {
@@ -356,22 +351,19 @@ async function sendResumeEmail(order, { kind = 'resume', to } = {}) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(dest)) {
     return { sent: false, skipped: true, reason: 'invalid_email' };
   }
-  const { sendEmailViaResend, isConfigured } = require('./resend-send');
-  if (!isConfigured()) return { sent: false, error: 'resend_not_configured' };
+  const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
+  if (!isConfigured()) return { sent: false, error: 'brevo_not_configured' };
   const copy = nudgeEmailCopy(order, { kind });
   try {
-    const result = await sendEmailViaResend({
+    const result = await sendEmailViaBrevo({
       to: dest,
       subject: copy.subject,
       html: copy.html,
       text: copy.emailText,
       fromName: copy.fromName,
-      fromEmail: copy.fromEmail,
-      tags: TRANSACTIONAL_EMAIL_TAGS,
-      headers: TRANSACTIONAL_EMAIL_HEADERS,
     });
-    if (!result) return { sent: false, error: 'resend_not_configured' };
-    return { sent: true, via: result.via || 'resend', to: dest };
+    if (!result) return { sent: false, error: 'brevo_not_configured' };
+    return { sent: true, via: result.via || 'brevo', to: dest };
   } catch (err) {
     return { sent: false, error: err.message || 'email_error' };
   }
@@ -502,22 +494,19 @@ async function sendNudgeEmail(order) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(item.email).trim())) {
     return { sent: false, skipped: true, reason: 'invalid_email' };
   }
-  const { sendEmailViaResend, isConfigured } = require('./resend-send');
-  if (!isConfigured()) return { sent: false, reason: 'resend_not_configured' };
+  const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
+  if (!isConfigured()) return { sent: false, reason: 'brevo_not_configured' };
   const copy = nudgeEmailCopy(order);
   try {
-    const result = await sendEmailViaResend({
+    const result = await sendEmailViaBrevo({
       to: item.email,
       subject: copy.subject,
       html: copy.html,
       text: copy.emailText,
       fromName: copy.fromName,
-      fromEmail: copy.fromEmail,
-      tags: TRANSACTIONAL_EMAIL_TAGS,
-      headers: TRANSACTIONAL_EMAIL_HEADERS,
     });
-    if (!result) return { sent: false, reason: 'resend_not_configured' };
-    return { sent: true, via: result.via || 'resend' };
+    if (!result) return { sent: false, reason: 'brevo_not_configured' };
+    return { sent: true, via: result.via || 'brevo' };
   } catch (err) {
     return { sent: false, error: err.message || 'email_error' };
   }

@@ -1,5 +1,5 @@
 /** URLs et expéditeur email — Boxing Center */
-const { DEFAULT_SENDER_EMAIL, senderEmail } = require('./resend-send');
+const { DEFAULT_SENDER_EMAIL, senderEmail } = require('./brevo-send');
 
 const CGV_URL = '/cgv';
 const REGLEMENT_URL = '/reglement-interieur';
@@ -9,8 +9,8 @@ const DEFAULT_MAIL_FROM = `Boxing Center <${DEFAULT_SENDER_EMAIL}>`;
 
 function getMailFrom() {
   if (process.env.MAIL_FROM) return process.env.MAIL_FROM;
-  const email = process.env.RESEND_SENDER_EMAIL || senderEmail();
-  const name = process.env.RESEND_INVOICE_FROM_NAME || 'Boxing Center';
+  const email = process.env.BREVO_SENDER_EMAIL || senderEmail();
+  const name = process.env.BREVO_SENDER_NAME || 'Boxing Center';
   return `${name} <${email}>`;
 }
 

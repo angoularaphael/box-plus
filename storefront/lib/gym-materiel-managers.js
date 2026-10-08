@@ -192,28 +192,23 @@ async function sendManagerSaleEmail(manager, message, order) {
   const html = `<p style="font-family:Arial,sans-serif">Nouvelle vente matériel — ${escapeMailHtml(gymLabel)}.</p>
 <pre style="font-family:Arial,sans-serif;white-space:pre-wrap;font-size:15px">${escapeMailHtml(message)}</pre>`;
 
-  const { sendEmailViaResend, isConfigured: resendOk } = require('./resend-send');
-  if (resendOk()) {
-    try {
-      const result = await sendEmailViaResend({
-        to,
-        subject,
-        text: message,
-        html,
-        fromName: 'Boxing Center',
-        replyTo: 'boxingcentertls@gmail.com',
-        tags: [{ name: 'type', value: 'materiel-coach' }],
-      });
-      return { sent: true, to, via: 'resend', messageId: result.messageId };
-    } catch (err) {
-      logWarn('Email club matériel Resend', { to, error: err.message });
-    }
-  }
-
   const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
   if (!isConfigured()) return { sent: false, reason: 'email_not_configured', to };
-  const result = await sendEmailViaBrevo({ to, subject, text: message, html });
-  return { sent: Boolean(result), to, via: 'brevo' };
+  try {
+    const result = await sendEmailViaBrevo({
+      to,
+      subject,
+      text: message,
+      html,
+      fromName: 'Boxing Center',
+      replyTo: 'boxingcentertls@gmail.com',
+    });
+    if (!result) return { sent: false, reason: 'email_not_configured', to };
+    return { sent: true, to, via: result.via || 'brevo', messageId: result.messageId };
+  } catch (err) {
+    logWarn('Email club matériel Brevo', { to, error: err.message });
+    return { sent: false, to, error: err.message };
+  }
 }
 
 function applyManagerNotify(order, result, source) {

@@ -6,16 +6,16 @@ const fs = require('fs');
 const path = require('path');
 const { isConfigured, senderEmail, DEFAULT_SENDER_EMAIL } = require('../storefront/lib/resend-send');
 
-test('factures inscription et matériel passent par Resend, pas Brevo', () => {
+test('factures inscription et matériel passent par Brevo, pas Resend', () => {
   const mailer = fs.readFileSync(path.join(__dirname, '../storefront/lib/mailer.js'), 'utf8');
   const branding = fs.readFileSync(path.join(__dirname, '../storefront/lib/branding.js'), 'utf8');
-  assert.match(mailer, /resend-send/);
-  assert.match(mailer, /sendEmailViaResend/);
+  assert.match(mailer, /brevo-send/);
+  assert.match(mailer, /sendEmailViaBrevo/);
   assert.match(mailer, /fromName: 'Boxing Center'/);
-  assert.doesNotMatch(mailer, /sendEmailViaBrevo/);
-  assert.doesNotMatch(mailer, /brevo-send/);
-  assert.match(branding, /resend-send/);
-  assert.doesNotMatch(branding, /brevo-send/);
+  assert.doesNotMatch(mailer, /sendEmailViaResend/);
+  assert.doesNotMatch(mailer, /resend-send/);
+  assert.match(branding, /brevo-send/);
+  assert.doesNotMatch(branding, /resend-send/);
 });
 
 test('Resend convertit les PJ fichier/buffer en base64', () => {
@@ -42,20 +42,19 @@ test('Resend : expéditeur campagne = no-reply@boxingcenter.fr', () => {
   else process.env.RESEND_SENDER_EMAIL = prev;
 });
 
-test('relance essai client passe par Resend, pas Brevo', () => {
+test('relance essai client passe par Brevo, pas Resend', () => {
   const src = fs.readFileSync(path.join(__dirname, '../storefront/lib/essai-followup.js'), 'utf8');
-  assert.match(src, /resend-send/);
-  assert.match(src, /sendEmailViaResend/);
-  assert.doesNotMatch(src, /sendEmailViaBrevo/);
+  assert.match(src, /brevo-send/);
+  assert.match(src, /sendEmailViaBrevo/);
+  assert.doesNotMatch(src, /sendEmailViaResend/);
 });
 
-test('relance inscription e-mail passe par Resend, pas Brevo', () => {
+test('relance inscription e-mail passe par Brevo, pas Resend', () => {
   const src = fs.readFileSync(path.join(__dirname, '../storefront/lib/inscription-nudge.js'), 'utf8');
-  assert.match(src, /resend-send/);
-  assert.match(src, /sendEmailViaResend/);
-  assert.doesNotMatch(src, /sendEmailViaBrevo/);
+  assert.match(src, /brevo-send/);
+  assert.match(src, /sendEmailViaBrevo/);
+  assert.doesNotMatch(src, /sendEmailViaResend/);
   assert.match(src, /html: copy\.html/);
-  assert.match(src, /fromEmail: copy\.fromEmail/);
   assert.doesNotMatch(src, /html:\s*undefined/);
   const copy = fs.readFileSync(path.join(__dirname, '../storefront/lib/campaign-email.js'), 'utf8');
   assert.match(copy, /david@boxingcenter\.fr/);

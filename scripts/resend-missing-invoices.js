@@ -2,22 +2,19 @@
 'use strict';
 /**
  * Rattrapage factures boutique jamais parties (email_sent vide).
- * Envoi Resend no-reply@boxingcenter.fr + PDF facture.
+ * Envoi Brevo + PDF facture.
  *
  *   node scripts/resend-missing-invoices.js --send
  *   node scripts/resend-missing-invoices.js --send --limit=10
  */
 require('dotenv').config();
 process.env.BOXPLUS_ORDERS_REMOTE = '1';
-process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
-process.env.RESEND_SENDER_NAME = 'Boxing Center';
-process.env.RESEND_REPLY_TO = process.env.RESEND_REPLY_TO || 'boxingcentertls@gmail.com';
 
 const fs = require('fs');
 const path = require('path');
 const { getSupabase } = require('../storefront/lib/supabase');
 const { generateInscriptionInvoicePdf } = require('../storefront/lib/invoice-pdf');
-const { sendEmailViaResend, isConfigured } = require('../storefront/lib/resend-send');
+const { sendEmailViaBrevo, isConfigured } = require('../storefront/lib/brevo-send');
 const { markEmailSent } = require('../storefront/lib/order-lifecycle');
 const { portetDossierCc } = require('../storefront/lib/mailer');
 
@@ -133,15 +130,15 @@ async function loadPaidMissing() {
 
 (async () => {
   if (!SEND) {
-    console.log('Dry-run. Relancer avec --send pour envoyer via Resend.');
+    console.log('Dry-run. Relancer avec --send pour envoyer via Brevo.');
   }
-  if (SEND && !isConfigured()) throw new Error('RESEND_API_KEY manquant');
+  if (SEND && !isConfigured()) throw new Error('BREVO_API_KEY manquant');
 
   const state = loadState();
   const missing = await loadPaidMissing();
   const report = {
     at: new Date().toISOString(),
-    via: 'resend',
+    via: 'brevo',
     dry_run: !SEND,
     candidates: missing.length,
     sent: [],
@@ -186,7 +183,7 @@ async function loadPaidMissing() {
       const buf = fs.readFileSync(invoice.filepath);
       if (buf.length < 500) throw new Error('PDF facture trop petit');
       const mail = buildInvoiceEmail(order);
-      const result = await sendEmailViaResend({
+      const result = await sendEmailViaBrevo({
         to: email,
         subject: mail.subject,
         html: mail.html,
@@ -195,7 +192,7 @@ async function loadPaidMissing() {
         attachments: [
           {
             filename: invoice.filename,
-            content: buf.toString('base64'),
+            content: buf,
           },
         ],
         headers: { 'X-Transactional': 'true' },
