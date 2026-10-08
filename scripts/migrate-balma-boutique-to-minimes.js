@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * Fiches encore sur Balma (zone 1) avec un contrat actif,
- * et un abonnement payé via la boutique
+ * Fiches encore sur Balma (zone 1) ou Etats-Unis (zone 7),
+ * avec un contrat actif et un abonnement payé via la boutique
  * → Minimes (zone 2) uniquement.
  *
  * Jamais l'inverse : la destination est figée sur idz=2.
+ * Aucune vente n'est annulée ni résiliée.
  *
  *   node scripts/migrate-balma-boutique-to-minimes.js --check
  *   node scripts/migrate-balma-boutique-to-minimes.js
@@ -33,13 +34,16 @@ const ONLY = new Set(
     .map((id) => id.replace(/\D/g, ''))
     .filter(Boolean)
 );
-const ZONE_BALMA = '1';
+const SOURCE_ZONES = [
+  { id: '1', label: 'Balma' },
+  { id: '7', label: 'Etats-Unis' },
+];
 const ZONE_MINIMES = '2';
 const OUT = path.join(__dirname, '..', 'data', `migrate-balma-boutique-${Date.now()}.json`);
 const LOG = path.join(__dirname, '..', 'data', 'migrate-balma-boutique.log');
 
-if (ZONE_BALMA !== '1' || ZONE_MINIMES !== '2') {
-  throw new Error('Direction interdite : seule Balma (1) vers Minimes (2) est autorisée');
+if (ZONE_MINIMES !== '2' || SOURCE_ZONES.some((zone) => zone.id === ZONE_MINIMES)) {
+  throw new Error('Direction interdite : seule Balma (1) ou Etats-Unis (7) vers Minimes (2)');
 }
 
 function logLine(...parts) {
@@ -145,25 +149,25 @@ async function loadBoutiqueSubscriptions() {
   return [...byMember.values()];
 }
 
-async function listBalmaMembers(page, headers) {
+async function listZoneMembers(page, headers, zone) {
   const all = [];
   const seen = new Set();
   let expected = null;
   for (let pageNo = 1; pageNo <= 400; pageNo += 1) {
     const res = await page.context().request.get(
-      `https://api.deciplus.pro/staff/v1/members?zoneId=${ZONE_BALMA}&page=${pageNo}&perPage=100`,
+      `https://api.deciplus.pro/staff/v1/members?zoneId=${zone.id}&page=${pageNo}&perPage=100`,
       { headers, timeout: 30000 }
     );
     const body = await readJson(res);
     if (res.status() !== 200) {
-      throw new Error(`Liste Balma page ${pageNo} HTTP ${res.status()}`);
+      throw new Error(`Liste ${zone.label} page ${pageNo} HTTP ${res.status()}`);
     }
     const rows = body.response?.rows || [];
     expected = Number(body.response?.count ?? expected ?? 0);
     if (!rows.length) break;
     let added = 0;
     for (const row of rows) {
-      if (String(row.zone) !== ZONE_BALMA) continue;
+      if (String(row.zone) !== zone.id) continue;
       const id = String(row.id);
       if (seen.has(id)) continue;
       seen.add(id);
@@ -172,10 +176,12 @@ async function listBalmaMembers(page, headers) {
         first_name: row.name || '',
         last_name: row.surname || '',
         birthdate: dayKey(row.birthdate),
+        source_zone: zone.id,
+        source_label: zone.label,
       });
       added += 1;
     }
-    logLine('liste Balma', `page=${pageNo}`, `lignes=${rows.length}`, `ajout=${added}`, `total=${all.length}`, `annonce=${expected}`);
+    logLine(`liste ${zone.label}`, `page=${pageNo}`, `lignes=${rows.length}`, `ajout=${added}`, `total=${all.length}`, `annonce=${expected}`);
     if (added === 0) break;
     if (expected && all.length >= expected) break;
   }
@@ -280,12 +286,12 @@ async function readZone(page, headers, memberId) {
   };
 }
 
-async function sendBalmaToMinimes(page, memberId) {
-  if (ZONE_MINIMES !== '2' || ZONE_BALMA === ZONE_MINIMES) {
+async function sendToMinimes(page, memberId, sourceLabel) {
+  if (ZONE_MINIMES !== '2') {
     throw new Error('Refus: destination autre que Minimes');
   }
   const url = `https://boxingcenter.deciplus.pro/ajax_membreHandler.php?route=sendToZone&idj=${encodeURIComponent(memberId)}&idz=2`;
-  if (!url.endsWith('idz=2') || url.includes('idz=1')) {
+  if (!url.endsWith('idz=2') || /idz=(1|7)(?:&|$)/.test(url)) {
     throw new Error('Refus: URL de migration invalide');
   }
   const res = await page.context().request.get(url, { timeout: 20000 });
@@ -296,7 +302,7 @@ async function sendBalmaToMinimes(page, memberId) {
     ok: res.status() === 200 && Number(body.ret) === 0,
     ret: body.ret ?? null,
     message: message.slice(0, 180),
-    direction: 'Balma zone 1 vers Minimes zone 2',
+    direction: `${sourceLabel} vers Minimes zone 2`,
   };
 }
 
@@ -307,12 +313,12 @@ async function sendBalmaToMinimes(page, memberId) {
   logLine('abonnements boutique', String(orders.length));
   const report = {
     mode: CHECK ? 'check' : 'apply',
-    direction: 'Balma zone 1 vers Minimes zone 2',
-    zone_from: ZONE_BALMA,
+    direction: 'Balma zone 1 et Etats-Unis zone 7 vers Minimes zone 2',
+    zone_from: SOURCE_ZONES.map((zone) => zone.id),
     zone_to: ZONE_MINIMES,
     started_at: new Date().toISOString(),
     boutique_subscriptions: orders.length,
-    balma_count: 0,
+    source_count: 0,
     matched: 0,
     with_active_contract: 0,
     migrated: 0,
@@ -346,15 +352,19 @@ async function sendBalmaToMinimes(page, memberId) {
         }));
       logLine('cible imposee', [...ONLY].join(','), 'abonnements lies', String(chosen.length));
     } else {
-      members = await listBalmaMembers(page, headers);
+      members = [];
+      for (const zone of SOURCE_ZONES) {
+        const listed = await listZoneMembers(page, headers, zone);
+        members.push(...listed);
+      }
       const matched = matchBalmaToBoutique(members, orders);
       chosen = matched.chosen;
       ambiguous = matched.ambiguous;
     }
-    report.balma_count = members.length;
+    report.source_count = members.length;
     report.matched = chosen.length;
     report.ambiguous = ambiguous;
-    logLine('fiches Balma', String(members.length), 'correspondances boutique', String(chosen.length), 'ambigues', String(ambiguous.length));
+    logLine('fiches Balma et Etats-Unis', String(members.length), 'correspondances boutique', String(chosen.length), 'ambigues', String(ambiguous.length));
 
     for (const hit of chosen) {
       const member = hit.member;
@@ -375,13 +385,16 @@ async function sendBalmaToMinimes(page, memberId) {
         logLine('deja Minimes, aucun mouvement', item.member_id, item.name);
         continue;
       }
-      if (String(live.zone) !== ZONE_BALMA) {
-        item.status = 'skip_not_balma';
+      const source = SOURCE_ZONES.find((zone) => zone.id === String(live.zone));
+      item.source = source?.label || null;
+      if (!source) {
+        item.status = 'skip_not_source';
         report.results.push(item);
-        logLine('pas sur Balma, ignore', item.member_id, item.name, 'zone', String(live.zone));
+        logLine('pas sur Balma ni Etats-Unis, ignore', item.member_id, item.name, 'zone', String(live.zone));
         continue;
       }
-      if (hit.order.email && live.email && fold(hit.order.email) !== fold(live.email)) {
+      const matchedById = hit.via === 'member_id';
+      if (!matchedById && hit.order.email && live.email && fold(hit.order.email) !== fold(live.email)) {
         item.status = 'skip_email_mismatch';
         report.results.push(item);
         logLine('email different, ignore', item.member_id, item.name);
@@ -401,28 +414,29 @@ async function sendBalmaToMinimes(page, memberId) {
         item.status = 'skip_no_active_contract';
         report.skipped_no_contract += 1;
         report.results.push(item);
+        logLine('sans contrat actif, ignore', item.source || '', item.member_id, item.name);
         continue;
       }
       report.with_active_contract += 1;
       const label = contracts.active.map((c) => c.title || c.ref).filter(Boolean).join(' | ');
       if (CHECK) {
-        item.status = 'would_migrate_balma_to_minimes';
+        item.status = 'would_migrate_to_minimes';
         report.results.push(item);
-        logLine('actif Balma vers Minimes', item.member_id, item.name, hit.via, label);
+        logLine('actif vers Minimes', source.label, item.member_id, item.name, hit.via, label);
         continue;
       }
 
-      item.migrate = await sendBalmaToMinimes(page, member.id);
+      item.migrate = await sendToMinimes(page, member.id, source.label);
       const after = await readZone(page, headers, member.id);
       item.zone_after = after.zone;
-      if (String(after.zone) === ZONE_BALMA) {
-        item.status = 'migrate_failed_still_balma';
+      if (String(after.zone) === source.id) {
+        item.status = 'migrate_failed_still_source';
         report.failed += 1;
-        logLine('echec reste Balma', item.member_id, item.name, item.migrate?.message || '');
+        logLine('echec reste', source.label, item.member_id, item.name, item.migrate?.message || '');
       } else if (String(after.zone) === ZONE_MINIMES) {
-        item.status = 'migrated_balma_to_minimes';
+        item.status = 'migrated_to_minimes';
         report.migrated += 1;
-        logLine('migre Balma vers Minimes', item.member_id, item.name, label);
+        logLine('migre vers Minimes', source.label, item.member_id, item.name, label);
       } else {
         item.status = 'migrate_failed_unexpected_zone';
         report.failed += 1;
@@ -437,7 +451,7 @@ async function sendBalmaToMinimes(page, memberId) {
   fs.writeFileSync(OUT, JSON.stringify(report, null, 2));
   logLine(
     'bilan',
-    `balma=${report.balma_count}`,
+    `sources=${report.source_count}`,
     `boutique=${report.boutique_subscriptions}`,
     `correspondances=${report.matched}`,
     `actifs=${report.with_active_contract}`,
