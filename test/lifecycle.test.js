@@ -125,6 +125,32 @@ describe('lifecycle tunnel', () => {
   });
 });
 
+describe('admin résiliations', () => {
+  it('résumé et filtre backoffice', () => {
+    const summary = toAdminSummary({
+      order_id: 'CANCEL-1',
+      action: 'cancel',
+      cancel_status: 'done',
+      customer: { first_name: 'Ada', last_name: 'Lovelace' },
+      created_at: '2026-10-08T00:00:00.000Z',
+    });
+    assert.equal(summary.origine, 'Résiliation');
+    assert.equal(summary.step_label, 'Confirmé');
+    assert.equal(summary.cancel_status, 'done');
+    assert.equal(summary.product, 'Résiliation abonnement');
+    const html = fs.readFileSync(
+      path.join(__dirname, '..', 'storefront', 'public', 'admin', 'index.html'),
+      'utf8'
+    );
+    const js = fs.readFileSync(
+      path.join(__dirname, '..', 'storefront', 'public', 'js', 'admin.js'),
+      'utf8'
+    );
+    assert.match(html, /value="cancel">Résiliations/);
+    assert.match(js, /function isCancelOrder/);
+  });
+});
+
 describe('enriched catalog', () => {
   it('abonnements prelevement filter', () => {
     const items = getEnrichedProducts({ tab: 'abonnements', subsection: 'prelevement' });

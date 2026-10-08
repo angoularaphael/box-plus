@@ -673,10 +673,16 @@
     return true;
   }
 
+  function isCancelOrder(o) {
+    if (o.action === 'cancel' || o.origine === 'Résiliation') return true;
+    return /^(CANCEL|rl-cancel)-/i.test(String(o.order_id || ''));
+  }
+
   function filteredOrders() {
     const q = (document.getElementById('ordersSearch')?.value || '').toLowerCase().trim();
     const filter = document.getElementById('ordersFilter')?.value || 'all';
     const gym = document.getElementById('ordersGymFilter')?.value || 'all';
+    const onlyCancel = filter === 'cancel';
     const paidEmails = new Set(
       orders
         .filter((o) => o.payment_status === 'paid' || o.payment_status === 'free' || o.signed)
@@ -689,7 +695,8 @@
       const hasVisibleContent = [o.name, o.email, o.product].some(
         (v) => String(v || '').trim() && String(v || '').trim() !== '—'
       );
-      if (!hasVisibleContent) return false;
+      if (!onlyCancel && !hasVisibleContent) return false;
+      if (onlyCancel && !isCancelOrder(o)) return false;
       if (filter === 'signed' && !o.signed) return false;
       if (filter === 'progress' && o.signed) return false;
       if (filter === 'paid_unsigned' && !(o.payment_status === 'paid' && !o.signed)) return false;
@@ -700,11 +707,19 @@
       if (!inOrdersDateRange(o)) return false;
       const emptyName = !String(o.name || '').trim() || o.name === '—';
       const emptyEmail = !String(o.email || '').trim() || o.email === '—';
-      if (emptyName && emptyEmail && o.payment_status !== 'paid' && o.payment_status !== 'free' && !o.signed) {
+      if (
+        !onlyCancel &&
+        emptyName &&
+        emptyEmail &&
+        o.payment_status !== 'paid' &&
+        o.payment_status !== 'free' &&
+        !o.signed
+      ) {
         return false;
       }
       const email = String(o.email || '').trim().toLowerCase();
       if (
+        !onlyCancel &&
         email &&
         paidEmails.has(email) &&
         o.payment_status !== 'paid' &&
@@ -714,7 +729,7 @@
         return false;
       }
       if (!q) return true;
-      const hay = `${o.order_id} ${o.name} ${o.email} ${o.phone || ''} ${o.product} ${o.gym || ''} ${o.gym_label || gymLabel(o.gym)} ${o.aventure ? 'aventure balma' : ''}`.toLowerCase();
+      const hay = `${o.order_id} ${o.name} ${o.email} ${o.phone || ''} ${o.product} ${o.gym || ''} ${o.gym_label || gymLabel(o.gym)} ${o.aventure ? 'aventure balma' : ''} ${isCancelOrder(o) ? 'resiliation' : ''} ${o.cancel_status || ''}`.toLowerCase();
       return hay.includes(q);
     });
   }
@@ -963,14 +978,17 @@
     const list = sortOrdersForDisplay(filteredOrders());
     const selectAll = document.getElementById('ordersSelectAll');
     if (selectAll) selectAll.checked = false;
+    const filter = document.getElementById('ordersFilter')?.value || 'all';
+    const noun = filter === 'cancel' ? 'résiliation(s)' : 'inscription(s)';
     document.getElementById('ordersCount').textContent =
       list.length === orders.length
-        ? `${orders.length} inscription(s)`
-        : `${list.length} sur ${orders.length} inscription(s)`;
+        ? `${orders.length} ${noun}`
+        : `${list.length} sur ${orders.length} ${noun}`;
 
     if (!list.length) {
+      const emptyLabel = filter === 'cancel' ? 'Aucune résiliation trouvée' : 'Aucune inscription trouvée';
       tbody.innerHTML =
-        '<tr><td colspan="14" style="text-align:center;color:var(--bc-muted);padding:24px">Aucune inscription trouvée</td></tr>';
+        `<tr><td colspan="14" style="text-align:center;color:var(--bc-muted);padding:24px">${emptyLabel}</td></tr>`;
       return;
     }
 
@@ -982,7 +1000,9 @@
         <td><code style="font-size:11px">${escapeHtml(o.order_id)}</code></td>
         <td>${escapeHtml(o.name)}</td>
         <td>${
-          o.aventure || o.source === 'balma_retour' || o.origine === 'Aventure Balma'
+          o.action === 'cancel' || o.origine === 'Résiliation'
+            ? '<span class="badge pending">Résiliation</span>'
+            : o.aventure || o.source === 'balma_retour' || o.origine === 'Aventure Balma'
             ? `<span class="badge aventure" title="Parcours Aventure Balma — 5 salles Boxing Center">Aventure Balma</span>${
                 o.manual_migration || o.bot_status === 'manual_ok'
                   ? ' <span class="badge pending" title="Migration Deciplus faite par le coach, hors bot">Migré à la main</span>'

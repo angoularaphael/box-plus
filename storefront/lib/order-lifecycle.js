@@ -680,13 +680,16 @@ function toAdminSummary(order) {
       order.aventure || order.skip_dossier || String(order.source || '').toLowerCase() === 'balma_retour'
     ),
     origine:
-      order.aventure ||
-      order.skip_dossier ||
-      String(order.source || '').toLowerCase() === 'balma_retour'
-        ? 'Aventure Balma'
-        : String(order.source || '') === 'custom_offer'
-          ? 'Offre perso'
-          : 'Boutique',
+      order.action === 'cancel'
+        ? 'Résiliation'
+        : order.aventure ||
+            order.skip_dossier ||
+            String(order.source || '').toLowerCase() === 'balma_retour'
+          ? 'Aventure Balma'
+          : String(order.source || '') === 'custom_offer'
+            ? 'Offre perso'
+            : 'Boutique',
+    cancel_status: order.cancel_status || null,
     created_at: order.created_at,
     updated_at: order.updated_at,
     archived: Boolean(order.archived_at),
