@@ -84,12 +84,12 @@ function createBotServer() {
         !result.queued && (result.reason === 'already_processed' || result.reason === 'already_queued')
           ? getProcessedRecord(result.job_id || order.order_id)
           : null;
-      logInfo('Job reçu depuis boutique', {
-        order_id: order.order_id,
-        job_id: result.job_id,
-        queued: result.queued,
-        reason: result.reason || null,
-      });
+      if (result.queued) {
+        logInfo('Job reçu depuis boutique', {
+          order_id: order.order_id,
+          job_id: result.job_id,
+        });
+      }
       res.json({ ok: true, ...result, processed });
     } catch (err) {
       logError('Ingest job échoué', { error: err.message });
@@ -243,9 +243,7 @@ function createBotServer() {
 
 function startBotServer() {
   const app = createBotServer();
-  app.listen(PORT, '0.0.0.0', () => {
-    logInfo(`Bot HTTP ingest → :${PORT}`);
-  });
+  app.listen(PORT, '0.0.0.0');
   return app;
 }
 

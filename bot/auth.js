@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { ROOT, ensureDir, randomDelay } = require('../lib/utils');
-const { logInfo, logWarn } = require('../lib/logger');
+const { logWarn } = require('../lib/logger');
 const { launchChromiumWithRetry } = require('./playwright-launch');
 const { isChooseZoneScreen, selectSiteInPicker, clickSellOnSite } = require('./deciplus-zone');
 
@@ -419,7 +419,6 @@ function bootstrapAuthTokenFromStorage() {
   const token = readStoredAuthToken();
   if (!token) return null;
   process.env.DECIPLUS_AUTH_TOKEN = token;
-  logInfo('DECIPLUS_AUTH_TOKEN chargé depuis storage-state.json');
   return token;
 }
 

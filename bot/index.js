@@ -44,7 +44,6 @@ const {
   isProcessed,
   getProcessedRecord,
   STATUS,
-  getQueueStats,
   requeueInterruptedJobs,
   finalizeExhaustedJobs,
 } = require('../lib/queue');
@@ -1920,7 +1919,6 @@ async function runLoop(once = false) {
     logWarn('Jobs impossibles à traiter finalisés', { count: exhausted });
   }
 
-  logInfo('Bot Deciplus démarré', getQueueStats());
 
   const catalogDelay = Number(process.env.BOT_CATALOG_PUSH_DELAY_MS || 120000);
   setTimeout(() => {
@@ -2023,7 +2021,6 @@ async function main() {
   installCrashGuards();
   const { bootstrapAuthTokenFromStorage } = require('./auth');
   bootstrapAuthTokenFromStorage();
-  console.log('[BOXPLUS] Lancement boucle bot Deciplus');
   for (;;) {
     try {
       await runLoop(once);
