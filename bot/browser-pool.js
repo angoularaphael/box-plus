@@ -3,7 +3,7 @@
  * Recharge le navigateur si storage-state.json change (nouvelle session uploadée).
  */
 const { launchBrowser, saveSession, getStorageMtimeMs } = require('./auth');
-const { logInfo, logWarn } = require('../lib/logger');
+const { logWarn } = require('../lib/logger');
 
 let session = null;
 let loadedStorageMtimeMs = 0;
@@ -19,7 +19,6 @@ async function withBrowserLock(owner, fn) {
 
   try {
     const handle = await ensureBrowser();
-    logInfo('Session Deciplus verrouillée', { owner });
     return await fn(handle);
   } finally {
     unlock();
@@ -69,9 +68,6 @@ async function ensureBrowser() {
   session = await launchBrowser();
   loadedStorageMtimeMs =
     session.loadedStorageMtimeMs != null ? session.loadedStorageMtimeMs : getStorageMtimeMs();
-  logInfo('Session Playwright Deciplus ouverte (unique)', {
-    storage_mtime: loadedStorageMtimeMs || null,
-  });
   return session;
 }
 

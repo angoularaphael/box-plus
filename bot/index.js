@@ -1095,11 +1095,9 @@ async function maybeTriggerEssaiFollowup() {
       headers: { 'x-sync-secret': secret },
       signal: AbortSignal.timeout(60000),
     });
-    if (!res.ok) {
-      logWarn('Poll essai 10 € followup HTTP', { status: res.status });
-    }
-  } catch (err) {
-    logWarn('Poll essai 10 € followup', { error: err.message });
+    if (!res.ok) return;
+  } catch {
+    /* poll boutique optionnel */
   }
 }
 
@@ -1216,13 +1214,6 @@ async function processCheckSaleJob(page, order) {
     contracts: contracts.map((c) => c.label).slice(0, 8),
   });
 
-  logInfo(essaiFollowup ? 'Vérif abo après essai 10 €' : 'Vérif vente séance offerte', {
-    order_id: order.order_id,
-    member_id: memberId,
-    has_abo: hasAbo,
-    has_sale: converted,
-    contracts: contracts.length,
-  });
   return {
     status: STATUS.SUCCESS,
     action: 'check_sale',
@@ -1418,17 +1409,9 @@ async function pushBotSaleStatus(order, outcome = {}) {
         failover_from: outcome.failover_from || order.failover_from || null,
       }),
     });
-    if (!res.ok) {
-      logWarn('Callback sale-status boutique échoué', {
-        status: res.status,
-        order_id: order.order_id,
-      });
-    }
-  } catch (err) {
-    logWarn('Callback sale-status boutique ignoré', {
-      error: err.message,
-      order_id: order.order_id,
-    });
+    if (!res.ok) return;
+  } catch {
+    /* callback boutique optionnel */
   }
 }
 
@@ -1684,13 +1667,6 @@ async function processOneJob(job) {
     }
     const gymConfig = getGymConfig(order.gym);
     const siteLabel = gymConfig.deciplus_label || gymConfig.label;
-    logInfo('Salle commande → Deciplus', {
-      job_id: jobId,
-      order_id: order.order_id,
-      gym: order.gym,
-      site: siteLabel,
-    });
-
     if (sessionFileChanged()) {
       logWarn('Session changée avant job — rechargement navigateur');
       await closeBrowser();
@@ -1715,13 +1691,6 @@ async function processOneJob(job) {
     markProcessed(jobId, outcome);
     removeJob(filePath);
     await pushBotSaleStatus(job, outcome);
-
-    logInfo('Job Deciplus traité', {
-      job_id: jobId,
-      order_id: job.order_id,
-      action: outcome.action || job.action || 'sale',
-      status: outcome.status,
-    });
 
     touchKeepAliveClock();
     logJobEvent('completed', {
@@ -1977,12 +1946,6 @@ async function runLoop(once = false) {
     }
 
     const job = pending[0];
-    logInfo('Traitement job', {
-      job_id: job.job_id,
-      order_id: job.order_id,
-      action: job.action || 'sale',
-      checkpoint: job.checkpoint?.step || null,
-    });
     try {
       await processOneJob(job);
     } catch (err) {

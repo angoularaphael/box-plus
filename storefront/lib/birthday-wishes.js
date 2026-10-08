@@ -93,7 +93,7 @@ function shouldRunAt(now = new Date(), lastDateKey = '') {
   if (String(process.env.BIRTHDAY_RUN_NOW || '') === '1') return true;
   const today = parisNow(now);
   if (lastDateKey === today.dateKey) return false;
-  return today.hour <= 11;
+  return true;
 }
 
 function gymSpokenName(member = {}) {

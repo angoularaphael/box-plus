@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { ROOT, ensureDir, randomDelay } = require('../lib/utils');
-const { logInfo, logWarn } = require('../lib/logger');
+const { logWarn } = require('../lib/logger');
 const { launchChromiumWithRetry } = require('./playwright-launch');
 const { isChooseZoneScreen, selectSiteInPicker, clickSellOnSite } = require('./deciplus-zone');
 
@@ -236,7 +236,6 @@ async function injectAuthToken(page, token) {
     auth.token = accessToken;
     localStorage.setItem('auth', JSON.stringify(auth));
   }, token);
-  logInfo('Token Deciplus injecté depuis DECIPLUS_AUTH_TOKEN');
 }
 
 async function resolveEmailVerificationCode(opts = {}) {
@@ -460,7 +459,6 @@ async function saveSession(context, opts = {}) {
   fs.writeFileSync(STORAGE_FILE, JSON.stringify(nextState, null, 2), 'utf8');
   const savedToken = extractAuthTokenFromState(nextState);
   if (savedToken) process.env.DECIPLUS_AUTH_TOKEN = savedToken;
-  logInfo('Session Deciplus sauvegardée');
   return { skipped: false, mtimeMs: getStorageMtimeMs(), hash: nextHash };
 }
 
@@ -687,7 +685,6 @@ async function performLogin(page, options = {}) {
     await gotoDeciplus(page, 'nextgen/choose-zone?nextUrl=/home');
     const t = await getAccessToken(page);
     if (t && (await isAccessTokenValid(page, t)) && (await isLegacySessionAlive(page))) {
-      logInfo('Connecté via DECIPLUS_AUTH_TOKEN');
       await handleChooseZone(page, siteLabel);
       return;
     }

@@ -31,10 +31,12 @@ test('29 fevrier hors annee bissextile = 1er mars', () => {
   assert.equal(isBirthdayToday('2000-02-29', new Date('2026-02-28T12:00:00+01:00')), false);
 });
 
-test('fenetre ops minuit jusqu’a 11h Paris, une fois par jour', () => {
+test('une fois par jour Paris, y compris l’apres-midi si pas encore envoye', () => {
   assert.equal(shouldRunAt(new Date('2026-10-07T00:05:00+02:00'), ''), true);
   assert.equal(shouldRunAt(new Date('2026-10-07T00:05:00+02:00'), '2026-10-07'), false);
-  assert.equal(shouldRunAt(new Date('2026-10-07T15:00:00+02:00'), ''), false);
+  assert.equal(shouldRunAt(new Date('2026-10-07T15:00:00+02:00'), ''), true);
+  assert.equal(shouldRunAt(new Date('2026-10-08T15:00:00+02:00'), '2026-10-07'), true);
+  assert.equal(shouldRunAt(new Date('2026-10-08T15:00:00+02:00'), '2026-10-08'), false);
 });
 
 test('mail David, texte perso, pas de HTML promo', () => {
