@@ -39,14 +39,14 @@ test('fenetre ops minuit jusqu’a 11h Paris, une fois par jour', () => {
 });
 
 test('mail David, texte perso, pas de HTML promo', () => {
-  const prev = process.env.RESEND_SENDER_EMAIL;
-  delete process.env.RESEND_SENDER_EMAIL;
+  const prev = process.env.BREVO_SENDER_EMAIL;
+  delete process.env.BREVO_SENDER_EMAIL;
   const mail = buildBirthdayEmail({ first_name: 'Guillaume', last_name: 'CESSAC' });
-  if (prev == null) delete process.env.RESEND_SENDER_EMAIL;
-  else process.env.RESEND_SENDER_EMAIL = prev;
+  if (prev == null) delete process.env.BREVO_SENDER_EMAIL;
+  else process.env.BREVO_SENDER_EMAIL = prev;
   assert.equal(mail.fromName, FROM_NAME);
   assert.equal(mail.fromName, 'Boxing Center');
-  assert.equal(mail.fromEmail, 'no-reply@boxingcenter.fr');
+  assert.equal(mail.fromEmail, 'suzinabot@gmail.com');
   assert.equal(mail.html, undefined);
   assert.equal(mail.headers['X-Transactional'], 'true');
   assert.match(mail.subject, /Guillaume, c’est David/);
@@ -77,4 +77,11 @@ test('bot ops branche le poll minuit', () => {
   const src = fs.readFileSync(path.join(__dirname, '../bot/index.js'), 'utf8');
   assert.match(src, /maybeTriggerBirthdayWishes/);
   assert.match(src, /birthday-wishes/);
+});
+
+test('anniversaire passe par Brevo, pas Resend', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../storefront/lib/birthday-wishes.js'), 'utf8');
+  assert.match(src, /sendEmailViaBrevo/);
+  assert.match(src, /brevo-send/);
+  assert.doesNotMatch(src, /resend-send|sendEmailViaResend/);
 });

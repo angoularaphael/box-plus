@@ -5,11 +5,11 @@ const path = require('path');
 const { ROOT } = require('../../lib/utils');
 const { logInfo, logWarn } = require('../../lib/logger');
 const {
-  sendEmailViaResend,
-  isConfigured: resendConfigured,
+  sendEmailViaBrevo,
+  isConfigured: brevoConfigured,
   senderEmail,
   defaultReplyTo,
-} = require('./resend-send');
+} = require('./brevo-send');
 
 const FROM_NAME = 'Boxing Center';
 const SIGN_OFF = 'David et toute l’équipe du Boxing Center';
@@ -183,19 +183,16 @@ function markSent(state, memberId, dateKey, patch = {}) {
 async function sendBirthdayEmail(member) {
   const to = String(member.email || '').trim();
   if (!to || !to.includes('@')) return { sent: false, skipped: true, reason: 'no_email' };
-  if (!resendConfigured()) return { sent: false, skipped: true, reason: 'no_resend' };
+  if (!brevoConfigured()) return { sent: false, skipped: true, reason: 'no_brevo' };
   const copy = buildBirthdayEmail(member);
-  const out = await sendEmailViaResend({
+  const out = await sendEmailViaBrevo({
     to,
     subject: copy.subject,
     text: copy.emailText,
     html: copy.html,
-    fromName: copy.fromName,
-    fromEmail: copy.fromEmail,
     replyTo: copy.replyTo,
-    headers: copy.headers,
-    tags: copy.tags,
   });
+  if (!out?.sent) return { sent: false, skipped: true, reason: 'brevo_not_configured' };
   return { sent: true, via: out.via, messageId: out.messageId || null };
 }
 
