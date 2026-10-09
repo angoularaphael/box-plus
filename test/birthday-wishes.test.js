@@ -78,6 +78,11 @@ test('parcours liste : zones BC 2/3/4/5/7, pas Balma, date sur la liste members'
   assert.match(bot, /staff\/v1\/members\?zoneId=/);
   assert.match(bot, /isBirthdayToday\(row\.birthdate/);
   assert.match(bot, /hydrateMember/);
+  assert.match(bot, /timeout: 90000/);
+  assert.match(bot, /attempt <= 3/);
+  assert.match(bot, /already_running/);
+  assert.match(bot, /Persiste apres chaque envoi|saveState\(state\)/);
+  assert.match(bot, /hors session navigateur/);
 });
 
 test('ignore les fiches test', () => {
