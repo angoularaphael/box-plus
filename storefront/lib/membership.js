@@ -146,6 +146,8 @@ async function enqueueCancelRequest(body = {}) {
       access_token: accessToken,
       action: 'cancel',
       cancel_status: 'pending',
+      cancel_reason: payload.cancel_reason || null,
+      cancel_date: payload.cancel_date || null,
       mismatch_fields: [],
       customer,
       created_at: new Date().toISOString(),
@@ -163,9 +165,47 @@ const CANCEL_FIELD_LABELS = {
   birthdate: 'Date de naissance',
 };
 
+function isChangeCancelReason(reason) {
+  const r = String(reason || '').toLowerCase();
+  return r === 'change_to_comptant' || r.startsWith('change_');
+}
+
+function formatCancelDateFr(value) {
+  const s = String(value || '').trim();
+  if (!s) return null;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  return s;
+}
+
+function buildCancelConfirmationEmail(identity = {}, { cancelDate = null } = {}) {
+  const prenom = identity.first_name || '';
+  const dateFr = formatCancelDateFr(cancelDate);
+  const dateHtml = dateFr
+    ? `<p>Votre abonnement prend fin le <strong>${dateFr}</strong> (fin de la période déjà payée).</p>`
+    : `<p>Votre abonnement prend fin à l’issue de la période déjà payée.</p>`;
+  const subject = 'Confirmation de résiliation — Boxing Center';
+  const html = `<p>Bonjour ${prenom},</p>
+    <p>Nous confirmons la prise en compte de votre <strong>résiliation</strong> d’abonnement Boxing Center.</p>
+    ${dateHtml}
+    <p>Aucun prélèvement ne sera présenté après cette date. Vous restez bienvenu(e) pour un essai ou une réinscription quand vous le souhaitez.</p>
+    <p>Sportivement,<br/>Boxing Center</p>`;
+  return { subject, html, dateFr };
+}
+
 async function updateCancelStatus(
   orderId,
-  { status, mismatch_fields, reason, cancelled_count, deciplus_member_id } = {}
+  {
+    status,
+    mismatch_fields,
+    reason,
+    cancelled_count,
+    deciplus_member_id,
+    cancel_date,
+    cancel_reason,
+    cancel_confirm_email_sent_at,
+  } = {}
 ) {
   const { loadOrder, saveOrderAsync } = require('./order-persistence');
   const record = (await loadOrder(orderId)) || {
@@ -180,6 +220,11 @@ async function updateCancelStatus(
   record.cancel_status_reason = reason || record.cancel_status_reason || null;
   if (cancelled_count != null) record.cancelled_count = cancelled_count;
   if (deciplus_member_id) record.deciplus_member_id = String(deciplus_member_id);
+  if (cancel_date) record.cancel_date = cancel_date;
+  if (cancel_reason) record.cancel_reason = cancel_reason;
+  if (cancel_confirm_email_sent_at) {
+    record.cancel_confirm_email_sent_at = cancel_confirm_email_sent_at;
+  }
   record.cancel_status_at = new Date().toISOString();
   await saveOrderAsync(record);
   return record;
@@ -412,6 +457,32 @@ async function sendChangeConfirmationEmail(identity, product = {}) {
   }
 }
 
+async function sendCancelConfirmationEmail(identity = {}, { cancelDate = null, cancelReason = null } = {}) {
+  if (isChangeCancelReason(cancelReason)) {
+    return { sent: false, skipped: true, reason: 'change_cancel' };
+  }
+  const email = String(identity?.email || '').trim();
+  if (!email || /@boxplus-test\.local$/i.test(email)) {
+    return { sent: false, skipped: true, reason: 'no_email' };
+  }
+  if (!isConfigured()) return { sent: false, skipped: true, reason: 'brevo_not_configured' };
+  const mail = buildCancelConfirmationEmail(identity, { cancelDate });
+  try {
+    await sendEmailViaBrevo({
+      to: email,
+      subject: mail.subject,
+      html: mail.html,
+      headers: { 'X-Transactional': 'true' },
+      tags: [{ name: 'category', value: 'cancel-confirm' }],
+    });
+    logInfo('Email confirmation résiliation envoyé', { email });
+    return { sent: true, dateFr: mail.dateFr };
+  } catch (err) {
+    logWarn('Email confirmation résiliation échoué', { error: err.message });
+    return { sent: false, error: err.message };
+  }
+}
+
 function changePendingId(paymentRef) {
   const safe = String(paymentRef || '')
     .replace(/[^a-zA-Z0-9_-]/g, '')
@@ -449,6 +520,10 @@ module.exports = {
   resolveDeciplusMemberId,
   changeBaseIdFromPayment,
   sendCancelMismatchEmail,
+  sendCancelConfirmationEmail,
+  buildCancelConfirmationEmail,
+  formatCancelDateFr,
+  isChangeCancelReason,
   sendChangeConfirmationEmail,
   updateCancelStatus,
   getCancelStatus,

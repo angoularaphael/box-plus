@@ -5977,14 +5977,23 @@ function createApp() {
     try {
       const body = req.body || {};
       if (!body.order_id) return res.status(400).json({ ok: false, error: 'order_id requis' });
-      const { updateCancelStatus, sendCancelMismatchEmail, getCancelStatus } = require('./lib/membership');
+      const {
+        updateCancelStatus,
+        sendCancelMismatchEmail,
+        sendCancelConfirmationEmail,
+        getCancelStatus,
+        isChangeCancelReason,
+      } = require('./lib/membership');
       const record = await updateCancelStatus(body.order_id, {
         status: body.status || 'pending',
         mismatch_fields: body.mismatch_fields || [],
         reason: body.reason || null,
         cancelled_count: body.cancelled_count,
         deciplus_member_id: body.deciplus_member_id || null,
+        cancel_date: body.cancel_date || null,
+        cancel_reason: body.cancel_reason || null,
       });
+      let confirmEmail = { sent: false };
       if (body.status === 'mismatch') {
         const identity = body.customer || record.customer || {};
         // Ne jamais faire échouer le statut à cause de l'email
@@ -5994,10 +6003,41 @@ function createApp() {
           logWarn('Email mismatch résiliation ignoré', { error: mailErr.message });
         }
       }
+      if (body.status === 'done' || body.status === 'completed') {
+        const identity = body.customer || record.customer || {};
+        const cancelReason =
+          body.cancel_reason || record.cancel_reason || record.cancel_status_reason || null;
+        const cancelDate = body.cancel_date || record.cancel_date || null;
+        if (
+          !isChangeCancelReason(cancelReason) &&
+          !record.cancel_confirm_email_sent_at &&
+          identity?.email
+        ) {
+          try {
+            confirmEmail = await sendCancelConfirmationEmail(identity, {
+              cancelDate,
+              cancelReason,
+            });
+            if (confirmEmail?.sent) {
+              await updateCancelStatus(body.order_id, {
+                status: body.status,
+                cancel_confirm_email_sent_at: new Date().toISOString(),
+                cancel_date: cancelDate,
+                cancel_reason: cancelReason,
+              });
+            }
+          } catch (mailErr) {
+            logWarn('Email confirmation résiliation ignoré', { error: mailErr.message });
+          }
+        } else if (record.cancel_confirm_email_sent_at) {
+          confirmEmail = { sent: true, already: true };
+        }
+      }
       res.json({
         ok: true,
         status: (await getCancelStatus(body.order_id))?.status || body.status,
         mismatch_fields: body.mismatch_fields || [],
+        confirm_email_sent: Boolean(confirmEmail?.sent),
       });
     } catch (err) {
       logError('Erreur cancel-status interne', { error: err.message });

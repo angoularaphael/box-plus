@@ -137,9 +137,16 @@ async function processCancelJob(page, order) {
 
   const pushCancelStatus = async (
     status,
-    { reason = null, mismatchFields = [], cancelledCount = null, memberId = null } = {}
+    {
+      reason = null,
+      mismatchFields = [],
+      cancelledCount = null,
+      memberId = null,
+      cancelDate = null,
+      cancelReason = null,
+    } = {}
   ) => {
-    if (!storeBase || !storeSecret) return false;
+    if (!storeBase || !storeSecret) return { ok: false, confirmEmailSent: false };
     try {
       const res = await fetch(`${storeBase}/api/internal/cancel-status`, {
         method: 'POST',
@@ -152,6 +159,8 @@ async function processCancelJob(page, order) {
           cancelled_count: cancelledCount,
           deciplus_member_id: memberId,
           customer: identity,
+          cancel_date: cancelDate || order.cancel_date || order.effective_date || null,
+          cancel_reason: cancelReason || order.cancel_reason || null,
         }),
       });
       if (!res.ok) {
@@ -160,12 +169,23 @@ async function processCancelJob(page, order) {
           status: res.status,
           body: String(bodyText).slice(0, 240),
         });
+        return { ok: false, confirmEmailSent: false };
       }
-      return res.ok;
+      const data = await res.json().catch(() => ({}));
+      return { ok: true, confirmEmailSent: Boolean(data?.confirm_email_sent) };
     } catch (err) {
       logWarn('Statut résiliation boutique non envoyé', { error: err.message });
-      return false;
+      return { ok: false, confirmEmailSent: false };
     }
+  };
+
+  const formatCancelDateFr = (value) => {
+    const s = String(value || '').trim();
+    if (!s) return null;
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+    const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+    return s;
   };
 
   // Fallback autonome (BotHosting n'a pas le module storefront)
@@ -200,10 +220,47 @@ async function processCancelJob(page, order) {
     }
   };
 
+  const sendCancelConfirmEmailDirect = async (cancelDate = null) => {
+    const cancelReason = String(order.cancel_reason || '').toLowerCase();
+    if (cancelReason === 'change_to_comptant' || cancelReason.startsWith('change_')) return false;
+    const email = String(identity.email || '').trim();
+    if (!email || /@boxplus-test\.local$/i.test(email)) return false;
+    const apiKey = String(process.env.BREVO_API_KEY || '').trim().replace(/^["']|["']$/g, '');
+    if (!apiKey.startsWith('xkeysib-')) return false;
+    const dateFr = formatCancelDateFr(cancelDate || order.cancel_date || order.effective_date);
+    const dateHtml = dateFr
+      ? `<p>Votre abonnement prend fin le <strong>${dateFr}</strong> (fin de la période déjà payée).</p>`
+      : `<p>Votre abonnement prend fin à l’issue de la période déjà payée.</p>`;
+    const html = `<p>Bonjour ${identity.first_name || ''},</p>
+      <p>Nous confirmons la prise en compte de votre <strong>résiliation</strong> d’abonnement Boxing Center.</p>
+      ${dateHtml}
+      <p>Aucun prélèvement ne sera présenté après cette date. Vous restez bienvenu(e) pour un essai ou une réinscription quand vous le souhaitez.</p>
+      <p>Sportivement,<br/>Boxing Center</p>`;
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: { 'api-key': apiKey, 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          sender: {
+            name: process.env.BREVO_SENDER_NAME || 'Boxing Center',
+            email: process.env.BREVO_SENDER_EMAIL || 'suzinabot@gmail.com',
+          },
+          to: [{ email }],
+          subject: 'Confirmation de résiliation — Boxing Center',
+          htmlContent: html,
+        }),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  };
+
   const notifyMismatch = async (reason, mismatchFields = []) => {
     try {
       // Le storefront envoie l'email + met à jour le statut (spinner front)
-      let sent = await pushCancelStatus('mismatch', { reason, mismatchFields });
+      const pushed = await pushCancelStatus('mismatch', { reason, mismatchFields });
+      let sent = Boolean(pushed?.ok);
       if (!sent) {
         sent = await sendMismatchEmailDirect(mismatchFields);
         if (sent) logInfo('Email mismatch résiliation envoyé (Brevo direct)', { email: identity.email });
@@ -293,7 +350,30 @@ async function processCancelJob(page, order) {
         reason: 'comptant_refused',
       };
     }
-    await pushCancelStatus('done', { cancelledCount: result?.cancelled_count ?? null, memberId });
+    const effectiveCancelDate =
+      (result?.details || []).find((d) => d.cancelled && d.cancel_date)?.cancel_date ||
+      order.cancel_date ||
+      order.effective_date ||
+      null;
+    const donePush = await pushCancelStatus('done', {
+      cancelledCount: result?.cancelled_count ?? null,
+      memberId,
+      cancelDate: effectiveCancelDate,
+      cancelReason: order.cancel_reason || null,
+    });
+    if (!donePush?.confirmEmailSent) {
+      const mailed = await sendCancelConfirmEmailDirect(effectiveCancelDate);
+      if (mailed) {
+        logInfo('Email confirmation résiliation envoyé (Brevo direct)', {
+          email: identity.email,
+          order_id: order.order_id,
+        });
+      } else if (!donePush?.ok) {
+        logWarn('Email confirmation résiliation — aucun canal disponible', {
+          order_id: order.order_id,
+        });
+      }
+    }
     try {
       const saleMod = require('./sale');
       const { resolveSaleGymConfig } = require('../lib/gym-slugs');
