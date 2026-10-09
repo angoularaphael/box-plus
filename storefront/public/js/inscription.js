@@ -1580,14 +1580,23 @@
             <input type="checkbox" id="passSport" name="pass_sport" ${
               state.order?.payment?.pass_sport ? 'checked' : ''
             } />
-            <span>Je possède un Pass Sport de 50&nbsp;€ et souhaite le déduire</span>
+            <span>J’ai un <strong>Pass sportif (Pass Sport)</strong> — aide de l’État de 50&nbsp;€ — et je souhaite le déduire</span>
           </label>
           <div id="passSportUpload" class="pass-sport-upload" ${
             state.order?.payment?.pass_sport ? '' : 'hidden'
           }>
-            <label for="passSportFile">Photo du Pass Sport de l'enfant</label>
+            <p class="pass-sport-explain">
+              Le <strong>Pass sportif</strong> (officiellement <strong>Pass Sport</strong>) est une <strong>aide de l’État de 50&nbsp;€</strong> pour l’inscription sportive des enfants et jeunes (ministère des Sports).
+              Ce n’est <strong>pas un passeport</strong> et ce n’est <strong>pas</strong> une carte d’identité.
+            </p>
+            <p class="pass-sport-explain">
+              Exemple et explications&nbsp;:
+              <a href="https://www.ac-nantes.fr/pass-sport-124640" target="_blank" rel="noopener noreferrer">voir un exemple de Pass Sport (Académie de Nantes)</a>.
+              Site officiel&nbsp;: <a href="https://www.pass.sports.gouv.fr/" target="_blank" rel="noopener noreferrer">pass.sports.gouv.fr</a>.
+            </p>
+            <label for="passSportFile">Photo du Pass sportif / Pass Sport (code reçu par e-mail ou SMS) — pas de passeport</label>
             <input id="passSportFile" type="file" accept="image/jpeg,image/png,image/webp,image/*" />
-            <p class="sub">Photo obligatoire. 50&nbsp;€ sont déduits, puis vous payez le reste en une fois ou en 4 fois.</p>
+            <p class="sub">Photo obligatoire du <strong>Pass Sport</strong> uniquement. 50&nbsp;€ sont déduits, puis vous payez le reste en une fois ou en 4 fois. N’envoyez <strong>pas</strong> de passeport ni de pièce d’identité ici.</p>
             <p class="pass-sport-due" id="passSportDue"></p>
           </div>
         </div>`
@@ -1822,7 +1831,10 @@
               state.order?.documents?.pass_sport_url
           );
           if (!file && !already) {
-            setMsg('Ajoutez la photo du Pass Sport de votre enfant pour déduire 50 €.', 'err');
+            setMsg(
+              'Ajoutez la photo du Pass sportif (Pass Sport), pas un passeport, pour déduire 50 €.',
+              'err'
+            );
             return;
           }
           if (file) {

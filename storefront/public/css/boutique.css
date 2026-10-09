@@ -525,6 +525,19 @@ input:focus, select:focus, textarea:focus {
   margin-top: 12px;
 }
 
+.pass-sport-explain {
+  margin: 0 0 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #333;
+}
+
+.pass-sport-explain a {
+  color: var(--bc-navy);
+  text-decoration: underline;
+  word-break: break-word;
+}
+
 .pass-sport-upload label {
   display: block;
   margin-bottom: 6px;
