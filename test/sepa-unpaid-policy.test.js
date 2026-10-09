@@ -83,11 +83,13 @@ test('MD06 / MS02 / MS03 / AC04 / JSON → immédiat', () => {
     'MD06 Contestation débiteur',
     'MS02 Sur ordre du client / Refus du débiteur',
     'MS03 Raison non communiquée',
+    'Blocage volontaire',
     'AC04 Compte clôturé',
     '(Erreur JSON Syntax error)',
   ]) {
     assert.equal(shouldResiliateUnpaid({ unpaid_count: 1, remarks: [remark] }).ok, true);
   }
+  assert.equal(classifySepaRemark('Blocage volontaire'), SEPA_REASON.DEBTOR_REFUSAL);
 });
 
 test('AC01 / RC01 : résil dès le 1er impayé (pas un fonds insuffisant)', () => {
