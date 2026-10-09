@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { ROOT, ensureDir, randomDelay } = require('../lib/utils');
-const { logWarn } = require('../lib/logger');
+const { logInfo, logWarn } = require('../lib/logger');
 const { launchChromiumWithRetry } = require('./playwright-launch');
 const { isChooseZoneScreen, selectSiteInPicker, clickSellOnSite } = require('./deciplus-zone');
 
