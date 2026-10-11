@@ -2,7 +2,7 @@
 'use strict';
 /**
  * Audit abonnements prélèvement sans RIB Deciplus (depuis le 1er juin)
- * + export MD + envoi Resend transactionnel.
+ * + export MD + envoi Brevo transactionnel.
  *
  *   node scripts/audit-send-missing-rib.js --check
  *   node scripts/audit-send-missing-rib.js --check --since=2026-06-01
@@ -319,7 +319,7 @@ async function runAudit(candidates) {
 }
 
 async function sendEmails(targets) {
-  if (!resendOk()) throw new Error('RESEND_API_KEY manquant');
+  if (!resendOk()) throw new Error('BREVO_API_KEY manquant');
   const state = loadSentState();
   const results = [];
   let sent = 0;

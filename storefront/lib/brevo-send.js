@@ -79,7 +79,7 @@ function getSmtpTransport() {
   return smtpTransport;
 }
 
-async function sendViaRestApi({ to, subject, html, text, replyTo, attachments, cc, fromName, fromEmail }) {
+async function sendViaRestApi({ to, subject, html, text, replyTo, attachments, cc, fromName, fromEmail, headers }) {
   const apiKey = readApiKey();
   const files = normalizeAttachments(attachments);
   const body = {
@@ -95,6 +95,9 @@ async function sendViaRestApi({ to, subject, html, text, replyTo, attachments, c
   };
   const ccList = (Array.isArray(cc) ? cc : [cc]).map((e) => String(e || '').trim()).filter(Boolean);
   if (ccList.length) body.cc = ccList.map((email) => ({ email }));
+  if (headers && typeof headers === 'object' && Object.keys(headers).length) {
+    body.headers = headers;
+  }
   if (files.length) {
     body.attachment = files.map((f) => ({
       name: f.name,
@@ -141,12 +144,12 @@ async function sendViaSmtp({ to, subject, html, text, replyTo, attachments, cc, 
   return { sent: true, messageId: info.messageId, via: 'brevo-smtp' };
 }
 
-async function sendEmailViaBrevo({ to, subject, html, text, replyTo, attachments, cc, fromName, fromEmail }) {
+async function sendEmailViaBrevo({ to, subject, html, text, replyTo, attachments, cc, fromName, fromEmail, headers }) {
   if (!to) throw new Error('Destinataire email manquant');
   if (!apiKeyConfigured() && !smtpConfigured()) return null;
 
   if (apiKeyConfigured()) {
-    return sendViaRestApi({ to, subject, html, text, replyTo, attachments, cc, fromName, fromEmail });
+    return sendViaRestApi({ to, subject, html, text, replyTo, attachments, cc, fromName, fromEmail, headers });
   }
 
   if (onVercel()) {

@@ -9,9 +9,10 @@
  */
 require('dotenv').config();
 process.env.BOXPLUS_ORDERS_REMOTE = '1';
-process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
-process.env.RESEND_SENDER_NAME = process.env.RESEND_SENDER_NAME || 'David';
-process.env.RESEND_REPLY_TO = process.env.RESEND_REPLY_TO || 'boxingcentertls@gmail.com';
+process.env.BREVO_SENDER_NAME = process.env.BREVO_SENDER_NAME || 'David';
+process.env.RESEND_SENDER_NAME = process.env.BREVO_SENDER_NAME;
+process.env.BREVO_REPLY_TO = process.env.BREVO_REPLY_TO || 'boxingcentertls@gmail.com';
+process.env.RESEND_REPLY_TO = process.env.BREVO_REPLY_TO;
 
 const fs = require('fs');
 const path = require('path');
@@ -162,7 +163,7 @@ async function main() {
     return;
   }
   if (!isConfigured()) {
-    throw new Error('RESEND_API_KEY manquant');
+    throw new Error('BREVO_API_KEY manquant');
   }
 
   const state = loadState();

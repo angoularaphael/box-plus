@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const { logInfo, logWarn } = require('../../lib/logger');
-const { sendEmailViaResend, isConfigured } = require('./resend-send');
+const { sendEmailViaBrevo, isConfigured } = require('./brevo-send');
 const {
   PASS_SPORT_CENTS,
   formatEuroLabel,
@@ -101,16 +101,17 @@ async function notifyPassSportIfNeeded(order) {
 
   if (!isConfigured()) {
     logInfo('Pass Sport email (mode log)', { to, order_id: order.order_id, subject });
-    return { sent: false, reason: 'resend_off', to };
+    return { sent: false, reason: 'brevo_off', to };
   }
 
-  const result = await sendEmailViaResend({
+  const result = await sendEmailViaBrevo({
     to,
     subject,
     text,
     html: text.replace(/\n/g, '<br>'),
     attachments: file ? [file] : [],
   });
+  if (!result) return { sent: false, reason: 'brevo_off', to };
 
   const { saveOrderAsync } = require('./order-lifecycle');
   const fresh = { ...order };

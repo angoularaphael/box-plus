@@ -8,7 +8,7 @@
 3. Configurer chaque bot avec `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, un `BOT_ID` unique et les secrets existants.
 4. Déployer la boutique Vercel, puis redéployer/redémarrer chaque bot.
 5. Appeler `/health` sur chaque bot : `ready` et `persistent_idempotency.available` doivent être `true`; vérifier `git_sha`/`build_id`.
-6. Configurer `ALERT_WEBHOOK_URL` et/ou `ALERT_EMAIL` + `RESEND_API_KEY`.
+6. Configurer `ALERT_WEBHOOK_URL` et/ou `ALERT_EMAIL` + `BREVO_API_KEY`.
 
 Ne jamais contourner un registre indisponible : le bot bloque volontairement les nouvelles ventes Deciplus jusqu’au déploiement de la migration.
 

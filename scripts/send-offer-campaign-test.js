@@ -37,11 +37,11 @@ loadEnvFile(path.join(ROOT, '..', 'gestion-manager', '.env'));
 loadEnvFile(path.join(ROOT, '..', 'gestion-manager', 'bots', 'deploy', 'email-resend', '.env'));
 
 process.env.STORE_URL = 'https://boutique.boxingcenter.fr';
-process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || 'resend';
+process.env.EMAIL_PROVIDER = process.env.EMAIL_PROVIDER || 'brevo';
 process.env.EMAIL_UNSUBSCRIBE_BASE =
   process.env.EMAIL_UNSUBSCRIBE_BASE || 'https://manager.boxingcenter.fr';
-process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
-process.env.RESEND_REPLY_TO = 'boxingcentertls@gmail.com';
+process.env.BREVO_REPLY_TO = process.env.BREVO_REPLY_TO || 'boxingcentertls@gmail.com';
+process.env.RESEND_REPLY_TO = process.env.BREVO_REPLY_TO;
 
 const { customerNudgeCopy } = require('../storefront/lib/essai-followup');
 const { sendWhatsAppMessage, toWhatsAppPhone } = require('../storefront/lib/whatsapp-bot');
@@ -57,6 +57,7 @@ const TARGET = {
 
 const WITH_WA = process.argv.includes('--wa');
 const FROM_NAME = 'David';
+process.env.BREVO_SENDER_NAME = FROM_NAME;
 process.env.RESEND_SENDER_NAME = FROM_NAME;
 
 async function main() {
@@ -72,7 +73,7 @@ async function main() {
   };
 
   if (!isConfigured()) {
-    throw new Error('RESEND_API_KEY manquant (BOXPLUS ou gestion-manager .env)');
+    throw new Error('BREVO_API_KEY manquant (BOXPLUS ou gestion-manager .env)');
   }
 
   out.email = await sendEmailViaResend({

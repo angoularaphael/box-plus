@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Campagne enfants — mail (Resend) + SMS (gateway).
+ * Campagne enfants — mail (Brevo) + SMS (gateway).
  *
  *   node scripts/send-enfants-campaign.js --dry
  *   node scripts/send-enfants-campaign.js --test
@@ -33,9 +33,10 @@ function loadEnvFile(file) {
 
 const ROOT = path.join(__dirname, '..');
 loadEnvFile(path.join(ROOT, '.env'));
-process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
+process.env.BREVO_SENDER_NAME = 'David de Boxing Center';
 process.env.RESEND_SENDER_NAME = 'David de Boxing Center';
-process.env.RESEND_REPLY_TO = process.env.RESEND_REPLY_TO || 'boxingcentertls@gmail.com';
+process.env.BREVO_REPLY_TO = process.env.BREVO_REPLY_TO || 'boxingcentertls@gmail.com';
+process.env.RESEND_REPLY_TO = process.env.BREVO_REPLY_TO;
 
 const {
   buildEnfantsCampaignEmail,
@@ -278,7 +279,7 @@ async function main() {
   if (TEST) {
     const results = { email: null, sms: null };
     if (!SMS_ONLY) {
-      if (!resendOk()) throw new Error('RESEND_API_KEY manquant');
+      if (!resendOk()) throw new Error('BREVO_API_KEY manquant');
       const testCopy = buildEnfantsCampaignEmail({ name: 'Test' });
       results.email = await sendEmailViaResend({
         to: TEST_EMAIL,
@@ -301,7 +302,7 @@ async function main() {
     return;
   }
 
-  if (!resendOk() && !SMS_ONLY) throw new Error('RESEND_API_KEY manquant');
+  if (!resendOk() && !SMS_ONLY) throw new Error('BREVO_API_KEY manquant');
 
   let sentEmail = 0;
   let sentSms = 0;

@@ -18,8 +18,7 @@ process.env.DECIPLUS_FAST = '1';
 process.env.DECIPLUS_HEADLESS = process.env.DECIPLUS_HEADLESS || 'true';
 process.env.TEMP = process.env.TEMP || 'D:\\tmp-playwright';
 process.env.TMP = process.env.TMP || 'D:\\tmp-playwright';
-process.env.RESEND_SENDER_EMAIL = process.env.RESEND_SENDER_EMAIL || 'no-reply@boxingcenter.fr';
-process.env.RESEND_SENDER_NAME = process.env.RESEND_SENDER_NAME || 'Boxing Center';
+process.env.BREVO_SENDER_NAME = process.env.BREVO_SENDER_NAME || 'Boxing Center';
 delete process.env.BOXPLUS_BOT_URL;
 delete process.env.BOXPLUS_BOT_URL_OPS;
 
@@ -468,7 +467,7 @@ async function scrapeUnpaidWithIds(page) {
 }
 
 async function sendRibMails(page, report) {
-  if (!resendOk()) throw new Error('RESEND_API_KEY manquant');
+  if (!resendOk()) throw new Error('BREVO_API_KEY manquant');
   const state = loadJson(MAIL_STATE, { sent: {} });
   for (const t of RIB_MAIL_TARGETS) {
     const row = { ...t, email: null, member_resolved: t.member, sent: false, skipped: null };

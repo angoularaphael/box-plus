@@ -23,7 +23,7 @@ Les **résils / vérifs / échéancier** restent sur **:21268** (`BOXPLUS_BOT_UR
 | `DECIPLUS_USER` | compte Eddy |
 | `BOT_CATALOG_PUSH_ENABLED` | `false` |
 | `ALERT_EMAIL` | `boxingcentertls@gmail.com` |
-| `RESEND_API_KEY` | pour les mails d’échec job |
+| `BREVO_API_KEY` | pour les mails d’échec job |
 | `SYNC_SECRET` | même secret que Vercel |
 
 ## Côté Vercel (boutique)

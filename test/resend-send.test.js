@@ -4,9 +4,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { isConfigured, senderEmail, DEFAULT_SENDER_EMAIL } = require('../storefront/lib/resend-send');
+const {
+  isConfigured,
+  senderEmail,
+  DEFAULT_SENDER_EMAIL,
+  sendEmailViaResend,
+} = require('../storefront/lib/resend-send');
 
-test('factures inscription et matériel passent par Brevo, pas Resend', () => {
+test('factures inscription et matériel passent par Brevo, pas Resend API', () => {
   const mailer = fs.readFileSync(path.join(__dirname, '../storefront/lib/mailer.js'), 'utf8');
   const branding = fs.readFileSync(path.join(__dirname, '../storefront/lib/branding.js'), 'utf8');
   assert.match(mailer, /brevo-send/);
@@ -18,7 +23,7 @@ test('factures inscription et matériel passent par Brevo, pas Resend', () => {
   assert.doesNotMatch(branding, /resend-send/);
 });
 
-test('Resend convertit les PJ fichier/buffer en base64', () => {
+test('compat Resend convertit les PJ fichier/buffer en base64', () => {
   const { toResendAttachments } = require('../storefront/lib/resend-send');
   const raw = Buffer.alloc(600, 1);
   const files = toResendAttachments([{ filename: 'facture.pdf', content: raw }]);
@@ -27,29 +32,35 @@ test('Resend convertit les PJ fichier/buffer en base64', () => {
   assert.equal(files[0].content, raw.toString('base64'));
 });
 
-test('Resend accepte un champ cc', () => {
+test('module compat Resend route vers Brevo (pas api.resend.com)', () => {
   const src = fs.readFileSync(path.join(__dirname, '../storefront/lib/resend-send.js'), 'utf8');
-  assert.match(src, /ccList/);
-  assert.match(src, /body\.cc = ccList/);
+  assert.match(src, /brevo-send/);
+  assert.match(src, /sendEmailViaBrevo/);
+  assert.doesNotMatch(src, /api\.resend\.com/);
+  assert.equal(typeof sendEmailViaResend, 'function');
 });
 
-test('Resend : expéditeur campagne = no-reply@boxingcenter.fr', () => {
-  const prev = process.env.RESEND_SENDER_EMAIL;
+test('expéditeur par défaut = Brevo (suzinabot)', () => {
+  const prev = process.env.BREVO_SENDER_EMAIL;
+  const prevResend = process.env.RESEND_SENDER_EMAIL;
+  delete process.env.BREVO_SENDER_EMAIL;
   delete process.env.RESEND_SENDER_EMAIL;
   assert.equal(senderEmail(), DEFAULT_SENDER_EMAIL);
-  assert.equal(DEFAULT_SENDER_EMAIL, 'no-reply@boxingcenter.fr');
-  if (prev == null) delete process.env.RESEND_SENDER_EMAIL;
-  else process.env.RESEND_SENDER_EMAIL = prev;
+  assert.equal(DEFAULT_SENDER_EMAIL, 'suzinabot@gmail.com');
+  if (prev == null) delete process.env.BREVO_SENDER_EMAIL;
+  else process.env.BREVO_SENDER_EMAIL = prev;
+  if (prevResend == null) delete process.env.RESEND_SENDER_EMAIL;
+  else process.env.RESEND_SENDER_EMAIL = prevResend;
 });
 
-test('relance essai client passe par Brevo, pas Resend', () => {
+test('relance essai client passe par Brevo, pas Resend API', () => {
   const src = fs.readFileSync(path.join(__dirname, '../storefront/lib/essai-followup.js'), 'utf8');
   assert.match(src, /brevo-send/);
   assert.match(src, /sendEmailViaBrevo/);
   assert.doesNotMatch(src, /sendEmailViaResend/);
 });
 
-test('relance inscription e-mail passe par Brevo, pas Resend', () => {
+test('relance inscription e-mail passe par Brevo, pas Resend API', () => {
   const src = fs.readFileSync(path.join(__dirname, '../storefront/lib/inscription-nudge.js'), 'utf8');
   assert.match(src, /brevo-send/);
   assert.match(src, /sendEmailViaBrevo/);
@@ -89,12 +100,35 @@ test('mail campagne : texte David, comme Guillaume en Principal', () => {
   assert.doesNotMatch(mail.emailText, /Guillaume|Voir les offres|🚨/);
 });
 
-test('isConfigured suit RESEND_API_KEY', () => {
-  const prev = process.env.RESEND_API_KEY;
-  process.env.RESEND_API_KEY = '';
+test('isConfigured suit Brevo (API ou SMTP)', () => {
+  const prevKey = process.env.BREVO_API_KEY;
+  const prevUser = process.env.SMTP_USER;
+  const prevPass = process.env.SMTP_PASS;
+  const prevVercel = process.env.VERCEL;
+  delete process.env.BREVO_API_KEY;
+  delete process.env.SMTP_USER;
+  delete process.env.SMTP_PASS;
+  delete process.env.VERCEL;
   assert.equal(isConfigured(), false);
-  process.env.RESEND_API_KEY = 're_test';
+  process.env.BREVO_API_KEY = 'xkeysib-test';
   assert.equal(isConfigured(), true);
-  if (prev == null) delete process.env.RESEND_API_KEY;
-  else process.env.RESEND_API_KEY = prev;
+  if (prevKey == null) delete process.env.BREVO_API_KEY;
+  else process.env.BREVO_API_KEY = prevKey;
+  if (prevUser == null) delete process.env.SMTP_USER;
+  else process.env.SMTP_USER = prevUser;
+  if (prevPass == null) delete process.env.SMTP_PASS;
+  else process.env.SMTP_PASS = prevPass;
+  if (prevVercel == null) delete process.env.VERCEL;
+  else process.env.VERCEL = prevVercel;
+});
+
+test('Pass Sport et alertes ops passent par Brevo', () => {
+  const pass = fs.readFileSync(path.join(__dirname, '../storefront/lib/pass-sport-mail.js'), 'utf8');
+  const logger = fs.readFileSync(path.join(__dirname, '../lib/logger.js'), 'utf8');
+  assert.match(pass, /brevo-send/);
+  assert.match(pass, /sendEmailViaBrevo/);
+  assert.doesNotMatch(pass, /api\.resend\.com/);
+  assert.match(logger, /brevo-send/);
+  assert.match(logger, /sendEmailViaBrevo/);
+  assert.doesNotMatch(logger, /api\.resend\.com/);
 });

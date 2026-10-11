@@ -1,15 +1,11 @@
 'use strict';
 
 /**
- * Resend — factures / confirmations / campagnes (no-reply@boxingcenter.fr).
- * Pas Brevo / suzinabot : ce domaine est banni.
- * https://resend.com
+ * Compat: ancien module Resend — tout passe par Brevo.
+ * Les scripts qui importent encore sendEmailViaResend restent valides.
  */
 const fs = require('fs');
-const API = 'https://api.resend.com/emails';
-const DEFAULT_SENDER_EMAIL = 'no-reply@boxingcenter.fr';
-const DEFAULT_SENDER_NAME = 'David';
-const DEFAULT_REPLY_TO = 'boxingcentertls@gmail.com';
+const brevo = require('./brevo-send');
 
 function toResendAttachments(attachments = []) {
   const out = [];
@@ -37,87 +33,52 @@ function toResendAttachments(attachments = []) {
   return out;
 }
 
-function readApiKey() {
-  return String(process.env.RESEND_API_KEY || '')
-    .trim()
-    .replace(/^["']|["']$/g, '');
-}
-
 function senderEmail() {
-  return process.env.RESEND_SENDER_EMAIL || DEFAULT_SENDER_EMAIL;
+  return brevo.senderEmail();
 }
 
 function senderName() {
-  return process.env.RESEND_SENDER_NAME || DEFAULT_SENDER_NAME;
+  return (
+    process.env.RESEND_SENDER_NAME ||
+    process.env.BREVO_SENDER_NAME ||
+    brevo.senderName()
+  );
 }
 
 function defaultReplyTo() {
-  const fromEnv = process.env.RESEND_REPLY_TO || process.env.MAIL_REPLY_TO || '';
-  if (fromEnv && !/boxingcenter31/i.test(fromEnv)) return fromEnv;
-  return DEFAULT_REPLY_TO;
+  const fromEnv =
+    process.env.RESEND_REPLY_TO ||
+    process.env.BREVO_REPLY_TO ||
+    process.env.MAIL_REPLY_TO ||
+    '';
+  if (fromEnv) return fromEnv;
+  return brevo.defaultReplyTo();
 }
 
 function isConfigured() {
-  return Boolean(readApiKey());
+  return brevo.isConfigured();
 }
 
-async function sendEmailViaResend({
-  to,
-  subject,
-  html,
-  text,
-  replyTo,
-  headers,
-  attachments,
-  tags,
-  fromName,
-  fromEmail,
-  cc,
-}) {
-  if (!to) throw new Error('Destinataire email manquant');
-  if (!isConfigured()) throw new Error('RESEND_API_KEY manquant');
-
-  const fromAddress = String(fromEmail || senderEmail()).trim();
-  const body = {
-    from: `${fromName || senderName()} <${fromAddress}>`,
-    to: [to],
-    subject: subject || 'Message Boxing Center',
-    text: text || undefined,
-    html: html || undefined,
-    reply_to: replyTo || defaultReplyTo(),
-  };
-  const ccList = (Array.isArray(cc) ? cc : [cc])
-    .map((e) => String(e || '').trim())
-    .filter(Boolean);
-  if (ccList.length) body.cc = ccList;
-  if (headers && typeof headers === 'object') body.headers = headers;
-  const files = toResendAttachments(attachments);
-  if (files.length) body.attachments = files;
-  if (Array.isArray(tags) && tags.length) body.tags = tags;
-
-  const res = await fetch(API, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${readApiKey()}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
+async function sendEmailViaResend(opts = {}) {
+  const result = await brevo.sendEmailViaBrevo({
+    to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+    text: opts.text,
+    replyTo: opts.replyTo || defaultReplyTo(),
+    attachments: opts.attachments,
+    cc: opts.cc,
+    fromName: opts.fromName || senderName(),
+    fromEmail: opts.fromEmail || senderEmail(),
+    headers: opts.headers,
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.message || data.name || `Resend HTTP ${res.status}`);
-  }
-  return {
-    sent: true,
-    messageId: data.id,
-    via: 'resend',
-    sender: fromAddress,
-  };
+  if (!result) throw new Error('BREVO_API_KEY manquant (ou SMTP Brevo non configure)');
+  return { ...result, via: result.via || 'brevo' };
 }
 
 module.exports = {
-  DEFAULT_SENDER_EMAIL,
-  DEFAULT_SENDER_NAME,
+  DEFAULT_SENDER_EMAIL: brevo.DEFAULT_SENDER_EMAIL,
+  DEFAULT_SENDER_NAME: brevo.DEFAULT_SENDER_NAME,
   senderEmail,
   senderName,
   defaultReplyTo,
