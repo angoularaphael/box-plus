@@ -1681,11 +1681,10 @@ async function findExistingMemberOnCurrentSite(page, customer, opts = {}) {
       return { member_id: hit.member_id, action: `${action}_seance` };
     }
     if (!ok) {
-      if (action === 'found_email' || action === 'found_phone') {
-        contactCollision = true;
-        if (collisionIds && !collisionIds.includes(String(hit.member_id))) {
-          collisionIds.push(String(hit.member_id));
-        }
+      if (action === 'found_email' || action === 'found_phone') contactCollision = true;
+      // Toujours exclure les IDs déjà rejetés (évite de « créer » en réutilisant 22007).
+      if (collisionIds && !collisionIds.includes(String(hit.member_id))) {
+        collisionIds.push(String(hit.member_id));
       }
       logWarn('Résultat recherche Deciplus ignoré (identité non concordante)', {
         member_id: hit.member_id,
@@ -1940,13 +1939,13 @@ async function findOrCreateMember(page, order, gymConfig) {
         if (ok) break;
       }
       if (!ok) {
-        // Après « Créer quand même », un ID neuf hors exclude_ids est accepté
-        // même si la relecture fiche est floue (race nextgen iframe).
-        logWarn('ID après création forcée — relecture identité floue, on garde l’ID neuf', {
+        logWarn('ID après création forcée refusé (identité non concordante)', {
           ...logCtx,
           member_id: memberId,
           action,
         });
+        if (!excludeIds.includes(String(memberId))) excludeIds.push(String(memberId));
+        return null;
       }
       logInfo('Membre Deciplus créé malgré collision contact', {
         member_id: memberId,
