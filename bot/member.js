@@ -1109,7 +1109,11 @@ async function fillMemberForm(page, customer, gymConfig, order) {
   await fillFirst(ctx, 'form[name="db1_form"] input[name="email"]:not(#i_email)', customer.email);
   await fillFirst(ctx, sel.date_naissance || 'input[name="date_naissance"]', formatBirthdate(customer.birthdate));
   await fillFirst(ctx, sel.sexe || 'select[name="sexe"]', genderToDeciplus(customer.gender));
-  await fillFirst(ctx, sel.tel || 'input[name="tel"]', phone);
+  if (phone) {
+    await fillFirst(ctx, sel.tel || 'input[name="tel"]', phone);
+  } else {
+    await clearFirst(ctx, sel.tel || 'input[name="tel"]:not(#i_tel)');
+  }
   await clearFirst(ctx, sel.telsms || 'input[name="telsms"]');
   await fillFirst(ctx, sel.adr1 || 'input[name="adr1"]', customer.address);
   const adr2 = customer.address2 || customer.adr2;
@@ -1421,9 +1425,10 @@ async function clickCreerQuandMemeInContext(ctx) {
 }
 
 /** Dialogue Deciplus `#emailOrTelAlreadyExistDialog` → callback jQuery « Créer quand même ». */
-async function clickCreerQuandMeme(page, { timeoutMs = 10000 } = {}) {
+async function clickCreerQuandMeme(page, { timeoutMs = 10000, requireClick = false } = {}) {
   const deadline = Date.now() + Math.max(500, timeoutMs);
   const formCtx = await getMemberFormContext(page, { waitMs: 800 }).catch(() => page);
+  let clicked = false;
   while (Date.now() < deadline) {
     const scopes = [formCtx, ...deciplusScopes(page)];
     const seen = new Set();
@@ -1433,13 +1438,16 @@ async function clickCreerQuandMeme(page, { timeoutMs = 10000 } = {}) {
       seen.add(key);
       const how = await clickCreerQuandMemeInContext(ctx).catch(() => false);
       if (!how) continue;
+      clicked = true;
       logInfo('Doublon Deciplus — clic « Créer quand même »', { how });
       await randomDelay(600, 1100);
       if (!(await duplicateDialogVisible(page))) return true;
     }
     await page.waitForTimeout(250);
   }
-  if (!(await duplicateDialogVisible(page))) return true;
+  if (clicked) return true;
+  // Sans clic réel : ne pas prétendre que c’est OK (dialog déjà fermé par une navigation).
+  if (!requireClick && !(await duplicateDialogVisible(page))) return false;
   logWarn('Bouton « Créer quand même » introuvable');
   return false;
 }
@@ -1544,7 +1552,7 @@ async function submitMemberForm(page, options = {}) {
 
   if (options.allowDuplicate) {
     const excludeIds = options.excludeIds || [];
-    await clickCreerQuandMeme(page, { timeoutMs: 25000 });
+    await clickCreerQuandMeme(page, { timeoutMs: 25000, requireClick: true });
     await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
     await page
       .waitForURL(/idjnew=\d+|check\.php|joueurs\.php\?[^#]*idj=\d+/i, { timeout: 12000 })
@@ -1553,9 +1561,9 @@ async function submitMemberForm(page, options = {}) {
     if (hard) {
       throw new Error(`Deciplus a bloqué le doublon (identité + adresse identiques) : ${hard}`);
     }
-    let memberId = await waitForMemberId(page, 15000, { excludeIds });
+    let memberId = await waitForMemberId(page, 12000, { excludeIds });
     if (!memberId && (await duplicateDialogVisible(page))) {
-      await clickCreerQuandMeme(page, { timeoutMs: 8000 });
+      await clickCreerQuandMeme(page, { timeoutMs: 8000, requireClick: true });
       await page.waitForLoadState('domcontentloaded', { timeout: 12000 }).catch(() => {});
       const hard2 = await detectHardDuplicatePage(page);
       if (hard2) {
@@ -1563,12 +1571,40 @@ async function submitMemberForm(page, options = {}) {
       }
       memberId = await waitForMemberId(page, 10000, { excludeIds });
     }
+    // Deciplus laisse parfois idj=new après le clic : il faut re-Valider une fois le flag posé.
+    if (!memberId && isNewMemberUrl(page.url()) && !(await duplicateDialogVisible(page))) {
+      logInfo('2e Valider membre après « Créer quand même »');
+      const ctx2 = await getMemberFormContext(page, { waitMs: 3000 }).catch(() => page);
+      await prepareMemberFormSubmit(ctx2, true).catch(() => {});
+      const reclicked = await clickFirst(
+        ctx2,
+        'input[type="submit"][value*="Valider" i], input.albut_dw[type="submit"], button:has-text("Valider")',
+        { force: true }
+      ).catch(() => false);
+      if (!reclicked) {
+        await ctx2
+          .locator('form[name="db1_form"]')
+          .first()
+          .evaluate((f) => {
+            const aldeSubmit = f.querySelector('input[name="alde_submit"]');
+            if (aldeSubmit) aldeSubmit.value = 'valider';
+            f.submit();
+          })
+          .catch(() => {});
+      }
+      await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
+      if (await duplicateDialogVisible(page)) {
+        await clickCreerQuandMeme(page, { timeoutMs: 10000, requireClick: true });
+        await page.waitForLoadState('domcontentloaded', { timeout: 12000 }).catch(() => {});
+      }
+      memberId = await waitForMemberId(page, 15000, { excludeIds });
+    }
     if (!memberId) {
       const snippet = ((await page.locator('body').innerText().catch(() => '')) || '')
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 280);
-      logWarn('Après « Créer quand même », ID membre encore introuvable — pas de 2e Valider', {
+      logWarn('Après « Créer quand même », ID membre encore introuvable', {
         url: page.url(),
         snippet,
       });
@@ -1583,17 +1619,20 @@ async function submitMemberForm(page, options = {}) {
       .catch(() => {});
     await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
     await randomDelay(800, 1500);
-    await dismissJqueryUiOverlay(page);
-    const confirmBtn = page
-      .locator(
-        '.ui-dialog-buttonpane button:has-text("OK"), .ui-dialog-buttonpane button:has-text("Valider"), .ui-dialog-buttonpane button:has-text("Oui")'
-      )
-      .first();
-    if ((await confirmBtn.count()) > 0 && (await confirmBtn.isVisible().catch(() => false))) {
-      await confirmBtn.click().catch(() => {});
-      await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
-      await randomDelay(500, 900);
+    // Ne pas Escape le dialog doublon — findOrCreateMember doit pouvoir cliquer « Créer quand même ».
+    if (!(await duplicateDialogVisible(page))) {
       await dismissJqueryUiOverlay(page);
+      const confirmBtn = page
+        .locator(
+          '.ui-dialog-buttonpane button:has-text("OK"), .ui-dialog-buttonpane button:has-text("Valider"), .ui-dialog-buttonpane button:has-text("Oui")'
+        )
+        .first();
+      if ((await confirmBtn.count()) > 0 && (await confirmBtn.isVisible().catch(() => false))) {
+        await confirmBtn.click().catch(() => {});
+        await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
+        await randomDelay(500, 900);
+        await dismissJqueryUiOverlay(page);
+      }
     }
   }
 
@@ -1625,6 +1664,9 @@ async function detectDuplicateError(page) {
 
 async function findExistingMemberOnCurrentSite(page, customer, opts = {}) {
   await resetMemberSearchContext(page);
+  const MAX_NAME_HITS = Number(opts.maxNameHits || 8);
+  let contactCollision = false;
+  const collisionIds = Array.isArray(opts.collisionIds) ? opts.collisionIds : null;
 
   async function acceptHit(hit, action) {
     if (!hit?.found || !hit.member_id) return null;
@@ -1639,6 +1681,12 @@ async function findExistingMemberOnCurrentSite(page, customer, opts = {}) {
       return { member_id: hit.member_id, action: `${action}_seance` };
     }
     if (!ok) {
+      if (action === 'found_email' || action === 'found_phone') {
+        contactCollision = true;
+        if (collisionIds && !collisionIds.includes(String(hit.member_id))) {
+          collisionIds.push(String(hit.member_id));
+        }
+      }
       logWarn('Résultat recherche Deciplus ignoré (identité non concordante)', {
         member_id: hit.member_id,
         action,
@@ -1650,8 +1698,10 @@ async function findExistingMemberOnCurrentSite(page, customer, opts = {}) {
     return { member_id: hit.member_id, action };
   }
 
-  async function tryIds(ids, action) {
-    for (const member_id of ids || []) {
+  async function tryIds(ids, action, { limit = 0 } = {}) {
+    const list = ids || [];
+    const capped = limit > 0 ? list.slice(0, limit) : list;
+    for (const member_id of capped) {
       const accepted = await acceptHit({ found: true, member_id }, action);
       if (accepted) return accepted;
     }
@@ -1668,6 +1718,7 @@ async function findExistingMemberOnCurrentSite(page, customer, opts = {}) {
     const accepted = await tryIds(listed.ids, 'found_phone');
     if (accepted) return accepted;
   }
+
   if (customer.last_name || customer.first_name) {
     const seen = new Set();
     const pass = async (ids, action) => {
@@ -1676,23 +1727,36 @@ async function findExistingMemberOnCurrentSite(page, customer, opts = {}) {
         seen.add(id);
         return true;
       });
-      return tryIds(fresh, action);
+      return tryIds(fresh, action, { limit: MAX_NAME_HITS });
     };
-    const accepted =
-      (await pass(
-        await listNameSearchMemberIds(page, customer.last_name, customer.first_name),
-        'found_name'
-      )) ||
-      (customer.first_name
-        ? await (async () => {
-            logInfo('Recherche membre Deciplus', {
-              via: 'name_first_only',
-              first_name: nameForDeciplusSearch(customer.first_name),
-            });
-            return pass(await listNameSearchMemberIds(page, '', customer.first_name), 'found_first');
-          })()
-        : null);
+    // Toujours tenter nom+prénom (ex. Alicia créée malgré collision tél Soheil).
+    const accepted = await pass(
+      await listNameSearchMemberIds(page, customer.last_name, customer.first_name),
+      'found_name'
+    );
     if (accepted) return accepted;
+
+    // Collision contact : ne pas balayer tous les « Alicia » du club.
+    if (contactCollision && (customer.email || customer.phone) && !opts.seanceOfferte) {
+      logInfo('Contact Deciplus déjà pris par une autre identité — création nouvelle fiche', {
+        email: customer.email || null,
+        phone: customer.phone || null,
+      });
+      return null;
+    }
+
+    // Prénom seul trop ambigu — uniquement si pas de contact fiable.
+    if (customer.first_name && !customer.email && !customer.phone) {
+      logInfo('Recherche membre Deciplus', {
+        via: 'name_first_only',
+        first_name: nameForDeciplusSearch(customer.first_name),
+      });
+      const byFirst = await pass(
+        await listNameSearchMemberIds(page, '', customer.first_name),
+        'found_first'
+      );
+      if (byFirst) return byFirst;
+    }
   }
   return null;
 }
@@ -1789,7 +1853,16 @@ async function findOrCreateMember(page, order, gymConfig) {
   const logCtx = { order_id: order.order_id };
 
   const { isSeanceOfferteOrder } = require('../lib/info-compta-note');
-  const seanceOpts = { seanceOfferte: isSeanceOfferteOrder(order) };
+  const collisionIds = [
+    ...new Set(
+      []
+        .concat(order.exclude_deciplus_member_ids || [])
+        .concat(order.customer?.exclude_deciplus_member_ids || [])
+        .map((id) => String(id || '').trim())
+        .filter(Boolean)
+    ),
+  ];
+  const seanceOpts = { seanceOfferte: isSeanceOfferteOrder(order), collisionIds };
 
   if (!order.force_new_member) {
     const sites = saleMemberSearchConfigs(order.gym || gymConfig.key);
@@ -1817,16 +1890,25 @@ async function findOrCreateMember(page, order, gymConfig) {
 
   const duplicateMsg = await detectDuplicateError(page);
   if (duplicateMsg) {
-    logWarn('Doublon à la création — recherche multi-salles (repli sécurité)', logCtx);
-    const allSites = uniqueDeciplusSearchConfigs(order.gym || gymConfig.key);
-    const accepted = await searchExistingMemberAcrossSites(
-      page,
-      customer,
-      allSites,
-      { ...logCtx, fallback: 'duplicate_all_gyms' },
-      seanceOpts
-    );
-    if (accepted) return accepted;
+    // Si on a déjà vu une collision contact (autre personne), pas de re-scan multi-salles :
+    // aller directement à « Créer quand même » avec les IDs exclus.
+    if (!collisionIds.length) {
+      logWarn('Doublon à la création — recherche multi-salles (repli sécurité)', logCtx);
+      const allSites = uniqueDeciplusSearchConfigs(order.gym || gymConfig.key);
+      const accepted = await searchExistingMemberAcrossSites(
+        page,
+        customer,
+        allSites,
+        { ...logCtx, fallback: 'duplicate_all_gyms' },
+        seanceOpts
+      );
+      if (accepted) return accepted;
+    } else {
+      logWarn('Doublon contact déjà identifié — skip re-scan multi-salles', {
+        ...logCtx,
+        exclude_ids: collisionIds,
+      });
+    }
     if (seanceOpts.seanceOfferte && customer.phone) {
       const phoneHit = await searchMember(page, customer.phone);
       if (phoneHit?.found && phoneHit.member_id) {
@@ -1837,6 +1919,128 @@ async function findOrCreateMember(page, order, gymConfig) {
         return { member_id: phoneHit.member_id, action: 'found_phone_duplicate', gymConfig };
       }
     }
+
+    // Collision email/tél avec une autre personne (ex. Alicia / Soheil).
+    // Important : ne PAS naviguer (searchMember) avant le clic — ça ferme le dialog.
+    const excludeIds = [...collisionIds];
+    logWarn('Doublon Deciplus — tentative « Créer quand même »', {
+      ...logCtx,
+      message: String(duplicateMsg).slice(0, 200),
+      exclude_ids: excludeIds,
+      dialog_visible: await duplicateDialogVisible(page),
+    });
+
+    async function acceptForcedMember(memberId, action) {
+      if (!memberId || excludeIds.includes(String(memberId))) return null;
+      let ok = false;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await openMemberEditForm(page, memberId).catch(() => false);
+        await page.waitForTimeout(600);
+        ok = await searchHitMatchesCustomer(page, customer, seanceOpts);
+        if (ok) break;
+      }
+      if (!ok) {
+        // Après « Créer quand même », un ID neuf hors exclude_ids est accepté
+        // même si la relecture fiche est floue (race nextgen iframe).
+        logWarn('ID après création forcée — relecture identité floue, on garde l’ID neuf', {
+          ...logCtx,
+          member_id: memberId,
+          action,
+        });
+      }
+      logInfo('Membre Deciplus créé malgré collision contact', {
+        member_id: memberId,
+        order_id: order.order_id,
+        action,
+      });
+      return { member_id: String(memberId), action, gymConfig };
+    }
+
+    // Clic immédiat tant que le dialog est ouvert après Valider.
+    if (await duplicateDialogVisible(page)) {
+      const forced = await clickCreerQuandMeme(page, { timeoutMs: 20000, requireClick: true });
+      if (forced) {
+        await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
+        const hard = await detectHardDuplicatePage(page);
+        if (hard) {
+          return {
+            duplicate: true,
+            message: `Deciplus a bloqué le doublon (identité + adresse) : ${hard}`,
+          };
+        }
+        let forcedId = await waitForMemberId(page, 15000, { excludeIds });
+        if (!forcedId) forcedId = await resolveCreatedMemberId(page, customer, { excludeIds });
+        const acceptedForced = await acceptForcedMember(forcedId, 'created_despite_duplicate');
+        if (acceptedForced) return acceptedForced;
+      }
+    }
+
+    // Dialog perdu / formulaire new : resoumettre avec allowDuplicate (sans navigation avant).
+    try {
+      if (!isNewMemberUrl(page.url()) && !(await duplicateDialogVisible(page))) {
+        await openNewMemberForm(page, customer);
+        await fillMemberForm(page, customer, gymConfig, order);
+      }
+      await submitMemberForm(page, { allowDuplicate: true, excludeIds });
+      const hard2 = await detectHardDuplicatePage(page);
+      if (hard2) {
+        return {
+          duplicate: true,
+          message: `Deciplus a bloqué le doublon (identité + adresse) : ${hard2}`,
+        };
+      }
+      let retryId = await waitForMemberId(page, 15000, { excludeIds });
+      if (!retryId) retryId = await resolveCreatedMemberId(page, customer, { excludeIds });
+      const acceptedRetry = await acceptForcedMember(retryId, 'created_allow_duplicate');
+      if (acceptedRetry) return acceptedRetry;
+    } catch (err) {
+      logWarn('Création forcée après doublon échouée', {
+        ...logCtx,
+        error: err.message,
+      });
+    }
+
+    // Repli : email unique mais tél déjà pris — créer sans téléphone, puis le remettre.
+    if (customer.email && customer.phone && excludeIds.length) {
+      const phoneBackup = customer.phone;
+      try {
+        logWarn('Création membre sans téléphone (collision contact)', {
+          ...logCtx,
+          exclude_ids: excludeIds,
+        });
+        customer.phone = '';
+        await openNewMemberForm(page, customer);
+        await fillMemberForm(page, customer, gymConfig, order);
+        await submitMemberForm(page);
+        if (await detectDuplicateError(page)) {
+          await clickCreerQuandMeme(page, { timeoutMs: 15000, requireClick: true }).catch(() => {});
+          await page.waitForLoadState('domcontentloaded', { timeout: 12000 }).catch(() => {});
+        }
+        let noPhoneId = await waitForMemberId(page, 15000, { excludeIds });
+        if (!noPhoneId) noPhoneId = await resolveCreatedMemberId(page, { ...customer, phone: '' }, { excludeIds });
+        customer.phone = phoneBackup;
+        if (noPhoneId && !excludeIds.includes(String(noPhoneId))) {
+          await openMemberEditForm(page, noPhoneId).catch(() => false);
+          const ctxPhone = await getMemberFormContext(page, { waitMs: 5000 }).catch(() => page);
+          const tel = phoneForDeciplus(phoneBackup);
+          if (tel) {
+            await fillFirst(ctxPhone, 'input[name="telsms"], input[name="tel"]:not(#i_tel)', tel).catch(
+              () => {}
+            );
+            await submitMemberForm(page).catch(() => {});
+            if (await duplicateDialogVisible(page)) {
+              await clickCreerQuandMeme(page, { timeoutMs: 10000, requireClick: true }).catch(() => {});
+            }
+          }
+          const acceptedNoPhone = await acceptForcedMember(noPhoneId, 'created_without_phone');
+          if (acceptedNoPhone) return acceptedNoPhone;
+        }
+      } catch (err) {
+        customer.phone = phoneBackup;
+        logWarn('Création sans téléphone échouée', { ...logCtx, error: err.message });
+      }
+    }
+
     return { duplicate: true, message: duplicateMsg };
   }
 

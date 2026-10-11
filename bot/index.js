@@ -613,7 +613,7 @@ async function processSaleJob(page, order, jobMeta = {}) {
     memberResult = await findOrCreateMember(page, order, gymConfig);
     mark('member');
 
-    if (memberResult.duplicate) {
+    if (memberResult.duplicate && !memberResult.member_id) {
       await sendAlert(`Doublon Deciplus — commande ${order.order_id}`, {
         order_id: order.order_id,
         message: memberResult.message,
@@ -621,8 +621,15 @@ async function processSaleJob(page, order, jobMeta = {}) {
       return {
         status: STATUS.MANUAL_REVIEW,
         error: memberResult.message,
-        deciplus_member_id: memberResult.member_id || null,
+        deciplus_member_id: null,
       };
+    }
+    if (memberResult.duplicate && memberResult.member_id) {
+      logWarn('Doublon Deciplus — vente poursuivie sur fiche existante', {
+        order_id: order.order_id,
+        member_id: memberResult.member_id,
+        message: memberResult.message,
+      });
     }
 
     memberId = memberResult.member_id;

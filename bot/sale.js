@@ -2466,55 +2466,97 @@ async function togglePaiementComptantOff(page) {
   return ensurePaiementComptantOff(page);
 }
 
-async function openSaleFlow(page, productConfig, gymConfig, saleKind) {
-  await closeGreyboxIfOpen(page);
-  await dismissJqueryUiOverlay(page).catch(() => {});
-
-  // check.php est dans nextgen/legacy iframe (_vue_iframe) — boutons = input.fichemembre_button
-  const checkCtx = await getMemberCheckContext(page, { waitMs: 20000 });
+async function clickAchatButton(checkCtx, saleKind) {
   const buttonKey = saleKind === 'carte' ? 'member_check.achat_carte' : 'member_check.achat_abonnement';
   const clicked = await clickFirst(checkCtx, sel(buttonKey), { force: true });
-  if (!clicked) {
-    // Repli : clic via evaluate dans l'iframe
-    const fallbackValue = saleKind === 'carte' ? 'Achat Carte' : 'Achat Abonnement';
-    const forced = await checkCtx
-      .evaluate((value) => {
-        const btn = document.querySelector(
-          `input.fichemembre_button[value="${value}"], input[type="button"][value="${value}"]`
-        );
+  if (clicked) return true;
+  const fallbackValue = saleKind === 'carte' ? 'Achat Carte' : 'Achat Abonnement';
+  const needle = saleKind === 'carte' ? /achat\s*carte/i : /achat\s*abonnement/i;
+  return checkCtx
+    .evaluate(
+      ({ value, patternSource }) => {
+        const re = new RegExp(patternSource, 'i');
+        const nodes = [
+          ...document.querySelectorAll(
+            'input.fichemembre_button, input[type="button"], button.fichemembre_button, a.fichemembre_button'
+          ),
+        ];
+        const btn = nodes.find((el) => {
+          const v = String(el.value || el.textContent || el.getAttribute?.('aria-label') || '').trim();
+          return v === value || re.test(v);
+        });
         if (!btn || btn.disabled) return false;
         btn.click();
         return true;
-      }, fallbackValue)
-      .catch(() => false);
-    if (!forced) {
-      throw new Error(`Bouton vente Deciplus introuvable (${buttonKey}) — url=${page.url()}`);
+      },
+      { value: fallbackValue, patternSource: needle.source }
+    )
+    .catch(() => false);
+}
+
+async function openSaleFlow(page, productConfig, gymConfig, saleKind, { memberId = null } = {}) {
+  const maxAttempts = 3;
+  let lastErr = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await closeGreyboxIfOpen(page);
+      await dismissJqueryUiOverlay(page).catch(() => {});
+
+      // check.php est dans nextgen/legacy iframe (_vue_iframe) — boutons = input.fichemembre_button
+      const waitMs = attempt === 1 ? 25000 : 35000;
+      const checkCtx = await getMemberCheckContext(page, { waitMs });
+      const buttonKey = saleKind === 'carte' ? 'member_check.achat_carte' : 'member_check.achat_abonnement';
+      const forced = await clickAchatButton(checkCtx, saleKind);
+      if (!forced) {
+        throw new Error(`Bouton vente Deciplus introuvable (${buttonKey}) — url=${page.url()}`);
+      }
+
+      await page.waitForURL(/nextgen|vente|choose-zone/, { timeout: 20000 }).catch(() => {});
+      await randomDelay(800, 1500);
+
+      // Critical : sans sortir de choose-zone, le champ « Rechercher un produit » n'existe pas
+      await ensureDeciplusSaleZone(page, gymConfig);
+
+      if (await isChooseZoneScreen(page)) {
+        throw new Error(
+          `Catalogue vente bloqué sur choose-zone (salle=${gymConfig.deciplus_label || gymConfig.label || '?'}, url=${page.url()})`
+        );
+      }
+
+      await page.waitForURL(/vente/, { timeout: 20000 }).catch(() => {});
+      await randomDelay(1000, 2000);
+
+      const catalogCtx = await resolveVenteCatalogContext(page, { timeoutMs: 25000 });
+      if (!catalogCtx) {
+        throw new Error(
+          `Catalogue Deciplus (recherche produit) introuvable après ouverture vente — url=${page.url()}`
+        );
+      }
+
+      await selectProductInCatalog(page, productConfig);
+      return;
+    } catch (err) {
+      lastErr = err;
+      const retryable = /Bouton vente Deciplus introuvable|Catalogue Deciplus|choose-zone/i.test(
+        err.message || ''
+      );
+      if (!retryable || attempt >= maxAttempts) throw err;
+      logWarn('Ouverture vente Deciplus — nouvel essai après reload fiche', {
+        attempt,
+        member_id: memberId || null,
+        error: err.message,
+      });
+      if (memberId) {
+        await openMemberCheck(page, memberId, gymConfig).catch(() => {});
+      } else {
+        await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
+      }
+      await randomDelay(1500, 2500);
     }
   }
 
-  await page.waitForURL(/nextgen|vente|choose-zone/, { timeout: 20000 }).catch(() => {});
-  await randomDelay(800, 1500);
-
-  // Critical : sans sortir de choose-zone, le champ « Rechercher un produit » n'existe pas
-  await ensureDeciplusSaleZone(page, gymConfig);
-
-  if (await isChooseZoneScreen(page)) {
-    throw new Error(
-      `Catalogue vente bloqué sur choose-zone (salle=${gymConfig.deciplus_label || gymConfig.label || '?'}, url=${page.url()})`
-    );
-  }
-
-  await page.waitForURL(/vente/, { timeout: 20000 }).catch(() => {});
-  await randomDelay(1000, 2000);
-
-  const catalogCtx = await resolveVenteCatalogContext(page, { timeoutMs: 25000 });
-  if (!catalogCtx) {
-    throw new Error(
-      `Catalogue Deciplus (recherche produit) introuvable après ouverture vente — url=${page.url()}`
-    );
-  }
-
-  await selectProductInCatalog(page, productConfig);
+  throw lastErr || new Error('Ouverture vente Deciplus impossible');
 }
 
 async function registerSaleRibIfAsked(page, productConfig = {}) {
@@ -3001,8 +3043,8 @@ async function finalizePayment(page, productConfig, gymConfig = {}) {
   logInfo('Paiement finalisé Deciplus', { mode, badge_differe: badge });
 }
 
-async function buyAbonnement(page, productConfig, gymConfig) {
-  await openSaleFlow(page, productConfig, gymConfig, 'abonnement');
+async function buyAbonnement(page, productConfig, gymConfig, memberId = null) {
+  await openSaleFlow(page, productConfig, gymConfig, 'abonnement', { memberId });
   await applyConfigModal(page, productConfig);
   await finalizePayment(page, productConfig, gymConfig);
 
@@ -3103,7 +3145,7 @@ async function buyCarteBadge(page, productConfig, gymConfig, memberId = null) {
     }
   }
 
-  await openSaleFlow(page, productConfig, gymConfig, 'carte');
+  await openSaleFlow(page, productConfig, gymConfig, 'carte', { memberId });
   await applyConfigModal(page, productConfig, memberId);
   await finalizePayment(page, productConfig, gymConfig);
 
@@ -3537,7 +3579,7 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
       };
     } else {
       const existingIds = afterCancel.filter((c) => !c.isBadge).map((c) => c.idc);
-      result = await buyAbonnement(page, productConfig, gymConfig);
+      result = await buyAbonnement(page, productConfig, gymConfig, memberId);
       const subscriptionContract = await verifyCreatedContract(page, memberId, {
         badge: false,
         label: productConfig.name || productConfig.title || order.product_name,

@@ -225,4 +225,44 @@ describe('memberSearchHitMatches — pas de réutilisation sur email de couple',
       true
     );
   });
+
+  it('accepte Galen vs Galen Elvis (2e prénom Deciplus) avec même téléphone', () => {
+    assert.equal(
+      memberSearchHitMatches(
+        {
+          lastName: 'GIBSON-KEREK',
+          firstName: 'Galen Elvis',
+          phone: '0673582514',
+          email: 'galen@example.com',
+          fromMemberForm: true,
+        },
+        {
+          last_name: 'Gibson-Kerek',
+          first_name: 'Galen',
+          phone: '0673582514',
+          email: 'galen@example.com',
+        }
+      ),
+      true
+    );
+  });
+
+  it('refuse Alicia Grote vs Soheil Ferrier (même téléphone, autre personne)', () => {
+    assert.equal(
+      memberSearchHitMatches(
+        {
+          lastName: 'FERRIER',
+          firstName: 'Soheil',
+          phone: '0782526875',
+          fromMemberForm: true,
+        },
+        {
+          last_name: 'Grote',
+          first_name: 'Alicia',
+          phone: '0782526875',
+        }
+      ),
+      false
+    );
+  });
 });
