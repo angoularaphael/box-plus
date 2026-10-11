@@ -417,10 +417,17 @@ function dispatchInProgress(order = {}, now = Date.now()) {
   return true;
 }
 
-function missingFicheReason(order = {}, { inProgress = false } = {}) {
+function missingFicheReason(order = {}, { inProgress = false, now = Date.now() } = {}) {
   if (inProgress) return 'en_cours';
   const st = String(order.bot_status || '').toLowerCase();
   if (order.bot_error || st === 'manual_review' || st === 'error') return 'bot_error';
+  const attempts = Number(order.sale_reconcile_attempts || 0);
+  const dispatchedAt = Date.parse(order.dispatched_at || '');
+  const staleDispatch =
+    Number.isFinite(dispatchedAt) && now - dispatchedAt >= LEGACY_DISPATCH_IN_PROGRESS_MS;
+  if (attempts >= 12 || (staleDispatch && !order.deciplus_member_id && !order.deciplus_sale_id)) {
+    return 'envoye_bloque';
+  }
   if (order.dispatch_result?.reason === 'already_processed') return 'envoye_sans_retour';
   if (order.dispatched_at) return 'envoye_sans_retour';
   return 'jamais_envoye';
@@ -451,7 +458,7 @@ function missingFicheRows(
       in_progress: inProgress,
       bot_status: o.bot_status || null,
       bot_error: o.bot_error ? String(o.bot_error).slice(0, 140) : null,
-      reason: missingFicheReason(o, { inProgress }),
+      reason: missingFicheReason(o, { inProgress, now }),
     });
   }
   return rows.sort((a, b) => Date.parse(b.paid_at || 0) - Date.parse(a.paid_at || 0));

@@ -2472,7 +2472,8 @@
       const reasonLabel = {
         en_cours: 'En cours (2 min)',
         bot_error: 'Erreur bot',
-        envoye_sans_retour: 'Déjà traité côté bot — sync en cours',
+        envoye_sans_retour: 'Envoyé — en attente retour bot',
+        envoye_bloque: 'Envoyé sans fiche (relances épuisées / bloqué)',
         jamais_envoye: 'Pas encore envoyé',
       };
       if (missingBody) {

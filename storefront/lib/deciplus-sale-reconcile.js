@@ -105,11 +105,24 @@ function saleRetryExhausted(order = {}) {
   return attempts >= MAX_SALE_RETRIES;
 }
 
+/** Après MAX relances sans fiche : on reprend (job perdu / bot mort), pas un abandon définitif. */
+const STALE_EXHAUSTED_MS = Number(
+  process.env.BOXPLUS_SALE_STALE_EXHAUSTED_MS || 6 * 60 * 60 * 1000
+);
+
+function shouldResetExhaustedRetries(order = {}, now = Date.now()) {
+  if (!saleRetryExhausted(order)) return false;
+  if (deciplusSaleSettled(order) || order.deciplus_member_id) return false;
+  const last = lastDispatchAt(order);
+  if (!last) return true;
+  return now - last >= STALE_EXHAUSTED_MS;
+}
+
 function shouldRedispatchMissingSale(order = {}, now = Date.now()) {
   if (!orderNeedsDeciplusSale(order)) return false;
   if (!withinLookback(order, now)) return false;
-  if (saleRetryExhausted(order)) return false;
-  if (recentlyAttemptedDispatch(order, now)) return false;
+  if (saleRetryExhausted(order) && !shouldResetExhaustedRetries(order, now)) return false;
+  if (recentlyAttemptedDispatch(order, now) && !shouldResetExhaustedRetries(order, now)) return false;
   return true;
 }
 
@@ -135,7 +148,7 @@ async function reconcileMissingDeciplusSales({
       skipped.push({ order_id: order.order_id, reason: 'settled_or_not_ready' });
       continue;
     }
-    if (saleRetryExhausted(order)) {
+    if (saleRetryExhausted(order) && !shouldResetExhaustedRetries(order, now)) {
       exhausted.push({
         order_id: order.order_id,
         attempts: Number(order.sale_reconcile_attempts || 0),
@@ -143,14 +156,21 @@ async function reconcileMissingDeciplusSales({
       });
       continue;
     }
-    if (recentlyAttemptedDispatch(order, now)) {
+    if (recentlyAttemptedDispatch(order, now) && !shouldResetExhaustedRetries(order, now)) {
       skipped.push({ order_id: order.order_id, reason: 'cooldown' });
       continue;
     }
 
+    if (shouldResetExhaustedRetries(order, now)) {
+      order.sale_reconcile_attempts = 0;
+      order.bot_error = null;
+    }
     const attempts = Number(order.sale_reconcile_attempts || 0) + 1;
     try {
-      const dispatch = await dispatchOrder(order, { force_requeue: true });
+      const dispatch = await dispatchOrder(
+        { ...order, force_requeue: true, force_sale_retry: true },
+        { force_requeue: true }
+      );
       order.sale_reconcile_at = new Date(now).toISOString();
       order.sale_reconcile_attempts = attempts;
       if (typeof saveOrder === 'function') await saveOrder(order);
@@ -195,9 +215,11 @@ module.exports = {
   MAX_SALE_RETRIES,
   LOOKBACK_MS,
   PAID_UNSIGNED_GRACE_MS,
+  STALE_EXHAUSTED_MS,
   productRequiresDeciplusSale,
   deciplusSaleSettled,
   isBoutiqueSaleOrder,
+  shouldResetExhaustedRetries,
   identityReady,
   aventureDossierReady,
   paidUnsignedReady,
