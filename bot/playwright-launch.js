@@ -50,6 +50,11 @@ function getChromiumLaunchOptions() {
   };
 }
 
+function isMissingBrowserExecutable(err) {
+  const msg = String(err?.message || err || '');
+  return /Executable doesn't exist|browserType\.launch/i.test(msg) && /ms-playwright|chromium/i.test(msg);
+}
+
 async function launchChromiumWithRetry(maxAttempts = 3) {
   if (isHostedBot()) {
     const dataRoot = process.env.BOT_DATA_DIR || path.join(process.cwd(), 'data');
@@ -61,6 +66,7 @@ async function launchChromiumWithRetry(maxAttempts = 3) {
 
   const opts = getChromiumLaunchOptions();
   let lastError = null;
+  let reinstallTried = false;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
@@ -75,6 +81,16 @@ async function launchChromiumWithRetry(maxAttempts = 3) {
         error: err.message,
         headless: opts.headless,
       });
+      if (!reinstallTried && isHostedBot() && isMissingBrowserExecutable(err)) {
+        reinstallTried = true;
+        try {
+          const { installPlaywrightBrowser } = require('../lib/playwright-install');
+          logWarn('Playwright exécutable manquant — réinstall navigateur');
+          installPlaywrightBrowser({ botDir: process.cwd(), force: true });
+        } catch (installErr) {
+          logWarn('Réinstall Playwright échouée', { error: installErr.message || installErr });
+        }
+      }
       if (attempt < maxAttempts) {
         await sleep(4000 * attempt);
       }

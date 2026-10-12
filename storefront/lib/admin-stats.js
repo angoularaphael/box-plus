@@ -420,7 +420,9 @@ function dispatchInProgress(order = {}, now = Date.now()) {
 function missingFicheReason(order = {}, { inProgress = false, now = Date.now() } = {}) {
   if (inProgress) return 'en_cours';
   const st = String(order.bot_status || '').toLowerCase();
-  if (order.bot_error || st === 'manual_review' || st === 'error') return 'bot_error';
+  if (order.bot_error || st === 'manual_review' || st === 'error' || st === 'failover') {
+    return 'bot_error';
+  }
   const attempts = Number(order.sale_reconcile_attempts || 0);
   const dispatchedAt = Date.parse(order.dispatched_at || '');
   const staleDispatch =

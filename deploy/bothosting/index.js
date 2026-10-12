@@ -67,43 +67,20 @@ function ensureDataPaths() {
   log(`Session → ${process.env.BOT_SESSION_DIR}`);
 }
 
-function playwrightReady(basePath) {
-  if (!fs.existsSync(basePath)) return false;
-  return fs.readdirSync(basePath).some((n) => /chromium|headless/i.test(n));
-}
-
-function playwrightCli(botDir) {
-  return path.join(botDir, 'node_modules', 'playwright', 'cli.js');
-}
-
-function runPlaywrightInstall(botDir, variant) {
-  const cli = playwrightCli(botDir);
-  if (!fs.existsSync(cli)) {
-    throw new Error('playwright/cli.js absent — npm install a échoué ?');
-  }
-  run(`node "${cli}" install ${variant}`, botDir);
-}
-
 function installPlaywright(botDir) {
+  run('rm -rf ~/.cache/ms-playwright 2>/dev/null || true', ROOT);
+  const { installPlaywrightBrowser, hasBrowserInstalled } = require(path.join(
+    botDir,
+    'lib',
+    'playwright-install'
+  ));
   const base = process.env.PLAYWRIGHT_BROWSERS_PATH;
-  const already = playwrightReady(base);
-  if (!already) {
-    run('rm -rf ~/.cache/ms-playwright 2>/dev/null || true', ROOT);
-    for (const variant of ['chromium-headless-shell', 'chromium']) {
-      try {
-        log(`Installation Playwright: ${variant}`);
-        runPlaywrightInstall(botDir, variant);
-        if (playwrightReady(base)) break;
-      } catch (err) {
-        log(`Échec ${variant}: ${err.message || err}`);
-      }
-    }
-  } else {
-    log('Playwright déjà installé — skip navigateur');
+  if (hasBrowserInstalled(base, botDir)) {
+    log('Playwright déjà installé (exécutable OK) — skip navigateur');
+    return;
   }
-  if (!playwrightReady(base)) {
-    throw new Error('Playwright non installé — vérifie df -h (disque plein ?)');
-  }
+  log('Playwright manquant ou mauvaise version — réinstall navigateur');
+  installPlaywrightBrowser({ botDir });
 }
 
 loadEnvFile(ENV_FILE);

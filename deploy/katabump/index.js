@@ -52,28 +52,20 @@ function ensureDataPaths() {
   log(`TMPDIR → ${tmp}`);
 }
 
-function playwrightReady(basePath) {
-  if (!fs.existsSync(basePath)) return false;
-  return fs.readdirSync(basePath).some((n) => /chromium|headless/i.test(n));
-}
-
 function installPlaywright(botDir) {
+  run('rm -rf ~/.cache/ms-playwright 2>/dev/null || true', ROOT);
+  const { installPlaywrightBrowser, hasBrowserInstalled } = require(path.join(
+    botDir,
+    'lib',
+    'playwright-install'
+  ));
   const base = process.env.PLAYWRIGHT_BROWSERS_PATH;
-  if (playwrightReady(base)) {
-    log('Playwright déjà installé — skip');
+  if (hasBrowserInstalled(base, botDir)) {
+    log('Playwright déjà installé (exécutable OK) — skip');
     return;
   }
-  run('rm -rf ~/.cache/ms-playwright 2>/dev/null || true', ROOT);
-  for (const variant of ['chromium-headless-shell', 'chromium']) {
-    try {
-      log(`Installation Playwright: ${variant}`);
-      run(`npx playwright install ${variant}`, botDir);
-      if (playwrightReady(base)) return;
-    } catch (err) {
-      log(`Échec ${variant}: ${err.message || err}`);
-    }
-  }
-  throw new Error('Playwright non installé — ENOSPC ? Vérifie df -h et augmente le disque KataBump.');
+  log('Playwright manquant ou mauvaise version — réinstall navigateur');
+  installPlaywrightBrowser({ botDir });
 }
 
 loadEnvFile(ENV_FILE);
