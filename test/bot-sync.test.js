@@ -53,8 +53,27 @@ test('missingFicheReason — erreur bot ou déjà traité côté bot', () => {
     'bot_error'
   );
   assert.equal(
+    missingFicheReason({ bot_status: 'failover' }),
+    'bot_error'
+  );
+  assert.equal(
     missingFicheReason({ dispatch_result: { reason: 'already_processed' } }),
     'envoye_sans_retour'
+  );
+  // Envoi vieux sans IDs mais < 12 relances = encore en attente, pas « bloqué »
+  assert.equal(
+    missingFicheReason({
+      dispatched_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      sale_reconcile_attempts: 3,
+    }),
+    'envoye_sans_retour'
+  );
+  assert.equal(
+    missingFicheReason({
+      dispatched_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+      sale_reconcile_attempts: 12,
+    }),
+    'envoye_bloque'
   );
 });
 

@@ -188,6 +188,35 @@ test('fetch failed ne coupe pas les relances avant que l autre bot réponde', ()
   assert.equal(shouldRedispatchMissingSale(order), true);
 });
 
+test('failover / Chromium manquant ne bloque jamais les relances cron', () => {
+  const {
+    shouldRedispatchMissingSale,
+    isInfraOrFailoverBotError,
+  } = require('../storefront/lib/deciplus-sale-reconcile');
+  const paidAt = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  const base = {
+    order_id: 'BC-INFRA',
+    action: 'sale',
+    step: 8,
+    signature: { signed_at: paidAt },
+    payment: { status: 'paid', paid_at: paidAt },
+    product_snapshot: { name: 'OFFRE PROMO 12 MOIS', sale_type: 'abonnement' },
+    sale_reconcile_attempts: 12,
+    sale_reconcile_at: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+    dispatched_at: new Date(Date.now() - 35 * 60 * 1000).toISOString(),
+  };
+  const failover = { ...base, bot_status: 'failover' };
+  const chromium = {
+    ...base,
+    bot_status: 'error',
+    bot_error: "browserType.launch: Executable doesn't exist at /home/container/data/ms-playwright/chromium_headless_shell-1248/x",
+  };
+  assert.equal(isInfraOrFailoverBotError(failover), true);
+  assert.equal(isInfraOrFailoverBotError(chromium), true);
+  assert.equal(shouldRedispatchMissingSale(failover), true);
+  assert.equal(shouldRedispatchMissingSale(chromium), true);
+});
+
 test('payé depuis plus de 15 min sans signature → pas de dispatch boutique', () => {
   const { paidUnsignedReady, orderNeedsDeciplusSale } = require('../storefront/lib/deciplus-sale-reconcile');
   const paidAt = new Date(Date.now() - 20 * 60 * 1000).toISOString();

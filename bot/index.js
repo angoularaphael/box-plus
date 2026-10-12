@@ -66,7 +66,7 @@ const { getBotId, wrongSalesBotReject } = require('../lib/sales-bot');
 const { sleep } = require('../lib/utils');
 const idempotency = require('../lib/persistent-idempotency');
 const { STATES, lifecycleFromBotOutcome } = require('../lib/job-lifecycle');
-const { classifyError, backoffMs } = require('../lib/retry-policy');
+const { classifyError, backoffMs, isBrowserInfraError } = require('../lib/retry-policy');
 const {
   failoverAfterAttempts,
   shouldFailoverSale,
@@ -1532,7 +1532,8 @@ async function failoverExhaustedJob(job, filePath, { policy, error, attempts } =
   await pushBotSaleStatus(job, {
     ...transferred,
     status: 'failover',
-    error: null,
+    // Garder la cause réelle (ex. Chromium manquant) pour le reconcile / l’admin
+    error: String(error || transferred.error || '').slice(0, 500) || null,
   });
   logWarn('Job transféré au bot de secours', {
     job_id: job.job_id || job.order_id,
@@ -1835,12 +1836,16 @@ async function processOneJob(job) {
     const attempts = priorAttempts + 1;
     const sessionErr = isSessionRecoverableError(err.message);
     const pageCrashed = isPageCrashedError(err.message) || err.code === 'PAGE_CRASH';
+    const browserInfra = isBrowserInfraError(err.message) || policy.no_failover;
     const browserGone =
-      pageCrashed || /browser has been closed|Target page, context or browser/i.test(err.message);
+      pageCrashed ||
+      browserInfra ||
+      /browser has been closed|Target page, context or browser/i.test(err.message);
     const mfaErr = isMfaAuthError(err.message);
-    // Un crash Chromium est local : on relance le navigateur ici, sans passer le job à l'autre bot.
+    // Crash Chromium / navigateur manquant = local : pas de bascule vers l'autre bot.
     const fastFailover =
       !pageCrashed &&
+      !browserInfra &&
       attempts >= failoverAfterAttempts() &&
       shouldFailoverSale(order, policy, {
         action,
@@ -1849,12 +1854,27 @@ async function processOneJob(job) {
 
     // Crash renderer : fermer Chromium. Le prochain essai ouvre une page neuve (session disque conservée).
     let sessionRecovered = false;
-    if (pageCrashed && !fastFailover) {
-      logWarn('Page Chromium crashée — fermeture navigateur avant nouvel essai', {
-        job_id: jobId,
-        error: err.message,
-      });
+    if ((pageCrashed || browserInfra) && !fastFailover) {
+      logWarn(
+        browserInfra
+          ? 'Chromium Playwright manquant/corrompu — réinstall locale avant nouvel essai'
+          : 'Page Chromium crashée — fermeture navigateur avant nouvel essai',
+        {
+          job_id: jobId,
+          error: err.message,
+        }
+      );
       await closeBrowser().catch(() => {});
+      if (browserInfra) {
+        try {
+          const { installPlaywrightBrowser } = require('../lib/playwright-install');
+          installPlaywrightBrowser({ botDir: process.cwd(), force: true });
+        } catch (installErr) {
+          logWarn('Réinstall Playwright échouée après erreur infra', {
+            error: installErr.message || installErr,
+          });
+        }
+      }
     } else if ((sessionErr || browserGone) && !fastFailover) {
       logWarn('Erreur liée session — refresh immédiat puis reprise du job', {
         job_id: jobId,

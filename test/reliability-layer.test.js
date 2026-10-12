@@ -52,6 +52,17 @@ test('auth et réseau sont retryables avec backoff exponentiel borné', () => {
   assert.equal(backoffMs(20, { baseMs: 1000, capMs: 5000, random: () => 0 }), 3750);
 });
 
+test('Chromium Playwright manquant est transient sans failover', () => {
+  const { isBrowserInfraError } = require('../lib/retry-policy');
+  const msg =
+    "browserType.launch: Executable doesn't exist at /home/container/data/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell";
+  assert.equal(isBrowserInfraError(msg), true);
+  const result = classifyError(new Error(msg));
+  assert.equal(result.classification, CLASSIFICATION.TRANSIENT);
+  assert.equal(result.retryable, true);
+  assert.equal(result.no_failover, true);
+});
+
 test('réconciliation classe les anomalies demandées', () => {
   const unsigned = {
     order_id: 'U1',

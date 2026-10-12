@@ -97,11 +97,25 @@ function withinLookback(order = {}, now = Date.now()) {
   return now - paid <= LOOKBACK_MS;
 }
 
+function isInfraOrFailoverBotError(order = {}) {
+  const err = String(order.bot_error || order.failover_reason || '');
+  const st = String(order.bot_status || '').toLowerCase();
+  if (st === 'failover' || st === 'failed_over') return true;
+  if (/fetch failed|econnrefused|enotfound|econnreset|etimedout/i.test(err)) return true;
+  if (
+    /Executable doesn't exist|browserType\.launch|chromium_headless_shell|Playwright non installé|Impossible de lancer Chromium/i.test(
+      err
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function saleRetryExhausted(order = {}) {
   const attempts = Number(order.sale_reconcile_attempts || 0);
-  if (/fetch failed|econnrefused|enotfound|econnreset|etimedout/i.test(String(order.bot_error || ''))) {
-    return false;
-  }
+  // Infra bot / failover : ne jamais abandonner — le cron continue de relancer.
+  if (isInfraOrFailoverBotError(order)) return false;
   return attempts >= MAX_SALE_RETRIES;
 }
 
@@ -109,11 +123,18 @@ function saleRetryExhausted(order = {}) {
 const STALE_EXHAUSTED_MS = Number(
   process.env.BOXPLUS_SALE_STALE_EXHAUSTED_MS || 6 * 60 * 60 * 1000
 );
+/** Failover / Chromium mort : reprise rapide (30 min), pas 6 h. */
+const STALE_INFRA_MS = Number(process.env.BOXPLUS_SALE_STALE_INFRA_MS || 30 * 60 * 1000);
 
 function shouldResetExhaustedRetries(order = {}, now = Date.now()) {
-  if (!saleRetryExhausted(order)) return false;
   if (deciplusSaleSettled(order) || order.deciplus_member_id) return false;
   const last = lastDispatchAt(order);
+  const infra = isInfraOrFailoverBotError(order);
+  if (infra) {
+    if (!last) return true;
+    return now - last >= STALE_INFRA_MS;
+  }
+  if (!saleRetryExhausted(order)) return false;
   if (!last) return true;
   return now - last >= STALE_EXHAUSTED_MS;
 }
@@ -161,9 +182,12 @@ async function reconcileMissingDeciplusSales({
       continue;
     }
 
-    if (shouldResetExhaustedRetries(order, now)) {
+    if (shouldResetExhaustedRetries(order, now) || isInfraOrFailoverBotError(order)) {
       order.sale_reconcile_attempts = 0;
       order.bot_error = null;
+      if (['failover', 'failed_over', 'error', 'manual_review'].includes(String(order.bot_status || '').toLowerCase())) {
+        order.bot_status = null;
+      }
     }
     const attempts = Number(order.sale_reconcile_attempts || 0) + 1;
     try {
@@ -216,9 +240,11 @@ module.exports = {
   LOOKBACK_MS,
   PAID_UNSIGNED_GRACE_MS,
   STALE_EXHAUSTED_MS,
+  STALE_INFRA_MS,
   productRequiresDeciplusSale,
   deciplusSaleSettled,
   isBoutiqueSaleOrder,
+  isInfraOrFailoverBotError,
   shouldResetExhaustedRetries,
   identityReady,
   aventureDossierReady,

@@ -55,6 +55,17 @@ function isMissingBrowserExecutable(err) {
   return /Executable doesn't exist|browserType\.launch/i.test(msg) && /ms-playwright|chromium/i.test(msg);
 }
 
+function ensurePlaywrightBrowserInstalled() {
+  const { installPlaywrightBrowser, hasBrowserInstalled } = require('../lib/playwright-install');
+  const botDir = process.cwd();
+  const base =
+    process.env.PLAYWRIGHT_BROWSERS_PATH || path.join(botDir, 'data', 'ms-playwright');
+  if (hasBrowserInstalled(base, botDir)) return false;
+  logWarn('Playwright exécutable absent au launch — installation');
+  installPlaywrightBrowser({ botDir, force: true });
+  return true;
+}
+
 async function launchChromiumWithRetry(maxAttempts = 3) {
   if (isHostedBot()) {
     const dataRoot = process.env.BOT_DATA_DIR || path.join(process.cwd(), 'data');
@@ -62,6 +73,11 @@ async function launchChromiumWithRetry(maxAttempts = 3) {
       baseDir: path.join(dataRoot, 'system-libs'),
       botDir: process.cwd(),
     });
+    try {
+      ensurePlaywrightBrowserInstalled();
+    } catch (installErr) {
+      logWarn('Pré-install Playwright échouée', { error: installErr.message || installErr });
+    }
   }
 
   const opts = getChromiumLaunchOptions();
@@ -81,11 +97,11 @@ async function launchChromiumWithRetry(maxAttempts = 3) {
         error: err.message,
         headless: opts.headless,
       });
-      if (!reinstallTried && isHostedBot() && isMissingBrowserExecutable(err)) {
+      if (!reinstallTried && isMissingBrowserExecutable(err)) {
         reinstallTried = true;
         try {
-          const { installPlaywrightBrowser } = require('../lib/playwright-install');
           logWarn('Playwright exécutable manquant — réinstall navigateur');
+          const { installPlaywrightBrowser } = require('../lib/playwright-install');
           installPlaywrightBrowser({ botDir: process.cwd(), force: true });
         } catch (installErr) {
           logWarn('Réinstall Playwright échouée', { error: installErr.message || installErr });
