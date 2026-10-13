@@ -997,11 +997,18 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
      enfants alors qu'aucun enfant n'avait jamais été évoqué. */
   const KIDS_VISITEUR = /baby|bébé|[ée]ducative|educative|3\s*ans|7–11|enfant|fils|fille|250|BABY BOXE/i;
   const KIDS_BOT = /baby\s*boxe|\b250\b|\b295\b|enfant|fils|fille|7–11|12–16|\b([3-9]|1[0-6])\s*ans\b/i;
-  /* Le catalogue des disciplines cite la Baby Boxe parmi toutes les autres : ce
-     n'est pas une conversation sur un enfant, il ne doit pas basculer les tarifs. */
+  /* Le catalogue des disciplines, comme le planning complet d'une salle, cite la
+     Baby Boxe au milieu des cours adultes. Ce n'est pas une conversation sur un
+     enfant : ça ne doit pas basculer la suite du fil sur les tarifs enfants.
+     En revanche « le planning Baby Boxe / éducative de Minimes », qui ne parle
+     que des jeunes, reste bien un contexte enfant. */
   const EST_CATALOGUE = /Côté combat\s*:/i;
+  const COURS_ADULTE =
+    /ANGLAISE LOISIRS|BOXE ANGLAISE\b|\bMMA\b|GRAPPLING|BOXING CAMP|LADY PUNCH|PIEDS-POINGS|CROSS TRAINING|HYROX|JIU-JITSU|\bK1\b|OPEN SPARRING|BOXE THA/i;
+  const EST_PLANNING_MIXTE = (contenu) => COURS_ADULTE.test(contenu);
   const estDuBot = (m) => m && m.role && (m.role === 'assistant' || m.role === 'bot');
-  const signalBot = (contenu) => !EST_CATALOGUE.test(contenu) && KIDS_BOT.test(contenu);
+  const signalBot = (contenu) =>
+    !EST_CATALOGUE.test(contenu) && !EST_PLANNING_MIXTE(contenu) && KIDS_BOT.test(contenu);
   const kidsPriceCtx =
     KIDS_VISITEUR.test(t) ||
     signalBot(last) ||

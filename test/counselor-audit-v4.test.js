@@ -148,3 +148,23 @@ test('le catalogue des disciplines n’ouvre pas un contexte tarif enfant', () =
   assert.match(r.reply, /29,99/);
   assert.doesNotMatch(r.reply, /250|295/);
 });
+
+test('un planning de salle complet n’ouvre pas un contexte tarif enfant', () => {
+  const planning = [
+    'À **Ramonville** :',
+    '• Lundi 19h45–21h15 · BOXE ANGLAISE LOISIRS · Tous niveaux.',
+    '• Mardi 18h40–19h40 · GRAPPLING · Tous niveaux.',
+    '• Mercredi 15h00–16h00 · BOXE ÉDUCATIVE 7–11 ans',
+    '• Samedi 14h15–15h00 · BABY BOXE DÈS 3 ANS',
+  ].join('\n');
+  const r = demande("ok et le prix c'est le même partout ?", {
+    persona: nassim,
+    lastBot: planning,
+    messages: [
+      { role: 'user', content: "j'habite vers Ramonville" },
+      { role: 'assistant', content: planning },
+    ],
+  });
+  assert.match(r.reply, /29,99/);
+  assert.doesNotMatch(r.reply, /250|295/);
+});
