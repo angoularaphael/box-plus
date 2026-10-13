@@ -217,6 +217,7 @@ async function expandContractSections(page) {
 }
 
 async function findActiveContracts(page, options = {}) {
+  const includeInactive = Boolean(options.includeInactive);
   await expandContractSections(page);
   for (let attempt = 0; attempt < 12; attempt += 1) {
     let ready = false;
@@ -282,6 +283,7 @@ async function findActiveContracts(page, options = {}) {
           /expir/i.test(itemLabel) &&
           !/r[eéÉ]sili|annul/i.test(itemLabel);
         if (
+          !includeInactive &&
           !expiredPrestation &&
           !summaryOnly &&
           isStaleOrInactiveAbo(statusLabel)
@@ -694,13 +696,19 @@ async function setResiliationDate(page, dateStr) {
 function paymentRowIsFutureUncollected(text, now = new Date()) {
   const src = String(text || '').replace(/\s+/g, ' ').trim();
   if (!src || src.length > 500) return false;
-  if (/pay[ée]|encaiss/i.test(src)) return false;
-  if (!/en attente|pr[ée]vu|programm|à venir|a venir|planifi|impay|à pr[ée]lever|a prelever/i.test(src)) {
+  if (/pay[ée]|encaiss|pr[ée]lev[ée]|r[eé]gl[ée]|sold[ée]/i.test(src) && !/impay/i.test(src)) {
     return false;
   }
+  if (/suspendu|annul[ée]|supprim/i.test(src) && !/impay/i.test(src)) return false;
   const dates = parseFrDatesFromLabel(src);
-  if (!dates.length) return false;
-  return startOfDay(dates[0]).getTime() >= startOfDay(now).getTime();
+  const futureDate = dates.some((d) => startOfDay(d).getTime() >= startOfDay(now).getTime());
+  const pendingHint =
+    /en attente|pr[ée]vu|programm|à venir|a venir|planifi|impay|à pr[ée]lever|a prelever|pr[ée]l[èe]vement/i.test(
+      src
+    );
+  if (dates.length && futureDate) return pendingHint || /€|eur/i.test(src);
+  if (!dates.length) return pendingHint && /€|eur/i.test(src);
+  return false;
 }
 
 async function confirmPendingPaymentDialog(page) {
@@ -739,42 +747,55 @@ async function confirmPendingPaymentDialog(page) {
  * qui ne sont pas encore encaissées. Une ligne déjà payée n’est pas touchée.
  * Si l’écran Deciplus n’expose pas l’action, la résiliation déjà confirmée reste valide.
  */
-async function stopFutureScheduledPayments(page) {
-  const allPayments = page.getByText(/voir toutes les échéances/i).first();
-  if ((await allPayments.count()) > 0 && (await allPayments.isVisible().catch(() => false))) {
-    await allPayments.click({ force: true }).catch(() => {});
-    await randomDelay(400, 700);
+async function expandAllPaymentRows(page) {
+  for (const ctx of getScopes(page)) {
+    try {
+      const link = ctx.getByText(/voir toutes les [eé]ch[eé]ances/i).first();
+      if ((await link.count()) > 0 && (await link.isVisible().catch(() => false))) {
+        await link.click({ force: true }).catch(() => {});
+        await randomDelay(400, 700);
+      }
+    } catch {
+      /* frame */
+    }
   }
+}
+
+async function stopFutureScheduledPayments(page) {
+  await expandAllPaymentRows(page);
 
   let stopped = 0;
-  for (let i = 0; i < 12; i += 1) {
+  for (let i = 0; i < 20; i += 1) {
     let clicked = false;
     for (const ctx of getScopes(page)) {
       try {
         const rows = await ctx
           .evaluate(() =>
-            [...document.querySelectorAll('tr, li')].map((row) => {
-              const action = [...row.querySelectorAll('button, a, i, [role="button"], input[type="button"]')].find(
-                (el) => {
-                  const hint = `${el.getAttribute('title') || ''} ${el.getAttribute('aria-label') || ''} ${el.className || ''} ${el.innerText || el.value || ''}`;
-                  return /suspend|pause|supprim|annul/i.test(hint);
-                }
-              );
-              return {
-                text: String(row.innerText || '').replace(/\s+/g, ' ').trim(),
-                hasAction: Boolean(action),
-              };
-            })
+            [...document.querySelectorAll('tr, li, .el-table__row, .p-datatable-row, .og-payment-item')].map(
+              (row) => {
+                const action = [...row.querySelectorAll('button, a, i, [role="button"], input[type="button"]')].find(
+                  (el) => {
+                    const hint = `${el.getAttribute('title') || ''} ${el.getAttribute('aria-label') || ''} ${el.className || ''} ${el.innerText || el.value || ''}`;
+                    return /suspend|pause|supprim|annul|stop|arr[eê]t/i.test(hint);
+                  }
+                );
+                return {
+                  text: String(row.innerText || '').replace(/\s+/g, ' ').trim(),
+                  hasAction: Boolean(action),
+                };
+              }
+            )
           )
           .catch(() => []);
         const index = rows.findIndex((row) => row.hasAction && paymentRowIsFutureUncollected(row.text));
         if (index < 0) continue;
         clicked = await ctx.evaluate((rowIndex) => {
-          const row = document.querySelectorAll('tr, li')[rowIndex];
+          const list = [...document.querySelectorAll('tr, li, .el-table__row, .p-datatable-row, .og-payment-item')];
+          const row = list[rowIndex];
           if (!row) return false;
           const btn = [...row.querySelectorAll('button, a, i, [role="button"], input[type="button"]')].find((el) => {
             const hint = `${el.getAttribute('title') || ''} ${el.getAttribute('aria-label') || ''} ${el.className || ''} ${el.innerText || el.value || ''}`;
-            return /suspend|pause|supprim|annul/i.test(hint);
+            return /suspend|pause|supprim|annul|stop|arr[eê]t/i.test(hint);
           });
           if (!btn) return false;
           btn.click();
@@ -789,6 +810,7 @@ async function stopFutureScheduledPayments(page) {
     await confirmPendingPaymentDialog(page);
     stopped += 1;
     await randomDelay(400, 700);
+    await expandAllPaymentRows(page);
   }
 
   if (stopped) {
@@ -1594,6 +1616,7 @@ module.exports = {
   cancelOneContract,
   cancelAllMemberSales,
   cancelSale,
+  stopFutureScheduledPayments,
   formatFrDate,
   isPendingOrFutureContract,
   isSameDayStartContract,
@@ -1614,4 +1637,5 @@ module.exports = {
   contractStartDate,
   openContractPage,
   waitActionPanel,
+  reopenMemberAfterCancel,
 };

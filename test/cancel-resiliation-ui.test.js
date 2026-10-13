@@ -126,6 +126,14 @@ test('seules les échéances à venir non encaissées sont annulées', () => {
     paymentRowIsFutureUncollected('03/08/2026 Impayé 29,99 € Supprimer', today),
     false
   );
+  assert.equal(
+    paymentRowIsFutureUncollected('27/10/2026 Prélèvement prévu 44,99 €', today),
+    true
+  );
+  assert.equal(
+    paymentRowIsFutureUncollected('27/10/2026 Annulé 44,99 €', today),
+    false
+  );
 });
 
 test('le texte d’aide ne sélectionne pas le motif ; l’option oui', async () => {
