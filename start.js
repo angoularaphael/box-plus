@@ -59,7 +59,17 @@ function ensureRequiredDeps() {
 ensureRequiredDeps();
 
 try {
-  installPlaywrightBrowser();
+  // force: si un dossier chromium_* existe sans binaire, purge + réinstall
+  const { hasBrowserInstalled, expectedExecutable, browsersPath } = require('./lib/playwright-install');
+  const base = browsersPath(__dirname);
+  process.env.PLAYWRIGHT_BROWSERS_PATH = process.env.PLAYWRIGHT_BROWSERS_PATH || base;
+  const needForce = !hasBrowserInstalled(base, __dirname);
+  if (needForce) {
+    console.warn(
+      `[BOXPLUS] Chromium manquant (${expectedExecutable(__dirname) || 'path inconnu'}) — install forcée`
+    );
+  }
+  installPlaywrightBrowser({ botDir: __dirname, force: needForce });
 } catch (err) {
   console.error('[BOXPLUS]', err.message);
   process.exit(1);

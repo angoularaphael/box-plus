@@ -54,18 +54,18 @@ function ensureDataPaths() {
 
 function installPlaywright(botDir) {
   run('rm -rf ~/.cache/ms-playwright 2>/dev/null || true', ROOT);
-  const { installPlaywrightBrowser, hasBrowserInstalled } = require(path.join(
+  const { installPlaywrightBrowser, hasBrowserInstalled, expectedExecutable } = require(path.join(
     botDir,
     'lib',
     'playwright-install'
   ));
   const base = process.env.PLAYWRIGHT_BROWSERS_PATH;
   if (hasBrowserInstalled(base, botDir)) {
-    log('Playwright déjà installé (exécutable OK) — skip');
+    log(`Playwright déjà installé (exécutable OK) — ${expectedExecutable(botDir)}`);
     return;
   }
-  log('Playwright manquant ou mauvaise version — réinstall navigateur');
-  installPlaywrightBrowser({ botDir });
+  log(`Playwright manquant ou dossier incomplet — purge + réinstall (${expectedExecutable(botDir) || base})`);
+  installPlaywrightBrowser({ botDir, force: true });
 }
 
 loadEnvFile(ENV_FILE);
