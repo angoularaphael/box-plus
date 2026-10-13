@@ -64,9 +64,28 @@ const KIDS_PLANNING_GYMS = ['minimes', 'ramonville', 'st-cyprien', 'portet'];
 const PRECISE_PLANNING_ASK =
   /\b(lundi|mardi|mercredi|jeudi|vendredi|samedi)\b|quelle?\s+heures?|\bhoraires?\b|\bcr[ée]neaux?\b|quels?\s+(cr[ée]neaux?|horaires?|cours|coachs?|soirs?|jours?)|[àa]\s+quelle\s+heure|c['’]est quand|ce soir|ce matin|ce midi/i;
 
+/** Âge d'adulte annoncé en clair (17 ans et plus) : « j'ai 45 ans ». */
+function hasAdultAge(text) {
+  return /\b(1[7-9]|[2-9]\d|1\d\d)\s*ans\b/i.test(String(text || ''));
+}
+
+/** « depuis 10 ans », « ça fait 12 ans » : une durée, pas l'âge d'un enfant. */
+function ageTokensSansDurees(text) {
+  const t = String(text || '');
+  return [...t.matchAll(/\b([1-9]|1[0-6])\s*ans\b/gi)]
+    .filter(
+      (m) => !/(depuis|il y a|pendant|[çc]a fait|arr[êe]t[ée]e?\s+depuis)\s*$/i.test(t.slice(0, m.index))
+    )
+    .map((m) => Number(m[1]));
+}
+
 function isAdultPivot(text) {
   const t = String(text || '');
-  if (/\b(fils|fille|enfant|enfants|gamin|baby|bébé|[ée]ducative|\d+\s*ans)\b/i.test(t)) return false;
+  /* Un âge d'adulte prime : « j'ai 45 ans » ne doit pas déclencher le script enfant. */
+  if (hasAdultAge(t)) return true;
+  if (/\b(moi aussi|pour moi|et moi|je m['’]y mets|m['’]y mettre|me remettre)\b/i.test(t)) return true;
+  if (/\b(fils|fille|enfant|enfants|gamin|baby|bébé|[ée]ducative)\b/i.test(t)) return false;
+  if (ageTokensSansDurees(t).length) return false;
   return /\badulte|majeur|je (suis|veux) (un )?(adulte|homme|femme)|ce soir|ce matin|ce midi|entra[îi]nement|boxer|cours du soir/i.test(
     t
   );
@@ -313,6 +332,11 @@ function isClubOpeningHours(text) {
     /horaire[s]?\s+d['’]?ouverture|heures?\s+d['’]?ouverture/i.test(t) ||
     /jusqu['’]?[àae]?\s+quelle\s+heure/i.test(t) ||
     /vous [êe]tes ouvert/i.test(t) ||
+    /* « Vous ouvrez à quelle heure le samedi ? » : "ouvrez" ne contient pas "ouvert". */
+    /\b(vous\s+)?(ouvrez|fermez)\b/i.test(t) ||
+    /\b(la salle|le club|[çc]a)\s+(ouvre|ferme)\b/i.test(t) ||
+    /[àa]\s+quelle\s+heure.{0,25}\b(ouvre|ouverture|ferme|fermeture)\b/i.test(t) ||
+    /\b(ouvre|ouverture|ferme|fermeture)\b.{0,25}[àa]\s+quelle\s+heure/i.test(t) ||
     (/ouvert/i.test(t) && /dimanche|lundi|samedi|7\s*j|7j\/7|week[- ]?end/i.test(t))
   );
 }
@@ -348,14 +372,78 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
 
   const last = String(lastBot || '');
 
+  /* Mécontentement : doit passer AVANT les branches par mot-clé, sinon « la douche
+     était froide » tombe sur la fiche vestiaires et ignore la réclamation.
+     La base ne définit aucun canal de réclamation : on renvoie vers l'équipe de la
+     salle (base 13.2) et vers « Gérer mon abo » pour ce qui touche au contrat. */
+  if (
+    /\b(m[ée]content|pas content|insatisfait|inadmissible|inacceptable|scandaleux|honteux|lamentable|j['’]en ai marre|r[ée]clamation|me plaindre|je me plains|porter plainte)\b/i.test(
+      t
+    ) ||
+    /\b(tr[èe]s|vraiment|super)\s+d[ée][çc]u/i.test(t) ||
+    /personne ne m['’]a r[ée]pondu|aucune r[ée]ponse|on ne me r[ée]pond pas/i.test(t)
+  ) {
+    return {
+      reply: voice(
+        persona,
+        'Désolé que ça se soit passé comme ça — je comprends. Je ne peux pas traiter une réclamation depuis le chat : le plus efficace, c’est d’en parler à l’accueil de la salle concernée ou à un membre de l’équipe sur place, ils peuvent agir directement. Si ça touche ton abonnement, passe par « **Gérer mon abo** ». Tu étais dans quelle salle ?',
+        'Je suis désolé que cela se soit passé ainsi. Je ne peux pas traiter une réclamation depuis ce chat : le plus efficace est d’en parler à l’accueil de la salle concernée ou à un membre de l’équipe sur place, qui pourra intervenir directement. Si cela concerne votre abonnement, passez par « **Gérer mon abo** ». Dans quelle salle étiez-vous ?'
+      ),
+      source: 'faq-v4',
+    };
+  }
+
+  /* Frais annexes : sans cette branche, « il y a des frais en plus ? » tombait sur
+     la procédure d'inscription et le badge (base 9.4) n'était jamais annoncé. */
+  if (
+    /\b(frais|suppl[ée]ment(aire)?s?|co[uû]ts? cach[ée]s?|[àa] pr[ée]voir en plus|en (plus|sus) [àa] payer|frais de dossier|frais d['’]inscription)\b/i.test(
+      t
+    ) &&
+    !/r[ée]sil|rembours/i.test(t)
+  ) {
+    return {
+      reply: voice(
+        persona,
+        'En plus de l’abo, il y a le **badge d’accès : 34,99 € TTC** (sauf offre particulière). C’est le support d’accès, pas une caution — il n’est pas remboursé si tu résilies. À part ça, pas de frais de dossier : le prix affiché au moment de la commande fait foi.',
+        'En plus de l’abonnement, il faut compter le **badge d’accès : 34,99 € TTC** (sauf offre particulière). Il s’agit du support d’accès, pas d’une caution — il n’est pas remboursé en cas de résiliation. Il n’y a pas de frais de dossier : le prix affiché au moment de la commande fait foi.'
+      ),
+      source: 'faq-v4',
+    };
+  }
+
+  /* Liste des disciplines : réponse déterministe, sinon le modèle en oubliait la
+     moitié (MMA, Grappling, JJB...) et inventait des libellés absents de la base. */
+  if (
+    /\b(disciplines?|sports?|activit[ée]s?|cours)\b/i.test(t) &&
+    /\b(quoi|quels?|quelles?|liste|propose[zr]?|faites|avez[- ]vous|y a[- ]t[- ]il|c['’]est quoi)\b/i.test(t) &&
+    /* « la différence entre les cours » porte sur les catégories, pas sur le catalogue */
+    !/diff[ée]ren(ce|t)/i.test(t) &&
+    !/\b(loisirs?|comp[ée]titeurs?|comp[ée]tition|confirm[ée]s?)\b/i.test(t) &&
+    !/\b(horaire|planning|cr[ée]neau|quel jour|quels jours|heure)\b/i.test(t) &&
+    !detectGyms(t).length &&
+    !/\benfant|fils|fille|ados?|baby|[ée]ducative\b/i.test(t)
+  ) {
+    return {
+      reply: voice(
+        persona,
+        'Côté combat : **Boxe Anglaise**, **Boxe Thaï / K1 / pieds-poings**, **MMA**, **Grappling**, **JJB**, **Savate / Boxe Française**, **Open Sparring**. Côté forme : **Boxing Camp**, **Cross Training**, **HYROX**, **Boxing HIIT**. 100 % féminin : **Boxing Lady**, **Lady Punch**, **Lady Kick**. Et pour les jeunes : **Baby Boxe dès 3 ans** et **Boxe Éducative**. Toutes ne sont pas dans chaque salle — tu vises laquelle ?',
+        'Côté combat : **Boxe Anglaise**, **Boxe Thaï / K1 / pieds-poings**, **MMA**, **Grappling**, **JJB**, **Savate / Boxe Française**, **Open Sparring**. Côté forme : **Boxing Camp**, **Cross Training**, **HYROX**, **Boxing HIIT**. 100 % féminin : **Boxing Lady**, **Lady Punch**, **Lady Kick**. Pour les jeunes : **Baby Boxe dès 3 ans** et **Boxe Éducative**. Toutes ne sont pas proposées dans chaque salle — laquelle vous intéresse ?'
+      ),
+      source: 'faq-v4',
+    };
+  }
+
   const enfant =
     !isAdultPivot(t) &&
     !isPriceAsk(t) &&
+    /* « j'ai 45 ans et je n'ai rien fait depuis 10 ans » : ni l'âge adulte ni la
+       durée ne doivent faire basculer sur le script enfant. */
+    !hasAdultAge(t) &&
     (/\b(fils|fille|enfant|enfants|gamin|gamines?|gamins|baby\s*boxe|ados?|mineur|petits?|coll[ée]giens?|lyc[ée]ens?)\b/i.test(
       t
     ) ||
       /b[ée]b[ée]/i.test(t) ||
-      /\b([3-9]|1[0-6])\s*ans\b/i.test(t) ||
+      ageTokensSansDurees(t).some((n) => n >= 3) ||
       /[ée]ducative/i.test(t));
   const parleDeSalle = /quelle salle|dans quelle salle|o[uù] (ça|ca|c['’]est)|quelle club/i.test(t);
   const contexteEnfant =
@@ -899,12 +987,27 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
     };
   }
 
-  const kidsPriceBlob = [t, last]
-    .concat((Array.isArray(messages) ? messages : []).map((m) => String(m.content || m.text || '')))
-    .join('\n');
+  /* Contexte enfant : côté visiteur n'importe quel indice suffit. Côté bot, on
+     n'accepte que les marqueurs forts — un simple « boxe éducative » glissé dans
+     une phrase générale du conseiller basculait tout le fil sur les tarifs
+     enfants alors qu'aucun enfant n'avait jamais été évoqué. */
+  const KIDS_VISITEUR = /baby|bébé|[ée]ducative|educative|3\s*ans|7–11|enfant|fils|fille|250|BABY BOXE/i;
+  const KIDS_BOT = /baby\s*boxe|\b250\b|\b295\b|enfant|fils|fille|7–11|12–16|\b([3-9]|1[0-6])\s*ans\b/i;
+  const estDuBot = (m) => m && m.role && (m.role === 'assistant' || m.role === 'bot');
   const kidsPriceCtx =
-    /baby|bébé|[ée]ducative|educative|3\s*ans|7–11|enfant|fils|fille|250|BABY BOXE/i.test(kidsPriceBlob);
-  if (kidsPriceCtx && isPriceAsk(t) && !/29,99|sans engagement|par mois|4 semaines/i.test(t)) {
+    KIDS_VISITEUR.test(t) ||
+    KIDS_BOT.test(last) ||
+    (Array.isArray(messages) ? messages : []).some((m) => {
+      const contenu = String((m && (m.content || m.text)) || '');
+      return estDuBot(m) ? KIDS_BOT.test(contenu) : KIDS_VISITEUR.test(contenu);
+    });
+  if (
+    kidsPriceCtx &&
+    isPriceAsk(t) &&
+    /* « et moi aussi, c'est combien ? » : la question porte sur l'adulte. */
+    !isAdultPivot(t) &&
+    !/29,99|sans engagement|par mois|4 semaines/i.test(t)
+  ) {
     return {
       reply: pickAvoid(
         [
@@ -922,14 +1025,21 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
       t
     )
   ) {
-    return {
-      reply: pickAvoid(
-        [
+    /* La reformulation « On ne dit pas "29 € par mois" » est un rappel de la règle
+       interne (base 9.1) : elle ne vaut que si le visiteur a lui-même parlé de
+       mensualité. Servie à froid, elle corrigeait une phrase jamais prononcée. */
+    const parleDeMois = /par mois|\/\s*mois|mensuel|chaque mois|tous les mois/i.test(t);
+    const variantes = parleDeMois
+      ? [
+          'Presque : ce n’est pas mensuel, c’est **29,99 € toutes les 4 semaines** (28 jours), donc 13 prélèvements par an. L’autre offre, c’est **259 € / 12 mois**.',
+          'Petite précision : le prélèvement tombe **toutes les 4 semaines** (28 jours), pas une fois par mois — **29,99 €**. Sinon il y a l’année complète à **259 €**.',
+        ]
+      : [
           'On a deux offres : **29,99 € / 4 semaines** (28 jours, pas un mois) et **259 € / 12 mois**. La première = tu restes souple ; la seconde = le meilleur prix sur l’année.',
-          'On ne dit pas « 29 € par mois » : c’est **29,99 € toutes les 4 semaines** (28 jours), ou **259 € / 12 mois**.',
-        ],
-        lastBot
-      ),
+          'Deux formules : **29,99 €** prélevés **toutes les 4 semaines** sans engagement, ou **259 €** pour **12 mois** — l’option la plus économique sur l’année.',
+        ];
+    return {
+      reply: pickAvoid(variantes, lastBot),
       source: 'faq-v4',
     };
   }
