@@ -421,6 +421,10 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
     !/\b(loisirs?|comp[ée]titeurs?|comp[ée]tition|confirm[ée]s?)\b/i.test(t) &&
     !/\b(horaire|planning|cr[ée]neau|quel jour|quels jours|heure)\b/i.test(t) &&
     !detectGyms(t).length &&
+    /* « il y a quoi comme cours là-bas ? » vise une salle précise : c'est le
+       planning de cette salle qu'il faut, pas le catalogue du réseau. */
+    !/\b(l[àa][- ]bas|l[àa]|ici|sur place|chez eux|dans cette salle|cette salle)\b/i.test(t) &&
+    !detectGyms(last).length &&
     !/\benfant|fils|fille|ados?|baby|[ée]ducative\b/i.test(t)
   ) {
     return {
@@ -993,13 +997,17 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
      enfants alors qu'aucun enfant n'avait jamais été évoqué. */
   const KIDS_VISITEUR = /baby|bébé|[ée]ducative|educative|3\s*ans|7–11|enfant|fils|fille|250|BABY BOXE/i;
   const KIDS_BOT = /baby\s*boxe|\b250\b|\b295\b|enfant|fils|fille|7–11|12–16|\b([3-9]|1[0-6])\s*ans\b/i;
+  /* Le catalogue des disciplines cite la Baby Boxe parmi toutes les autres : ce
+     n'est pas une conversation sur un enfant, il ne doit pas basculer les tarifs. */
+  const EST_CATALOGUE = /Côté combat\s*:/i;
   const estDuBot = (m) => m && m.role && (m.role === 'assistant' || m.role === 'bot');
+  const signalBot = (contenu) => !EST_CATALOGUE.test(contenu) && KIDS_BOT.test(contenu);
   const kidsPriceCtx =
     KIDS_VISITEUR.test(t) ||
-    KIDS_BOT.test(last) ||
+    signalBot(last) ||
     (Array.isArray(messages) ? messages : []).some((m) => {
       const contenu = String((m && (m.content || m.text)) || '');
-      return estDuBot(m) ? KIDS_BOT.test(contenu) : KIDS_VISITEUR.test(contenu);
+      return estDuBot(m) ? signalBot(contenu) : KIDS_VISITEUR.test(contenu);
     });
   if (
     kidsPriceCtx &&

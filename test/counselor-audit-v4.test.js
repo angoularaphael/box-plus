@@ -124,3 +124,27 @@ test('un contexte enfant réellement ouvert par le bot conserve les tarifs enfan
   assert.match(r.reply, /250/);
   assert.match(r.reply, /295/);
 });
+
+test('« il y a quoi comme cours là-bas ? » reste sur la salle, pas sur le catalogue', () => {
+  const r = demande('il y a quoi comme cours de boxe là-bas ?', {
+    persona: nassim,
+    lastBot: '**Ramonville**, 33 rue des Ormes, 31520 Ramonville-Saint-Agne.',
+    messages: [{ role: 'user', content: "j'habite vers Ramonville" }],
+  });
+  if (r) assert.doesNotMatch(r.reply, /Côté combat/i);
+});
+
+test('le catalogue des disciplines n’ouvre pas un contexte tarif enfant', () => {
+  const catalogue =
+    'Côté combat : **Boxe Anglaise**, **MMA**, **Grappling**. Et pour les jeunes : **Baby Boxe dès 3 ans**.';
+  const r = demande("ok et le prix c'est le même partout ?", {
+    persona: nassim,
+    lastBot: catalogue,
+    messages: [
+      { role: 'user', content: 'je veux me remettre au sport' },
+      { role: 'assistant', content: catalogue },
+    ],
+  });
+  assert.match(r.reply, /29,99/);
+  assert.doesNotMatch(r.reply, /250|295/);
+});

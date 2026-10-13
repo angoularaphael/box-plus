@@ -1093,6 +1093,7 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
             'Parle comme une personne à l’accueil du club : naturel, utile, 2 à 4 phrases. Pas de catalogue, pas de gras partout.',
             'Aucun tarif, horaire, coach ou offre hors de cette base. Le 29,99 € / 4 semaines ne doit pas être arrondi à 29 €. Baby Boxe = 250 € la saison, éducative = 295 € la saison.',
             'N’invente aucun nom de discipline ni de cours : n’emploie que les libellés présents dans la base (pas de « pugilat », « renfo » ou autre intitulé absent).',
+            '« États-Unis » est une salle Boxing Center à Toulouse (388 avenue des États-Unis), jamais le pays. Ne réponds JAMAIS qu’il n’y a pas de créneaux aux États-Unis : son planning figure dans la base.',
             'Essai adulte = 10 €. Enfants : essai offert, ils ne paient pas. Pas de créneau à choisir : venir 5 minutes avant le début du cours.',
             'Ne propose JAMAIS de réserver, bloquer ou garder un créneau d’essai : il n’y en a aucun à réserver. Tu proposes de prendre l’essai en ligne, puis de venir 5 minutes avant le cours.',
             'Cite le créneau demandé (jour, heure, cours, salle). Ne mélange pas Baby Boxe et éducative. Un enfant de 3–6 ans = uniquement Baby Boxe (ou pieds-poings 3–6 ans aux États-Unis).',
