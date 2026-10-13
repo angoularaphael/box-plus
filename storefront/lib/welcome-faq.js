@@ -425,6 +425,11 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
        planning de cette salle qu'il faut, pas le catalogue du réseau. */
     !/\b(l[àa][- ]bas|l[àa]|ici|sur place|chez eux|dans cette salle|cette salle)\b/i.test(t) &&
     !detectGyms(last).length &&
+    /* « je fais quoi comme sport ? j'ai 45 ans et rien fait depuis 10 ans » :
+       c'est une demande de conseil pour une reprise, pas le catalogue. */
+    !/\b(reprendre|reprise|repris|me remettre|rien fait|pas sportif|pas fait de sport|s[ée]dentaire|longue pause|d[ée]butant)\b/i.test(
+      t
+    ) &&
     !/\benfant|fils|fille|ados?|baby|[ée]ducative\b/i.test(t)
   ) {
     return {
@@ -1006,9 +1011,16 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
   const COURS_ADULTE =
     /ANGLAISE LOISIRS|BOXE ANGLAISE\b|\bMMA\b|GRAPPLING|BOXING CAMP|LADY PUNCH|PIEDS-POINGS|CROSS TRAINING|HYROX|JIU-JITSU|\bK1\b|OPEN SPARRING|BOXE THA/i;
   const EST_PLANNING_MIXTE = (contenu) => COURS_ADULTE.test(contenu);
+  /* « C'est pour toi ou pour un enfant ? » est une question de cadrage du
+     conseiller, pas un contexte enfant : sinon la suite du fil bascule. */
+  const EST_QUESTION_CADRAGE =
+    /\b(adulte|toi|vous)\b[^.?!]{0,20}\bou\b[^.?!]{0,20}\benfant/i;
   const estDuBot = (m) => m && m.role && (m.role === 'assistant' || m.role === 'bot');
   const signalBot = (contenu) =>
-    !EST_CATALOGUE.test(contenu) && !EST_PLANNING_MIXTE(contenu) && KIDS_BOT.test(contenu);
+    !EST_CATALOGUE.test(contenu) &&
+    !EST_PLANNING_MIXTE(contenu) &&
+    !EST_QUESTION_CADRAGE.test(contenu) &&
+    KIDS_BOT.test(contenu);
   const kidsPriceCtx =
     KIDS_VISITEUR.test(t) ||
     signalBot(last) ||

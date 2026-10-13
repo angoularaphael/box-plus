@@ -168,3 +168,22 @@ test('un planning de salle complet n’ouvre pas un contexte tarif enfant', () =
   assert.match(r.reply, /29,99/);
   assert.doesNotMatch(r.reply, /250|295/);
 });
+
+test('« pour toi ou pour un enfant ? » est une question de cadrage, pas un contexte enfant', () => {
+  const cadrage = 'Tu cherches quel type de cours ? Et c’est pour toi ou pour un enfant ?';
+  const r = demande("ok et le prix c'est le même partout ?", {
+    persona: nassim,
+    lastBot: cadrage,
+    messages: [
+      { role: 'user', content: 'je veux me remettre au sport' },
+      { role: 'assistant', content: cadrage },
+    ],
+  });
+  assert.match(r.reply, /29,99/);
+  assert.doesNotMatch(r.reply, /250|295/);
+});
+
+test('une reprise de sport reçoit un conseil, pas le catalogue', () => {
+  const r = demande("je fais quoi comme sport moi ? j'ai 45 ans et je n'ai rien fait depuis 10 ans");
+  if (r) assert.doesNotMatch(r.reply, /Côté combat/i);
+});
