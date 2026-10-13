@@ -2,7 +2,8 @@
  * Résiliation Deciplus — abo + badge.
  * Flux exact (pas « Annuler la vente ») :
  *   fiche → Consulter contrat → Résilier
- *   → date de résiliation = aujourd'hui
+ *   → date de résiliation = aujourd'hui (jamais la fin de période préremplie)
+ *   → échéances à venir non encaissées annulées
  *   → motif « Ne souhaite pas reconduire »
  *   → Appliquer et Quitter
  *   → cocher « Envoyer un mail de résiliation »
@@ -117,6 +118,21 @@ function motifValueChosen(value) {
  */
 function resiliationCountsAsDone({ applyEnabled = false, confirmSeen = false } = {}) {
   return Boolean(applyEnabled && confirmSeen);
+}
+
+/** JJ/MM/AAAA, avec ou sans zéros. Une fin de période préremplie n’est pas « la même date ». */
+function resiliationDateMatches(actual, expected) {
+  const norm = (v) => {
+    const m = String(v || '')
+      .trim()
+      .match(/(\d{1,2})\D+(\d{1,2})\D+(\d{2,4})/);
+    if (!m) return '';
+    const y = m[3].length === 2 ? `20${m[3]}` : m[3];
+    return `${Number(m[1])}/${Number(m[2])}/${Number(y)}`;
+  };
+  const a = norm(actual);
+  const b = norm(expected);
+  return Boolean(a && b && a === b);
 }
 
 function parseCancelDate(raw) {
@@ -622,54 +638,22 @@ async function setResiliationDate(page, dateStr) {
   await input.fill('').catch(() => {});
   await input.type(dateStr, { delay: 35 });
   await input.press('Enter').catch(() => {});
-  await randomDelay(300, 500);
+  await page.keyboard.press('Escape').catch(() => {});
+  await randomDelay(200, 400);
 
-  // Repli calendrier : aujourd’hui d’abord, sinon jour du mois
-  const todayCell = ctx
-    .locator(
-      '.el-date-table td.available.today, .el-date-table td.today, ' +
-        '.el-picker-panel td.available.current, td.today span'
-    )
-    .first();
-  if ((await todayCell.count()) > 0 && (await todayCell.isVisible().catch(() => false))) {
-    await todayCell.click({ force: true }).catch(() => {});
-    await randomDelay(300, 500);
-  } else {
-    const day = String(Number(dateStr.split('/')[0]));
-    const calDay = ctx
-      .locator(
-        `.el-date-table td.available:not(.prev-month):not(.next-month) >> text="${day}", ` +
-          `.el-picker-panel td.available >> text="${day}", ` +
-          `td.available span:text-is("${day}")`
-      )
-      .first();
-    if ((await calDay.count()) > 0 && (await calDay.isVisible().catch(() => false))) {
-      await calDay.click({ force: true }).catch(() => {});
-      await randomDelay(300, 500);
-    } else {
-      await page.keyboard.press('Escape').catch(() => {});
-    }
-  }
-
-  // Forcer la valeur native si le v-model n'a pas suivi
-  const current = ((await input.inputValue().catch(() => '')) || '').trim();
-  const sameDate = (a, b) => {
-    const norm = (v) => {
-      const m = String(v || '')
-        .trim()
-        .match(/(\d{1,2})\D+(\d{1,2})\D+(\d{2,4})/);
-      if (!m) return '';
-      const y = m[3].length === 2 ? `20${m[3]}` : m[3];
-      return `${Number(m[1])}/${Number(m[2])}/${Number(y)}`;
-    };
-    const na = norm(a);
-    const nb = norm(b);
-    return Boolean(na && nb && na === nb);
-  };
-  if (!sameDate(current, dateStr)) {
+  const forceNativeDate = async () => {
     await ctx
       .evaluate(
-        ({ selectorHint, value }) => {
+        ({ value }) => {
+          const setVal = (target) => {
+            const proto = Object.getPrototypeOf(target);
+            const desc = Object.getOwnPropertyDescriptor(proto, 'value');
+            if (desc?.set) desc.set.call(target, value);
+            else target.value = value;
+            target.dispatchEvent(new Event('input', { bubbles: true }));
+            target.dispatchEvent(new Event('change', { bubbles: true }));
+            target.dispatchEvent(new Event('blur', { bubbles: true }));
+          };
           const candidates = [
             ...document.querySelectorAll(
               '.el-dialog .el-date-editor input, .el-drawer .el-date-editor input, ' +
@@ -685,31 +669,132 @@ async function setResiliationDate(page, dateStr) {
               break;
             }
           }
-          if (!target && candidates[0]) target = candidates[0];
           if (!target) return false;
-          const proto = Object.getPrototypeOf(target);
-          const desc = Object.getOwnPropertyDescriptor(proto, 'value');
-          if (desc?.set) desc.set.call(target, value);
-          else target.value = value;
-          target.dispatchEvent(new Event('input', { bubbles: true }));
-          target.dispatchEvent(new Event('change', { bubbles: true }));
-          target.dispatchEvent(new Event('blur', { bubbles: true }));
-          void selectorHint;
+          setVal(target);
           return true;
         },
-        { selectorHint: 'resiliation-date', value: dateStr }
+        { value: dateStr }
       )
       .catch(() => false);
+  };
+
+  let finalValue = ((await input.inputValue().catch(() => '')) || '').trim();
+  if (!resiliationDateMatches(finalValue, dateStr)) {
+    await forceNativeDate();
+    await randomDelay(200, 400);
+    finalValue = ((await input.inputValue().catch(() => '')) || '').trim();
   }
 
-  const finalValue = ((await input.inputValue().catch(() => '')) || '').trim();
-  // Accepte date attendue OU toute date FR déjà présente (Deciplus reformate parfois)
-  const ok =
-    !finalValue ||
-    sameDate(finalValue, dateStr) ||
-    /\d{1,2}\D+\d{1,2}\D+\d{2,4}/.test(finalValue);
+  // Deciplus préremplit souvent la fin de période : on n’accepte que la date demandée (aujourd’hui).
+  const ok = resiliationDateMatches(finalValue, dateStr);
   logInfo('Date de résiliation effective', { expected: dateStr, value: finalValue || '(non lisible)', ok });
   return ok;
+}
+
+function paymentRowIsFutureUncollected(text, now = new Date()) {
+  const src = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!src || src.length > 500) return false;
+  if (/pay[ée]|encaiss/i.test(src)) return false;
+  if (!/en attente|pr[ée]vu|programm|à venir|a venir|planifi|impay|à pr[ée]lever|a prelever/i.test(src)) {
+    return false;
+  }
+  const dates = parseFrDatesFromLabel(src);
+  if (!dates.length) return false;
+  return startOfDay(dates[0]).getTime() >= startOfDay(now).getTime();
+}
+
+async function confirmPendingPaymentDialog(page) {
+  for (const ctx of getScopes(page)) {
+    try {
+      const clicked = await ctx
+        .evaluate(() => {
+          const dialogs = [...document.querySelectorAll('[role="dialog"], .el-dialog, .modal, .ari-modal, .p-dialog')];
+          const open = dialogs.find((el) => {
+            const style = window.getComputedStyle(el);
+            if (style.display === 'none' || style.visibility === 'hidden') return false;
+            return /confirmer|supprim|suspend|certain|annul/i.test(String(el.innerText || ''));
+          });
+          if (!open) return false;
+          const btn = [...open.querySelectorAll('button, a, [role="button"], input[type="button"], input[type="submit"]')].find(
+            (el) => /^(confirmer|oui|valider|supprimer|suspendre)$/i.test(String(el.innerText || el.value || '').replace(/\s+/g, ' ').trim())
+          );
+          if (!btn) return false;
+          btn.click();
+          return true;
+        })
+        .catch(() => false);
+      if (clicked) {
+        await randomDelay(300, 500);
+        return true;
+      }
+    } catch {
+      /* frame */
+    }
+  }
+  return false;
+}
+
+/**
+ * Après la résiliation, coupe les échéances datées d’aujourd’hui ou plus tard
+ * qui ne sont pas encore encaissées. Une ligne déjà payée n’est pas touchée.
+ * Si l’écran Deciplus n’expose pas l’action, la résiliation déjà confirmée reste valide.
+ */
+async function stopFutureScheduledPayments(page) {
+  const allPayments = page.getByText(/voir toutes les échéances/i).first();
+  if ((await allPayments.count()) > 0 && (await allPayments.isVisible().catch(() => false))) {
+    await allPayments.click({ force: true }).catch(() => {});
+    await randomDelay(400, 700);
+  }
+
+  let stopped = 0;
+  for (let i = 0; i < 12; i += 1) {
+    let clicked = false;
+    for (const ctx of getScopes(page)) {
+      try {
+        const rows = await ctx
+          .evaluate(() =>
+            [...document.querySelectorAll('tr, li')].map((row) => {
+              const action = [...row.querySelectorAll('button, a, i, [role="button"], input[type="button"]')].find(
+                (el) => {
+                  const hint = `${el.getAttribute('title') || ''} ${el.getAttribute('aria-label') || ''} ${el.className || ''} ${el.innerText || el.value || ''}`;
+                  return /suspend|pause|supprim|annul/i.test(hint);
+                }
+              );
+              return {
+                text: String(row.innerText || '').replace(/\s+/g, ' ').trim(),
+                hasAction: Boolean(action),
+              };
+            })
+          )
+          .catch(() => []);
+        const index = rows.findIndex((row) => row.hasAction && paymentRowIsFutureUncollected(row.text));
+        if (index < 0) continue;
+        clicked = await ctx.evaluate((rowIndex) => {
+          const row = document.querySelectorAll('tr, li')[rowIndex];
+          if (!row) return false;
+          const btn = [...row.querySelectorAll('button, a, i, [role="button"], input[type="button"]')].find((el) => {
+            const hint = `${el.getAttribute('title') || ''} ${el.getAttribute('aria-label') || ''} ${el.className || ''} ${el.innerText || el.value || ''}`;
+            return /suspend|pause|supprim|annul/i.test(hint);
+          });
+          if (!btn) return false;
+          btn.click();
+          return true;
+        }, index);
+        if (clicked) break;
+      } catch {
+        /* frame */
+      }
+    }
+    if (!clicked) break;
+    await confirmPendingPaymentDialog(page);
+    stopped += 1;
+    await randomDelay(400, 700);
+  }
+
+  if (stopped) {
+    logInfo('Échéances à venir annulées après résiliation', { stopped });
+  }
+  return { stopped };
 }
 
 async function readMotifDisplayed(page) {
@@ -1219,6 +1304,14 @@ async function cancelOneContract(page, contract, { cancelDate = null } = {}) {
     return { cancelled: false, reason: 'confirm_missing', idc: contract.idc };
   }
   await randomDelay(400, 700);
+  await closeGreyboxIfOpen(page).catch(() => {});
+  const payments = await stopFutureScheduledPayments(page).catch((err) => {
+    logWarn('Échéances à venir non annulées — résiliation déjà confirmée', {
+      idc: contract.idc,
+      error: err.message,
+    });
+    return { stopped: 0 };
+  });
 
   // Aperçu email Deciplus — parfois absent une fois la modale « certain » confirmée.
   const mailed = await clickResilierEtEnvoyerMail(page);
@@ -1234,6 +1327,7 @@ async function cancelOneContract(page, contract, { cancelDate = null } = {}) {
       label: contract.label,
       cancel_date: dateStr,
       mail_skipped: true,
+      future_payments_stopped: payments.stopped,
     };
   }
 
@@ -1254,6 +1348,7 @@ async function cancelOneContract(page, contract, { cancelDate = null } = {}) {
     idc: contract.idc,
     label: contract.label,
     cancel_date: dateStr,
+    future_payments_stopped: payments.stopped,
   };
 }
 
@@ -1507,6 +1602,8 @@ module.exports = {
   isResilierTileLabel,
   motifValueChosen,
   resiliationCountsAsDone,
+  resiliationDateMatches,
+  paymentRowIsFutureUncollected,
   clickActionTile,
   selectResiliationMotif,
   clickAppliquerEtQuitter,

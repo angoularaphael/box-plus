@@ -342,7 +342,7 @@ window.BCCounselor = (function () {
               return;
             }
             replySoon(
-              'En cas de résiliation d’un prélèvement, vous ne pourrez plus bénéficier de votre tarif promotionnel en cas de réinscription. Votre demande doit être enregistrée <strong>plus de 72&nbsp;heures avant votre prochain prélèvement</strong> pour éviter cette échéance ; la résiliation prend effet à la fin de la période déjà payée. Êtes-vous certain de vouloir résilier ?',
+              'En cas de résiliation d’un prélèvement, vous ne pourrez plus bénéficier de votre tarif promotionnel en cas de réinscription. La résiliation <strong>prend effet immédiatement</strong> : l’accès s’arrête et les prélèvements à venir sont annulés. Les sommes déjà encaissées ne sont pas remboursées. Êtes-vous certain de vouloir résilier ?',
               'confirm'
             );
           };

@@ -214,7 +214,7 @@
     showConfirmBox({
       id: 'cancelCongrats',
       title: 'Demande enregistrée',
-      lead: 'Votre résiliation est prise en charge. Elle prend effet à la fin de la période déjà payée — une confirmation vous sera envoyée par e-mail avec la date exacte.',
+      lead: 'Votre résiliation est prise en charge. Elle prend effet immédiatement : l’accès s’arrête et les prélèvements à venir sont annulés. Une confirmation vous sera envoyée par e-mail.',
       cta: 'Compris',
     });
   }
@@ -287,7 +287,7 @@
         // Dès que l’identité est OK (verified) — pas besoin d’attendre la fin Deciplus
         if (s.ok && (s.status === 'verified' || s.status === 'done')) {
           msgEl.innerHTML =
-            '<strong>Votre résiliation sera traitée.</strong><br/>Les informations correspondent : la demande est prise en charge. Elle prend effet à la fin de la période déjà payée ; une confirmation vous sera envoyée par e-mail avec la date exacte.';
+            '<strong>Votre résiliation sera traitée.</strong><br/>Les informations correspondent : la demande est prise en charge. Elle prend effet immédiatement : l’accès s’arrête et les prélèvements à venir sont annulés. Une confirmation vous sera envoyée par e-mail.';
           msgEl.className = 'form-msg';
           if (submitBtn) submitBtn.disabled = false;
           showCancelCongrats();

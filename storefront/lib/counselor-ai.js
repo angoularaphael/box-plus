@@ -58,8 +58,8 @@ CONNAISSANCES CLUB
 
 RÉSILIATION — RÈGLES À CONNAÎTRE (ne jamais les contredire)
 - La demande n’est définitive que lorsque le membre la valide électroniquement dans le parcours en ligne. Un message ici, un mot au coach ou à l’accueil ne valent pas résiliation.
-- Délai technique : la demande doit être enregistrée PLUS DE 72 HEURES avant la date du prochain prélèvement. À 72 h ou moins, l’échéance reste due et est prélevée : le membre garde son accès pendant la nouvelle période de 4 semaines et la résiliation prend effet à la fin de celle-ci, sans nouvelle demande.
-- La résiliation prend effet à la fin de la période déjà payée — ce n’est PAS un arrêt sous 72 h. Pas de remboursement au prorata d’une période de 4 semaines commencée, sauf obligation légale.
+- La résiliation d’un prélèvement prend effet immédiatement : l’accès et les services s’arrêtent le jour de la demande, et les prélèvements à venir sont annulés. Aucune échéance postérieure n’est présentée, même si elle était prévue dans les prochains jours.
+- Les sommes déjà encaissées ne sont pas remboursées au prorata, sauf obligation légale.
 - Formules payées comptant (3 / 6 / 12 mois) : durée ferme, non résiliables avant terme pour changement d’avis ou non-utilisation.
 - Vente à distance : 14 jours de rétractation légale selon les CGV.
 - Badge (34,99 €) : non remboursé du seul fait de la résiliation, ce n’est pas une caution.
@@ -336,23 +336,22 @@ const WELCOME_FALLBACKS = [
 
 const WELCOME_FALLBACK = WELCOME_FALLBACKS[0];
 
-/* Le délai de 72 h est une règle contractuelle : il doit figurer dès la première
-   réponse sur la résiliation, pas seulement dans le parcours de David. */
+/* La résiliation prélèvement est immédiate : le dire dès la première réponse. */
 const REDIRECT_DAVID = [
-  'Pour résilier un abo **par prélèvement**, ouvre « Gérer mon abo » : **David** t’accompagne. Enregistre ta demande **plus de 72 h avant ta prochaine échéance**, sinon elle est encore prélevée. Les formules **comptant** se voient avec le **manager** en salle.',
-  'Résiliation en ligne = parcours **David** (prélèvements sans engagement), à faire **plus de 72 h avant le prochain prélèvement**. Comptant / forfait → ton **manager** en présentiel.',
-  'Je ne gère pas les résils ici. Passe par « Gérer mon abo » : **David** pour le prélèvement, **manager** pour le comptant. Compte **72 h avant l’échéance** pour éviter le prochain prélèvement.',
+  'Pour résilier un abo **par prélèvement**, ouvre « Gérer mon abo » : **David** t’accompagne. La résiliation **prend effet tout de suite** : l’accès s’arrête et les prélèvements à venir sont annulés. Les formules **comptant** se voient avec le **manager** en salle.',
+  'Résiliation en ligne = parcours **David** (prélèvements sans engagement). Dès qu’elle est enregistrée, l’abonnement s’arrête et plus aucune échéance à venir n’est prélevée. Comptant / forfait → ton **manager** en présentiel.',
+  'Je ne gère pas les résils ici. Passe par « Gérer mon abo » : **David** pour le prélèvement, **manager** pour le comptant. Un prélèvement résilié s’arrête immédiatement.',
 ];
 
 const REDIRECT_DAVID_VOUS = [
-  'Pour résilier un abonnement **par prélèvement**, ouvrez « Gérer mon abo » : **David** vous accompagne. Votre demande doit être enregistrée **plus de 72 h avant votre prochaine échéance**, sans quoi elle sera encore prélevée. Les formules **comptant** se règlent avec le **manager** en salle.',
-  'La résiliation en ligne passe par le parcours **David** (prélèvements sans engagement), **plus de 72 h avant le prochain prélèvement**. Pour un forfait comptant, voyez votre **manager** en présentiel.',
-  'Je ne traite pas les résiliations ici. Rendez-vous sur « Gérer mon abo » : **David** pour le prélèvement, le **manager** pour le comptant. Prévoyez **72 h avant l’échéance**.',
+  'Pour résilier un abonnement **par prélèvement**, ouvrez « Gérer mon abo » : **David** vous accompagne. La résiliation **prend effet immédiatement** : l’accès s’arrête et les prélèvements à venir sont annulés. Les formules **comptant** se règlent avec le **manager** en salle.',
+  'La résiliation en ligne passe par le parcours **David** (prélèvements sans engagement). Dès l’enregistrement, l’abonnement s’arrête et aucune échéance à venir n’est prélevée. Pour un forfait comptant, voyez votre **manager** en présentiel.',
+  'Je ne traite pas les résiliations ici. Rendez-vous sur « Gérer mon abo » : **David** pour le prélèvement, le **manager** pour le comptant. Un prélèvement résilié s’arrête immédiatement.',
 ];
 
 const FAQ_VARIANTS = {
   offer29: [
-    'L’offre promo sans engagement : **29,99 € toutes les 4 semaines** (28 jours, pas un mois). Cours illimités, accès aux salles de l’offre, résiliation sous réserve du délai technique de **72 h**.',
+    'L’offre promo sans engagement : **29,99 € toutes les 4 semaines** (28 jours, pas un mois). Cours illimités, accès aux salles de l’offre, résiliation immédiate du prélèvement.',
     '**29,99 €** / 4 semaines, sans engagement de durée. Ce n’est pas un prélèvement mensuel : 4 semaines = 28 jours.',
     'Formule flexible : **29,99 €** toutes les 4 semaines, cours illimités. L’ancienne grille affichait environ 44,99 €.',
   ],

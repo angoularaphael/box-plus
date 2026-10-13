@@ -10,6 +10,8 @@ const {
   confirmResiliationModal,
   clickResilierEtEnvoyerMail,
   waitAppliquerEnabled,
+  resiliationDateMatches,
+  paymentRowIsFutureUncollected,
 } = require('../bot/cancel-sale');
 
 function resiliationFormHtml() {
@@ -98,6 +100,33 @@ async function withPage(html, fn) {
     await browser.close();
   }
 }
+
+test('la date de résiliation doit être celle demandée, pas la fin de période', () => {
+  assert.equal(resiliationDateMatches('13/10/2026', '13/10/2026'), true);
+  assert.equal(resiliationDateMatches('13-10-2026', '13/10/2026'), true);
+  assert.equal(resiliationDateMatches('31/10/2026', '13/10/2026'), false);
+  assert.equal(resiliationDateMatches('', '13/10/2026'), false);
+});
+
+test('seules les échéances à venir non encaissées sont annulées', () => {
+  const today = new Date(2026, 9, 13);
+  assert.equal(
+    paymentRowIsFutureUncollected('06/10/2026 En attente 34,99 € Suspendre', today),
+    false
+  );
+  assert.equal(
+    paymentRowIsFutureUncollected('20/10/2026 En attente 34,99 € Suspendre', today),
+    true
+  );
+  assert.equal(
+    paymentRowIsFutureUncollected('13/10/2026 Payé 29,99 €', today),
+    false
+  );
+  assert.equal(
+    paymentRowIsFutureUncollected('03/08/2026 Impayé 29,99 € Supprimer', today),
+    false
+  );
+});
 
 test('le texte d’aide ne sélectionne pas le motif ; l’option oui', async () => {
   await withPage(resiliationFormHtml(), async (page) => {

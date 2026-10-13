@@ -972,7 +972,7 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
   if (/prorata|p[ée]riode d[ée]j[àa] pay/i.test(t)) {
     return {
       reply:
-        'La résiliation prend effet **à la fin de la période déjà payée**. Pas de remboursement **au prorata** d’une période de 4 semaines déjà commencée, sauf obligation légale.',
+        'Dès la résiliation, l’accès s’arrête et les prélèvements à venir sont annulés. Les sommes **déjà encaissées** ne sont pas remboursées **au prorata**, sauf obligation légale.',
       source: 'faq-v4',
     };
   }
@@ -980,7 +980,7 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
   if (/pr[ée]lev|[ée]ch[ée]ance/i.test(t) && /72|avant|arr[êe]t|stop|emp[êe]ch|[ée]viter|annul/i.test(t)) {
     return {
       reply:
-        'Pour bloquer la **prochaine échéance**, la résiliation doit être enregistrée **plus de 72 h avant** la date de prélèvement. Enregistrée dans les **72 h**, l’échéance reste due : l’accès continue 4 semaines, puis l’abo s’arrête sans nouvelle demande.',
+        'La résiliation **arrête l’abonnement tout de suite**. L’accès s’interrompt et les **prélèvements à venir** sont annulés, y compris une échéance déjà prévue dans les prochains jours. Les sommes déjà encaissées ne sont pas remboursées au prorata.',
       source: 'faq-v4',
     };
   }

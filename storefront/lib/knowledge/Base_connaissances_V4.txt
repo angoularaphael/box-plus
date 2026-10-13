@@ -682,7 +682,7 @@ Caractéristiques mises en avant :
 - cours illimités toutes disciplines ;
 - accès illimité aux salles incluses dans l’offre ;
 - accès libre musculation / cardio / Cross Training selon formule ;
-- résiliation sans préavis contractuel supplémentaire, sous réserve du délai technique de 72 h avant la prochaine échéance.
+- résiliation immédiate : l’accès s’arrête le jour de la demande et les prélèvements à venir sont annulés.
 
 Règle agent :
 Annoncer clairement : « offre promo à 29,99 € toutes les 4 semaines ». Ne jamais présenter cette périodicité comme un prélèvement mensuel : 4 semaines = 28 jours.
@@ -784,16 +784,15 @@ L’agent IA conversationnel ne doit pas :
 La demande devient définitive lorsque le client valide électroniquement sa résiliation.
 Boxing Center confirme ensuite électroniquement la réception et la date effective de fin d’abonnement.
 
-12.3. Délai technique de 72 heures
-Pour empêcher une prochaine échéance de prélèvement :
-- la résiliation doit être enregistrée plus de 72 heures avant la date prévue du prochain prélèvement ;
-- si elle est enregistrée 72 heures ou moins avant l’échéance, celle-ci peut rester due et être prélevée ;
-- le client conserve alors son accès pendant la nouvelle période de 4 semaines ;
-- la résiliation prend effet à la fin de cette dernière période sans nouvelle demande.
+12.3. Effet immédiat
+Dès que la résiliation d’un prélèvement est enregistrée :
+- l’accès et les services associés s’arrêtent le jour même ;
+- les prélèvements à venir sont annulés, y compris une échéance déjà datée dans les prochains jours ;
+- aucune échéance postérieure à cette date n’est présentée.
 
-12.4. Période déjà payée
-La résiliation prend effet à l’issue de la période déjà payée correspondant à la dernière échéance valable.
-Pas de remboursement au prorata d’une période de 4 semaines déjà commencée et payée, sauf obligation légale contraire.
+12.4. Sommes déjà encaissées
+Les sommes déjà encaissées ne sont pas remboursées au prorata d’une période commencée, sauf obligation légale contraire.
+Le badge d’accès n’est pas remboursé du seul fait de la résiliation.
 
 12.5. Formules payées comptant
 Les formules à durée déterminée payées comptant (ex. 3, 6 ou 12 mois) sont conclues pour une durée ferme.
@@ -895,7 +894,7 @@ Q : Comment résilier ?
 R : Pour un abonnement sans engagement, la demande doit être faite en ligne via « Gérer mon abonnement » puis « Résilier mon abonnement », et, selon le parcours actuel du site, via le formulaire / agent DAVID. Une demande orale à un coach ou à l’accueil ne remplace pas cette procédure.
 
 Q : La résiliation est-elle immédiate ?
-R : Elle prend effet à la fin de la période déjà payée. Pour éviter le prochain prélèvement, la demande doit être enregistrée plus de 72 heures avant l’échéance concernée.
+R : Oui pour un abonnement par prélèvement. L’accès s’arrête le jour de la demande et les prélèvements à venir sont annulés. Les sommes déjà encaissées ne sont pas remboursées au prorata.
 
 Q : Si je n’utilise pas mon abonnement, suis-je remboursé ?
 R : Non, la simple non-utilisation ne donne pas droit à un remboursement ou à une prolongation, sous réserve des droits légaux applicables.
