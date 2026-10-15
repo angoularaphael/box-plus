@@ -35,6 +35,7 @@ const { decideUnpaidDailyAction, addHoursToFrDate } = require('../lib/unpaid-dai
 const { classifySepaFromCandidate } = require('../lib/sepa-unpaid-policy');
 const { reportUnpaidEcheance } = require('../bot/echeancier-report');
 const { ROOT } = require('../lib/utils');
+const { loadState, saveState } = require('../bot/unpaid-daily-ops');
 
 const APPLY = String(process.env.TEST_APPLY || '') === '1';
 const ONLY_MEMBER = String(process.env.MEMBER_ID || '').replace(/\D/g, '');
@@ -285,6 +286,19 @@ function pickCandidate(targets, graceState) {
       reportOnclick: entry.reportOnclick,
     });
     console.log('Resultat report', rep);
+    if (rep.ok) {
+      const st = loadState();
+      st.am04_grace[String(t.member)] = {
+        eid: decision.eid,
+        failed_due: decision.failedDue,
+        new_due: decision.newDue,
+        new_due_ms: decision.newDueMs,
+        reported_at: new Date().toISOString(),
+        source: 'test-am04-report-72h-visible',
+      };
+      saveState(st);
+      console.log('Etat grace enregistre pour membre', t.member);
+    }
 
     await page.waitForTimeout(3000);
     let frame = await resolveEcheanceFrame(page);
