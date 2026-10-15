@@ -332,6 +332,15 @@ function mergeManualBundledProducts(merch) {
   return { ...merch, products };
 }
 
+/** Une offre peut aussi s'afficher dans un second onglet (ex. 259 € : Comptant ET Promotions)
+    via `also_in` — son onglet d'origine reste celui qui pilote le paiement. */
+function placeInSubsection(enriched, entry, subsection) {
+  if (!subsection || enriched.subsection === subsection) return enriched;
+  const extra = (entry.also_in || []).find((x) => x?.subsection === subsection);
+  if (!extra) return null;
+  return { ...enriched, sort_order: extra.sort_order ?? enriched.sort_order };
+}
+
 function getEnrichedProducts(options = {}) {
   const { tab, subsection, featured, activeOnly = true } = options;
   const { getStoreProducts } = require('./deciplus-sync');
@@ -349,9 +358,10 @@ function getEnrichedProducts(options = {}) {
     if (activeOnly && entry.subsection === 'promo' && !isPromoActive(entry)) continue;
     const enriched = enrichProduct(p, entry);
     if (tab && enriched.tab !== tab) continue;
-    if (subsection && enriched.subsection !== subsection) continue;
+    const placed = placeInSubsection(enriched, entry, subsection);
+    if (!placed) continue;
     if (featured && !enriched.featured && !merch.featured_home?.includes(p.id) && !(p.legacy_id && merch.featured_home?.includes(p.legacy_id))) continue;
-    results.push(enriched);
+    results.push(placed);
     seen.add(p.id);
     if (p.legacy_id) seen.add(p.legacy_id);
   }
@@ -364,9 +374,10 @@ function getEnrichedProducts(options = {}) {
     const enriched = enrichProduct(manual, entry);
     if (isBannedStorefrontProduct(enriched)) continue;
     if (tab && enriched.tab !== tab) continue;
-    if (subsection && enriched.subsection !== subsection) continue;
+    const placed = placeInSubsection(enriched, entry, subsection);
+    if (!placed) continue;
     if (featured && !enriched.featured && !merch.featured_home?.includes(id)) continue;
-    results.push(enriched);
+    results.push(placed);
   }
 
   results.sort((a, b) => (a.sort_order ?? 99) - (b.sort_order ?? 99));

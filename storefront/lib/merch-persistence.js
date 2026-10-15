@@ -25,11 +25,17 @@ try {
   BUNDLED_CATALOG_DATA = { products: [], categories: [] };
 }
 
+/* Une instance Vercel tiède gardait sa copie du merch à vie : une offre coupée dans
+   l'admin restait visible au hasard des instances. On relit Supabase passé ce délai. */
+const MERCH_HYDRATE_TTL_MS = 60 * 1000;
+
 let merchHydrated = false;
+let merchHydratedAt = 0;
 let merchHydratePromise = null;
 
 function resetMerchHydration() {
   merchHydrated = false;
+  merchHydratedAt = 0;
   merchHydratePromise = null;
 }
 
@@ -115,11 +121,12 @@ async function loadMerchFresh() {
 }
 
 async function hydrateMerchOnce() {
-  if (merchHydrated) return loadMerch();
+  if (merchHydrated && Date.now() - merchHydratedAt < MERCH_HYDRATE_TTL_MS) return loadMerch();
   if (!merchHydratePromise) {
     merchHydratePromise = loadMerchFresh()
       .then((data) => {
         merchHydrated = true;
+        merchHydratedAt = Date.now();
         return data;
       })
       .finally(() => {

@@ -38,7 +38,10 @@
       return 'Paiement unique — pas de prélèvement';
     }
     if (product.supports_billing_choice) {
-      return '29 € toutes les 4 semaines — 1ʳᵉ échéance par CB puis prélèvements';
+      // Le prix de LA carte (44,99 €, 36,99 €, 34,99 €…), jamais celui de l'offre 29 €.
+      const price = product.marketing_price_label || product.stripe_price_label || product.price_label;
+      if (price) return `${price} toutes les 4 semaines — 1ʳᵉ échéance par CB puis prélèvements`;
+      return '1ʳᵉ échéance par CB puis prélèvement toutes les 4 semaines';
     }
     if (/4\s*[x×]\s*sans\s*frais/i.test(product.badge || '') || /sans\s*frais/i.test(product.badge || '')) {
       return 'Paiement en 4× sans frais';
@@ -149,7 +152,7 @@
         ${featured ? '<span class="offer-badge">Populaire</span>' : ''}
         <div class="offer-card__title-row">
           ${product.badge ? `<span class="offer-tag">${esc(product.badge)}</span>` : ''}
-          <h3>${esc(displayName)}</h3>
+          <h3>${esc(displayName).replace(/(\d) €/g, '$1&nbsp;€')}</h3>
         </div>
         <div class="offer-price${priceWas ? ' offer-price--promo' : ''}">
           ${priceWas ? `<span class="offer-price-was">${esc(priceWas)}</span>` : ''}

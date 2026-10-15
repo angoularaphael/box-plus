@@ -19,6 +19,15 @@
   flex: 0 1 320px;
 }
 
+/* Onglets abonnements à 1 ou 2 offres (Promotions, Sans engagement) : la rangée se
+   centre au lieu de laisser une colonne vide à droite — même largeur de carte qu'en 3. */
+@media (min-width: 1000px) {
+  #offersGrid .products-grid:not(:has(> .offer-card:nth-child(3))) {
+    grid-template-columns: repeat(auto-fit, calc((100% - 48px) / 3));
+    justify-content: center;
+  }
+}
+
 .offer-card {
   background: var(--bc-card);
   border: 1px solid var(--bc-border);

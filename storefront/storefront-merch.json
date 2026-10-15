@@ -165,6 +165,7 @@
       ],
       "audience": "Adultes",
       "sort_order": 5,
+      "also_in": [{ "subsection": "promo", "sort_order": 2 }],
       "active": true,
       "badge": "1× ou 4× sans frais",
       "supports_installment_choice": true,
