@@ -776,7 +776,11 @@ async function applyBotSaleStatus(orderId, patch = {}) {
     order.manual_migration = true;
     order.skip_bot = true;
   }
-  order.bot_error = patch.error ? String(patch.error).slice(0, 500) : null;
+  if (Object.prototype.hasOwnProperty.call(patch, 'error')) {
+    order.bot_error = patch.error ? String(patch.error).slice(0, 500) : null;
+  } else if (String(patch.status || '').toLowerCase() === 'success') {
+    order.bot_error = null;
+  }
   if (memberId) advanceOrder(order, STATES.MEMBER_CREATED);
   if (patch.mandate_set) advanceOrder(order, STATES.MANDATE_SET);
   if (saleId) advanceOrder(order, STATES.SALE_CREATED);

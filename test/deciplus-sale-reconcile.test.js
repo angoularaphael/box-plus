@@ -270,6 +270,27 @@ test('dispatch Aventure ne s’arrête plus sur dispatched_at', () => {
   assert.match(src, /aventureDossierReady/);
 });
 
+test('isBotErrorOrder ignore avertissements RIB/badge si vente Deciplus OK', () => {
+  const { isBotErrorOrder, isNonBlockingBotWarning } = require('../storefront/lib/admin-stats');
+  assert.equal(isNonBlockingBotWarning('RIB: RIB Deciplus: échec enregistrement IBAN'), true);
+  assert.equal(
+    isBotErrorOrder({
+      deciplus_sale_id: '46041',
+      bot_status: 'success',
+      bot_error: 'RIB: RIB Deciplus: échec enregistrement IBAN',
+    }),
+    false
+  );
+  assert.equal(
+    isBotErrorOrder({
+      deciplus_sale_id: '46041',
+      bot_status: 'manual_review',
+      bot_error: 'Échéance badge J+3 non confirmée (reporter_not_found)',
+    }),
+    true
+  );
+});
+
 test('isPaidUnsignedWithMember signale payé + fiche sans signature', () => {
   const { isPaidUnsignedWithMember, orderNeedsDeciplusSale } = require('../storefront/lib/deciplus-sale-reconcile');
   const risky = {

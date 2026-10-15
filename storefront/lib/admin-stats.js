@@ -464,9 +464,25 @@ function missingFicheRows(
   return rows.sort((a, b) => Date.parse(b.paid_at || 0) - Date.parse(a.paid_at || 0));
 }
 
+function isNonBlockingBotWarning(errorText = '') {
+  const err = String(errorText || '').toLowerCase();
+  if (!err) return false;
+  return (
+    /^rib:/.test(err) ||
+    /rib deciplus/.test(err) ||
+    /mandat.*iban/i.test(err) ||
+    /échéance badge|echeance badge|reporter_not_found|badge j\+/i.test(err)
+  );
+}
+
 function isBotErrorOrder(order = {}) {
   if (order.manual_migration || order.skip_bot) return false;
   const st = String(order.bot_status || order._job_status || order._job_state || '').toLowerCase();
+  const settled =
+    Boolean(order.deciplus_sale_id) &&
+    ['success', 'manual_ok', 'manual_coach'].includes(st);
+  const errText = order.bot_error || order._job_error || '';
+  if (settled && isNonBlockingBotWarning(errText)) return false;
   if (order.bot_error || order._job_error) return true;
   return ['manual_review', 'error', 'failover', 'failed'].includes(st);
 }
@@ -901,6 +917,7 @@ module.exports = {
   missingFicheRows,
   missingFicheReason,
   isBotErrorOrder,
+  isNonBlockingBotWarning,
   classifyBotError,
   humanBotIssue,
   botErrorRows,
