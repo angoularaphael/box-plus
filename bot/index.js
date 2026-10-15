@@ -1195,6 +1195,13 @@ async function maybeTriggerBirthdayWishes() {
   await maybeRunBirthdayWishes();
 }
 
+async function maybeTriggerDailyOps15h() {
+  const role = String(process.env.BOT_ROLE || 'all').toLowerCase();
+  if (role === 'sales') return;
+  const { maybeRunDailyOps15h } = require('./daily-ops-15h');
+  await maybeRunDailyOps15h();
+}
+
 async function maybeTriggerDeciplusSaleReconcile() {
   // Vercel Hobby n’exécute pas le cron */15 — le bot ventes relance les fiches absentes.
   const storeBase = (
@@ -1226,6 +1233,8 @@ let lastSaleReconcilePollAt = 0;
 const SALE_RECONCILE_POLL_MS = Number(process.env.BOT_SALE_RECONCILE_POLL_MS || 10 * 60 * 1000);
 let lastBirthdayPollAt = 0;
 const BIRTHDAY_POLL_MS = Number(process.env.BOT_BIRTHDAY_POLL_MS || 60 * 1000);
+let lastDailyOpsPollAt = 0;
+const DAILY_OPS_POLL_MS = Number(process.env.BOT_DAILY_OPS_POLL_MS || 60 * 1000);
 
 async function processCheckSaleJob(page, order) {
   const { findActiveContracts } = require('./cancel-sale');
@@ -2043,6 +2052,12 @@ async function runLoop(once = false) {
       lastBirthdayPollAt = Date.now();
       void maybeTriggerBirthdayWishes().catch((err) => {
         logWarn('Poll anniversaires', { error: err.message });
+      });
+    }
+    if (Date.now() - lastDailyOpsPollAt >= DAILY_OPS_POLL_MS) {
+      lastDailyOpsPollAt = Date.now();
+      void maybeTriggerDailyOps15h().catch((err) => {
+        logWarn('Poll ops quotidien 15h', { error: err.message });
       });
     }
     if (pending.length === 0) {

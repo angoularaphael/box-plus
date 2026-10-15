@@ -1,6 +1,6 @@
 # Bot operations Eddy — prem-eu2.bot-hosting.net:21268
 
-Bot **ops** Boxing Center (`BOT_ROLE=ops`) : resils, verifs, echeancier, nudges, anniversaires (Brevo + SMS).
+Bot **ops** Boxing Center (`BOT_ROLE=ops`) : resils, verifs, echeancier, nudges, anniversaires (Brevo + SMS), **job quotidien 15h** (impayes SEPA + migration Balma / Etats-Unis vers Minimes).
 
 Les **inscriptions** restent sur :
 - Raphaël `BOXPLUS_BOT_URL` (eu1)
@@ -28,6 +28,9 @@ Le dossier doit rester vide sauf ces 2 fichiers. `index.js` clone `box-plus`, in
 | `SYNC_SECRET` | meme secret que Vercel |
 | `BREVO_API_KEY` | anniversaires mail |
 | `SMS_GATEWAY_URL` | gateway SMS (21724) |
+| `BOT_DAILY_OPS_HOUR` | `15` (heure Paris, une fois par jour) |
+| `DAILY_OPS_APPLY` | `1` (mettre `DRY_RUN=1` pour test sans action) |
+| `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` | migration boutique (script Balma/EU) |
 
 ## Cote Vercel (boutique)
 
