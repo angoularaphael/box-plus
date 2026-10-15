@@ -42,12 +42,17 @@ function getChromiumLaunchOptions() {
     args.push('--single-process', '--no-zygote');
   }
 
-  return {
+  const opts = {
     headless,
     slowMo: slowMo > 0 ? slowMo : undefined,
     args,
     timeout: Number(process.env.PLAYWRIGHT_LAUNCH_TIMEOUT || 120000),
   };
+  const channel = String(process.env.DECIPLUS_BROWSER_CHANNEL || '').trim();
+  if (channel && !headless) {
+    opts.channel = channel;
+  }
+  return opts;
 }
 
 function isMissingBrowserExecutable(err) {
