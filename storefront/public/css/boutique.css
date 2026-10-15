@@ -208,7 +208,11 @@ main { flex: 1; }
   white-space: nowrap;
 }
 
-@media (min-width: 900px) {
+/* La barre complète (7 liens + Panier + « Je m'inscris ») ne tient sur une ligne qu'à
+   partir de 1000 px : en dessous, le menu burger, comme sur mobile. Entre 1000 et 1200 px
+   l'espacement se resserre en continu ; à partir de 1200 px, l'aspect d'origine.
+   Mêmes seuils dans components.css (.home-cinema) et offer-funnels.css. */
+@media (min-width: 1000px) {
   .nav-toggle { display: none; }
   .topbar-inner { position: relative; }
   .main-nav {
@@ -218,10 +222,14 @@ main { flex: 1; }
     align-items: center;
     padding: 0;
     border: none;
-    gap: 6px;
+    gap: clamp(2px, calc(2px + (100vw - 1000px) * 0.02), 6px);
   }
-  .main-nav a { padding: 10px 15px; font-size: 14px; }
-  .nav-cta { margin-top: 0; margin-left: 12px; }
+  .main-nav a {
+    padding: 10px clamp(8px, calc(8px + (100vw - 1000px) * 0.035), 15px);
+    font-size: clamp(13px, calc(13px + (100vw - 1000px) * 0.005), 14px);
+    white-space: nowrap;
+  }
+  .nav-cta { margin-top: 0; margin-left: clamp(6px, calc(6px + (100vw - 1000px) * 0.03), 12px); }
 }
 
 .section {

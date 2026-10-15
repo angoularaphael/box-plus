@@ -5,7 +5,8 @@
 .products-grid {
   display: grid;
   gap: 24px;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  /* min(…, 100%) : sur un écran de 320 px, la colonne de 300 px + les marges débordait de 20 px. */
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
 }
 
 /* Section vedette accueil : peu de cartes (1 à 3) → centrer plutôt
@@ -2738,7 +2739,7 @@ video.bg-video.is-playing {
   background: rgba(255, 255, 255, 0.14);
   color: #fff;
 }
-@media (min-width: 900px) {
+@media (min-width: 1000px) {
   .home-cinema .topbar:not(.scrolled) .main-nav {
     background: transparent;
     border: 0;
@@ -2746,7 +2747,7 @@ video.bg-video.is-playing {
   }
 }
 /* Menu mobile ouvert : panneau clair + texte sombre (évite blanc sur blanc) */
-@media (max-width: 899px) {
+@media (max-width: 999px) {
   .home-cinema .topbar:not(.scrolled) .main-nav.open {
     background: #fff;
     border-top: 1px solid var(--bc-border);

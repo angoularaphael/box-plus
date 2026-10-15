@@ -779,7 +779,7 @@ body.offer-page--sheet .topbar:not(.scrolled) .logo img {
 }
 body.offer-hub-page .topbar:not(.scrolled) .nav-toggle span,
 body.offer-page--sheet .topbar:not(.scrolled) .nav-toggle span { background: #fff; }
-@media (min-width: 900px) {
+@media (min-width: 1000px) {
   body.offer-hub-page .topbar:not(.scrolled) .main-nav,
   body.offer-page--sheet .topbar:not(.scrolled) .main-nav {
     background: transparent;
