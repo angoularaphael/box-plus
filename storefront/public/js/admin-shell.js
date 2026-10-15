@@ -68,6 +68,7 @@
     { id: "ventes", label: "Ventes", ico: "M4 19V9m5 10V5m5 14v-7m5 7V8", onglet: "stats" },
     { id: "whatsapp", label: "WhatsApp", ico: "M21 11.5a8.4 8.4 0 01-9.5 8.4L6 21l1.2-3.4A8.4 8.4 0 1121 11.5z", onglet: "whatsapp" },
     { id: "concours", label: "Concours 10 ans", ico: "M8 21h8M12 17v4M7 4h10v6a5 5 0 01-10 0V4z", href: "/admin/concours" },
+    { id: "coach-heures", label: "Heures coach", ico: "M8 2v4m8-4v4M4 10h16M4 6h16v14H4zM9 16l2 2 4-4", href: "https://coachweb-seven.vercel.app" },
     { id: "catalogue", label: "Catalogue", ico: "M4 6h16v12H4zM4 10h16", onglet: "offers" },
     { id: "reglages", label: "Réglages", ico: "M12 15a3 3 0 100-6 3 3 0 000 6zM4 12h2m12 0h2M12 4v2m0 12v2" },
   ];
