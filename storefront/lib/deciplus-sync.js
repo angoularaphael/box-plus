@@ -18,9 +18,6 @@ const STATIC_FILE = path.join(ROOT, 'storefront', 'products.json');
    partielle (validation KO) est déposée dans catalog-live.json. */
 const STATIC_DECIPLUS_IDS = {
   'offre-duo': 104,
-  'offre-promo-9': 101,
-  'offre-promo-adulte': 102,
-  'offre-promo-etudiant': 103,
   'offre-saison': 106,
   'boxe-educative': 45,
   'baby-boxe': 93,
@@ -61,7 +58,6 @@ const REQUIRED_DECIPLUS_TITLES = loadVisibleDeciplusTitles()
   ? loadJson('config/storefront-visible-products.json').titles.slice(0, 5)
   : [
       'OFFRE A 29€',
-      'OFFRE PROMO 9€',
       'OFFRE PROMO 12 MOIS',
       'OFFRE ETE 2026 - 3 MOIS ILLIMITÉS',
       'COMPTANT 3 MOIS',

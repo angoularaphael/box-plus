@@ -151,36 +151,6 @@
       "active": true,
       "badge": "Rentrée 2026"
     },
-    "offre-promo-9": {
-      "tab": "abonnements",
-      "subsection": "promo",
-      "display_name": "Offre promo 9 €",
-      "benefits": ["Tarif découverte", "Accès complet"],
-      "audience": "Nouveaux adhérents",
-      "sort_order": 2,
-      "active": true,
-      "badge": "Promo"
-    },
-    "offre-promo-adulte": {
-      "tab": "abonnements",
-      "subsection": "promo",
-      "display_name": "Promo adulte 38,99 €",
-      "benefits": ["4 semaines", "Toutes disciplines"],
-      "audience": "Adultes",
-      "sort_order": 3,
-      "active": true,
-      "badge": "Promo"
-    },
-    "offre-promo-etudiant": {
-      "tab": "abonnements",
-      "subsection": "promo",
-      "display_name": "Promo étudiant 34,99 €",
-      "benefits": ["4 semaines", "Tarif étudiant"],
-      "audience": "Étudiants",
-      "sort_order": 4,
-      "active": true,
-      "badge": "Promo"
-    },
     "offre-saison": {
       "tab": "abonnements",
       "subsection": "comptant",

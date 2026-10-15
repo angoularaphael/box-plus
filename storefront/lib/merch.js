@@ -340,7 +340,10 @@ function getEnrichedProducts(options = {}) {
   const results = [];
   const seen = new Set();
 
+  const { isBannedStorefrontProduct } = require('./storefront-copy');
+
   for (const p of catalog.products || []) {
+    if (isBannedStorefrontProduct(p)) continue;
     const entry = merch.products?.[p.id] || (p.legacy_id ? merch.products?.[p.legacy_id] : null) || {};
     if (activeOnly && entry.active === false) continue;
     if (activeOnly && entry.subsection === 'promo' && !isPromoActive(entry)) continue;
@@ -355,9 +358,11 @@ function getEnrichedProducts(options = {}) {
 
   for (const [id, entry] of Object.entries(merch.products || {})) {
     if (seen.has(id) || entry.active === false) continue;
+    if (isBannedStorefrontProduct({ id, display_name: entry.display_name })) continue;
     if (!entry.manual && !id.startsWith('coaching') && id !== 'seance-essai') continue;
     const manual = buildManualProduct(id, merch, entry);
     const enriched = enrichProduct(manual, entry);
+    if (isBannedStorefrontProduct(enriched)) continue;
     if (tab && enriched.tab !== tab) continue;
     if (subsection && enriched.subsection !== subsection) continue;
     if (featured && !enriched.featured && !merch.featured_home?.includes(id)) continue;
@@ -388,13 +393,23 @@ function getFeaturedProducts(limit = 3) {
 }
 
 function findEnrichedProduct(productId) {
+  const { isBannedStorefrontProduct } = require('./storefront-copy');
+  const bannedId =
+    isBannedStorefrontProduct({ id: productId }) ||
+    isBannedStorefrontProduct({ legacy_id: productId });
+  if (bannedId) return null;
+
   const all = getEnrichedProducts({ activeOnly: false });
   const match = all.find((p) => p.id === productId || p.legacy_id === productId);
-  if (match) return match;
+  if (match) {
+    if (isBannedStorefrontProduct(match)) return null;
+    return match;
+  }
   // Repli catalogue statique (ids legacy type offre-saison / comptant-3-mois)
   const staticMaps = loadStaticProductsByKey();
   const staticP = staticMaps.byId.get(productId);
   if (staticP) {
+    if (isBannedStorefrontProduct(staticP)) return null;
     const merch = loadMerch();
     const entry = merch.products?.[productId] || {};
     return enrichProduct(staticP, entry);
@@ -506,6 +521,7 @@ function slugifyOfferId(text) {
 }
 
 function createManualOffer(entry = {}) {
+  const { isBannedStorefrontProduct } = require('./storefront-copy');
   const merch = loadMerch();
   if (!merch.products) merch.products = {};
 
@@ -514,6 +530,9 @@ function createManualOffer(entry = {}) {
 
   const id = String(entry.id || slugifyOfferId(displayName)).trim();
   if (!id) throw new Error('Identifiant offre invalide');
+  if (isBannedStorefrontProduct({ id, display_name: displayName, name: displayName })) {
+    throw new Error('Cette offre n’est plus disponible à la vente en ligne (promos retirées).');
+  }
   if (merch.products[id] && !entry.overwrite) {
     throw new Error(`L'offre « ${id} » existe déjà`);
   }

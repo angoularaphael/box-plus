@@ -2262,6 +2262,13 @@ function createApp() {
       await loadMerchFresh();
       const { product_id, patch } = req.body;
       if (!product_id) return res.status(400).json({ ok: false, error: 'product_id requis' });
+      const { isBannedStorefrontProduct } = require('./lib/storefront-copy');
+      if (isBannedStorefrontProduct({ id: product_id, legacy_id: product_id })) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Cette offre est retirée définitivement (9 €, 38,99 € et 34,99 € promo).',
+        });
+      }
       const saved = await updateMerchProductAsync(product_id, patch || {});
       const product = getEnrichedProducts({ activeOnly: false }).find((p) => p.id === product_id);
       res.json({

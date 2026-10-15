@@ -17,43 +17,6 @@
     "installments_note": "29 € / 4 semaines — 1ʳᵉ échéance CB puis prélèvement"
   },
   {
-    "id": "offre-promo-9",
-    "category": "Abonnements",
-    "name": "OFFRE PROMO 9€",
-    "tagline": "Offre promo 9 €",
-    "description": "Démarrez pour 9 € la première période, sans engagement. Accès aux 5 salles et à toutes les disciplines.",
-    "price_cents": 900,
-    "price_label": "9,00 €",
-    "requires_iban": true,
-    "requires_payment": true
-  },
-  {
-    "id": "offre-promo-adulte",
-    "category": "Abonnements",
-    "name": "OFFRE PROMO 38.99€ ADULTE",
-    "tagline": "Adulte — 38,99 € / 4 sem.",
-    "description": "Abonnement adulte sans engagement — 38,99 € toutes les 4 semaines. Accès illimité aux 5 salles.",
-    "price_cents": 3899,
-    "price_label": "38,99 €",
-    "deciplus_total_note": "Total contrat Deciplus : 545,86 €",
-    "requires_iban": true,
-    "requires_payment": true,
-    "installments_note": "1ʳᵉ échéance par carte · prélèvement sans engagement"
-  },
-  {
-    "id": "offre-promo-etudiant",
-    "category": "Abonnements",
-    "name": "OFFRE PROMO 34.99€ ETUDIANTS",
-    "tagline": "Étudiant — 34,99 € / 4 sem.",
-    "description": "Tarif étudiant sur justificatif — 34,99 € toutes les 4 semaines, sans engagement. Accès illimité aux 5 salles.",
-    "price_cents": 3499,
-    "price_label": "34,99 €",
-    "deciplus_total_note": "Total contrat Deciplus : 489,86 €",
-    "requires_iban": true,
-    "requires_payment": true,
-    "installments_note": "1ʳᵉ échéance par carte · prélèvement sans engagement"
-  },
-  {
     "id": "offre-saison",
     "category": "Abonnements",
     "name": "OFFRE PROMO 12 MOIS",
