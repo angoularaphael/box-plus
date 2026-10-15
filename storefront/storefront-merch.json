@@ -154,6 +154,7 @@
     "offre-saison": {
       "tab": "abonnements",
       "subsection": "comptant",
+      "subsection_also": ["promo"],
       "display_name": "Promo 12 mois — 259 €",
       "description": "12 mois d’accès illimité aux 5 salles et à toutes les disciplines pour 259 €. Payez en une fois ou en 4× sans frais — sans prélèvement mensuel.",
       "benefits": [
@@ -165,7 +166,6 @@
       ],
       "audience": "Adultes",
       "sort_order": 5,
-      "also_in": [{ "subsection": "promo", "sort_order": 2 }],
       "active": true,
       "badge": "1× ou 4× sans frais",
       "supports_installment_choice": true,

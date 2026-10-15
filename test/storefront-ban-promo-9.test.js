@@ -4,6 +4,7 @@ const {
   isStorefrontProduct,
   isBannedStorefrontProduct,
 } = require('../storefront/lib/storefront-copy');
+const { productMatchesSubsection } = require('../storefront/lib/merch');
 
 test('offre promo 9 € interdite sur la boutique', () => {
   const sample = { id: 'offre-promo-9', name: 'OFFRE PROMO 9€', type: 'abo', category: 'Abonnements' };
@@ -33,4 +34,11 @@ test('offres promo 38,99 € et 34,99 € interdites', () => {
   );
   assert.equal(isBannedStorefrontProduct({ id: 'dp-102', deciplus_id: 102, name: 'x' }), true);
   assert.equal(isBannedStorefrontProduct({ id: 'dp-103', deciplus_id: 103, name: 'x' }), true);
+});
+
+test('offre 259 € — onglet Promotions et Comptant (subsection_also)', () => {
+  const offre259 = { id: 'offre-saison', subsection: 'comptant', subsection_also: ['promo'] };
+  assert.equal(productMatchesSubsection(offre259, 'comptant'), true);
+  assert.equal(productMatchesSubsection(offre259, 'promo'), true);
+  assert.equal(productMatchesSubsection(offre259, 'prelevement'), false);
 });

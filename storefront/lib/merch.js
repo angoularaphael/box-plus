@@ -180,6 +180,13 @@ function loadStaticProductsByKey() {
   return _staticProductMaps;
 }
 
+function productMatchesSubsection(enriched, subsection) {
+  if (!subsection) return true;
+  if (enriched.subsection === subsection) return true;
+  const also = enriched.subsection_also || enriched.subsections;
+  return Array.isArray(also) && also.includes(subsection);
+}
+
 function enrichProduct(catalogProduct, merchEntry = {}) {
   const staticMaps = loadStaticProductsByKey();
   const staticP =
@@ -196,6 +203,9 @@ function enrichProduct(catalogProduct, merchEntry = {}) {
     tagline: merchEntry.tagline || staticP.tagline || catalogProduct.tagline || null,
     tab: merchEntry.tab || 'abonnements',
     subsection,
+    subsection_also: Array.isArray(merchEntry.subsection_also)
+      ? merchEntry.subsection_also.filter(Boolean)
+      : undefined,
     display_name: merchEntry.display_name || catalogProduct.name,
     benefits: merchEntry.benefits || staticP.benefits || [],
     audience: merchEntry.audience || staticP.audience || null,
@@ -332,15 +342,6 @@ function mergeManualBundledProducts(merch) {
   return { ...merch, products };
 }
 
-/** Une offre peut aussi s'afficher dans un second onglet (ex. 259 € : Comptant ET Promotions)
-    via `also_in` — son onglet d'origine reste celui qui pilote le paiement. */
-function placeInSubsection(enriched, entry, subsection) {
-  if (!subsection || enriched.subsection === subsection) return enriched;
-  const extra = (entry.also_in || []).find((x) => x?.subsection === subsection);
-  if (!extra) return null;
-  return { ...enriched, sort_order: extra.sort_order ?? enriched.sort_order };
-}
-
 function getEnrichedProducts(options = {}) {
   const { tab, subsection, featured, activeOnly = true } = options;
   const { getStoreProducts } = require('./deciplus-sync');
@@ -358,10 +359,9 @@ function getEnrichedProducts(options = {}) {
     if (activeOnly && entry.subsection === 'promo' && !isPromoActive(entry)) continue;
     const enriched = enrichProduct(p, entry);
     if (tab && enriched.tab !== tab) continue;
-    const placed = placeInSubsection(enriched, entry, subsection);
-    if (!placed) continue;
+    if (subsection && !productMatchesSubsection(enriched, subsection)) continue;
     if (featured && !enriched.featured && !merch.featured_home?.includes(p.id) && !(p.legacy_id && merch.featured_home?.includes(p.legacy_id))) continue;
-    results.push(placed);
+    results.push(enriched);
     seen.add(p.id);
     if (p.legacy_id) seen.add(p.legacy_id);
   }
@@ -374,10 +374,9 @@ function getEnrichedProducts(options = {}) {
     const enriched = enrichProduct(manual, entry);
     if (isBannedStorefrontProduct(enriched)) continue;
     if (tab && enriched.tab !== tab) continue;
-    const placed = placeInSubsection(enriched, entry, subsection);
-    if (!placed) continue;
+    if (subsection && !productMatchesSubsection(enriched, subsection)) continue;
     if (featured && !enriched.featured && !merch.featured_home?.includes(id)) continue;
-    results.push(placed);
+    results.push(enriched);
   }
 
   results.sort((a, b) => (a.sort_order ?? 99) - (b.sort_order ?? 99));
@@ -626,6 +625,7 @@ module.exports = {
   hydrateMerchOnce,
   saveMerchAsync,
   resetMerchHydration,
+  productMatchesSubsection,
   MERCH_FILE,
   CATALOG_FILE,
 };
