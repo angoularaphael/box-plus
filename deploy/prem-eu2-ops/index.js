@@ -42,9 +42,26 @@ function loadEnvFile(filePath) {
   }
 }
 
-function run(cmd, cwd = ROOT) {
+const GIT_ENV = {
+  ...process.env,
+  GIT_TERMINAL_PROMPT: '0',
+  GCM_INTERACTIVE: 'never',
+};
+
+function run(cmd, cwd = ROOT, { timeoutMs = 0 } = {}) {
   log(`> ${cmd}`);
-  execSync(cmd, { stdio: 'inherit', cwd, shell: true, env: process.env });
+  const opts = { stdio: 'inherit', cwd, shell: true, env: GIT_ENV };
+  if (timeoutMs > 0) opts.timeout = timeoutMs;
+  execSync(cmd, opts);
+}
+
+function normalizeRepoUrl(raw) {
+  let u = String(raw || '').trim().replace(/^["']|["']$/g, '');
+  if (!u) return 'https://github.com/angoularaphael/box-plus.git';
+  u = u.replace(/\.gita$/i, '.git');
+  u = u.replace(/\.git\s+a$/i, '.git');
+  if (!/\.git$/i.test(u) && /github\.com/i.test(u)) u = `${u.replace(/\/$/, '')}.git`;
+  return u;
 }
 
 function resolvePath(p) {
@@ -102,13 +119,17 @@ log(`.env ${fs.existsSync(ENV_FILE) ? 'OK' : 'MANQUANT'} (${ENV_FILE})`);
 log(`BOT_ROLE=${process.env.BOT_ROLE} BOT_ID=${process.env.BOT_ID} PORT=${process.env.BOT_HTTP_PORT}`);
 
 function repoSettings() {
-  const configured = process.env.BOT_REPO_URL || '';
+  const configured = normalizeRepoUrl(process.env.BOT_REPO_URL || '');
   const wanted = 'https://github.com/angoularaphael/box-plus.git';
-  const repo = !configured || /boxi-deci-bot\.git/i.test(configured) ? wanted : configured;
-  if (configured && repo !== configured) {
+  const repo =
+    !configured || /boxi-deci-bot\.git/i.test(configured) ? wanted : normalizeRepoUrl(configured);
+  if (process.env.BOT_REPO_URL && repo !== normalizeRepoUrl(process.env.BOT_REPO_URL)) {
+    log(`BOT_REPO_URL corrige -> ${repo}`);
+  }
+  if (/boxi-deci-bot\.git/i.test(process.env.BOT_REPO_URL || '')) {
     log('BOT_REPO_URL boxi-deci-bot ignore — chargement de box-plus');
   }
-  return { repo, branch: process.env.BOT_REPO_BRANCH || 'main' };
+  return { repo, branch: String(process.env.BOT_REPO_BRANCH || 'main').trim() || 'main' };
 }
 
 function gitOrigin(dir) {
@@ -117,6 +138,29 @@ function gitOrigin(dir) {
   } catch {
     return '';
   }
+}
+
+function cloneBotRepo(repo, branch) {
+  const timeoutMs = Number(process.env.BOT_GIT_CLONE_TIMEOUT_MS || 600000);
+  const attempts = Number(process.env.BOT_GIT_CLONE_ATTEMPTS || 3);
+  const cloneCmd =
+    `git -c http.lowSpeedLimit=500 -c http.lowSpeedTime=30 clone --depth 1 --single-branch --branch ${branch} "${repo}" "${BOT_DIR}"`;
+  let lastErr = null;
+  for (let n = 1; n <= attempts; n += 1) {
+    if (fs.existsSync(BOT_DIR)) {
+      fs.rmSync(BOT_DIR, { recursive: true, force: true });
+    }
+    log(`Clone tentative ${n}/${attempts} (${Math.round(timeoutMs / 1000)}s max)`);
+    try {
+      run(cloneCmd, ROOT, { timeoutMs });
+      if (fs.existsSync(path.join(BOT_DIR, 'bot', 'index.js'))) return;
+      lastErr = new Error('Clone termine mais bot/index.js absent');
+    } catch (err) {
+      lastErr = err;
+      log(`Clone echoue: ${String(err.message || err).slice(0, 220)}`);
+    }
+  }
+  throw lastErr || new Error('git clone impossible');
 }
 
 function ensureBotRepo() {
@@ -129,14 +173,14 @@ function ensureBotRepo() {
       fs.rmSync(BOT_DIR, { recursive: true, force: true });
     }
     log(`Clone ${repo} -> ${BOT_DIR}`);
-    run(`git clone --depth 1 --branch ${branch} ${repo} "${BOT_DIR}"`);
+    cloneBotRepo(repo, branch);
     return;
   }
   log('Mise a jour repo…');
   try {
-    run(`git fetch origin && git reset --hard origin/${branch}`, BOT_DIR);
-  } catch {
-    log('git pull ignore');
+    run(`git fetch origin && git reset --hard origin/${branch}`, BOT_DIR, { timeoutMs: 300000 });
+  } catch (err) {
+    log(`git pull ignore (${String(err.message || err).slice(0, 120)})`);
   }
 }
 

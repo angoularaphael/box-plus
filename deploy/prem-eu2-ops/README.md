@@ -16,6 +16,8 @@ Les **inscriptions** restent sur :
 
 Le dossier doit rester vide sauf ces 2 fichiers. `index.js` clone `box-plus`, installe Playwright, puis lance `node start.js`.
 
+Si la console reste bloquee sur `Cloning into ...` : **Stop**, supprimer le dossier `boxi-deci-bot` (Fichiers), verifier `BOT_REPO_URL=https://github.com/angoularaphael/box-plus.git` (pas `.gita`), re-uploader `index.js` depuis ce depot, **Restart**.
+
 ## Variables obligatoires
 
 | Variable | Valeur |
