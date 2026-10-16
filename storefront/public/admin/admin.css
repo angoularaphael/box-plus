@@ -937,6 +937,11 @@ button.pan-kpi:hover {
 .flux-dot--email { background: #1b8a4c; }
 .flux-dot--whatsapp { background: #128c7e; }
 .flux-dot--sms { background: #2563eb; }
+.flux-dot--ig { background: #c13584; }
+.flux-bar--mail { background: #1b8a4c; position: absolute; bottom: 0; left: 4px; width: 7px; }
+.flux-bar--ig { background: #c13584; position: absolute; bottom: 0; left: 17px; width: 7px; }
+.flux-chart--stage .flux-bar--sms { left: 10px; width: 7px; }
+.flux-chart--stage .flux-bar--all { width: 22px; opacity: 0.35; }
 
 .flux-conversion-row {
   display: flex;

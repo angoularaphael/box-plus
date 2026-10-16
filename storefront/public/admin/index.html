@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="../css/boutique.css?v=7" />
   <link rel="stylesheet" href="../css/components.css?v=9" />
-  <link rel="stylesheet" href="/admin/admin.css?v=16" />
+  <link rel="stylesheet" href="/admin/admin.css?v=17" />
 </head>
 <body>
   <div id="adminPanel" hidden>
@@ -398,6 +398,23 @@
                 <thead><tr><th>Page</th><th style="text-align:right">Vues</th></tr></thead>
                 <tbody id="visitsBody"></tbody>
               </table>
+            </div>
+          </div>
+
+          <div id="stageVacancesWrap" hidden style="margin-top:24px">
+            <h3 class="admin-catalog-block-title">Stage vacances des boxeurs — ventes et sources</h3>
+            <p class="admin-section-desc" id="stageVacancesSummary">Clics (?src=mail, sms, ig) et inscriptions payées sur 14 jours.</p>
+            <p class="admin-section-desc flux-legend" id="stageVacancesLegend">
+              <span><i class="flux-dot flux-dot--email"></i> E-mail</span>
+              <span><i class="flux-dot flux-dot--sms"></i> SMS</span>
+              <span><i class="flux-dot flux-dot--ig"></i> Instagram</span>
+            </p>
+            <div class="flux-chart flux-chart--stage" id="stageVacancesClicksChart" aria-label="Visites stage par jour et par source"></div>
+            <h3 class="admin-catalog-block-title" style="margin-top:24px">Stage — inscriptions par canal</h3>
+            <p class="admin-section-desc" id="stageVacancesSalesSummary"></p>
+            <div class="flux-conversion-row">
+              <div class="flux-pie-wrap" id="stageVacancesSalesPie" aria-label="Graphique inscriptions stage par canal"></div>
+              <ul class="flux-pie-legend" id="stageVacancesSalesLegend"></ul>
             </div>
           </div>
 
@@ -852,9 +869,9 @@
   </div>
 
   <script src="../js/contract-open.js?v=9"></script>
-  <script src="/js/admin.js?v=37"></script>
+  <script src="/js/admin.js?v=38"></script>
   <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
        reecrit pas une ligne (un autre developpeur y travaille). -->
-  <script src="/js/admin-shell.js?v=21"></script>
+  <script src="/js/admin-shell.js?v=20"></script>
 </body>
 </html>

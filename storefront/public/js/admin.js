@@ -568,6 +568,93 @@
     return `M ${x1} ${y1} A ${rOuter} ${rOuter} 0 ${large} 1 ${x2} ${y2} L ${xi1} ${yi1} A ${rInner} ${rInner} 0 ${large} 0 ${xi2} ${yi2} Z`;
   }
 
+  function renderStageVacancesStats(stage) {
+    const wrap = document.getElementById('stageVacancesWrap');
+    const chart = document.getElementById('stageVacancesClicksChart');
+    const summary = document.getElementById('stageVacancesSummary');
+    const salesSummary = document.getElementById('stageVacancesSalesSummary');
+    const pieEl = document.getElementById('stageVacancesSalesPie');
+    const legendEl = document.getElementById('stageVacancesSalesLegend');
+    if (!wrap || !chart) return;
+
+    const clicks = stage?.clicks || {};
+    const daily = clicks.days || [];
+    const max = Math.max(1, ...daily.map((d) => d.total || 0));
+    chart.innerHTML = daily.length
+      ? daily
+          .map((d) => {
+            const h = Math.max(8, Math.round(((d.total || 0) / max) * 120));
+            const mailH = Math.round(((d.mail || 0) / max) * 120);
+            const smsH = Math.round(((d.sms || 0) / max) * 120);
+            const igH = Math.round(((d.ig || 0) / max) * 120);
+            return `<div class="flux-col" title="${escapeHtml(d.day)} : ${d.total} visites (mail ${d.mail || 0}, sms ${d.sms || 0}, ig ${d.ig || 0})">
+              <div class="flux-stack">
+                <div class="flux-bar flux-bar--all" style="height:${h}px"></div>
+                <div class="flux-bar flux-bar--mail" style="height:${mailH}px"></div>
+                <div class="flux-bar flux-bar--sms" style="height:${smsH}px"></div>
+                <div class="flux-bar flux-bar--ig" style="height:${igH}px"></div>
+              </div>
+              <span class="flux-n">${d.total}</span>
+              <small>${escapeHtml(String(d.day).slice(5))}</small>
+            </div>`;
+          })
+          .join('')
+      : '<p class="admin-section-desc">Pas encore de clic stage tracké (ajoutez ?src=mail, sms ou ig aux liens).</p>';
+
+    const paid = Number(stage?.paid_total || 0);
+    const rev = Number(stage?.revenue_cents || 0);
+    const conv = Number(stage?.conversion_pct || 0);
+    if (summary) {
+      summary.textContent = `${clicks.total || 0} visite${(clicks.total || 0) > 1 ? 's' : ''} · ${paid} inscription${paid > 1 ? 's' : ''} payée${paid > 1 ? 's' : ''} · ${fmtEur(rev)} · conversion ${conv} % (14 j)`;
+    }
+
+    const sales = stage?.sales || {};
+    const slices = [
+      { key: 'mail', label: 'E-mail', color: '#1b8a4c', value: Number(sales.mail || 0) },
+      { key: 'sms', label: 'SMS', color: '#2563eb', value: Number(sales.sms || 0) },
+      { key: 'ig', label: 'Instagram', color: '#c13584', value: Number(sales.ig || 0) },
+      { key: 'other', label: 'Autre / direct', color: '#5c6370', value: Number((sales.other || 0) + (sales.direct || 0)) },
+    ].filter((s) => s.value > 0);
+    const total = slices.reduce((n, s) => n + s.value, 0);
+
+    if (pieEl && legendEl) {
+      if (!total) {
+        pieEl.innerHTML = '<p class="admin-section-desc" style="margin:0;padding:24px 8px">Pas encore d\'inscription stage attribuée.</p>';
+        legendEl.innerHTML = '';
+      } else {
+        const cx = 90;
+        const cy = 90;
+        const rOuter = 72;
+        const rInner = 46;
+        let angle = -Math.PI / 2;
+        const paths = slices.map((slice) => {
+          const frac = slice.value / total;
+          const end = angle + frac * Math.PI * 2;
+          const d = fluxDonutSegment(cx, cy, rOuter, rInner, angle, end);
+          angle = end;
+          return `<path d="${d}" fill="${slice.color}" stroke="#fff" stroke-width="1.5"><title>${escapeHtml(slice.label)} : ${slice.value}</title></path>`;
+        });
+        pieEl.innerHTML = `<svg class="flux-pie-svg" viewBox="0 0 180 180" role="img" aria-label="Inscriptions stage par canal">
+          ${paths.join('')}
+          <text class="flux-pie-center-num" x="${cx}" y="${cy - 4}" text-anchor="middle">${total}</text>
+          <text class="flux-pie-center-sub" x="${cx}" y="${cy + 14}" text-anchor="middle">payées</text>
+        </svg>`;
+        legendEl.innerHTML = slices
+          .map((slice) => {
+            const pct = Math.round((slice.value / total) * 1000) / 10;
+            return `<li><span><i class="flux-dot" style="background:${slice.color}"></i>${escapeHtml(slice.label)}</span><strong>${slice.value} · ${pct} %</strong></li>`;
+          })
+          .join('');
+      }
+    }
+    if (salesSummary) {
+      salesSummary.textContent = paid
+        ? `Répartition des ${paid} inscription${paid > 1 ? 's' : ''} selon la source enregistrée au paiement.`
+        : 'Les sources sont enregistrées quand le parent arrive avec ?src=mail, sms ou ig puis paie.';
+    }
+    wrap.hidden = false;
+  }
+
   function renderSeanceConversionPie(flux) {
     const pieEl = document.getElementById('fluxConversionPie');
     const legendEl = document.getElementById('fluxConversionLegend');
@@ -2342,6 +2429,8 @@
         renderSeanceConversionPie(flux);
         fluxWrap.hidden = false;
       }
+
+      renderStageVacancesStats(data.stage_vacances);
 
       const dailyWrap = document.getElementById('dailySalesWrap');
       const dailyChart = document.getElementById('dailySalesChart');
