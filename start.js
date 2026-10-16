@@ -7,6 +7,13 @@ const fs = require('fs');
 const path = require('path');
 const { installPlaywrightBrowser } = require('./lib/playwright-install');
 
+/** Bot-Hosting : secrets dans /home/container/.env, repo clone dans boxi-deci-bot/. */
+const containerEnv = path.resolve(__dirname, '..', '.env');
+if (fs.existsSync(containerEnv)) {
+  require('dotenv').config({ path: containerEnv });
+}
+require('dotenv').config();
+
 function run(cmd) {
   console.log(`> ${cmd}`);
   execSync(cmd, { stdio: 'inherit', cwd: __dirname, env: process.env });

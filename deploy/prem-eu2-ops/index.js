@@ -42,15 +42,17 @@ function loadEnvFile(filePath) {
   }
 }
 
-const GIT_ENV = {
-  ...process.env,
-  GIT_TERMINAL_PROMPT: '0',
-  GCM_INTERACTIVE: 'never',
-};
+function childEnv() {
+  return {
+    ...process.env,
+    GIT_TERMINAL_PROMPT: '0',
+    GCM_INTERACTIVE: 'never',
+  };
+}
 
 function run(cmd, cwd = ROOT, { timeoutMs = 0 } = {}) {
   log(`> ${cmd}`);
-  const opts = { stdio: 'inherit', cwd, shell: true, env: GIT_ENV };
+  const opts = { stdio: 'inherit', cwd, shell: true, env: childEnv() };
   if (timeoutMs > 0) opts.timeout = timeoutMs;
   execSync(cmd, opts);
 }
