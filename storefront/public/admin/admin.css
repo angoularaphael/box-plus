@@ -941,7 +941,9 @@ button.pan-kpi:hover {
 .flux-bar--mail { background: #1b8a4c; position: absolute; bottom: 0; left: 4px; width: 7px; }
 .flux-bar--ig { background: #c13584; position: absolute; bottom: 0; left: 17px; width: 7px; }
 .flux-chart--stage .flux-bar--sms { left: 10px; width: 7px; }
-.flux-chart--stage .flux-bar--all { width: 22px; opacity: 0.35; }
+.flux-chart--stage .flux-bar--ig { left: 17px; width: 7px; }
+.flux-chart--stage .flux-bar--flyer { background: #e8001c; position: absolute; bottom: 0; left: 23px; width: 5px; }
+.flux-chart--stage .flux-bar--all { width: 28px; opacity: 0.35; }
 
 .flux-conversion-row {
   display: flex;

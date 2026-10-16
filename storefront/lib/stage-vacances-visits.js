@@ -12,11 +12,22 @@ function normalizeStageSrc(raw) {
   if (s === 'mail' || s === 'email' || s === 'newsletter') return 'mail';
   if (s === 'sms' || s === 'texto') return 'sms';
   if (s === 'ig' || s === 'insta' || s === 'instagram' || s === 'story') return 'ig';
+  if (
+    s === 'flyer' ||
+    s === 'poster' ||
+    s === 'qr' ||
+    s === 'print' ||
+    s.startsWith('poster_') ||
+    s.includes('poster') ||
+    s.includes('flyer')
+  ) {
+    return 'flyer';
+  }
   return 'other';
 }
 
 function emptyBucket() {
-  return { days: [], total: 0, mail: 0, sms: 0, ig: 0, other: 0, direct: 0 };
+  return { days: [], total: 0, mail: 0, sms: 0, ig: 0, flyer: 0, other: 0, direct: 0 };
 }
 
 function emptySummary() {
@@ -27,12 +38,14 @@ function emptySummary() {
 
 function summarizeVisitRows(data) {
   const byDay = {};
-  const counts = { mail: 0, sms: 0, ig: 0, other: 0, direct: 0 };
+  const counts = { mail: 0, sms: 0, ig: 0, flyer: 0, other: 0, direct: 0 };
   for (const r of data || []) {
     const day = String(r.created_at || '').slice(0, 10);
     if (!day) continue;
     const kind = normalizeStageSrc(r.src);
-    if (!byDay[day]) byDay[day] = { day, total: 0, mail: 0, sms: 0, ig: 0, other: 0, direct: 0 };
+    if (!byDay[day]) {
+      byDay[day] = { day, total: 0, mail: 0, sms: 0, ig: 0, flyer: 0, other: 0, direct: 0 };
+    }
     byDay[day].total += 1;
     byDay[day][kind] = (byDay[day][kind] || 0) + 1;
     counts[kind] = (counts[kind] || 0) + 1;
@@ -44,6 +57,7 @@ function summarizeVisitRows(data) {
     mail: counts.mail,
     sms: counts.sms,
     ig: counts.ig,
+    flyer: counts.flyer,
     other: counts.other,
     direct: counts.direct,
   };

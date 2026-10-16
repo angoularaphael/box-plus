@@ -587,19 +587,21 @@
             const mailH = Math.round(((d.mail || 0) / max) * 120);
             const smsH = Math.round(((d.sms || 0) / max) * 120);
             const igH = Math.round(((d.ig || 0) / max) * 120);
-            return `<div class="flux-col" title="${escapeHtml(d.day)} : ${d.total} visites (mail ${d.mail || 0}, sms ${d.sms || 0}, ig ${d.ig || 0})">
+            const flyerH = Math.round(((d.flyer || 0) / max) * 120);
+            return `<div class="flux-col" title="${escapeHtml(d.day)} : ${d.total} visites (mail ${d.mail || 0}, sms ${d.sms || 0}, ig ${d.ig || 0}, flyer ${d.flyer || 0})">
               <div class="flux-stack">
                 <div class="flux-bar flux-bar--all" style="height:${h}px"></div>
                 <div class="flux-bar flux-bar--mail" style="height:${mailH}px"></div>
                 <div class="flux-bar flux-bar--sms" style="height:${smsH}px"></div>
                 <div class="flux-bar flux-bar--ig" style="height:${igH}px"></div>
+                <div class="flux-bar flux-bar--flyer" style="height:${flyerH}px"></div>
               </div>
               <span class="flux-n">${d.total}</span>
               <small>${escapeHtml(String(d.day).slice(5))}</small>
             </div>`;
           })
           .join('')
-      : '<p class="admin-section-desc">Pas encore de clic stage tracké (ajoutez ?src=mail, sms ou ig aux liens).</p>';
+      : '<p class="admin-section-desc">Pas encore de clic stage tracké (mail, SMS, Insta ou QR flyer).</p>';
 
     const paid = Number(stage?.paid_total || 0);
     const rev = Number(stage?.revenue_cents || 0);
@@ -613,6 +615,7 @@
       { key: 'mail', label: 'E-mail', color: '#1b8a4c', value: Number(sales.mail || 0) },
       { key: 'sms', label: 'SMS', color: '#2563eb', value: Number(sales.sms || 0) },
       { key: 'ig', label: 'Instagram', color: '#c13584', value: Number(sales.ig || 0) },
+      { key: 'flyer', label: 'Flyer / QR', color: '#e8001c', value: Number(sales.flyer || 0) },
       { key: 'other', label: 'Autre / direct', color: '#5c6370', value: Number((sales.other || 0) + (sales.direct || 0)) },
     ].filter((s) => s.value > 0);
     const total = slices.reduce((n, s) => n + s.value, 0);
@@ -650,7 +653,7 @@
     if (salesSummary) {
       salesSummary.textContent = paid
         ? `Répartition des ${paid} inscription${paid > 1 ? 's' : ''} selon la source enregistrée au paiement.`
-        : 'Les sources sont enregistrées quand le parent arrive avec ?src=mail, sms ou ig puis paie.';
+        : 'Les sources sont enregistrées quand le parent arrive via mail, SMS, Insta ou QR flyer puis paie.';
     }
     wrap.hidden = false;
   }
