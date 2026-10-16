@@ -66,6 +66,12 @@
     { id: "offres-perso", label: "Offres personnalisées", ico: "M12 3v18M8 8h8M8 16h5", onglet: "customOffers" },
     { id: "coachings", label: "Coachings", ico: "M12 6v6l4 2M12 22a10 10 0 110-20 10 10 0 010 20z", onglet: "coachings" },
     { id: "ventes", label: "Ventes", ico: "M4 19V9m5 10V5m5 14v-7m5 7V8", onglet: "stats" },
+    {
+      id: "stages-vacances",
+      label: "Stages vacances",
+      ico: "M6 4h12v16H6zM9 8h6M9 12h6M9 16h4",
+      href: "https://stage.boxingcenter.fr/admin",
+    },
     { id: "whatsapp", label: "WhatsApp", ico: "M21 11.5a8.4 8.4 0 01-9.5 8.4L6 21l1.2-3.4A8.4 8.4 0 1121 11.5z", onglet: "whatsapp" },
     { id: "coach-heures", label: "Heures coach", ico: "M8 2v4m8-4v4M4 10h16M4 6h16v14H4zM9 16l2 2 4-4", href: "https://coachweb-seven.vercel.app" },
     { id: "catalogue", label: "Catalogue", ico: "M4 6h16v12H4zM4 10h16", onglet: "offers" },
