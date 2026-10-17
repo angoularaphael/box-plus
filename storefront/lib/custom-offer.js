@@ -104,7 +104,21 @@ function partySizeOf(order = {}) {
   });
 }
 
-function clubCustomOfferEmail() {
+function clubCustomOfferEmail(gym) {
+  const g = String(gym || '')
+    .trim()
+    .toLowerCase();
+  if (g === 'portet' || g.includes('portet')) {
+    return String(
+      process.env.PORTET_DOSSIER_CC ||
+        process.env.CUSTOM_OFFER_CLUB_EMAIL_PORTET ||
+        'vgsportmanagement@gmail.com'
+    )
+      .split(/[,;]+/)[0]
+      .trim()
+      .replace(/^nobleartportesien@gmail\.com$/i, 'vgsportmanagement@gmail.com')
+      .replace(/^boxingcenterportet@gmail\.com$/i, 'vgsportmanagement@gmail.com');
+  }
   return String(process.env.CUSTOM_OFFER_CLUB_EMAIL || CLUB_CUSTOM_OFFER_EMAIL).trim() || CLUB_CUSTOM_OFFER_EMAIL;
 }
 
@@ -288,7 +302,7 @@ function buildCustomOfferClubRecap(order = {}) {
 </html>`;
   const sizeLabel = peopleLabel(size);
   return {
-    to: clubCustomOfferEmail(),
+    to: clubCustomOfferEmail(gym),
     subject: `Offre perso ${order.order_id || ''} — ${sizeLabel} — ${product.price_label || ''}`.trim(),
     text,
     html,

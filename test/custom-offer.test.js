@@ -183,6 +183,7 @@ test('offre perso 3 personnes + companions', () => {
   });
   assert.equal(recap.to, 'boxingcenter31@gmail.com');
   assert.equal(clubCustomOfferEmail(), 'boxingcenter31@gmail.com');
+  assert.equal(clubCustomOfferEmail('portet'), 'vgsportmanagement@gmail.com');
   assert.match(recap.subject, /3 personnes/);
   assert.match(recap.text, /Marie Martin/);
   assert.match(recap.text, /Paul Martin/);

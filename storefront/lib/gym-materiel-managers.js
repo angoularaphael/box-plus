@@ -185,7 +185,15 @@ function escapeMailHtml(value) {
 }
 
 async function sendManagerSaleEmail(manager, message, order) {
-  const to = clubMaterielEmail();
+  const portet =
+    String(manager?.slug || order?.pickup_gym || '').toLowerCase().includes('portet');
+  const to = portet
+    ? String(process.env.PORTET_DOSSIER_CC || process.env.MANAGER_EMAIL_PORTET || 'vgsportmanagement@gmail.com')
+        .split(/[,;]+/)[0]
+        .trim()
+        .replace(/^nobleartportesien@gmail\.com$/i, 'vgsportmanagement@gmail.com')
+        .replace(/^boxingcenterportet@gmail\.com$/i, 'vgsportmanagement@gmail.com')
+    : clubMaterielEmail();
   const ref = order?.order_id || '';
   const gymLabel = manager?.label || manager?.name || manager?.slug || 'salle';
   const subject = `Vente matériel — ${gymLabel} — ${ref}`.trim();

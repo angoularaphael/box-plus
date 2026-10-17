@@ -169,19 +169,25 @@ function isPortetOrder(order) {
   return gym === 'portet' || gym.includes('portet');
 }
 
-const VEGE_EMAIL = 'vgsportmanagement@gmail.com';
+const PORTET_CLUB_EMAIL = 'vgsportmanagement@gmail.com';
+const STALE_PORTET_MAIL = new Set([
+  'nobleartportesien@gmail.com',
+  'boxingcenterportet@gmail.com',
+]);
+
+function canonicalizePortetEmail(email) {
+  const value = String(email || '').trim();
+  if (!value || STALE_PORTET_MAIL.has(value.toLowerCase())) return PORTET_CLUB_EMAIL;
+  return value;
+}
 
 function portetInvoiceEmails() {
-  const fallback = CLUB_PORTET.email || 'nobleartportesien@gmail.com';
+  const fallback = canonicalizePortetEmail(CLUB_PORTET.email || PORTET_CLUB_EMAIL);
   const raw = String(process.env.PORTET_DOSSIER_CC || fallback).trim();
   const list = raw
     .split(/[,;]+/)
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((value) =>
-      value.toLowerCase() === VEGE_EMAIL ? fallback : value
-    )
-    .filter((value) => value && value.toLowerCase() !== VEGE_EMAIL);
+    .map((value) => canonicalizePortetEmail(value))
+    .filter(Boolean);
   const seen = new Set();
   const unique = [];
   for (const email of list.length ? list : [fallback]) {
@@ -191,6 +197,11 @@ function portetInvoiceEmails() {
     unique.push(email);
   }
   return unique;
+}
+
+function portetReplyTo(order) {
+  if (!isPortetOrder(order) && !isPortetPickup(order)) return defaultReplyTo();
+  return portetInvoiceEmails()[0] || PORTET_CLUB_EMAIL;
 }
 
 function portetDossierCc(order) {
@@ -263,7 +274,7 @@ async function sendConfirmationEmail(order, attachments = []) {
       subject: aventureMailSubject(order),
       html,
       fromName: 'Boxing Center',
-      replyTo: defaultReplyTo(),
+      replyTo: portetReplyTo(order),
       attachments: mailAttachments,
       cc: portetDossierCc(order),
       headers: { 'X-Transactional': 'true' },
@@ -391,7 +402,7 @@ async function sendMaterielConfirmationEmail(order) {
       subject: `Commande matériel Boxing Center — ${order.order_id}`,
       html,
       fromName: 'Boxing Center',
-      replyTo: defaultReplyTo(),
+      replyTo: portetReplyTo(order),
       attachments,
       cc,
       headers: { 'X-Transactional': 'true' },
@@ -520,7 +531,13 @@ async function sendCustomOfferClubEmail(order) {
     clubCustomOfferEmail,
   } = require('./custom-offer');
   if (!isCustomOfferOrder(order)) return { sent: false, skipped: true };
-  if (order.club_recap_sent_at) return { sent: true, already: true, to: clubCustomOfferEmail() };
+  if (order.club_recap_sent_at) {
+    return {
+      sent: true,
+      already: true,
+      to: clubCustomOfferEmail(order.customer_full?.gym || order.gym),
+    };
+  }
   const recap = buildCustomOfferClubRecap(order);
   const replyTo = order.customer_short?.email || defaultReplyTo();
   if (!isConfigured()) {

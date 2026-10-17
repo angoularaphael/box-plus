@@ -25,8 +25,8 @@ test('50 € déduits : 200 € Baby Boxe, 245 € enfants', () => {
 });
 
 test('email Pass Sport : Portet à part, les autres salles au club', () => {
-  assert.equal(passSportEmailForGym('portet'), 'boxingcenterportet@gmail.com');
-  assert.equal(passSportEmailForGym('Portet-sur-Garonne'), 'boxingcenterportet@gmail.com');
+  assert.equal(passSportEmailForGym('portet'), 'vgsportmanagement@gmail.com');
+  assert.equal(passSportEmailForGym('Portet-sur-Garonne'), 'vgsportmanagement@gmail.com');
   assert.equal(passSportEmailForGym('minimes'), 'boxingcenter31@gmail.com');
   assert.equal(passSportEmailForGym('ramonville'), 'boxingcenter31@gmail.com');
   assert.equal(passSportEmailForGym('st-cyprien'), 'boxingcenter31@gmail.com');

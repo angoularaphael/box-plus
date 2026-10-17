@@ -54,8 +54,16 @@ function getManagerContact(gym) {
     gym: id,
     label: MANAGER_LABELS[id],
     manager: MANAGER_NAMES[id] || null,
-    email:
-      String(process.env[envKey] || process.env.MANAGER_EMAIL_DEFAULT || 'boxingcenter31@gmail.com').trim(),
+    email: String(
+      process.env[envKey] ||
+        (id === 'portet'
+          ? process.env.PORTET_DOSSIER_CC || 'vgsportmanagement@gmail.com'
+          : process.env.MANAGER_EMAIL_DEFAULT || 'boxingcenter31@gmail.com')
+    )
+      .split(/[,;]+/)[0]
+      .trim()
+      .replace(/^nobleartportesien@gmail\.com$/i, 'vgsportmanagement@gmail.com')
+      .replace(/^boxingcenterportet@gmail\.com$/i, 'vgsportmanagement@gmail.com'),
   };
 }
 
