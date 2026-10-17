@@ -8,7 +8,8 @@ function normalizeStageSrc(raw) {
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9_-]/g, '');
-  if (!s || s === 'direct') return 'direct';
+  // Acces sans ?src= (souvent un clic Gmail / Apple Mail qui mange le parametre) = e-mail.
+  if (!s || s === 'direct' || s === 'none' || s === 'unknown') return 'mail';
   if (s === 'mail' || s === 'email' || s === 'newsletter') return 'mail';
   if (s === 'sms' || s === 'texto') return 'sms';
   if (s === 'ig' || s === 'insta' || s === 'instagram' || s === 'story') return 'ig';
@@ -110,5 +111,6 @@ async function summarizeStageVacancesVisits(days = 14) {
 
 module.exports = {
   summarizeStageVacancesVisits,
+  summarizeVisitRows,
   normalizeStageSrc,
 };

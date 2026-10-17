@@ -584,11 +584,11 @@
       ? daily
           .map((d) => {
             const h = Math.max(8, Math.round(((d.total || 0) / max) * 120));
-            const mailH = Math.round(((d.mail || 0) / max) * 120);
+            const mailH = Math.round((((d.mail || 0) + (d.direct || 0)) / max) * 120);
             const smsH = Math.round(((d.sms || 0) / max) * 120);
             const igH = Math.round(((d.ig || 0) / max) * 120);
             const flyerH = Math.round(((d.flyer || 0) / max) * 120);
-            return `<div class="flux-col" title="${escapeHtml(d.day)} : ${d.total} visites (mail ${d.mail || 0}, sms ${d.sms || 0}, ig ${d.ig || 0}, flyer ${d.flyer || 0})">
+            return `<div class="flux-col" title="${escapeHtml(d.day)} : ${d.total} visites (mail ${(d.mail || 0) + (d.direct || 0)}, sms ${d.sms || 0}, ig ${d.ig || 0}, flyer ${d.flyer || 0})">
               <div class="flux-stack">
                 <div class="flux-bar flux-bar--all" style="height:${h}px"></div>
                 <div class="flux-bar flux-bar--mail" style="height:${mailH}px"></div>
@@ -612,11 +612,11 @@
 
     const sales = stage?.sales || {};
     const slices = [
-      { key: 'mail', label: 'E-mail', color: '#1b8a4c', value: Number(sales.mail || 0) },
+      { key: 'mail', label: 'E-mail', color: '#1b8a4c', value: Number(sales.mail || 0) + Number(sales.direct || 0) },
       { key: 'sms', label: 'SMS', color: '#2563eb', value: Number(sales.sms || 0) },
       { key: 'ig', label: 'Instagram', color: '#c13584', value: Number(sales.ig || 0) },
       { key: 'flyer', label: 'Flyer / QR', color: '#e8001c', value: Number(sales.flyer || 0) },
-      { key: 'other', label: 'Autre / direct', color: '#5c6370', value: Number((sales.other || 0) + (sales.direct || 0)) },
+      { key: 'other', label: 'Autre', color: '#5c6370', value: Number(sales.other || 0) },
     ].filter((s) => s.value > 0);
     const total = slices.reduce((n, s) => n + s.value, 0);
 
@@ -652,8 +652,8 @@
     }
     if (salesSummary) {
       salesSummary.textContent = paid
-        ? `Répartition des ${paid} inscription${paid > 1 ? 's' : ''} selon la source enregistrée au paiement.`
-        : 'Les sources sont enregistrées quand le parent arrive via mail, SMS, Insta ou QR flyer puis paie.';
+        ? `Répartition des ${paid} inscription${paid > 1 ? 's' : ''} selon la source. Accès sans lien tracké (souvent Gmail) = e-mail.`
+        : 'Les sources sont enregistrées quand le parent arrive via mail, SMS, Insta ou QR flyer puis paie. Sans paramètre = e-mail.';
     }
     wrap.hidden = false;
   }
