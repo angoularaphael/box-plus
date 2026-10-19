@@ -88,6 +88,37 @@ function inscriptionUrl(base, orderId, token, step) {
   return `${base}/inscription?order=${encodeURIComponent(orderId)}&token=${tok}&bc_token=${tok}&step=${step}`;
 }
 
+test('comptant adulte navigateur : PayPal et Scalapay, aucune proposition RIB, exception Portet', { timeout: 90000 }, async (t) => {
+  const { chromium } = require('playwright');
+  const { server, base } = await listen(createApp());
+  t.after(() => { server.closeAllConnections(); return new Promise((resolve) => server.close(resolve)); });
+  const browser = await launchChromium(chromium);
+  assert.ok(browser, 'un navigateur est requis pour valider le paiement');
+  t.after(() => browser.close());
+  const page = await browser.newPage();
+  for (const months of [3, 6, 12]) {
+    for (const gym of ['minimes', 'portet']) {
+      t.diagnostic(`Validation ${months} mois à ${gym}`);
+      const draft = await json(base, '/api/orders/draft', {
+        method: 'POST',
+        body: JSON.stringify({ ...uniqueTestCustomer(`adult-${months}-${gym}`),
+          product_id: `comptant-${months}-mois`, gym,
+          gender: 'M', address: '1 rue du Test', postal_code: '31000', city: 'Toulouse',
+        }),
+      });
+      assert.equal(draft.data.ok, true, JSON.stringify(draft.data));
+      await page.goto(inscriptionUrl(base, draft.data.order_id, draft.data.access_token, 4),
+        { waitUntil: 'networkidle', timeout: 30000 });
+      await page.waitForSelector('input[name="payment_plan"][value="4x"]');
+      assert.equal(await page.locator('input[name="payment_plan"][value="4x-rib"]').count(), 0);
+      assert.equal(await page.locator('input[name="payment_plan"][value="scalapay"]').count(), gym === 'portet' ? 0 : 1);
+      assert.doesNotMatch(await page.locator('body').innerText(), /4× CB puis RIB|prochains paiements sur votre RIB/);
+      await page.check('input[name="payment_plan"][value="4x"]');
+      assert.match(await page.locator('#payBtn').innerText(), /PayPal/i);
+    }
+  }
+});
+
 test('tunnel inscription navigateur — 259 € Scalapay et option 4× CB puis RIB', async (t) => {
   let chromium;
   try {

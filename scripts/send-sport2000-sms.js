@@ -49,7 +49,7 @@ const SMS_PASSWORD = process.env.SMS_GATEWAY_PASSWORD || 'Fareno12';
 const {
   seanceOfferteSmsLink,
   sport2000SmsTemplate,
-} = require('../../boxing-center-bot/lib/sport2000-seance-offerte');
+} = require('../lib/sport2000-seance-offerte');
 
 const LINK = seanceOfferteSmsLink();
 const CAMPAIGN_NAME = `Sport2000 seance offerte ${parisStamp()}`;
