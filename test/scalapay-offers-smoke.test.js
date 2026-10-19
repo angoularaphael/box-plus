@@ -174,6 +174,7 @@ test('pay Scalapay — offre non éligible refusée', async (t) => {
     method: 'POST',
     body: JSON.stringify({
       token: access_token,
+      billing_plan: 'rib',
       pay_method: 'scalapay',
       payment_plan: 'scalapay',
       gender: 'M',
