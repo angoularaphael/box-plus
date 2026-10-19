@@ -292,22 +292,6 @@
     document.head.appendChild(s);
   }
 
-  function ensureGiftPromo() {
-    // Cadeau d’entrée : uniquement sur l’accueil (pas les autres pages)
-    const p = currentPath();
-    if (p !== '/' && !p.endsWith('index.html')) return;
-    if (document.querySelector('script[data-gift-promo]')) return;
-    const css = document.createElement('link');
-    css.rel = 'stylesheet';
-    css.href = A('/css/gift-promo.css');
-    document.head.appendChild(css);
-    const s = document.createElement('script');
-    s.src = A('/js/gift-promo.js?v=32');
-    s.defer = true;
-    s.dataset.giftPromo = '1';
-    document.body.appendChild(s);
-  }
-
   function ensureChloe() {
     const p = currentPath();
     if (/gerer-abonnement|regulariser|inscription|checkout|panier|success|contrat|mon-inscription|admin|attestation|\/404|\/dev/i.test(p)) {
@@ -333,7 +317,6 @@
     updateCartBadge();
     window.addEventListener('bccart:change', updateCartBadge);
     ensureTracking();
-    ensureGiftPromo();
     ensureChloe();
     ensureFavicon();
   }
