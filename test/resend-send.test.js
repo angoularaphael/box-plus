@@ -94,8 +94,9 @@ test('mail campagne : texte David, comme Guillaume en Principal', () => {
   assert.doesNotMatch(mail.emailText, /C’est David, de Boxing Center/);
   assert.doesNotMatch(mail.subject, /Boxing Center|offres|€/);
   assert.equal(mail.html, undefined);
-  assert.match(mail.emailText, /29 euros les 4 semaines/);
-  assert.match(mail.emailText, /259 euros les 12 mois/);
+  assert.match(mail.emailText, /44,99 euros les 4 semaines/);
+  assert.match(mail.emailText, /400 euros les 12 mois/);
+  assert.doesNotMatch(mail.emailText, /\b29 euros|259 euros/);
   assert.match(mail.emailText, /offres-speciales/);
   assert.doesNotMatch(mail.emailText, /Guillaume|Voir les offres|🚨/);
 });

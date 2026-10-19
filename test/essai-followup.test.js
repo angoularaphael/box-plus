@@ -123,7 +123,8 @@ test('message coach contient nom, tel, salle et 10 €', () => {
   assert.match(text, /Camille Durand/);
   assert.match(text, /0612345678/);
   assert.match(text, /États-Unis/);
-  assert.match(text, /29 € ni 259 €/);
+  assert.match(text, /n’a pas pris d’abonnement 3 jours plus tard/);
+  assert.doesNotMatch(text, /29 €|259 €/);
 });
 
 test('pas de relance client 29 € après un essai 10 € payé', () => {
@@ -135,8 +136,9 @@ test('pas de relance client 29 € après un essai 10 € payé', () => {
   assert.equal(d1.reason, 'disabled');
   const copy = customerNudgeCopy(essai(), 1);
   assert.match(copy.text, /^Camille,/);
-  assert.match(copy.text, /29 € \/ 4 semaines/);
-  assert.match(copy.text, /259 € \/ 12 mois/);
+  assert.match(copy.text, /44,99 € \/ 4 semaines/);
+  assert.match(copy.text, /400 € \/ 12 mois/);
+  assert.doesNotMatch(copy.text, /\b29 €|259 €/);
   assert.match(copy.text, /\/offres-speciales/);
   assert.match(copy.subject, /^Camille, c’est David/);
   assert.equal(copy.html, undefined);
@@ -153,7 +155,7 @@ test('pas de relance client 29 € après un essai 10 € payé', () => {
   assert.notEqual(copy.text, leo.text);
   const noName = customerNudgeCopy(essai({ customer_short: { last_name: 'X', email: 'x@example.com', phone: '0600000000' } }), 1);
   assert.doesNotMatch(noName.text, /^,/);
-  assert.match(noName.text, /^🚨/);
+  assert.match(noName.text, /^🥊/);
 });
 
 test('avant 3 jours → wait, après 3 jours sans abo → check Deciplus', () => {
