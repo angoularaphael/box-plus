@@ -8,6 +8,23 @@ const { rebuildLifecycleOrderFromSession } = require('../storefront/lib/order-re
 const { findEnrichedProduct } = require('../storefront/lib/merch');
 
 describe('order recovery from Stripe', () => {
+  it('récupère une promotion déjà payée sans la remettre en vente', async () => {
+    for (const [id, legacy] of [['dp-100', 'offre-saison'], ['dp-104', 'offre-duo']]) {
+      const product = require('../storefront/products.json').find((p) => p.id === legacy);
+      assert.equal(findEnrichedProduct(id), null);
+      const orderId = `BC-RECOVER-RETIRED-${id}`;
+      const payload = buildOrderPayload({ order_id: orderId, first_name: 'Jean', last_name: 'Dupont',
+        email: 'recovery@test.boxplus.local', phone: '0612345678', birthdate: '1990-05-15', gym: 'minimes' }, product);
+      const order = await rebuildLifecycleOrderFromSession({ id: `cs_test_${id}`, payment_status: 'paid',
+        metadata: { ...packOrderMetadata(payload), product_id: id, lifecycle_order_id: orderId, bc_token: 'paid-retired-token' } },
+        { accessToken: 'paid-retired-token', findProduct: findEnrichedProduct });
+      assert.ok(order);
+      assert.equal(order.payment.status, 'paid');
+      assert.equal(order.product_snapshot.name, product.name);
+      assert.equal(order.product_snapshot.price_cents, product.price_cents);
+      assert.equal(findEnrichedProduct(legacy), null);
+    }
+  });
   it('rebuilds lifecycle order from paid session metadata', async () => {
     const product = findEnrichedProduct('seance-essai');
     const orderId = 'BC-RECOVER-TEST';

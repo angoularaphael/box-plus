@@ -40,7 +40,7 @@ const {
   removePendingOrder,
 } = require('./lib/orders');
 const { getStoreProducts, ingestCatalogPayload } = require('./lib/deciplus-sync');
-const { BADGE_FEE_NOTICE } = require('./lib/storefront-copy');
+const { BADGE_FEE_NOTICE, isBannedStorefrontProduct } = require('./lib/storefront-copy');
 const {
   createCheckoutSessionParams,
   isStripeCheckoutPaid,
@@ -4338,6 +4338,11 @@ function createApp() {
       }
 
       const paymentErrors = validatePaymentForm(req.body, product);
+      if ((isBannedStorefrontProduct(product) || isBannedStorefrontProduct({ id: order.product_id })) && !aventureOrder) {
+        return res.status(410).json({ ok: false, code: 'offer_retired',
+          error: 'Cette offre promotionnelle est terminée. Consultez les abonnements disponibles.',
+          redirect: '/abonnements' });
+      }
       if (paymentErrors.length) return res.status(400).json({ ok: false, errors: paymentErrors });
 
       const orderForSync = {

@@ -2848,7 +2848,7 @@
     } else if (mode === 'comptant_4x') {
       hint.hidden = false;
       hint.textContent =
-        'PayPal 4× sans frais pour tout montant. CB Scalapay uniquement à 259 € ou 400 €. À Portet : PayPal 4× seulement.';
+        'PayPal 4× sans frais pour tout montant. CB Scalapay pour les formules comptant 3, 6 ou 12 mois. À Portet : PayPal 4× seulement.';
     } else {
       hint.hidden = true;
       hint.textContent = '';

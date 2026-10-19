@@ -7,6 +7,7 @@ const BADGE_FEE_NOTICE =
 
 /** Retiré de la boutique — ne doit plus être vendu en ligne (Deciplus peut encore l’avoir en grille). */
 const BANNED_STOREFRONT_PRODUCT_IDS = new Set([
+  'offre-duo', 'offre-saison', 'offre-29', 'offre-259', 'offre_29', 'offre_259', 'offre-12mois', 'dp-104', 'dp-100',
   'offre-promo-9',
   'dp-101',
   'offre-promo-adulte',
@@ -16,12 +17,14 @@ const BANNED_STOREFRONT_PRODUCT_IDS = new Set([
 ]);
 
 const BANNED_STOREFRONT_NAME_PATTERNS = [
+  /offre\s*(?:a|duo)?\s*29(?:[,.]99)?\s*€/i,
+  /offre\s*promo\s*12\s*mois/i,
   /offre\s*promo\s*9\s*€/i,
   /offre\s*promo\s*38[,.]99/i,
   /offre\s*promo\s*34[,.]99/i,
 ];
 
-const BANNED_DECIPLUS_IDS = new Set([101, 102, 103]);
+const BANNED_DECIPLUS_IDS = new Set([100, 101, 102, 103, 104]);
 
 function isBannedStorefrontProduct(product) {
   if (!product) return false;

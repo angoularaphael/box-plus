@@ -65,12 +65,12 @@ async function launchChromium(chromium) {
   return null;
 }
 
-async function draft259(base) {
+async function draftBaby(base) {
   const customer = uniqueTestCustomer('browser-259');
   const draft = await json(base, '/api/orders/draft', {
     method: 'POST',
     body: JSON.stringify({
-      product_id: 'offre-saison',
+      product_id: 'baby-boxe',
       gym: 'minimes',
       gender: 'M',
       address: '1 rue du Test',
@@ -119,7 +119,7 @@ test('comptant adulte navigateur : PayPal et Scalapay, aucune proposition RIB, e
   }
 });
 
-test('tunnel inscription navigateur — 259 € Scalapay et option 4× CB puis RIB', async (t) => {
+test('tunnel inscription navigateur — Baby Boxe Scalapay et option 4× CB puis RIB', async (t) => {
   let chromium;
   try {
     ({ chromium } = require('playwright'));
@@ -129,7 +129,7 @@ test('tunnel inscription navigateur — 259 € Scalapay et option 4× CB puis R
   }
 
   const { server, base } = await listen(createApp());
-  t.after(() => new Promise((resolve) => server.close(resolve)));
+  t.after(() => { server.closeAllConnections(); return new Promise((resolve) => server.close(resolve)); });
 
   const payCfg = await json(base, '/api/payments/config?gym=minimes');
   assert.equal(payCfg.data.payplug_4x_prelevement, Boolean(payCfg.data.payplug));
@@ -137,7 +137,7 @@ test('tunnel inscription navigateur — 259 € Scalapay et option 4× CB puis R
   assert.match(String(payCfg.data.scalapay_fees_hint || ''), /1,?5\s*%|3×/i);
   assert.match(String(payCfg.data.scalapay_refusal_help || ''), /boxingcenter31@gmail\.com/i);
 
-  const { order_id, access_token } = await draft259(base);
+  const { order_id, access_token } = await draftBaby(base);
   const payUrl = inscriptionUrl(base, order_id, access_token, 4);
 
   const browser = await launchChromium(chromium);
@@ -174,7 +174,7 @@ test('tunnel inscription navigateur — 259 € Scalapay et option 4× CB puis R
   await markPaymentPaid(order_id, {
     method: 'payplug',
     payment_plan: 'scalapay',
-    amount: 259,
+    amount: 250,
   });
 
   await page.goto(inscriptionUrl(base, order_id, access_token, 6), {

@@ -73,7 +73,10 @@ async function rebuildLifecycleOrderFromSessionAsync(session, { accessToken, fin
 
   const customer = pending.customer || {};
   const productId = session.metadata.product_id || pending.product_id;
-  const product = findProduct ? findProduct(productId) : null;
+  // Une session déjà payée garde sa formule même après son retrait de la vente.
+  const historicalId = { 'dp-100': 'offre-saison', 'dp-104': 'offre-duo' }[productId] || productId;
+  const product = (findProduct ? findProduct(productId) : null) ||
+    require('../products.json').find((p) => p.id === historicalId);
 
   const order = {
     order_id: orderId,

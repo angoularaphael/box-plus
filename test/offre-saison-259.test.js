@@ -209,9 +209,10 @@ describe('offre 259 € — comptant', () => {
     assert.deepEqual(validateOrder(order), []);
   });
 
-  it('produit enrichi boutique — 259 €, comptant, legacy/id', () => {
-    const p = findEnrichedProduct('offre-saison') || findEnrichedProduct('dp-100');
-    assert.ok(p, 'offre-saison doit être résolue');
+  it('offre terminée introuvable en vente, ancien contrat conservé à 259 €', () => {
+    assert.equal(findEnrichedProduct('offre-saison'), null);
+    assert.equal(findEnrichedProduct('dp-100'), null);
+    const p = { ...PROMO_STATIC, subsection: 'comptant' };
     assert.equal(p.price_cents, 25900, 'prix boutique 259 € (pas 295 Deciplus)');
     assert.equal(p.requires_iban, false);
     assert.equal(p.supports_installment_choice, true);

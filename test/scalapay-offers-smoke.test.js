@@ -61,6 +61,41 @@ async function draft(base, productId) {
   return draft.data;
 }
 
+test('promotions terminées : aucune nouvelle vente, ancien paiement conservé', async (t) => {
+  const { server, base } = await listen(createApp());
+  t.after(() => { server.closeAllConnections(); return new Promise((resolve) => server.close(resolve)); });
+  const { createDraftAsync, markPaymentPaid } = require('../storefront/lib/order-lifecycle');
+  const products = require('../storefront/products.json');
+  for (const id of ['offre-duo', 'offre-saison', 'dp-104', 'dp-100']) {
+    const draftResult = await json(base, '/api/orders/draft', { method: 'POST',
+      body: JSON.stringify({ ...uniqueTestCustomer('retired'), product_id: id, gym: 'minimes' }) });
+    assert.equal(draftResult.data.ok, false, id);
+    const lookup = await json(base, `/api/products/${id}`);
+    assert.equal(lookup.res.status, 404, id);
+  }
+  for (const id of ['offre-duo', 'offre-saison']) {
+    const product = products.find((p) => p.id === id);
+    const order = await createDraftAsync({ product_id: id, product,
+      customer_short: uniqueTestCustomer('old-promo'), gym: 'minimes' });
+    const request = { token: order.access_token, payment_plan: 'once', billing_plan: 'rib', pay_method: 'card' };
+    const refused = await json(base, `/api/orders/${order.order_id}/pay`, { method: 'POST', body: JSON.stringify(request) });
+    assert.equal(refused.res.status, 410);
+    assert.equal(refused.data.code, 'offer_retired');
+    await markPaymentPaid(order.order_id, { method: 'demo', status: 'paid', amount: product.price_cents / 100 });
+    const resumed = await json(base, `/api/orders/${order.order_id}/pay`, { method: 'POST', body: JSON.stringify(request) });
+    assert.equal(resumed.data.ok, true);
+    assert.ok(resumed.data.redirect);
+  }
+  for (const path of ['/offre/29', '/offre/259', '/offre-29.html', '/offres-speciales']) {
+    const response = await fetch(base + path, { redirect: 'manual' });
+    assert.equal(response.status, 301);
+    assert.equal(response.headers.get('location'), '/abonnements');
+  }
+  const oldSignup = await fetch(base + '/inscription?product=offre-saison', { redirect: 'manual' });
+  assert.equal(oldSignup.status, 302);
+  assert.equal(oldSignup.headers.get('location'), '/abonnements');
+});
+
 test('boutique matériel — Scalapay refusé (carte uniquement)', async (t) => {
   const { server, base } = await listen(createApp());
   t.after(() => new Promise((resolve) => server.close(resolve)));
@@ -97,11 +132,11 @@ test('config paiements — Scalapay ON, 4× RIB ON si PayPlug, textes frais/emai
   assert.match(String(data.scalapay_refusal_help || ''), /boxingcenter31@gmail\.com/);
 });
 
-test('pay Scalapay — offre 259 éligible (ou erreur API PayPlug, pas ineligible)', async (t) => {
+test('pay Scalapay — comptant 12 mois éligible (ou erreur API PayPlug, pas ineligible)', async (t) => {
   const { server, base } = await listen(createApp());
   t.after(() => new Promise((resolve) => server.close(resolve)));
 
-  const { order_id, access_token } = await draft(base, 'offre-saison');
+  const { order_id, access_token } = await draft(base, 'comptant-12-mois');
   const { res, data } = await json(base, `/api/orders/${order_id}/pay`, {
     method: 'POST',
     body: JSON.stringify({
@@ -136,7 +171,7 @@ test('pay Scalapay — Portet refusé', async (t) => {
   const draft = await json(base, '/api/orders/draft', {
     method: 'POST',
     body: JSON.stringify({
-      product_id: 'offre-saison',
+      product_id: 'comptant-12-mois',
       gym: 'portet',
       gender: 'M',
       address: '1 rue du Test',
@@ -191,7 +226,7 @@ test('pay 4× RIB — accepté (mode prélevement ou erreur PayPlug API)', async
   const { server, base } = await listen(createApp());
   t.after(() => new Promise((resolve) => server.close(resolve)));
 
-  const { order_id, access_token } = await draft(base, 'offre-saison');
+  const { order_id, access_token } = await draft(base, 'baby-boxe');
   const { data } = await json(base, `/api/orders/${order_id}/pay`, {
     method: 'POST',
     body: JSON.stringify({

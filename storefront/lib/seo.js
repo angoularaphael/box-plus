@@ -829,6 +829,16 @@ function sitemapXml(publicDir) {
 /* ── registration ─────────────────────────────────────────────────── */
 
 function registerSeo(app, publicDir) {
+  app.get(['/inscription', '/inscription.html', '/checkout', '/checkout.html'], (req, res, next) => {
+    const { isBannedStorefrontProduct } = require('./storefront-copy');
+    if (!req.query.order && !req.query.order_id && !req.query.session_id &&
+        isBannedStorefrontProduct({ id: req.query.product || req.query.product_id })) {
+      return res.redirect(302, '/abonnements');
+    }
+    next();
+  });
+  app.get(['/offre/29', '/offre/259', '/offre-29', '/offre-259', '/offre-29.html', '/offre-259.html',
+    '/offres-speciales', '/offres-speciales.html'], (_req, res) => res.redirect(301, '/abonnements'));
   app.get('/robots.txt', (_req, res) => res.type('text/plain').send(robotsTxt()));
   app.get('/llms.txt', (_req, res) => res.type('text/plain; charset=utf-8').send(llmsTxt()));
   app.get('/llms-full.txt', (_req, res) => res.type('text/plain; charset=utf-8').send(llmsFullTxt()));
