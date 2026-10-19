@@ -9,7 +9,7 @@ const os = require('os');
 process.env.BOXPLUS_QUEUE_DIR = path.join(os.tmpdir(), `boxplus-offers-q-${Date.now()}`);
 process.env.BOXPLUS_LOG_DIR = path.join(os.tmpdir(), `boxplus-offers-log-${Date.now()}`);
 
-const { getStoreProducts } = require('../storefront/lib/deciplus-sync');
+const { getStoreProducts, isVisibleInDeciplusGrid, loadVisibleDeciplusTitles } = require('../storefront/lib/deciplus-sync');
 const { findProduct } = require('../storefront/server');
 const { buildOrderPayload, validateCheckoutForm } = require('../storefront/lib/orders');
 const { normalizeOrder, validateOrder } = require('../lib/normalize');
@@ -60,7 +60,12 @@ test('seance essai 10€ — produit manuel enrichi', () => {
 
 test('catalogue — toutes les offres sont chargées', () => {
   const products = loadAllOffers();
-  assert.ok(products.length >= 13, `au moins 13 offres Deciplus attendues, got ${products.length}`);
+  const expected = loadVisibleDeciplusTitles();
+  assert.equal(products.length, expected.length, 'une offre par titre autorisé dans la grille boutique');
+  assert.ok(products.every((p) => isVisibleInDeciplusGrid(p.name)));
+  for (const months of [3, 6, 12]) {
+    assert.ok(products.some((p) => (p.legacy_id || p.id) === `comptant-${months}-mois`), `comptant ${months} mois présent`);
+  }
 });
 
 test('chaque offre — checkout, validation BOXPLUS et résolution Deciplus', () => {

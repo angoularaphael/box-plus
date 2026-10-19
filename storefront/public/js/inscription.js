@@ -850,6 +850,9 @@
       return `Montant total : <strong>${amount}</strong> — une fois, ou <strong>PayPal 4× sans frais</strong> si éligible`;
     }
     if (supportsScalapay(product) || supportsInstallmentChoice(product)) {
+      if (isAdultFixedTermComptant(product)) {
+        return `Montant total : <strong>${amount}</strong> — une fois, <strong>CB</strong> (Scalapay 3×/4×), ou <strong>PayPal 4× sans frais</strong> si éligible`;
+      }
       return `Montant total : <strong>${amount}</strong> — une fois, <strong>CB</strong> (3×/4×), ou <strong>4× CB puis RIB</strong>`;
     }
     if (isComptantLikeProduct(product)) {
@@ -1405,7 +1408,7 @@
       const bothInstallments = scalapayAvailable && (showPaypalFour || payplug4xPrelev);
       const compareNote = bothInstallments
         ? `<p class="pay-compare-note" role="note">Plusieurs façons de payer en plusieurs fois&nbsp;:
-            <strong>CB en plusieurs fois</strong> (Scalapay), <strong>4× CB puis RIB</strong>${
+            <strong>CB en plusieurs fois</strong> (Scalapay)${payplug4xPrelev ? ', <strong>4× CB puis RIB</strong>' : ''}${
               showPaypalFour ? ', et <strong>PayPal 4× sans frais</strong>' : ''
             }.</p>`
         : portetPaypal4x || currentGym() === 'portet'
@@ -1464,7 +1467,7 @@
             payFlags.scalapayRefusalHelp
           )}</div>
           <div id="paypalFourHelp" class="paypal-four-help" style="display:none;margin-top:12px" role="note">
-            <p><strong>PayPal 4× sans frais</strong> — distinct du paiement CB en plusieurs fois et du 4× CB puis RIB. Aucun frais ajouté si Pay Later est proposé sur votre compte.</p>
+            <p><strong>PayPal 4× sans frais</strong> — distinct du paiement CB en plusieurs fois${payplug4xPrelev ? ' et du 4× CB puis RIB' : ''}. Aucun frais ajouté si Pay Later est proposé sur votre compte.</p>
           </div>
           <p class="sub" id="payStep2Label" style="margin:16px 0 8px">Étape 2 — Moyen de paiement</p>
           <div id="onceMethods" class="billing-choice-row">${onceMethods || emptyPayHtml}</div>

@@ -91,7 +91,13 @@ function tilesHtml() {
 }
 
 async function withPage(html, fn) {
-  const browser = await chromium.launch({ headless: true });
+  let browser;
+  try {
+    browser = await chromium.launch({ headless: true });
+  } catch (error) {
+    if (!String(error.message).includes("Executable doesn't exist")) throw error;
+    browser = await chromium.launch({ headless: true, channel: 'chrome' });
+  }
   const page = await browser.newPage();
   try {
     await page.setContent(html);
