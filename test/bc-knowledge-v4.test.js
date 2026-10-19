@@ -18,7 +18,7 @@ test('le fichier V4 est bien embarqué', () => {
   assert.equal(path.basename(V4_PATH), 'Base_connaissances_V4.txt');
   assert.ok(fs.existsSync(V4_PATH));
   const raw = fs.readFileSync(V4_PATH, 'utf8');
-  assert.match(raw, /29,99\s*€/);
+  assert.match(raw, /44,99\s*€/);
   assert.match(raw, /BASE DE CONNAISSANCES/);
 });
 
@@ -51,9 +51,9 @@ test('toutes les sections V4 utiles sont parsées', () => {
 
 test('les réponses se calent sur la V4, pas sur le catalogue boutique', () => {
   const k = buildKnowledge('quels sont les tarifs et offres en cours ?');
-  assert.match(k, /29,99/);
+  assert.match(k, /44,99/);
   assert.match(k, /base de connaissances V4/i);
-  assert.doesNotMatch(k, /29 € et non 29,99/);
+  assert.doesNotMatch(k, /29 € et non 44,99/);
   assert.doesNotMatch(k, /DERNIÈRE CARTE/);
   assert.doesNotMatch(k, /64,75/);
 });

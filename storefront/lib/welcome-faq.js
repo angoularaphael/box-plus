@@ -1038,8 +1038,8 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
     return {
       reply: pickAvoid(
         [
-          'Pour lui : **250 €** la saison en Baby Boxe, **295 €** en éducative. À côté, les abos adultes c’est **29,99 € / 4 semaines** ou **259 € / 12 mois**.',
-          'Oui — un enfant : **250 €** la saison (Baby Boxe) et **295 €** (éducative). Adulte : **29,99 € / 4 semaines** ou **259 € / 12 mois**.',
+          'Pour lui : **250 €** la saison en Baby Boxe, **295 €** en éducative. À côté, les abos adultes c’est **44,99 € / 4 semaines** ou **400 € / 12 mois**.',
+          'Oui — un enfant : **250 €** la saison (Baby Boxe) et **295 €** (éducative). Adulte : **44,99 € / 4 semaines** ou **400 € / 12 mois**.',
         ],
         lastBot
       ),
@@ -1048,7 +1048,7 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
   }
 
   if (
-    /quelle offre|promo|29,99|29\s*€|29\s*euros?|259|sans engagement|c['’]est combien|\bcombien\b|combien.{0,20}co[uû]te|combien (l['’]abo|l['’]abonnement|la formule)|\btarifs?|\bprix\b|\babonnement\b|\babo\b|par mois|mensuel|4 semaines|pr[ée]l[èe]vement/i.test(
+    /quelle offre|promo|44,99|29,99|29\s*€|259|400\s*€|sans engagement|c['’]est combien|\bcombien\b|combien.{0,20}co[uû]te|combien (l['’]abo|l['’]abonnement|la formule)|\btarifs?|\bprix\b|\babonnement\b|\babo\b|par mois|mensuel|4 semaines|pr[ée]l[èe]vement/i.test(
       t
     )
   ) {
@@ -1058,12 +1058,12 @@ function matchWelcomeFaq(text, { persona, lastBot, messages } = {}) {
     const parleDeMois = /par mois|\/\s*mois|mensuel|chaque mois|tous les mois/i.test(t);
     const variantes = parleDeMois
       ? [
-          'Presque : ce n’est pas mensuel, c’est **29,99 € toutes les 4 semaines** (28 jours), donc 13 prélèvements par an. L’autre offre, c’est **259 € / 12 mois**.',
-          'Petite précision : le prélèvement tombe **toutes les 4 semaines** (28 jours), pas une fois par mois — **29,99 €**. Sinon il y a l’année complète à **259 €**.',
+          'Presque : ce n’est pas mensuel, c’est **44,99 € toutes les 4 semaines** (28 jours), donc 13 prélèvements par an. L’autre formule, c’est **400 € comptant 12 mois**.',
+          'Petite précision : le prélèvement tombe **toutes les 4 semaines** (28 jours), pas une fois par mois — **44,99 €**. Sinon il y a l’année complète à **400 €**.',
         ]
       : [
-          'On a deux offres : **29,99 € / 4 semaines** (28 jours, pas un mois) et **259 € / 12 mois**. La première = tu restes souple ; la seconde = le meilleur prix sur l’année.',
-          'Deux formules : **29,99 €** prélevés **toutes les 4 semaines** sans engagement, ou **259 €** pour **12 mois** — l’option la plus économique sur l’année.',
+          'On a deux formules : **44,99 € / 4 semaines** (28 jours, pas un mois) et **400 € comptant 12 mois**. La première = tu restes souple ; la seconde = le meilleur prix sur l’année.',
+          'Deux formules : **44,99 €** prélevés **toutes les 4 semaines** sans engagement, ou **400 €** pour **12 mois** — l’option la plus économique sur l’année.',
         ];
     return {
       reply: pickAvoid(variantes, lastBot),

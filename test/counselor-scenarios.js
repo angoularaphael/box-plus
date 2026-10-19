@@ -42,7 +42,7 @@ module.exports = [
       }),
       step('Les salles sont climatisées ?', {
         must: [/pas climatis|ne sont pas/i],
-        mustNot: [/Baby Boxe \/ éducative/, /29,99/],
+        mustNot: [/Baby Boxe \/ éducative/, /44,99/],
       }),
     ],
   },
@@ -103,7 +103,7 @@ module.exports = [
     steps: [
       step('Ado de 14 ans', { must: [/12–16|12-16/i] }),
       step('Et pour moi je débute', { must: [/tous niveaux|débutant/i] }),
-      step('C’est combien l’abo ?', { must: [/29,99/, /259/] }),
+      step('C’est combien l’abo ?', { must: [/44,99/, /400/] }),
     ],
   },
   {
@@ -115,7 +115,7 @@ module.exports = [
         mustNot: [/\btu\b|\bton\b/i],
       }),
       step('Je veux essayer avant', { must: [/10\s*€/, /5\s*min/], mustNot: [/\btu\b|\bton\b/i] }),
-      step('C’est 29 euros par mois ?', { must: [/29,99/, /4 semaines|28 jours/i] }),
+      step('C’est 29 euros par mois ?', { must: [/44,99/, /4 semaines|28 jours/i] }),
       step('Les salles sont climatisées ?', { must: [/pas climatis|ne sont pas/i] }),
     ],
   },
@@ -164,7 +164,7 @@ module.exports = [
     id: 'tarif-badge-resil',
     persona: 'chloe',
     steps: [
-      step('Quelle offre promouvoir en priorité ?', { must: [/29,99/, /259/] }),
+      step('Quelle offre promouvoir en priorité ?', { must: [/44,99/, /400/] }),
       step('le badge est remboursé ?', { must: [/badge/i, /rembours|propri/i] }),
       step('je veux résilier mon abonnement', { must: [/David|72/], expectSource: 'redirect-david' }),
       step('si je n’utilise pas je suis remboursé ?', { must: [/non-utilisation|rembours/i] }),
@@ -205,7 +205,7 @@ module.exports = [
     persona: 'chloe',
     steps: [
       step('cours pour les enfants', { must: [/Baby Boxe/i] }),
-      step('c’est combien', { must: [/250/, /295/, /29,99/, /259/] }),
+      step('c’est combien', { must: [/250/, /295/, /44,99/, /400/] }),
       step('vous ouvrez dimanche matin', { must: [/samedi|dimanche/i] }),
       step('planning baby boxe', { must: [/Minimes/, /Baby Boxe/i], mustNot: [/Le plus simple : ouvre/] }),
     ],
@@ -351,10 +351,10 @@ module.exports = [
       step('Je veux tester avant de m’engager, ça coûte combien ?', { must: [/10\s*€/, /5\s*min/] }),
       step('Pour l’essai, vous prêtez les gants ?', { must: [/prêt|matériel/i] }),
       step('Si ça me plaît, quelles sont les deux promos ?', {
-        must: [/29,99/, /4 semaines|28 jours/i, /259/, /12 mois/i],
-        failIf: [/29,99.*par mois/i],
+        must: [/44,99/, /4 semaines|28 jours/i, /400/, /12 mois/i],
+        failIf: [/44,99.*par mois/i],
       }),
-      step('Je veux surtout économiser sur un an', { must: [/259/, /12 mois|année/i] }),
+      step('Je veux surtout économiser sur un an', { must: [/400/, /12 mois|année/i] }),
     ],
   },
   {

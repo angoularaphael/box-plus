@@ -51,7 +51,7 @@ CONNAISSANCES CLUB
 - Résiliation et changement d’abonnement : la vérification Deciplus se fait sur ces 5 salles uniquement. JAMAIS sur Balma (ancienne salle, autre opérateur).
 - Managers (EXACT) : Minimes = Mehdi, Ramonville = Pascal, St-Cyprien = Dadi, Portet = Valentin, États-Unis = Sébastien. Ne jamais inventer un autre prénom.
 - Accès multi-salles selon formule ; pages salles : lundi au samedi, 10h00–21h30. Ne jamais inventer d’horaire du dimanche.
-- Séance d’essai et offres (29 € / 259 €) via la boutique.
+- Séance d’essai et abonnements via la boutique.
 - Résiliation web : uniquement les formules par prélèvement (pas les comptants / forfaits).
 - Changement d’abonnement (prélèvement → comptant) via « Gérer mon abo ».
 - Badge / accès en panne → manager de salle.
@@ -69,7 +69,7 @@ ALTERNATIVES RÉSILATION (à adapter, sans promettre d’action)
 - Manque de temps → autres créneaux / salles / accès libre.
 - Déménagement → salle plus proche.
 - Blessure → d’abord demander s’ils souhaitent suspendre ; si oui → manager ; si non → rester / résilier.
-- Financier → exceptionnellement offre à 29 € via le manager. Dire exactement « 29 € », jamais « environ ».
+- Financier → une formule plus légère peut être étudiée avec le manager. Ne jamais chiffrer de remise.
 
 RÈGLES DE CONVERSATION
 - Français, naturel, chaleureux. Max ~90 mots. Pas de markdown.
@@ -77,7 +77,7 @@ RÈGLES DE CONVERSATION
 - INTERDIT de renvoyer quasiment le même message que ta réponse précédente.
 - Si non / pas maintenant : invite clairement à cliquer sur « Je reste — merci pour les infos » (bouton en bas), ou manager / résiliation. Ne repose pas la même question.
 - Une seule idée principale. Une question max.
-- Ne jamais inventer un tarif. Seul tarif promo autorisé ici : exactement « 29 € ».
+- Ne jamais inventer un tarif et ne jamais annoncer de promotion : il n’y en a aucune en cours.
 - Ne mentionne pas Deciplus, bots, IA, systèmes internes.
 `.trim();
 
@@ -88,7 +88,7 @@ const FALLBACKS = {
     'Désolé pour votre blessure. Souhaitez-vous suspendre votre abonnement le temps de votre rétablissement ?',
   club: 'Avant de couper, on peut vérifier une autre salle, un autre créneau ou une formule plus légère. Qu’est-ce qui vous fait pencher pour un autre club ?',
   money:
-    'Si le budget pèse, une offre à 29 € peut exceptionnellement être étudiée avec votre manager, ou une formule plus légère. Qu’est-ce qui est le plus difficile aujourd’hui : le montant ou la fréquence ?',
+    'Si le budget pèse, une formule plus légère peut être étudiée avec votre manager. Qu’est-ce qui est le plus difficile aujourd’hui : le montant ou la fréquence ?',
   other:
     'Je peux vous guider (salles, formules, horaires) ou vous accompagner vers une résiliation. Pour une suspension ou un cas particulier, il faudra votre manager de salle. Que voulez-vous faire ?',
 };
@@ -137,7 +137,6 @@ function cleanReply(content, fallback) {
   let reply = String(content || '')
     .replace(/^```[\w]*\n?|```$/g, '')
     .replace(/^(bonjour|bonsoir|salut)[\s,!.:;-]*/i, '')
-    .replace(/\benviron\s+29\s*€/gi, '29 €')
     .replace(/je (peux|vais|lance|lance\s+la)\s+suspend/gi, 'votre manager peut suspend')
     .replace(/on (peut|va)\s+suspend/gi, 'votre manager peut suspend')
     .trim();
@@ -329,7 +328,7 @@ async function guideRetention({ reasonId, reasonLabel, freeText, messages = [] }
 }
 
 const WELCOME_FALLBACKS = [
-  'Je peux t’aider sur les offres **29,99 €** / **259 €**, les 5 salles, l’essai ou le règlement — dis-moi juste ce que tu cherches.',
+  'Je peux t’aider sur les abonnements (**44,99 €** / 4 semaines ou **400 €** / 12 mois), les 5 salles, l’essai ou le règlement — dis-moi juste ce que tu cherches.',
   'Offres, salles, essai ou docs : je te guide. Tu veux partir sur quoi en premier ?',
   'Dis-moi ce qui t’intéresse — formule, salle, séance d’essai ou formalités — et je te réponds direct.',
 ];
@@ -351,14 +350,14 @@ const REDIRECT_DAVID_VOUS = [
 
 const FAQ_VARIANTS = {
   offer29: [
-    'L’offre promo sans engagement : **29,99 € toutes les 4 semaines** (28 jours, pas un mois). Cours illimités, accès aux salles de l’offre, résiliation immédiate du prélèvement.',
-    '**29,99 €** / 4 semaines, sans engagement de durée. Ce n’est pas un prélèvement mensuel : 4 semaines = 28 jours.',
-    'Formule flexible : **29,99 €** toutes les 4 semaines, cours illimités. L’ancienne grille affichait environ 44,99 €.',
+    'L’abonnement sans engagement : **44,99 € toutes les 4 semaines** (28 jours, pas un mois). Cours illimités, accès aux salles de la formule, résiliation immédiate du prélèvement.',
+    '**44,99 €** / 4 semaines, sans engagement de durée. Ce n’est pas un prélèvement mensuel : 4 semaines = 28 jours.',
+    'Formule flexible : **44,99 €** toutes les 4 semaines, cours illimités.',
   ],
   offer259: [
-    'L’offre année : **259 € / 12 mois** (prix normal affiché 400 €). C’est l’option la plus économique si tu pratiques toute l’année.',
-    '**259 €** pour 12 mois, cours illimités et accès aux salles de l’offre — plus avantageux que le 29,99 € / 4 semaines sur la durée.',
-    'Saison à **259 €** : un an, cours illimités. À prendre si tu sais que tu vas t’entraîner sur l’année.',
+    'La formule année : **400 € comptant 12 mois**. C’est l’option la plus économique si tu pratiques toute l’année.',
+    '**400 €** pour 12 mois, cours illimités et accès aux salles — plus avantageux que le 44,99 € / 4 semaines sur la durée.',
+    'Saison à **400 €** : un an, cours illimités. À prendre si tu sais que tu vas t’entraîner sur l’année.',
   ],
   gyms: [
     'On a 5 salles : **Minimes**, **Ramonville**, **St-Cyprien**, **Portet**, **États-Unis**. Accès du lundi au samedi, 10h–21h30. Managers : Mehdi, Pascal, Dadi, Valentin, Sébastien.',
@@ -391,9 +390,9 @@ const FAQ_VARIANTS = {
     'Pas de remboursement badge à la résiliation : tu conserves le badge, le prélèvement badge correspond à la fourniture/activation.',
   ],
   longTerm: [
-    'Sur **12 mois**, le plus économique reste **259 €** — bien moins cher que **29,99 € / 4 sem.** sur la durée. Je te conseille cette formule si tu es sûr(e) de t’entraîner.',
-    'Pour le **long terme**, prends **259 € / 12 mois** : meilleur prix annuel. Le **29,99 € / 4 sem.** convient si tu veux rester **sans engagement**.',
-    'Mon conseil économique : **259 €** pour l’année. Le 29,99 € / 4 sem., c’est la flexibilité — plus coûteux sur 12 mois.',
+    'Sur **12 mois**, le plus économique reste **400 €** — moins cher que **44,99 € / 4 sem.** sur la durée. Je te conseille cette formule si tu es sûr(e) de t’entraîner.',
+    'Pour le **long terme**, prends **400 € / 12 mois** : meilleur prix annuel. Le **44,99 € / 4 sem.** convient si tu veux rester **sans engagement**.',
+    'Mon conseil économique : **400 €** pour l’année. Le 44,99 € / 4 sem., c’est la flexibilité — plus coûteux sur 12 mois.',
   ],
 };
 
@@ -1091,7 +1090,7 @@ async function guideWelcome({ freeText, messages = [], persona: personaId } = {}
             'ÉTAPE 2 — Réponds au dernier message du visiteur, en tenant compte de tout ce qui a déjà été dit (salle, âge, adulte/enfant, tarif, ce qu’il vient de corriger).',
             'Si le sujet change, tu changes. Tu ne recolles pas un ancien script.',
             'Parle comme une personne à l’accueil du club : naturel, utile, 2 à 4 phrases. Pas de catalogue, pas de gras partout.',
-            'Aucun tarif, horaire, coach ou offre hors de cette base. Le 29,99 € / 4 semaines ne doit pas être arrondi à 29 €. Baby Boxe = 250 € la saison, éducative = 295 € la saison.',
+            'Aucun tarif, horaire, coach ou offre hors de cette base. Le 44,99 € / 4 semaines ne doit pas être arrondi. Aucune offre promotionnelle n’est en cours : ne jamais annoncer 29 €, 29,99 € ni 259 €. Baby Boxe = 250 € la saison, éducative = 295 € la saison.',
             'N’invente aucun nom de discipline ni de cours : n’emploie que les libellés présents dans la base (pas de « pugilat », « renfo » ou autre intitulé absent).',
             '« États-Unis » est une salle Boxing Center à Toulouse (388 avenue des États-Unis), jamais le pays. Ne réponds JAMAIS qu’il n’y a pas de créneaux aux États-Unis : son planning figure dans la base.',
             'Essai adulte = 10 €. Enfants : essai offert, ils ne paient pas. Pas de créneau à choisir : venir 5 minutes avant le début du cours.',

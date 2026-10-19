@@ -253,13 +253,14 @@ test('catalogue — OFFRE A 29 matche OFFRE DUO 29€', () => {
   assert.equal(matched?.id, 104);
 });
 
-test('offres aventure — prélèvement uniquement, pas 259', () => {
+test('offres aventure — prélèvement uniquement, sans offre promo', () => {
   const offers = listBalmaPrelevementOffers();
   assert.ok(offers.length >= 1);
   assert.ok(offers.every((o) => !/259|saison|comptant/i.test(`${o.id} ${o.name} ${o.price_label}`)));
-  assert.ok(
-    offers.some((o) => o.id === 'offre-duo' || o.product_id === 'offre-duo' || /29/.test(o.price_label || ''))
-  );
+  /* Les promos 29 € et 259 € sont retirées de la vente depuis le 19/10/2026 :
+     Aventure propose désormais la grille normale. */
+  assert.ok(offers.every((o) => o.id !== 'offre-duo' && o.product_id !== 'offre-duo'));
+  assert.ok(offers.some((o) => /44,99/.test(o.price_label || '')), 'le 44,99 € reste proposé');
 });
 
 test('robots.txt Disallow /aventure', () => {
