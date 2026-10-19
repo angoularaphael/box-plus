@@ -4564,7 +4564,7 @@ function createApp() {
         if (!productSupportsScalapay(product)) {
           return res.status(400).json({
             ok: false,
-            error: 'Le paiement CB en plusieurs fois est disponible pour les formules comptant 3, 6 et 12 mois, l’offre 259 €, Baby Boxe et Boxe éducative.',
+            error: 'Le paiement CB en plusieurs fois est disponible pour les formules comptant 3, 6 et 12 mois, Baby Boxe et Boxe éducative.',
             code: 'scalapay_offer_ineligible',
             suggest_card: true,
           });

@@ -321,7 +321,7 @@ window.BCCounselor = (function () {
             if (busy) return;
             push('user', 'Continuer vers la résiliation');
             replySoon(
-              'Je ne traite que les abonnements <strong>par prélèvement</strong> (sans engagement). Les formules <strong>comptant</strong> (forfait 1× / 4×, année 259&nbsp;€, etc.) ne peuvent pas être résiliées ici — contactez votre manager en salle. Quelle est votre formule ?',
+              'Je ne traite que les abonnements <strong>par prélèvement</strong> (sans engagement). Les formules <strong>comptant</strong> (forfait 1× / 4×, durée déterminée) ne peuvent pas être résiliées ici — contactez votre manager en salle. Quelle est votre formule ?',
               'formula'
             );
           };
