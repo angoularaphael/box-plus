@@ -478,7 +478,13 @@
     return null;
   }
 
+  function isAdultFixedTermComptant(p) {
+    return [p?.id, p?.legacy_id].some((id) => /^comptant-(3|6|12)-mois$/i.test(String(id || ''))) ||
+      /\bCOMPTANT\s*(3|6|12)\s*MOIS\b/i.test(String(p?.name || p?.display_name || ''));
+  }
+
   function supportsInstallmentChoice(p) {
+    if (isAdultFixedTermComptant(p)) return true;
     const id = String(p?.id || '');
     const legacy = String(p?.legacy_id || '');
     const title = String(p?.name || p?.display_name || '');
@@ -501,6 +507,7 @@
   /** Offres éligibles Scalapay : 259 €, 400 €, Boxe éducative, Baby boxe. */
   function supportsScalapay(p) {
     if (!p) return false;
+    if (isAdultFixedTermComptant(p)) return true;
     if (p.supports_scalapay === true) return true;
     const id = String(p.id || '').toLowerCase();
     const legacy = String(p.legacy_id || '').toLowerCase();
@@ -1321,6 +1328,7 @@
       priceCents <= payFlags.scalapayMaxCents;
     const payplug4xPrelev =
       installmentChoice &&
+      !isAdultFixedTermComptant(p) &&
       !portetViaCawl &&
       !portetPaypal4x &&
       currentGym() !== 'portet' &&

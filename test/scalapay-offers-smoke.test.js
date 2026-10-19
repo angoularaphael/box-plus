@@ -169,7 +169,7 @@ test('pay Scalapay — offre non éligible refusée', async (t) => {
   const { server, base } = await listen(createApp());
   t.after(() => new Promise((resolve) => server.close(resolve)));
 
-  const { order_id, access_token } = await draft(base, 'comptant-3-mois');
+  const { order_id, access_token } = await draft(base, '44-99-4-semaines');
   const { data } = await json(base, `/api/orders/${order_id}/pay`, {
     method: 'POST',
     body: JSON.stringify({

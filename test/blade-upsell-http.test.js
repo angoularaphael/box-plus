@@ -91,6 +91,29 @@ async function paidAdultOrder(base, productId = 'seance-essai') {
   return { order_id, access_token, order: got.data.order };
 }
 
+test('comptant adulte : le serveur refuse le RIB pour les trois durées', async (t) => {
+  const { server, base } = await listen(createApp());
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  for (const months of [3, 6, 12]) {
+    const draft = await json(base, '/api/orders/draft', {
+      method: 'POST',
+      body: JSON.stringify({ product_id: `comptant-${months}-mois`, gym: 'minimes',
+        ...uniqueTestCustomer(`comptant-rib-${months}`) }),
+    });
+    assert.equal(draft.data.ok, true, JSON.stringify(draft.data));
+    const paid = await json(base, `/api/orders/${draft.data.order_id}/pay`, {
+      method: 'POST',
+      body: JSON.stringify({ token: draft.data.access_token, billing_plan: 'rib',
+        payment_plan: '4x', pay_method: 'payplug', gender: 'M',
+        address: '1 rue du Test', postal_code: '31000', city: 'Toulouse' }),
+    });
+    assert.equal(paid.res.status, 400);
+    assert.equal(paid.data.code, 'comptant_rib_forbidden', JSON.stringify(paid.data));
+    const got = await json(base, `/api/orders/${draft.data.order_id}?token=${draft.data.access_token}`);
+    assert.notEqual(got.data.order.payment.status, 'paid');
+  }
+});
+
 test('upsell Blade après essai 10 € — afficher, passer, puis 2e paiement démo', async (t) => {
   const { server, base } = await listen(createApp());
   t.after(() => new Promise((resolve) => server.close(resolve)));

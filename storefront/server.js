@@ -51,6 +51,7 @@ const {
   normalizePaymentPlan,
   productSupportsInstallmentChoice,
   productSupportsScalapay,
+  isAdultFixedTermComptant,
   gymSupportsScalapay,
   supportsScalapayCheckout,
   requiresIbanForPlan,
@@ -4352,6 +4353,13 @@ function createApp() {
 
       const short = order.customer_short;
       const rawBilling = String(req.body.billing_plan || '').trim().toLowerCase();
+      if (isAdultFixedTermComptant(product) && rawBilling === 'rib') {
+        return res.status(400).json({
+          ok: false,
+          code: 'comptant_rib_forbidden',
+          error: 'Ces abonnements comptant se règlent sans RIB : en une fois, via PayPal 4× ou Scalapay (hors Portet).',
+        });
+      }
       const billingPlan = normalizeBillingPlan(rawBilling, product);
       const paymentPlan = normalizePaymentPlan(req.body.payment_plan, product);
       const payMethod = String(req.body.pay_method || '').toLowerCase();
@@ -4528,6 +4536,7 @@ function createApp() {
       // 4× CB puis RIB (PayPlug) — coexiste avec Scalapay sur les offres éligibles.
       const payplug4xPrelev =
         planLabel === '4x' &&
+        !isAdultFixedTermComptant(product) &&
         preferredCheckout !== 'paypal' &&
         preferredCheckout !== 'cawl' &&
         preferredCheckout !== 'scalapay' &&
@@ -4550,7 +4559,7 @@ function createApp() {
         if (!productSupportsScalapay(product)) {
           return res.status(400).json({
             ok: false,
-            error: 'Le paiement CB en plusieurs fois n’est disponible que pour les offres 259 €, 400 €, Baby Boxe et Boxe éducative.',
+            error: 'Le paiement CB en plusieurs fois est disponible pour les formules comptant 3, 6 et 12 mois, l’offre 259 €, Baby Boxe et Boxe éducative.',
             code: 'scalapay_offer_ineligible',
             suggest_card: true,
           });

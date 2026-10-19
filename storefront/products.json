@@ -97,39 +97,45 @@
     "category": "Abonnements",
     "name": "COMPTANT 12 MOIS",
     "tagline": "Comptant 12 mois",
-    "description": "Payez en une seule fois et entraînez-vous 12 mois en illimité — aucun prélèvement ensuite. Accès aux 5 salles.",
+    "description": "Payez en une fois ou en plusieurs fois via PayPal ou Scalapay (hors Portet) et entraînez-vous 12 mois en illimité — aucun prélèvement ensuite. Accès aux 5 salles.",
     "price_cents": 40000,
     "price_label": "400,00 €",
     "badge": "Paiement comptant",
     "requires_iban": false,
     "requires_payment": true,
-    "installments_note": "Paiement unique par carte ou PayPal"
+    "installments_note": "En une fois ou PayPal 4× sans frais ; Scalapay hors Portet (frais éventuels affichés avant paiement). Sans RIB.",
+    "supports_installment_choice": true,
+    "supports_scalapay": true
   },
   {
     "id": "comptant-6-mois",
     "category": "Abonnements",
     "name": "COMPTANT 6 MOIS",
     "tagline": "Comptant 6 mois",
-    "description": "Payez en une seule fois et entraînez-vous 6 mois en illimité — aucun prélèvement ensuite. Accès aux 5 salles.",
+    "description": "Payez en une fois ou en plusieurs fois via PayPal ou Scalapay (hors Portet) et entraînez-vous 6 mois en illimité — aucun prélèvement ensuite. Accès aux 5 salles.",
     "price_cents": 25000,
     "price_label": "250,00 €",
     "badge": "Paiement comptant",
     "requires_iban": false,
     "requires_payment": true,
-    "installments_note": "Paiement unique par carte ou PayPal"
+    "installments_note": "En une fois ou PayPal 4× sans frais ; Scalapay hors Portet (frais éventuels affichés avant paiement). Sans RIB.",
+    "supports_installment_choice": true,
+    "supports_scalapay": true
   },
   {
     "id": "comptant-3-mois",
     "category": "Abonnements",
     "name": "COMPTANT 3 MOIS",
     "tagline": "Comptant 3 mois",
-    "description": "Payez en une seule fois et entraînez-vous 3 mois en illimité — aucun prélèvement ensuite. Accès aux 5 salles.",
+    "description": "Payez en une fois ou en plusieurs fois via PayPal ou Scalapay (hors Portet) et entraînez-vous 3 mois en illimité — aucun prélèvement ensuite. Accès aux 5 salles.",
     "price_cents": 15000,
     "price_label": "150,00 €",
     "badge": "Paiement comptant",
     "requires_iban": false,
     "requires_payment": true,
-    "installments_note": "Paiement unique par carte ou PayPal"
+    "installments_note": "En une fois ou PayPal 4× sans frais ; Scalapay hors Portet (frais éventuels affichés avant paiement). Sans RIB.",
+    "supports_installment_choice": true,
+    "supports_scalapay": true
   },
   {
     "id": "association",
