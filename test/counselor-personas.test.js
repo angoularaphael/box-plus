@@ -209,7 +209,7 @@ test('Chloe dit qu’il n’y a pas de clim dans les salles', async () => {
   assert.doesNotMatch(r.reply, /sont climatisées/i);
 });
 
-test('après la Baby Boxe, « les prix » donne 250 € / 295 €, pas le script 29,99', async () => {
+test('après la Baby Boxe, « les prix » donne 250 € / 295 €, pas le script 44,99', async () => {
   const r = await guideWelcome({
     freeText: 'Ok et les prix ?',
     messages: [

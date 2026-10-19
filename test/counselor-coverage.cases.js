@@ -6,7 +6,7 @@
  */
 
 const NO_MENU = /dis-moi juste ce que tu cherches|Offres, salles, essai|partir sur quoi en premier|Balance ta question|Que souhaitez-vous savoir \?/i;
-const BOTH_OFFERS = [/29,99/, /259/];
+const BOTH_OFFERS = [/44,99/, /400/];
 
 function follow(bot, user) {
   return [
@@ -197,7 +197,7 @@ module.exports = [
     id: 'combien-salles',
     q: 'Vous avez combien de salles ?',
     must: [/Minimes|5 salles|Cinq salles/i],
-    failIf: [/29,99/],
+    failIf: [/44,99/],
   },
   {
     id: 'balma',
@@ -256,7 +256,7 @@ module.exports = [
   {
     id: 'pas-29-par-mois',
     q: 'C’est 29 euros par mois ?',
-    must: [/29,99/, /4 semaines|28 jours/i],
+    must: [/44,99/, /4 semaines|28 jours/i],
     failIf: [/oui.*par mois/i],
   },
   {
@@ -473,7 +473,7 @@ module.exports = [
     id: 'etudiant',
     q: 'Vous avez un tarif étudiant ?',
     must: [/étudiant|etudiant/i],
-    failIf: [/29,99/],
+    failIf: [/44,99/],
   },
   {
     id: 'coaching',
@@ -508,8 +508,8 @@ module.exports.PROBES = [
   'hyrox saint-cyprien quelle heure',
   'mma ramonville',
   'jjb c’est à minimes ?',
-  'c’est 29€ le mois ou 29,99',
-  'l’abo à 259 c’est pour 12 mois ?',
+  'c’est 29€ le mois ou 44,99',
+  'l’abo à 400 c’est pour 12 mois ?',
   'c’est sans engagement ?',
   'comment je résilie',
   'la résil est immédiate ?',
@@ -534,5 +534,5 @@ module.exports.PROBES = [
   'planning de toutes les salles',
   'montre-moi les horaires de st cyprien',
   'douches à Portet',
-  'accès 5 salles avec le 29,99',
+  'accès 5 salles avec le 44,99',
 ];

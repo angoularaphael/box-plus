@@ -1,8 +1,7 @@
 {
   "source": "Grille Deciplus Abonnements — capture coach juin 2026",
-  "note": "Boutique box-plus : uniquement ces titres, même si l'API Deciplus en renvoie d'autres.",
+  "note": "Boutique box-plus : uniquement ces titres, même si l'API Deciplus en renvoie d'autres. Les offres promo 29 € et 259 € sont retirees de la vente le 19/10/2026 : ne pas les remettre sans accord.",
   "titles": [
-    "OFFRE PROMO 12 MOIS",
     "BOXE EDUCATIVE",
     "BABY BOXE",
     "Etudiants 36,99€/4 semaines Sans Engagement",
@@ -10,7 +9,6 @@
     "COMPTANT 12 MOIS",
     "COMPTANT 3 MOIS",
     "COMPTANT 6 MOIS",
-    "OFFRE A 29€",
     "OFFRE ETE 2026 - 3 MOIS ILLIMITÉS"
   ]
 }

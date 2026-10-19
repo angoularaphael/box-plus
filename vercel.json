@@ -3,8 +3,53 @@
   "redirects": [
     {
       "source": "/(.*)",
-      "has": [{ "type": "host", "value": "box-plus.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "box-plus.vercel.app"
+        }
+      ],
       "destination": "https://boutique.boxingcenter.fr/$1",
+      "permanent": true
+    },
+    {
+      "source": "/offre/29",
+      "destination": "/abonnements",
+      "permanent": true
+    },
+    {
+      "source": "/offre-29",
+      "destination": "/abonnements",
+      "permanent": true
+    },
+    {
+      "source": "/offre-29.html",
+      "destination": "/abonnements",
+      "permanent": true
+    },
+    {
+      "source": "/offre/259",
+      "destination": "/abonnements",
+      "permanent": true
+    },
+    {
+      "source": "/offre-259",
+      "destination": "/abonnements",
+      "permanent": true
+    },
+    {
+      "source": "/offre-259.html",
+      "destination": "/abonnements",
+      "permanent": true
+    },
+    {
+      "source": "/offres-speciales",
+      "destination": "/abonnements",
+      "permanent": true
+    },
+    {
+      "source": "/offres-speciales.html",
+      "destination": "/abonnements",
       "permanent": true
     },
     {
@@ -29,9 +74,18 @@
     }
   ],
   "rewrites": [
-    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
-    { "source": "/robots.txt", "destination": "/api/robots" },
-    { "source": "/(.*)", "destination": "/api" }
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/robots.txt",
+      "destination": "/api/robots"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/api"
+    }
   ],
   "functions": {
     "api/index.js": {

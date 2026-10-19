@@ -674,27 +674,27 @@ SAMEDI
 9. TARIFS, FORMULES ET OFFRES COMMERCIALES
 ======================================================================
 
-9.1. Offre promotionnelle sans engagement
-Tarif confirmé par la direction : 29,99 € / 4 semaines, soit un prélèvement tous les 28 jours.
-Ancien tarif affiché : environ 44 / 44,99 €.
-Caractéristiques mises en avant :
+9.1. Abonnement sans engagement
+Tarif en vigueur : 44,99 € / 4 semaines, soit un prélèvement tous les 28 jours.
+IMPORTANT — Les offres promotionnelles à 29,99 € / 4 semaines et 259 € / 12 mois ont pris fin le 19/10/2026.
+Elles ne doivent plus être annoncées, ni proposées, ni citées comme encore disponibles.
+Caractéristiques :
 - sans engagement de durée ;
 - cours illimités toutes disciplines ;
-- accès illimité aux salles incluses dans l’offre ;
+- accès illimité aux salles incluses dans la formule ;
 - accès libre musculation / cardio / Cross Training selon formule ;
 - résiliation immédiate : l’accès s’arrête le jour de la demande et les prélèvements à venir sont annulés.
 
 Règle agent :
-Annoncer clairement : « offre promo à 29,99 € toutes les 4 semaines ». Ne jamais présenter cette périodicité comme un prélèvement mensuel : 4 semaines = 28 jours.
+Annoncer clairement : « 44,99 € toutes les 4 semaines ». Ne jamais présenter cette périodicité comme un prélèvement mensuel : 4 semaines = 28 jours. Ne jamais annoncer de promotion : il n’y en a aucune en cours.
 
-9.2. Offre promotionnelle année complète
-Prix promotionnel : 259 € / 12 mois.
-Prix normal affiché : 400 €.
+9.2. Formule année complète (comptant 12 mois)
+Prix en vigueur : 400 € / 12 mois, payés comptant.
 Caractéristiques :
 - paiement de la formule annuelle ;
 - cours illimités toutes disciplines ;
-- accès aux salles incluses dans l’offre ;
-- la boutique présente 259 € comme l’option la plus économique sur 12 mois.
+- accès aux salles incluses dans la formule ;
+- c’est l’option la plus économique sur 12 mois.
 
 9.3. Formules standards adultes – informations de référence
 Le site présente notamment :
@@ -900,7 +900,7 @@ Q : Si je n’utilise pas mon abonnement, suis-je remboursé ?
 R : Non, la simple non-utilisation ne donne pas droit à un remboursement ou à une prolongation, sous réserve des droits légaux applicables.
 
 Q : Quelle offre promouvoir en priorité actuellement ?
-R : Deux offres promotionnelles sont mises en avant : 29,99 € / 4 semaines sans engagement et 259 € pour 12 mois. L’agent doit présenter les deux et aider le prospect à choisir selon son besoin de flexibilité ou d’économie annuelle.
+R : Aucune offre promotionnelle n’est en cours. Les deux formules de référence sont l’abonnement sans engagement à 44,99 € / 4 semaines et le comptant 12 mois à 400 €. L’agent présente les deux et aide le prospect à choisir selon son besoin de flexibilité ou d’économie annuelle.
 
 ======================================================================
 16. SCRIPTS COMMERCIAUX COURTS POUR L’AGENT
@@ -919,7 +919,7 @@ Prospect hésitant entre disciplines :
 « Si vous cherchez surtout la technique de frappe, je vous orienterais vers Boxe Anglaise ou Boxe Thaï/K1. Pour un sport complet avec debout et sol, le MMA est adapté, y compris aux débutants. Si vous préférez le combat au sol sans frappes, le Grappling est une très bonne option. Pour la remise en forme, Boxing Camp, Cross Training, HYROX ou Boxing HIIT sont les plus adaptés. »
 
 Prospect sensible au prix :
-« Nous avons actuellement deux offres fortes : une formule sans engagement à 29,99 € toutes les 4 semaines et une année complète à 259 €. La première privilégie la flexibilité ; la seconde est la plus avantageuse si vous savez que vous allez pratiquer sur l’année. »
+« Nous avons deux formules : un abonnement sans engagement à 44,99 € toutes les 4 semaines et une année complète à 400 €. La première privilégie la flexibilité ; la seconde est la plus avantageuse si vous savez que vous allez pratiquer sur l’année. »
 
 ======================================================================
 17. POINTS DE VIGILANCE / DONNÉES À VALIDER AVANT MISE EN PRODUCTION
@@ -938,7 +938,7 @@ Le créneau Baby Boxe dès 3 ans est encadré par Valentin Tapia, Mourad et Ingr
 Les créneaux de Yannis sont désormais confirmés directement par la direction et ne sont plus à considérer comme ambigus.
 
 5. Offre promotionnelle :
-Le tarif à utiliser est 29,99 € toutes les 4 semaines, soit tous les 28 jours. Ne jamais parler d’un prélèvement mensuel.
+Le tarif à utiliser est 44,99 € toutes les 4 semaines, soit tous les 28 jours. Ne jamais parler d’un prélèvement mensuel. Les promotions 29,99 € et 259 € sont terminées depuis le 19/10/2026.
 
 6. Horaires d’ouverture / accès 7j/7 :
 Les pages des salles indiquent généralement « lundi au samedi 10h00–21h30 », alors que certaines offres d’abonnement parlent d’accès « 7j/7 ». L’agent doit éviter d’inventer des horaires du dimanche : si la question porte précisément sur un accès dominical, renvoyer vers l’information d’accès la plus récente de la salle / du contrat souscrit.

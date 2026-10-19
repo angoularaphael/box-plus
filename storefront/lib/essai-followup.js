@@ -170,7 +170,7 @@ function gymEssaiFollowupText(order) {
   return [
     'Séance d’essai 10 € — pas d’abonnement',
     '',
-    'Cette personne a pris une séance d’essai à 10 € et n’a pas pris d’abonnement 29 € ni 259 € 3 jours plus tard. Merci de la recontacter.',
+    'Cette personne a pris une séance d’essai à 10 € et n’a pas pris d’abonnement 3 jours plus tard. Merci de la recontacter.',
     '',
     `Salle : ${salle}`,
     `Nom : ${orderName(order) || 'non renseigné'}`,
@@ -214,26 +214,24 @@ function displayFirstName(order = {}) {
     .join('');
 }
 
-const OFFER_CAMPAIGN_BODY = `🚨 **DERNIÈRES PLACES POUR PROFITER DE L’OFFRE BOXING CENTER** 🥊
+const OFFER_CAMPAIGN_BODY = `🥊 **REJOINS LE BOXING CENTER**
 
-**Il reste encore quelques places disponibles.**
+**Deux façons de t’entraîner chez nous :**
 
-🔥 **29 € / 4 semaines**
+🔥 **44,99 € / 4 semaines**
 → Sans engagement
 → Sans préavis en cas de résiliation
 → Accès aux **5 salles**, toutes les disciplines et tous les cours
 
-💥 **259 € / 12 mois**
-→ Au lieu de 400 €
-→ Possibilité de paiement **4 fois sans frais**
+💥 **400 € / 12 mois**
+→ Payé comptant
+→ La formule la plus économique sur l’année
 → Accès aux **5 salles**, toutes les disciplines et tous les cours
-
-⏳ **Profite de ton offre avant qu’il ne soit trop tard.**
 
 **Tout se passe ici :**
 __HUB_URL__
 
-🥊 **29€ sans engagement, 259€ pour 12 mois**`;
+🥊 **44,99 € sans engagement, 400 € pour l’année**`;
 
 function customerNudgeCopy(order, day = 1) {
   const name = displayFirstName(order);

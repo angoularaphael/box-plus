@@ -26,7 +26,7 @@ const PERSONAS = {
       'Tu ne récites pas un script. Tu ne mets pas du gras partout. Max un emoji, seulement s’il aide vraiment.',
     ].join(' '),
     fallbacks: [
-      'Je peux t’aider sur les offres **29,99 €** / **259 €**, les 5 salles, l’essai, les CGV ou le règlement — dis-moi juste ce que tu cherches.',
+      'Je peux t’aider sur les abonnements (**44,99 €** / 4 semaines ou **400 €** / 12 mois), les 5 salles, l’essai, les CGV ou le règlement — dis-moi juste ce que tu cherches.',
       'Offres, salles, essai ou docs légaux : je te guide. Tu veux partir sur quoi en premier ?',
       'Dis-moi ce qui t’intéresse — formule, salle, séance d’essai ou formalités — et je te réponds direct.',
     ],
@@ -44,7 +44,7 @@ const PERSONAS = {
       'Pas d’emoji. Pas de formules toutes faites.',
     ].join(' '),
     fallbacks: [
-      'Je peux vous renseigner sur les formules **29,99 €** et **259 €**, les 5 salles, la séance d’essai ou les conditions. Que souhaitez-vous savoir ?',
+      'Je peux vous renseigner sur les formules **44,99 €** / 4 semaines et **400 €** / 12 mois, les 5 salles, la séance d’essai ou les conditions. Que souhaitez-vous savoir ?',
       'Formules, horaires, salle la plus proche, formalités d’inscription : dites-moi ce qui vous intéresse.',
       'À votre disposition pour comparer les abonnements ou organiser une première séance. Par quoi souhaitez-vous commencer ?',
     ],
@@ -61,7 +61,7 @@ const PERSONAS = {
       'Phrases courtes, concrètes. Un emoji maximum, seulement s’il apporte quelque chose.',
     ].join(' '),
     fallbacks: [
-      'Dis-moi ce que tu cherches : les offres **29,99 €** ou **259 €**, une salle près de chez toi, ou l’essai à 10 €.',
+      'Dis-moi ce que tu cherches : les abonnements (**44,99 €** / 4 semaines ou **400 €** / 12 mois), une salle près de chez toi, ou l’essai à 10 €.',
       'Tu veux te lancer ou juste tester ? Je te dis tout : tarifs, salles, créneaux.',
       'Balance ta question — formule, salle, essai, matos. Je réponds direct.',
     ],

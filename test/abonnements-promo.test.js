@@ -8,23 +8,28 @@ const { getEnrichedProducts } = require('../storefront/lib/merch');
 const key = (p) => p.legacy_id || p.id;
 
 describe('abonnements#promo', () => {
-  it('Promotions : 29 € puis 259 € l’année, sans 9 € ni 38,99 €', () => {
-    const promo = getEnrichedProducts({ tab: 'abonnements', subsection: 'promo' });
-    const ids = promo.map(key);
-    assert.ok(!ids.includes('offre-promo-9'), 'offre 9 € retirée');
-    assert.ok(!ids.includes('offre-promo-adulte'), 'offre 38,99 € retirée');
-    assert.ok(!promo.some((p) => p.price_cents === 900 || p.price_cents === 3899));
-    assert.equal(key(promo[0]), 'offre-duo');
-    assert.equal(key(promo[1]), 'offre-saison');
-    assert.equal(promo[1].price_cents, 25900);
+  /* Les offres promo 29 € et 259 € sont retirées de la vente depuis le 19/10/2026.
+     Ces deux cas verrouillent leur absence : elles ne doivent revenir ni dans
+     l'onglet Promotions, ni dans l'onglet Comptant, ni nulle part ailleurs. */
+  it('les offres promo 29 € et 259 € ne sont plus vendues', () => {
+    for (const subsection of ['promo', 'comptant', 'prelevement', 'enfants']) {
+      const liste = getEnrichedProducts({ tab: 'abonnements', subsection });
+      const ids = liste.map(key);
+      assert.ok(!ids.includes('offre-duo'), `offre 29 € absente de ${subsection}`);
+      assert.ok(!ids.includes('offre-saison'), `offre 259 € absente de ${subsection}`);
+      assert.ok(
+        !liste.some((p) => p.price_cents === 2900 || p.price_cents === 2999 || p.price_cents === 25900),
+        `aucun tarif promo dans ${subsection}`
+      );
+    }
   });
 
-  it('le 259 € reste aussi en Comptant, et garde son onglet d’origine pour le paiement', () => {
-    const comptant = getEnrichedProducts({ tab: 'abonnements', subsection: 'comptant' });
-    const saison = comptant.find((p) => key(p) === 'offre-saison');
-    assert.ok(saison, '259 € toujours en Comptant');
-    const promo = getEnrichedProducts({ tab: 'abonnements', subsection: 'promo' });
-    assert.equal(promo.find((p) => key(p) === 'offre-saison').subsection, 'comptant');
+  it('les formules de référence restent disponibles', () => {
+    const tous = ['promo', 'comptant', 'prelevement', 'enfants']
+      .flatMap((subsection) => getEnrichedProducts({ tab: 'abonnements', subsection }));
+    const prix = tous.map((p) => p.price_cents);
+    assert.ok(prix.includes(4499), 'sans engagement 44,99 € toujours vendu');
+    assert.ok(prix.includes(40000), 'comptant 12 mois 400 € toujours vendu');
   });
 
   it('chaque carte à prélèvement affiche SON prix, pas celui de l’offre 29 €', () => {

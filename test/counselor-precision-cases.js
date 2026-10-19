@@ -408,7 +408,7 @@ module.exports = [
     steps: [
       {
         q: "C'est combien ?",
-        must: [fact('offre récurrente', /29,99/i), fact('période', /4 semaines|28 jours/i), fact('offre saison', /259/i)],
+        must: [fact('offre récurrente', /44,99/i), fact('période', /4 semaines|28 jours/i), fact('offre saison', /400/i)],
       },
       {
         q: 'Je peux venir faire un essai ?',

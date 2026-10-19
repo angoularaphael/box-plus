@@ -74,10 +74,10 @@ test('« vous ouvrez à quelle heure le samedi ? » donne les horaires du club',
 test('le rappel « on ne dit pas 29 € par mois » ne sort que si le visiteur parle de mensualité', () => {
   const froid = demande("C'est combien l'abonnement ?");
   assert.doesNotMatch(froid.reply, /On ne dit pas/i);
-  assert.match(froid.reply, /29,99/);
-  assert.match(froid.reply, /259/);
+  assert.match(froid.reply, /44,99/);
+  assert.match(froid.reply, /400/);
 
-  const mensuel = demande('Donc ça fait 29,99 € par mois c’est ça ?');
+  const mensuel = demande('Donc ça fait 44,99 € par mois c’est ça ?');
   assert.match(mensuel.reply, /4 semaines/i);
   assert.match(mensuel.reply, /pas (une fois par mois|mensuel)/i);
 });
@@ -95,7 +95,7 @@ test('« et moi aussi, c’est combien ? » bascule sur les tarifs adultes', () 
     lastBot: 'Pour elle : **250 €** la saison en Baby Boxe.',
     messages: [{ role: 'user', content: 'un cours pour ma fille de 5 ans' }],
   });
-  assert.match(r.reply, /29,99/);
+  assert.match(r.reply, /44,99/);
 });
 
 test('« éducative » prononcé par le bot n’impose pas les tarifs enfants', () => {
@@ -111,7 +111,7 @@ test('« éducative » prononcé par le bot n’impose pas les tarifs enfants', 
     lastBot: histoire[1].content,
     messages: histoire,
   });
-  assert.match(r.reply, /29,99/);
+  assert.match(r.reply, /44,99/);
   assert.doesNotMatch(r.reply, /250|295/);
 });
 
@@ -145,7 +145,7 @@ test('le catalogue des disciplines n’ouvre pas un contexte tarif enfant', () =
       { role: 'assistant', content: catalogue },
     ],
   });
-  assert.match(r.reply, /29,99/);
+  assert.match(r.reply, /44,99/);
   assert.doesNotMatch(r.reply, /250|295/);
 });
 
@@ -165,7 +165,7 @@ test('un planning de salle complet n’ouvre pas un contexte tarif enfant', () =
       { role: 'assistant', content: planning },
     ],
   });
-  assert.match(r.reply, /29,99/);
+  assert.match(r.reply, /44,99/);
   assert.doesNotMatch(r.reply, /250|295/);
 });
 
@@ -179,7 +179,7 @@ test('« pour toi ou pour un enfant ? » est une question de cadrage, pas un con
       { role: 'assistant', content: cadrage },
     ],
   });
-  assert.match(r.reply, /29,99/);
+  assert.match(r.reply, /44,99/);
   assert.doesNotMatch(r.reply, /250|295/);
 });
 

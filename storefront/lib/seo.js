@@ -84,7 +84,7 @@ const FAQ = [
   ['Dois-je avoir déjà pratiqué la boxe ?', 'Pas du tout. La majorité de nos nouveaux adhérents découvrent la boxe chez nous. La séance d\'essai est idéale pour faire vos premiers pas.'],
   ['Les femmes peuvent-elles participer à tous les cours ?', 'Oui, les femmes sont les bienvenues dans tous nos cours collectifs. Nos groupes sont mixtes et l\'encadrement veille à un environnement respectueux et motivant.'],
   ['Puis-je accéder aux 5 salles ?', 'Selon votre formule, votre abonnement donne accès à nos 5 centres : Minimes, Ramonville, États-Unis, Saint-Cyprien et Portet. Vous choisissez une salle principale à l\'inscription.'],
-  ['Quelle formule choisir pour commencer ?', 'Pour la flexibilité : le prélèvement sans engagement. Pour économiser sur 12 mois : 259 €. Pour votre enfant : Baby Boxe ou Boxe éducative.'],
+  ['Quelle formule choisir pour commencer ?', 'Pour la flexibilité : le prélèvement sans engagement. Pour économiser sur 12 mois : le comptant 12 mois à 400 €. Pour votre enfant : Baby Boxe ou Boxe éducative.'],
   ['Comment fonctionne la séance d\'essai ?', 'Réservez en ligne pour 10 €. Un coach vous accueille, vous explique le déroulé et vous participez à un cours adapté aux débutants. Aucun matériel spécifique n\'est requis pour commencer.'],
   ['Comment fonctionne le paiement par prélèvement ?', 'Vous payez la première échéance par carte bancaire, puis indiquez vos coordonnées bancaires pour les échéances suivantes. La formule est sans engagement — renouvelable toutes les 4 semaines.'],
   ['Puis-je payer toutes les 4 semaines par carte ?', 'Oui, sur les formules sans engagement vous pouvez régler la première échéance par carte ou PayPal, puis les suivantes par prélèvement sans engagement. Simple, flexible, sans engagement longue durée.'],
@@ -260,57 +260,6 @@ const PAGE_JSONLD = {
       acceptedAnswer: { '@type': 'Answer', text: a },
     })),
   }),
-  '/offres-speciales': () => ({
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: 'Offres spéciales boxe — Boxing Center Toulouse',
-    itemListElement: [
-      {
-        '@type': 'ListItem',
-        position: 1,
-        url: `${SITE_URL}/offre/259`,
-        name: 'Abonnement 12 mois — 259 €',
-      },
-      {
-        '@type': 'ListItem',
-        position: 2,
-        url: `${SITE_URL}/offre/29`,
-        name: 'Abonnement dès 29 € — première échéance',
-      },
-    ],
-  }),
-  '/offre/259': () => ({
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: 'Abonnement boxe 12 mois — 259 €',
-    description:
-      "Un an d'accès illimité aux 5 salles Boxing Center Toulouse pour 259 €. Paiement en 1× ou en 4× sans frais.",
-    image: `${SITE_URL}/img/bc/offers/offre-259.webp`,
-    brand: { '@type': 'Brand', name: BUSINESS.name },
-    offers: {
-      '@type': 'Offer',
-      price: '259.00',
-      priceCurrency: 'EUR',
-      availability: 'https://schema.org/InStock',
-      url: `${SITE_URL}/offre/259`,
-    },
-  }),
-  '/offre/29': () => ({
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: 'Abonnement boxe dès 29 € — Boxing Center Toulouse',
-    description:
-      'Première échéance à 29 € puis prélèvement sans engagement. Accès aux 5 salles Boxing Center Toulouse.',
-    image: `${SITE_URL}/img/bc/offers/offre-29.webp`,
-    brand: { '@type': 'Brand', name: BUSINESS.name },
-    offers: {
-      '@type': 'Offer',
-      price: '29.00',
-      priceCurrency: 'EUR',
-      availability: 'https://schema.org/InStock',
-      url: `${SITE_URL}/offre/29`,
-    },
-  }),
 };
 
 /* ── Indexable routes: canonical/OG/sitemap config ────────────────── */
@@ -322,21 +271,6 @@ const INDEXABLE = {
   '/materiel': { file: 'materiel.html', priority: '0.9', changefreq: 'weekly' },
   '/coachings': { file: 'coachings.html', priority: '0.8', changefreq: 'monthly' },
   '/faq': { file: 'faq.html', priority: '0.7', changefreq: 'monthly' },
-  '/offres-speciales': { file: 'offres-speciales.html', priority: '0.95', changefreq: 'weekly' },
-  '/offre/259': {
-    file: 'offre-259.html',
-    priority: '0.95',
-    changefreq: 'weekly',
-    ogImage: '/img/bc/offers/offre-259.webp',
-    ogImageAlt: 'Offre abonnement boxe 12 mois 259 euros Boxing Center',
-  },
-  '/offre/29': {
-    file: 'offre-29.html',
-    priority: '0.95',
-    changefreq: 'weekly',
-    ogImage: '/img/bc/offers/offre-29.webp',
-    ogImageAlt: 'Offre abonnement boxe 29 euros Boxing Center',
-  },
   '/cgv': { file: 'cgv.html', priority: '0.3', changefreq: 'yearly' },
   '/reglement-interieur': { file: 'reglement-interieur.html', priority: '0.3', changefreq: 'yearly' },
   '/politique-confidentialite': { file: 'legal/confidentialite.html', priority: '0.3', changefreq: 'yearly' },
@@ -375,20 +309,6 @@ const INDEXABLE = {
  *     -movflags +faststart "sortie.mp4"
  */
 const VIDEOS = {
-  '/offre/259': {
-    file: 'boxing-center-trophy-loop.mp4',
-    poster: '/img/bc/video/boxing-center-trophy-toulouse.jpg',
-    name: 'Boxing Center Trophy — la soirée de combats du club, à Toulouse',
-    description:
-      "Le Boxing Center Trophy, la soirée de combats organisée par le club à Toulouse : la préparation "
-      + "au vestiaire, l'entrée des boxeurs, les assauts sur le ring et le public venu en famille. "
-      + "Ceux qui montent sont les licenciés qui s'entraînent toute l'année dans les salles Boxing Center "
-      + 'de Toulouse et de son agglomération.',
-    seconds: 12,
-    width: 1280,
-    height: 720,
-    uploadDate: '2026-08-12',
-  },
 };
 
 /* Durée ISO 8601 : Google refuse la valeur en secondes dans le JSON-LD. */
@@ -494,8 +414,8 @@ const PRESTASHOP_REDIRECTS = {
   '/order': '/panier',
   '/connexion': '/mon-inscription',
   '/mon-compte': '/mon-inscription',
-  '/discount': '/offres-speciales',
-  '/promotions': '/offres-speciales',
+  '/discount': '/abonnements',
+  '/promotions': '/abonnements',
   '/nouveaux-produits': '/materiel',
   '/meilleures-ventes': '/materiel',
   '/gants-de-boxe': '/materiel',
@@ -773,7 +693,6 @@ type: club de boxe / boutique d'abonnements et matériel
 
 # Ce que vous pouvez citer
 - Offres et tarifs affichés sur ${SITE_URL}/abonnements et ${SITE_URL}/materiel
-- Offres spéciales : ${SITE_URL}/offres-speciales (259 € / an ou 29 € / 4 semaines sans engagement)
 - Site Minimes : https://boxe-toulouse.com/
 - Site Portet : https://boxing-center-portet.fr/
 - Séance d'essai à 10 € : ${SITE_URL}/seance-essai
@@ -827,9 +746,6 @@ function llmsTxt() {
 
 ## Offres
 - Séance d'essai : 10 € — cours encadré, aucun matériel requis (${SITE_URL}/seance-essai)
-- Offres spéciales (hub) : ${SITE_URL}/offres-speciales
-- Promo 12 mois : 259 € (1× ou 4× sans frais) — ${SITE_URL}/offre/259
-- Démarrage flexible : 29 € la 1ʳᵉ échéance puis prélèvement sans engagement — ${SITE_URL}/offre/29
 - Abonnements : comptant 3/6/12 mois ou prélèvement sans engagement (4 semaines), accès aux 5 salles (${SITE_URL}/abonnements)
 - Enfants : Baby Boxe (3-6 ans), Boxe éducative (7-16 ans)
 - Coachings individuels (${SITE_URL}/coachings)
