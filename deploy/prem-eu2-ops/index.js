@@ -165,6 +165,50 @@ function cloneBotRepo(repo, branch) {
   throw lastErr || new Error('git clone impossible');
 }
 
+function currentBotCommit() {
+  try {
+    return execSync('git rev-parse --short HEAD', { cwd: BOT_DIR, encoding: 'utf8' }).trim();
+  } catch {
+    return '?';
+  }
+}
+
+function sleepMs(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function pullBotRepo(branch) {
+  const attempts = Math.max(1, Number(process.env.BOT_GIT_FETCH_ATTEMPTS || 4));
+  const timeoutMs = Number(process.env.BOT_GIT_FETCH_TIMEOUT_MS || 180000);
+  const pauseMs = Number(process.env.BOT_GIT_FETCH_RETRY_MS || 15000);
+  const fetchCmd =
+    'git -c http.lowSpeedLimit=500 -c http.lowSpeedTime=30 fetch --depth 1 origin';
+  const resetCmd = `git reset --hard origin/${branch}`;
+  let lastErr = null;
+  for (let n = 1; n <= attempts; n += 1) {
+    log(`Mise a jour repo tentative ${n}/${attempts} (commit local ${currentBotCommit()})`);
+    try {
+      run(fetchCmd, BOT_DIR, { timeoutMs });
+      run(resetCmd, BOT_DIR, { timeoutMs: 60000 });
+      log(`Repo a jour -> ${currentBotCommit()}`);
+      return true;
+    } catch (err) {
+      lastErr = err;
+      const msg = String(err.message || err).slice(0, 200);
+      log(`git fetch echoue: ${msg}`);
+      if (n < attempts) {
+        log(`nouvelle tentative dans ${Math.round(pauseMs / 1000)}s (GitHub parfois injoignable depuis le panel)`);
+        sleepMs(pauseMs);
+      }
+    }
+  }
+  log(
+    `git pull ignore — le bot demarre sur le code deja present (${currentBotCommit()}). Redemarrer quand github.com repond.`
+  );
+  if (lastErr) log(String(lastErr.message || lastErr).slice(0, 160));
+  return false;
+}
+
 function ensureBotRepo() {
   const { repo, branch } = repoSettings();
   const origin = fs.existsSync(BOT_DIR) ? gitOrigin(BOT_DIR) : '';
@@ -179,11 +223,7 @@ function ensureBotRepo() {
     return;
   }
   log('Mise a jour repo…');
-  try {
-    run(`git fetch origin && git reset --hard origin/${branch}`, BOT_DIR, { timeoutMs: 300000 });
-  } catch (err) {
-    log(`git pull ignore (${String(err.message || err).slice(0, 120)})`);
-  }
+  pullBotRepo(branch);
 }
 
 ensureBotRepo();
