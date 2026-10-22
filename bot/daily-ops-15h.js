@@ -6,7 +6,7 @@ const { ROOT } = require('../lib/utils');
 const { logInfo, logWarn } = require('../lib/logger');
 const { listPending } = require('../lib/queue');
 const { login, gotoDeciplus } = require('./auth');
-const { runWithSession } = require('./browser-pool');
+const { runWithSession, closeBrowser } = require('./browser-pool');
 const { parisNow } = require('../storefront/lib/birthday-wishes');
 const { runUnpaidDailyOps } = require('./unpaid-daily-ops');
 const { maybeRunBalmaEuMigrationDaily } = require('./migrate-balma-eu-daily');
@@ -74,6 +74,12 @@ async function runDailyOps15h({ force = false } = {}) {
       return runUnpaidDailyOps(page);
     });
 
+    await closeBrowser().catch(() => {});
+    const settleMs = Number(process.env.DAILY_OPS_BROWSER_SETTLE_MS || 8000);
+    if (settleMs > 0) {
+      await new Promise((r) => setTimeout(r, settleMs));
+    }
+
     report.migration = await maybeRunBalmaEuMigrationDaily();
 
     state.last_date = today.dateKey;
@@ -109,10 +115,15 @@ async function maybeRunDailyOps15h() {
   }
 }
 
+function isDailyOpsRunning() {
+  return dailyOpsRunning;
+}
+
 module.exports = {
   shouldRunDailyOps15h,
   runDailyOps15h,
   maybeRunDailyOps15h,
+  isDailyOpsRunning,
   loadState,
   saveState,
 };

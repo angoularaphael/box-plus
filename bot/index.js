@@ -2034,21 +2034,23 @@ async function runLoop(once = false) {
     }
 
     const pending = listPending();
-    if (Date.now() - lastNudgePollAt >= NUDGE_POLL_MS) {
+    const { isDailyOpsRunning } = require('./daily-ops-15h');
+    const dailyOpsBusy = isDailyOpsRunning();
+    if (!dailyOpsBusy && Date.now() - lastNudgePollAt >= NUDGE_POLL_MS) {
       lastNudgePollAt = Date.now();
       await maybeTriggerInscriptionNudges();
     }
-    if (Date.now() - lastEssaiFollowupPollAt >= ESSAI_FOLLOWUP_POLL_MS) {
+    if (!dailyOpsBusy && Date.now() - lastEssaiFollowupPollAt >= ESSAI_FOLLOWUP_POLL_MS) {
       lastEssaiFollowupPollAt = Date.now();
       await maybeTriggerEssaiFollowup();
     }
-    if (Date.now() - lastSaleReconcilePollAt >= SALE_RECONCILE_POLL_MS) {
+    if (!dailyOpsBusy && Date.now() - lastSaleReconcilePollAt >= SALE_RECONCILE_POLL_MS) {
       lastSaleReconcilePollAt = Date.now();
       void maybeTriggerDeciplusSaleReconcile().catch((err) => {
         logWarn('Poll ventes Deciplus (async)', { error: err.message });
       });
     }
-    if (Date.now() - lastBirthdayPollAt >= BIRTHDAY_POLL_MS) {
+    if (!dailyOpsBusy && Date.now() - lastBirthdayPollAt >= BIRTHDAY_POLL_MS) {
       lastBirthdayPollAt = Date.now();
       void maybeTriggerBirthdayWishes().catch((err) => {
         logWarn('Poll anniversaires', { error: err.message });
