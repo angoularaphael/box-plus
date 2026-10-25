@@ -299,6 +299,51 @@
     document.body.appendChild(s);
   }
 
+  function parisDay() {
+    try {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Europe/Paris',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date());
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function ensureHalloween() {
+    if (document.querySelector('link[data-halloween], script[data-halloween]')) return;
+    let flag = '';
+    try {
+      flag = new URLSearchParams(location.search).get('halloween') || '';
+    } catch (e) {
+      flag = '';
+    }
+    if (flag === '0') return;
+    const day = parisDay();
+    const inWindow = day >= '2026-10-25' && day <= '2026-11-02';
+    if (flag !== '1' && !inWindow) return;
+    const p = currentPath();
+    if (/inscription|checkout|panier|paiement|contrat|success|regulariser|gerer-abonnement|attestation|certificat|admin|\/404|\/dev/i.test(p)) {
+      return;
+    }
+    const soft = /boxe-enfant/i.test(p);
+    document.documentElement.classList.add('bc-halloween');
+    if (soft) document.documentElement.classList.add('bc-halloween--soft');
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = A('/css/halloween.css?v=1');
+    link.dataset.halloween = '1';
+    document.head.appendChild(link);
+    const s = document.createElement('script');
+    s.src = A('/js/halloween.js?v=1');
+    s.defer = true;
+    s.dataset.halloween = '1';
+    if (soft) s.dataset.halloweenSoft = '1';
+    document.body.appendChild(s);
+  }
+
   function mountLayout() {
     const headerSlot = document.getElementById('site-header');
     const footerSlot = document.getElementById('site-footer');
@@ -312,6 +357,7 @@
     window.addEventListener('bccart:change', updateCartBadge);
     ensureTracking();
     ensureChloe();
+    ensureHalloween();
     ensureFavicon();
   }
 
