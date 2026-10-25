@@ -64,12 +64,15 @@ async function processAppMemberLookupJob(page, order) {
     email: order.customer?.email,
   };
 
-  const match = await findMemberOnBoxingCenterGyms(page, identity, {
-    matchFields: APP_MATCH_FIELDS,
-    preferredGym: resolveSearchGymSlug(order.gym || 'minimes'),
-    allowBalmaLookup: false,
-    keepCandidate: true,
-  });
+  // Fiche deja liee (validation dans l'admin, ou relecture) : pas de nouvelle recherche
+  const match = order.deciplus_member_id
+    ? { found: true, member_id: order.deciplus_member_id, gym: order.gym || null }
+    : await findMemberOnBoxingCenterGyms(page, identity, {
+        matchFields: APP_MATCH_FIELDS,
+        preferredGym: resolveSearchGymSlug(order.gym || 'minimes'),
+        allowBalmaLookup: false,
+        keepCandidate: true,
+      });
   const link = decideAppLink(match);
 
   let fiche = null;

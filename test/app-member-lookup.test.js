@@ -108,6 +108,12 @@ describe('job app_member_lookup', () => {
     assert.ok(errors.includes('date de naissance manquante'));
   });
 
+  it('relecture d une fiche deja liee : l identifiant Deciplus suffit', () => {
+    const o = normalizeOrder({ action: 'app_member_lookup', order_id: 'app-9', status_callback_base: 'https://api.example.test', deciplus_member_id: 48213 });
+    assert.equal(o.deciplus_member_id, '48213');
+    assert.deepEqual(validateOrder(o), []);
+  });
+
   it('signe le rappel en HMAC sur horodatage et corps', () => {
     const { signBody } = require('../bot/app-member');
     const expected = crypto.createHmac('sha256', 's3cret').update('1700000000.{"a":1}').digest('hex');
