@@ -45,7 +45,12 @@
   }
 
   function initHeader() {
-    var topbar, last = 0;
+    // Remonter, même de quelques pixels, rend le header ; descendre le replie. On mesure la
+    // distance parcourue depuis le dernier changement de sens, pas l'écart entre deux événements :
+    // un pavé tactile ou la fin d'un élan sur mobile envoient des pas de 1 à 2 px.
+    var last = 0, dir = 0, turn = 0;
+    var SHOW_AFTER = 6;
+    var HIDE_AFTER = 14;
     function scrollThreshold() {
       if (!document.body.classList.contains('home-cinema')) return 48;
       var hero = document.querySelector('.hero--cinema');
@@ -54,16 +59,25 @@
       return Math.max(120, Math.round(hero.offsetHeight * 0.55));
     }
     function apply() {
-      topbar = topbar || document.querySelector('.topbar');
+      // Relu à chaque fois : le header est rendu par layout.js et peut être remplacé.
+      var topbar = document.querySelector('.topbar');
       if (!topbar) return;
       var y = window.scrollY || window.pageYOffset || 0;
       var scrolled = y > scrollThreshold();
       topbar.classList.toggle('scrolled', scrolled);
+      var d = y - last;
+      if (d !== 0) {
+        var nd = d > 0 ? 1 : -1;
+        if (nd !== dir) {
+          dir = nd;
+          turn = last;
+        }
+      }
       if (document.querySelector('.main-nav.open') || y <= 200) {
         topbar.classList.remove('nav-hidden');
-      } else if (y > last + 3) {
+      } else if (dir > 0 && y - turn > HIDE_AFTER) {
         topbar.classList.add('nav-hidden');
-      } else if (y < last - 3) {
+      } else if (dir < 0 && turn - y > SHOW_AFTER) {
         topbar.classList.remove('nav-hidden');
       }
       last = y;

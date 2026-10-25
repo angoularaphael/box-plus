@@ -88,6 +88,17 @@ main { flex: 1; }
 
 .topbar.nav-hidden { transform: translateY(-100%); }
 
+/* Un élément sticky ne sort jamais de son parent : #site-header ne faisant que la hauteur du
+   header, celui-ci défilait avec la page hors de l'accueil. Le collant est donc posé sur le
+   conteneur ; il laisse passer les clics quand le header est replié. */
+body:not(.home-cinema) #site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  pointer-events: none;
+}
+body:not(.home-cinema) #site-header > * { pointer-events: auto; }
+
 .resume-bar {
   display: flex;
   flex-wrap: wrap;
