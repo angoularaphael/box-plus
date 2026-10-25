@@ -1,0 +1,296 @@
+/* Halloween 2026 — la nuit sur toute la page : zombie boxeur, citrouilles qui guettent,
+   chauves-souris, sang qui suinte du header. Chargé par layout.js avec la scène du hero.
+   Tout bouge en transform / opacity : aucune repeinture de la page pendant les animations. */
+
+#bcHwPage {
+  position: fixed;
+  inset: 0;
+  /* Sous le header (100), le bouton « Haut » (55), Chloé et le panier (900). */
+  z-index: 40;
+  overflow: hidden;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+#bcHwPage.is-leaving,
+.hwp-blood.is-leaving { opacity: 0; }
+
+/* ---------- Les citrouilles qui guettent depuis le bord ---------- */
+
+.hwp-pumpkin {
+  --dir: 1;
+  position: absolute;
+  width: var(--size, 64px);
+  height: var(--size, 64px);
+  transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+  animation: hwp-peek 9s ease-in-out infinite;
+}
+.hwp-pumpkin--right { --dir: -1; }
+.hwp-pumpkin svg {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
+}
+.hwp-pumpkin__glow {
+  position: absolute;
+  inset: -42%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 170, 60, 0.4), rgba(255, 120, 20, 0.12) 60%, transparent 76%);
+  animation: hwp-candle 2.6s ease-in-out infinite;
+}
+.hwp-face { animation: hwp-flame 1.8s steps(6) infinite; }
+.hwp-pumpkin.is-hoverable { pointer-events: auto; cursor: pointer; }
+.hwp-pumpkin--left.is-hoverable:hover { transform: translateX(var(--peek)); }
+.hwp-pumpkin--right.is-hoverable:hover { transform: translateX(calc(-1 * var(--peek))); }
+.hwp-pumpkin.is-hoverable:hover .hwp-pumpkin__glow { opacity: 1; animation-duration: 0.9s; }
+.hwp-pumpkin.is-giggle svg { animation: hwp-giggle 0.6s ease; }
+
+@keyframes hwp-peek {
+  0%, 66%, 100% { translate: 0 0; rotate: 0deg; }
+  74%, 86% { translate: calc(var(--dir) * 9px) 0; rotate: calc(var(--dir) * 7deg); }
+}
+@keyframes hwp-candle {
+  0%, 100% { opacity: 0.82; }
+  30% { opacity: 1; }
+  55% { opacity: 0.66; }
+  80% { opacity: 0.94; }
+}
+@keyframes hwp-flame {
+  0%, 100% { opacity: 1; }
+  33% { opacity: 0.82; }
+  66% { opacity: 0.94; }
+}
+@keyframes hwp-giggle {
+  0%, 100% { transform: none; }
+  20% { transform: rotate(-9deg) scale(1.06); }
+  45% { transform: rotate(7deg) scale(1.04); }
+  70% { transform: rotate(-4deg); }
+}
+
+/* ---------- Le sang qui suinte du header ---------- */
+
+.hwp-blood {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 50px;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+/* Il suit le header : replié avec lui, effacé sous le menu ouvert. */
+.topbar.nav-hidden .hwp-blood,
+.topbar:has(.main-nav.open) .hwp-blood { opacity: 0; }
+.hwp-blood__band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 4px;
+  background: linear-gradient(180deg, #4D0008, #9E0F1C);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.hwp-drip {
+  position: absolute;
+  top: 2px;
+  transform-origin: 50% 0;
+  animation: hwp-ooze 7s ease-in-out infinite alternate;
+  will-change: transform;
+}
+.hwp-drip svg { display: block; width: 100%; height: 100%; }
+.hwp-drop {
+  position: absolute;
+  width: 6px;
+  height: 9px;
+  border-radius: 50% 50% 50% 50% / 62% 62% 38% 38%;
+  background: radial-gradient(circle at 35% 30%, #FF6B7A 0 18%, #B0101F 46%, #5A0009 100%);
+  pointer-events: none;
+}
+@keyframes hwp-ooze {
+  from { transform: scaleY(0.82); }
+  to { transform: scaleY(1.12); }
+}
+
+/* ---------- Le zombie boxeur ---------- */
+
+.hwp-zombie {
+  --zh: 96px;
+  position: absolute;
+  left: 0;
+  bottom: env(safe-area-inset-bottom, 0px);
+  width: 0;
+  height: var(--zh);
+}
+.hwp-zombie__walk {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(var(--zh) * 0.8);
+  height: var(--zh);
+  will-change: transform;
+}
+.hwp-zombie__flip {
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 100%;
+}
+.hwp-zombie__fig {
+  width: 100%;
+  height: 100%;
+  transform-origin: 34% 96%;
+}
+.hwp-zombie__fig .zb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.hwp-zombie__fig.is-hittable {
+  pointer-events: auto;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M9 6c3-3 10-3 13 0 3 3 4 7 3 11l-1 5c-1 3-3 5-6 5h-6c-3 0-5-2-5-5V13c0-3 0-5 2-7z' fill='%23E8001C' stroke='%23fff' stroke-width='1.6'/%3E%3Crect x='10' y='24' width='12' height='5' rx='1.5' fill='%23fff'/%3E%3C/svg%3E") 15 14, pointer;
+}
+
+.zb-leg { transform-box: fill-box; transform-origin: 50% 4%; }
+.zb-arm { transform-box: fill-box; transform-origin: 12% 30%; }
+.zb-body { transform-box: view-box; transform-origin: 60px 140px; }
+.zb-head { transform-box: fill-box; transform-origin: 40% 100%; animation: zb-head 1.3s ease-in-out infinite alternate; }
+
+/* Marche de zombie : pas raides, garde haute, la tête qui pend. */
+.is-walking .zb-leg--f { animation: zb-step 0.62s ease-in-out infinite alternate; }
+.is-walking .zb-leg--b { animation: zb-step 0.62s ease-in-out infinite alternate-reverse; }
+.is-walking .zb-body { animation: zb-bob 0.31s ease-in-out infinite alternate; }
+.is-walking .zb-arm--f { animation: zb-guard 0.62s ease-in-out infinite alternate; }
+.is-walking .zb-arm--b { animation: zb-guard 0.62s ease-in-out infinite alternate-reverse; }
+
+/* Shadow boxing : jab, jab, direct, sur ses appuis. */
+.is-boxing .zb-arm--f { animation: zb-jab 1.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.is-boxing .zb-arm--b { animation: zb-cross 1.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.is-boxing .zb-body { animation: zb-bounce 0.25s ease-in-out infinite alternate; }
+
+.hwp-zombie__fig { transition: opacity 0.2s ease; }
+.hwp-zombie__fig.is-ghost { opacity: 0.22; }
+.hwp-zombie__fig.is-hittable.is-ghost { pointer-events: none; }
+.hwp-zombie__fig.is-hit { animation: zb-hit 0.32s ease; }
+/* Il tombe à plat sur le bas de l'écran (pivot au milieu du corps), jamais sous le bord. */
+.hwp-zombie__fig.is-ko,
+.hwp-zombie__fig.is-rising { transform-origin: 50% 70%; }
+.hwp-zombie__fig.is-ko { animation: zb-ko 0.55s cubic-bezier(0.3, 1.4, 0.4, 1) forwards; }
+.hwp-zombie__fig.is-rising { animation: zb-rise 0.56s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
+
+@keyframes zb-step { from { transform: rotate(-17deg); } to { transform: rotate(15deg); } }
+@keyframes zb-bob { from { transform: translateY(0) rotate(2deg); } to { transform: translateY(-2.4px) rotate(-1deg); } }
+@keyframes zb-head { from { transform: rotate(-7deg); } to { transform: rotate(5deg); } }
+@keyframes zb-guard { from { transform: rotate(-5deg); } to { transform: rotate(6deg); } }
+@keyframes zb-bounce { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+@keyframes zb-jab {
+  0%, 10% { transform: none; }
+  16% { transform: translateX(14px) scaleX(1.18); }
+  24% { transform: none; }
+  34% { transform: translateX(14px) scaleX(1.18); }
+  42%, 100% { transform: none; }
+}
+@keyframes zb-cross {
+  0%, 46% { transform: none; }
+  54% { transform: translateX(18px) scaleX(1.25); }
+  64%, 100% { transform: none; }
+}
+@keyframes zb-hit {
+  0%, 100% { transform: none; }
+  30% { transform: rotate(calc(var(--away, 1) * 12deg)) translateX(calc(var(--away, 1) * 4px)); }
+}
+@keyframes zb-ko {
+  to { transform: translateY(-12%) rotate(calc(var(--away, 1) * 80deg)); }
+}
+@keyframes zb-rise {
+  from { transform: translateY(-12%) rotate(calc(var(--away, 1) * 80deg)); }
+  to { transform: none; }
+}
+
+.hwp-zombie__ko {
+  position: absolute;
+  left: 50%;
+  top: -30px;
+  color: #E8001C;
+  font: 400 26px/1 var(--font-display, 'Bebas Neue', 'Barlow Condensed', sans-serif);
+  letter-spacing: 0.02em;
+  -webkit-text-stroke: 1px #fff;
+  text-shadow: 0 0 14px rgba(232, 0, 28, 0.6);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, 8px) scale(0.6);
+  transition: opacity 0.2s ease, transform 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.hwp-zombie__walk.is-ko .hwp-zombie__ko { top: 6%; opacity: 1; transform: translate(-50%, 0) scale(1); }
+.hwp-zombie__walk.is-ko .hwp-zombie__stars { top: 46%; }
+.hwp-zombie__stars {
+  position: absolute;
+  left: 50%;
+  top: 34%;
+  width: 46px;
+  height: 18px;
+  margin-left: -23px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.hwp-zombie__walk.is-ko .hwp-zombie__stars { opacity: 1; }
+.hwp-zombie__stars i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px;
+  background: #FFC233;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: hwp-orbit 0.9s linear infinite;
+}
+.hwp-zombie__stars i:nth-child(2) { animation-delay: -0.3s; }
+.hwp-zombie__stars i:nth-child(3) { animation-delay: -0.6s; }
+@keyframes hwp-orbit {
+  0% { transform: translate(20px, 0) scale(1); }
+  25% { transform: translate(0, 7px) scale(1.2); }
+  50% { transform: translate(-20px, 0) scale(1); }
+  75% { transform: translate(0, -7px) scale(0.7); }
+  100% { transform: translate(20px, 0) scale(1); }
+}
+
+/* ---------- Les chauves-souris ---------- */
+
+.hwp-bat {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40px;
+  height: 20px;
+  will-change: transform;
+}
+.hwp-bat[hidden] { display: none; }
+.hwp-bat svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 45%;
+  animation: hwp-flap 0.15s ease-in-out infinite alternate;
+}
+@keyframes hwp-flap { from { transform: scaleY(1); } to { transform: scaleY(0.3); } }
+
+@media (max-width: 600px) {
+  .hwp-zombie { --zh: 70px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hwp-pumpkin,
+  .hwp-pumpkin__glow,
+  .hwp-face,
+  .hwp-drip,
+  .zb-head { animation: none; }
+}
+
+@media print {
+  #bcHwPage,
+  .hwp-blood { display: none !important; }
+}

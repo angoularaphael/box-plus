@@ -1,0 +1,626 @@
+/* Halloween 2026 — « La salle après la fermeture ».
+   Chargé par layout.js pendant la fenêtre d'Halloween ; tout vit dans le hero de la page :
+   rien ne recouvre un texte ou un bouton du site. */
+
+html.bc-halloween-ring .hw-back,
+html.bc-halloween-ring .hw-front {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* L'attribut hidden doit gagner sur les display posés plus bas (.hw-ctl en grid, etc.). */
+.hw-front [hidden],
+.hw-back [hidden] { display: none !important; }
+
+/* .page-hero est isolé : ses fonds sont en z-index négatif, son contenu suit dans le flux. */
+.hw-back { z-index: 0; }
+.hw-front { z-index: 2; }
+/* Accueil : vidéo et voile en z-index 1, contenu en 2. */
+.hero--cinema > .hw-back { z-index: 1; }
+.hero--cinema > .hw-front { z-index: 3; }
+
+.hw-night {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Fumée d'entrée de ring : sous la nuit, la lampe en révèle le volume. Une tuile de bruit
+   (feTurbulence, raccord horizontal) glisse d'une largeur de tuile : boucle sans couture. */
+.hw-fog {
+  position: absolute;
+  left: 0;
+  bottom: -4%;
+  height: 48%;
+  width: calc(100% + 1200px);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1200' height='420'%3E%3Cfilter id='f' x='0' y='0'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0042 0.011' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.86  0 0 0 0 0.88  0 0 0 0 0.95  0 0 0 1.55 -0.6'/%3E%3C/filter%3E%3Crect width='1200' height='420' filter='url(%23f)'/%3E%3C/svg%3E") repeat-x left bottom / 1200px 100%;
+  opacity: 0.5;
+  -webkit-mask-image: linear-gradient(to top, #000 10%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
+  mask-image: linear-gradient(to top, #000 10%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
+  animation: hw-fog-a 80s linear infinite;
+  will-change: transform;
+}
+.hw-fog--b {
+  height: 32%;
+  width: calc(100% + 900px);
+  background-size: 900px 100%;
+  opacity: 0.34;
+  animation: hw-fog-b 52s linear infinite;
+}
+@keyframes hw-fog-a { to { transform: translate3d(-1200px, 0, 0); } }
+@keyframes hw-fog-b { from { transform: translate3d(-900px, 0, 0); } to { transform: translate3d(0, 0, 0); } }
+
+/* Ombres portées par la lampe du visiteur : sous la nuit, elles n'existent que dans sa lumière.
+   Le flou est posé sur chaque ombre, pas sur un calque plein écran : seul ce qui bouge est recalculé. */
+.hw-shadows {
+  position: absolute;
+  inset: 0;
+}
+.hw-shadow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  transform-origin: 0 0;
+  opacity: 0;
+  visibility: hidden;
+  filter: blur(2px);
+  will-change: transform, opacity;
+}
+html.hw-lite .hw-shadow { filter: none; }
+
+/* Le sac-citrouille. .hw-bag est posé au point d'attache ; .hw-swing tourne autour. */
+.hw-bag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+}
+.hw-swing {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.hw-chain {
+  position: absolute;
+  top: 0;
+  left: -4.5px;
+  width: 9px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='18'%3E%3Crect x='1.6' y='1' width='5.8' height='11' rx='2.9' fill='none' stroke='%23464c5a' stroke-width='1.8'/%3E%3Crect x='3.7' y='11' width='1.6' height='7.5' rx='.8' fill='%23363b47'/%3E%3C/svg%3E") repeat-y center top / 9px 18px;
+}
+.hw-body {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 50% 0;
+  will-change: transform;
+}
+.hw-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255, 176, 66, 0.42), rgba(255, 120, 20, 0.13) 58%, transparent 74%);
+  will-change: opacity;
+}
+.hw-hit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 44%;
+  background: none;
+  pointer-events: auto;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M9 6c3-3 10-3 13 0 3 3 4 7 3 11l-1 5c-1 3-3 5-6 5h-6c-3 0-5-2-5-5V13c0-3 0-5 2-7z' fill='%23E8001C' stroke='%23fff' stroke-width='1.6'/%3E%3Cpath d='M7 15c-2 0-3 2-2 4l2 3' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3Crect x='10' y='24' width='12' height='5' rx='1.5' fill='%23fff'/%3E%3C/svg%3E") 15 14, pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.hw-hit:focus-visible {
+  outline: 3px solid #FFB347;
+  outline-offset: 6px;
+}
+.hw-pumpkin {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.hw-face { will-change: opacity; }
+.hw-crack {
+  stroke-dasharray: 64;
+  stroke-dashoffset: 64;
+  transition: stroke-dashoffset 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.hw-bag[data-dmg="1"] .hw-crack--1,
+.hw-bag[data-dmg="2"] .hw-crack--1,
+.hw-bag[data-dmg="2"] .hw-crack--2,
+.hw-bag[data-dmg="3"] .hw-crack { stroke-dashoffset: 0; }
+.hw-lid {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+.hw-bag.is-ko .hw-lid { animation: hw-lid 1.2s cubic-bezier(0.18, 0.85, 0.32, 1) forwards; }
+.hw-bag.is-ko .hw-face,
+.hw-bag.is-ko .hw-guard { opacity: 0.12 !important; transition: opacity 0.5s ease 0.35s; }
+.hw-bag.is-ko .hw-hit { cursor: default; }
+@keyframes hw-lid {
+  0% { transform: translate(0, 0) rotate(0); }
+  32% { transform: translate(-18px, -64px) rotate(-38deg); }
+  100% { transform: translate(-46px, 150px) rotate(-170deg); opacity: 0; }
+}
+
+/* Interface de combat. */
+.hw-hud {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  color: #fff;
+  font-family: var(--font-display, 'Bebas Neue', 'Barlow Condensed', sans-serif);
+  text-transform: uppercase;
+}
+.hw-hp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+.hw-hud.is-on .hw-hp { opacity: 1; transform: none; }
+.hw-hp__bar {
+  position: relative;
+  width: 118px;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+.hw-hp__trail,
+.hw-hp__fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+}
+/* Comme dans un jeu de combat : la vie perdue reste visible un instant avant de fondre. */
+.hw-hp__trail { background: #FFE2B0; transition: transform 0.55s ease 0.28s; }
+.hw-hp__fill { background: linear-gradient(90deg, #E8001C, #FF7A00); transition: transform 0.12s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.hw-round { color: #FFB347; }
+
+.hw-callout {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  font-family: var(--font-display, 'Bebas Neue', 'Barlow Condensed', sans-serif);
+  text-transform: uppercase;
+  font-size: clamp(26px, 3.1vw, 44px);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 0 18px rgba(255, 140, 0, 0.7), 0 3px 0 #E8001C;
+  animation: hw-pop 0.75s cubic-bezier(0.2, 1.3, 0.4, 1) forwards;
+}
+.hw-callout--big { font-size: clamp(30px, 3.8vw, 54px); color: #FFE2B0; }
+.hw-callout--ko {
+  font-size: clamp(66px, 9vw, 132px);
+  color: #E8001C;
+  -webkit-text-stroke: 2px #fff;
+  text-shadow: 0 0 46px rgba(232, 0, 28, 0.7), 0 6px 0 #0a0c18;
+  animation: hw-ko 2.3s cubic-bezier(0.15, 1.4, 0.35, 1) forwards;
+}
+.hw-callout--bell {
+  font-size: clamp(14px, 1.4vw, 18px);
+  letter-spacing: 0.3em;
+  color: #FFB347;
+  text-shadow: 0 0 12px rgba(255, 179, 71, 0.7);
+  animation: hw-fade 1.6s ease forwards;
+}
+@keyframes hw-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.9) rotate(-7deg); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(0.94) rotate(-4deg); }
+  32% { transform: translate(-50%, -50%) scale(1.04) rotate(-4deg); }
+  72% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -120%) scale(1) rotate(-4deg); }
+}
+@keyframes hw-ko {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(2.6) rotate(-9deg); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(0.92) rotate(-5deg); }
+  24% { transform: translate(-50%, -50%) scale(1.03) rotate(-5deg); }
+  82% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+  100% { opacity: 0; transform: translate(-50%, -56%) scale(1) rotate(-5deg); }
+}
+@keyframes hw-fade {
+  0% { opacity: 0; transform: translate(-50%, -50%); }
+  15%, 70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -80%); }
+}
+
+.hw-hint {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: 190px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(8, 10, 20, 0.86);
+  border: 1px solid rgba(255, 179, 71, 0.32);
+  color: rgba(255, 255, 255, 0.86);
+  font: 500 13px/1.35 var(--font-body, 'Montserrat', sans-serif);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.hw-hint strong {
+  display: block;
+  margin-top: 2px;
+  color: #FFB347;
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.hw-hint.is-on { opacity: 1; transform: none; }
+
+.hw-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 280px;
+  padding: 16px 16px 14px;
+  border-radius: 14px;
+  background: rgba(9, 11, 22, 0.94);
+  border: 1px solid rgba(255, 179, 71, 0.34);
+  box-shadow: 0 22px 44px -16px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(232, 0, 28, 0.18);
+  color: #fff;
+  pointer-events: auto;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px) scale(0.97);
+  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1), visibility 0s linear 0.4s;
+}
+.hw-card.is-on {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1), visibility 0s;
+}
+.hw-card.is-overlay { box-shadow: 0 26px 60px -12px rgba(0, 0, 0, 0.85), inset 0 0 0 1px rgba(232, 0, 28, 0.22); }
+.hw-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 5, 12, 0.66);
+  pointer-events: auto;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+.hw-scrim.is-on {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease, visibility 0s;
+}
+.hw-card__close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: rgba(255, 255, 255, 0.6);
+  font: 400 22px/32px var(--font-body, 'Montserrat', sans-serif);
+  cursor: pointer;
+}
+.hw-card__close:hover,
+.hw-card__close:focus-visible { color: #fff; background: rgba(255, 255, 255, 0.08); }
+.hw-bag { transition: opacity 0.3s ease; }
+.hw-bag.is-gone { opacity: 0; }
+/* La barre de vie part avec la citrouille : sinon « Citrouille … R1 » transparaît sous la carte. */
+.hw-hud { transition: opacity 0.3s ease; }
+.hw-bag.is-gone ~ .hw-hud { opacity: 0; }
+.hw-card__kicker {
+  margin: 0 0 4px;
+  color: #FFB347;
+  font: 400 13px/1 var(--font-display, 'Bebas Neue', sans-serif);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.hw-card__title {
+  margin: 0 0 6px;
+  font: 400 26px/1 var(--font-display, 'Bebas Neue', sans-serif);
+  text-transform: uppercase;
+  color: #fff;
+}
+.hw-card__text {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.78);
+}
+/* Les deux formules empilées dans la même case : la carte garde la hauteur de la plus grande. */
+.hw-offers {
+  position: relative;
+  display: grid;
+  margin: 2px -4px 10px;
+  padding: 10px 4px 2px;
+  overflow: hidden;
+  border-radius: 10px;
+}
+.hw-offer {
+  grid-area: 1 / 1;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0s linear 0.25s;
+}
+.hw-offer.is-on {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.25s ease, visibility 0s;
+}
+.hw-offer__eyebrow {
+  margin: 0 0 2px;
+  color: #FFB347;
+  font: 600 11px/1.2 var(--font-body, 'Montserrat', sans-serif);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.hw-offer__name {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.92);
+  font: 400 18px/1.1 var(--font-display, 'Bebas Neue', sans-serif);
+  text-transform: uppercase;
+}
+.hw-offer__price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+.hw-offer__num {
+  color: #fff;
+  font: 400 44px/1 var(--font-display, 'Bebas Neue', sans-serif);
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 22px rgba(255, 140, 0, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+.hw-offer__per {
+  color: rgba(255, 255, 255, 0.7);
+  font: 500 13px/1 var(--font-body, 'Montserrat', sans-serif);
+}
+.hw-offer__note {
+  margin: 0 0 12px;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.hw-offer .hw-card__cta { display: block; width: 100%; }
+.hw-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.hw-dots { display: flex; gap: 8px; }
+.hw-dot {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  position: relative;
+}
+.hw-dot::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.hw-dot[aria-pressed="true"]::after { background: #E8001C; transform: scale(1.25); }
+.hw-dot:focus-visible { outline: 2px solid #FFB347; outline-offset: 1px; }
+
+/* La possession de la carte. Le tremblement passe par « translate » : la carte garde sa place. */
+.hw-curse {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 10px;
+}
+.hw-curse__glove {
+  position: absolute;
+  top: 12%;
+  left: 0;
+  width: 78%;
+  height: auto;
+  opacity: 0;
+  /* Noir sur une carte noire, le gant ne se voyait pas : un liseré rouge le découpe. */
+  filter: blur(1.2px) drop-shadow(0 0 3px rgba(232, 0, 28, 0.95)) drop-shadow(0 0 12px rgba(232, 0, 28, 0.6));
+  transform: translateX(-110%);
+}
+.hw-curse__drips {
+  position: absolute;
+  left: -2%;
+  top: 0;
+  width: 104%;
+  height: 170%;
+  transform: translateY(-102%);
+}
+.hw-card.is-cursing { animation: hw-tremor 0.5s steps(7) both, hw-flicker 0.62s linear both; }
+.hw-card.is-cursing .hw-curse__glove { animation: hw-glove 0.46s cubic-bezier(0.5, 0, 0.2, 1) 0.06s both; }
+.hw-card.is-cursing .hw-curse__drips { animation: hw-bleed 1.32s cubic-bezier(0.55, 0, 0.35, 1) both; }
+.hw-offer.is-leaving { animation: hw-glitch 0.46s steps(2) both; }
+
+@keyframes hw-tremor {
+  0%, 100% { translate: 0 0; }
+  15% { translate: -2px 1px; }
+  30% { translate: 2px -1px; }
+  45% { translate: -1px -1px; }
+  60% { translate: 2px 1px; }
+  75% { translate: -1px 0; }
+}
+/* Deux battements de lumière en 0,6 s : sous la limite des 3 flashs par seconde. */
+@keyframes hw-flicker {
+  0%, 100% { border-color: rgba(255, 179, 71, 0.34); }
+  20% { border-color: rgba(232, 0, 28, 0.95); }
+  40% { border-color: rgba(255, 179, 71, 0.1); }
+  65% { border-color: rgba(232, 0, 28, 0.8); }
+}
+@keyframes hw-glove {
+  0% { opacity: 0; transform: translateX(-110%) scale(0.9); }
+  25% { opacity: 0.85; }
+  100% { opacity: 0; transform: translateX(185%) scale(1.15); }
+}
+/* Le haut déchiré reste hors de la carte tant qu'elle est couverte ; il n'apparaît qu'à l'égouttage. */
+@keyframes hw-bleed {
+  0%, 26% { transform: translateY(-102%); }
+  58%, 64% { transform: translateY(-28%); }
+  100% { transform: translateY(64%); }
+}
+@keyframes hw-glitch {
+  0% { transform: none; clip-path: inset(0 0 0 0); text-shadow: none; }
+  30% { transform: skewX(-8deg) translateX(3px); text-shadow: -2px 0 #E8001C, 2px 0 #4DE1FF; }
+  60% { transform: skewX(6deg) translateX(-2px); clip-path: inset(0 0 0 38%); }
+  100% { transform: skewX(0) translateX(0); clip-path: inset(0 0 0 100%); text-shadow: -3px 0 #E8001C, 3px 0 #4DE1FF; opacity: 0.4; }
+}
+
+.hw-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.hw-card__cta {
+  flex: 1 1 auto;
+  text-align: center;
+  white-space: nowrap;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+.hw-card__again {
+  padding: 8px 4px;
+  border: 0;
+  background: none;
+  color: rgba(255, 255, 255, 0.72);
+  font: 600 13px/1 var(--font-body, 'Montserrat', sans-serif);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.hw-card__again:hover,
+.hw-card__again:focus-visible { color: #FFB347; }
+
+.hw-controls {
+  position: absolute;
+  top: var(--hw-top, 12px);
+  right: 12px;
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+.hw-controls--left {
+  right: auto;
+  left: 12px;
+}
+.hw-controls { transition: opacity 0.25s ease, visibility 0s; }
+.hw-front.has-overlay .hw-controls {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0s linear 0.2s;
+}
+.hw-ctl {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  background: rgba(8, 10, 20, 0.7);
+  color: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+.hw-ctl:hover { border-color: #FFB347; background: rgba(20, 16, 10, 0.7); }
+.hw-ctl:active { transform: scale(0.94); }
+.hw-ctl:focus-visible { outline: 2px solid #FFB347; outline-offset: 2px; }
+.hw-ctl svg { width: 17px; height: 17px; display: block; }
+.hw-ctl[aria-pressed="true"] { border-color: #FFB347; color: #FFB347; }
+
+.hw-particle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 9px;
+  border-radius: 50%;
+  background: #FFEBC8;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.hw-particle--ember {
+  width: 4px;
+  height: 4px;
+  background: #FFC266;
+  box-shadow: 0 0 8px 2px rgba(255, 140, 0, 0.75);
+}
+.hw-particle--candy {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+.hw-bat {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40px;
+  height: 20px;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.hw-bat svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 45%;
+  animation: hw-flap 0.15s ease-in-out infinite alternate;
+}
+@keyframes hw-flap { from { transform: scaleY(1); } to { transform: scaleY(0.3); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .hw-fog,
+  .hw-bat svg { animation: none; }
+  .hw-callout,
+  .hw-callout--big,
+  .hw-callout--ko { animation: hw-fade 1.4s ease forwards; }
+  .hw-bag.is-ko .hw-lid { animation: none; opacity: 0; }
+}
+
+@media print {
+  .hw-back,
+  .hw-front { display: none !important; }
+}

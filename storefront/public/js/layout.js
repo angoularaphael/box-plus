@@ -323,7 +323,10 @@
     if (flag === '0') return;
     const day = parisDay();
     const inWindow = day >= '2026-10-25' && day <= '2026-11-02';
-    if (flag !== '1' && !inWindow) return;
+    // ?halloween=1 (ou v2) force la scène hors fenêtre ; ?halloween=v1 remet le premier décor.
+    const forced = flag === '1' || flag === 'v1' || flag === 'v2';
+    if (!forced && !inWindow) return;
+    const legacy = flag === 'v1';
     const p = currentPath();
     if (/inscription|checkout|panier|paiement|contrat|success|regulariser|gerer-abonnement|attestation|certificat|admin|\/404|\/dev/i.test(p)) {
       return;
@@ -333,15 +336,28 @@
     if (soft) document.documentElement.classList.add('bc-halloween--soft');
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = A('/css/halloween.css?v=1');
+    link.href = A(legacy ? '/css/halloween.css?v=1' : '/css/halloween-ring.css?v=1');
     link.dataset.halloween = '1';
     document.head.appendChild(link);
     const s = document.createElement('script');
-    s.src = A('/js/halloween.js?v=1');
+    s.src = A(legacy ? '/js/halloween.js?v=1' : '/js/halloween-ring.js?v=1');
     s.defer = true;
     s.dataset.halloween = '1';
     if (soft) s.dataset.halloweenSoft = '1';
     document.body.appendChild(s);
+    if (!legacy) {
+      // La nuit sur toute la page (zombie, citrouilles, chauves-souris, sang) en plus du hero.
+      const pl = document.createElement('link');
+      pl.rel = 'stylesheet';
+      pl.href = A('/css/halloween-page.css?v=1');
+      pl.dataset.halloween = '1';
+      document.head.appendChild(pl);
+      const ps = document.createElement('script');
+      ps.src = A('/js/halloween-page.js?v=1');
+      ps.defer = true;
+      ps.dataset.halloween = '1';
+      document.body.appendChild(ps);
+    }
   }
 
   function mountLayout() {
