@@ -86,6 +86,11 @@ const STALE_PROCESSING_MS = Number(process.env.BOT_STALE_PROCESSING_MS || 3 * 60
 
 let catalogCache = { at: 0, data: null };
 
+/** Robot de l'application mobile : lecture seule, aucune tache de la boutique. */
+function isAppRole() {
+  return String(process.env.BOT_ROLE || 'all').toLowerCase() === 'app';
+}
+
 async function getCachedCatalog(page) {
   if (catalogCache.data && Date.now() - catalogCache.at < CATALOG_TTL_MS) {
     return catalogCache.data;
@@ -96,6 +101,7 @@ async function getCachedCatalog(page) {
 }
 
 async function maybePushCatalog() {
+  if (isAppRole()) return;
   if (String(process.env.BOT_CATALOG_PUSH_ENABLED || 'true').toLowerCase() === 'false') return;
   if (listPending().length > 0) {
     logWarn('Sync catalogue reportée — jobs en cours (une seule session Deciplus)');
@@ -1144,7 +1150,7 @@ async function processMemberPhotoJob(page, order) {
 async function maybeTriggerInscriptionNudges() {
   // Vercel Hobby n'autorise qu'un cron/jour : le bot ops appelle l'endpoint à la place.
   const role = String(process.env.BOT_ROLE || 'all').toLowerCase();
-  if (role === 'sales') return;
+  if (role === 'sales' || role === 'app') return;
   const storeBase = (
     process.env.BOXPLUS_STORE_URL ||
     process.env.STORE_URL ||
@@ -1168,7 +1174,7 @@ async function maybeTriggerInscriptionNudges() {
 
 async function maybeTriggerEssaiFollowup() {
   const role = String(process.env.BOT_ROLE || 'all').toLowerCase();
-  if (role === 'sales') return;
+  if (role === 'sales' || role === 'app') return;
   const storeBase = (
     process.env.BOXPLUS_STORE_URL ||
     process.env.STORE_URL ||
@@ -1190,20 +1196,21 @@ async function maybeTriggerEssaiFollowup() {
 
 async function maybeTriggerBirthdayWishes() {
   const role = String(process.env.BOT_ROLE || 'all').toLowerCase();
-  if (role === 'sales') return;
+  if (role === 'sales' || role === 'app') return;
   const { maybeRunBirthdayWishes } = require('./birthday-wishes');
   await maybeRunBirthdayWishes();
 }
 
 async function maybeTriggerDailyOps15h() {
   const role = String(process.env.BOT_ROLE || 'all').toLowerCase();
-  if (role === 'sales') return;
+  if (role === 'sales' || role === 'app') return;
   const { maybeRunDailyOps15h } = require('./daily-ops-15h');
   await maybeRunDailyOps15h();
 }
 
 async function maybeTriggerDeciplusSaleReconcile() {
   // Vercel Hobby n’exécute pas le cron */15 — le bot ventes relance les fiches absentes.
+  if (isAppRole()) return;
   const storeBase = (
     process.env.BOXPLUS_STORE_URL ||
     process.env.STORE_URL ||
@@ -1344,6 +1351,14 @@ async function processJob(page, job) {
   if (role === 'ops' && salesAllowed) {
     throw new Error(`Bot maintenance refuse les ventes inscription — utiliser BOXPLUS_BOT_URL`);
   }
+  if (role === 'app' && action !== 'app_member_lookup') {
+    throw new Error(`Bot application refuse « ${action} » — lecture seule (app_member_lookup)`);
+  }
+
+  if (order.action === 'app_member_lookup') {
+    const { processAppMemberLookupJob } = require('./app-member');
+    return processAppMemberLookupJob(page, order);
+  }
 
   if (order.action === 'inscription_nudge') {
     return processInscriptionNudgeJob(order);
@@ -1476,6 +1491,7 @@ async function pushBotSaleStatus(order, outcome = {}) {
     action === 'inscription_nudge' ||
     action === 'cancel' ||
     action === 'verify_identity' ||
+    action === 'app_member_lookup' ||
     action === 'echeancier' ||
     action === 'encaisser'
   ) {

@@ -45,7 +45,8 @@ async function findMemberOnBoxingCenterGyms(page, identity, options = {}) {
     if (!switched) continue;
     const match = await findMemberByIdentity(page, identity, options);
     if (!match.found) {
-      last = match;
+      // keepCandidate : une fiche trouvee mais non concordante reste prioritaire sur un « introuvable » suivant
+      if (!(options.keepCandidate && last.member_id && !match.member_id)) last = match;
       continue;
     }
     if (!balmaLookup && (await memberZoneLooksBalma(page))) {
