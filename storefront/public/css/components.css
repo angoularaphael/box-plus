@@ -16,8 +16,12 @@
   flex-wrap: wrap;
   justify-content: center;
 }
+/* Deux formules en vedette : à 320 px, l'étiquette « Sans engagement » ne laissait
+   qu'une colonne étroite au titre, cassé sur trois lignes. Les cartes s'élargissent
+   jusqu'à 520 px ; trois cartes tiennent toujours sur une rangée. */
 #featuredOffers .offer-card {
-  flex: 0 1 320px;
+  flex: 1 1 320px;
+  max-width: 520px;
 }
 
 /* Onglets abonnements à 1 ou 2 offres (Promotions, Sans engagement) : la rangée se
@@ -200,19 +204,27 @@
   white-space: nowrap;
 }
 
+/* L'étiquette reste à côté du titre quand la carte est large ; sinon elle passe
+   au-dessus et le titre prend toute la largeur, au lieu de se casser sur trois lignes. */
 .offer-card__title-row {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px 12px;
+  gap: 6px 12px;
   margin-bottom: 8px;
   min-height: 1.45rem;
 }
 
 .offer-card__title-row h3 {
   margin: 0;
-  flex: 1 1 0;
+  flex: 1 1 13em;
   min-width: 0;
+}
+
+/* Le badge « Populaire » est posé dans le coin haut : l'étiquette passée au-dessus du
+   titre glissait dessous. */
+.offer-badge + .offer-card__title-row {
+  margin-top: 14px;
 }
 
 .offer-card h3 {
@@ -315,6 +327,9 @@
   list-style: none;
   flex: 1;
   margin: 12px 0 20px;
+  /* Sur l'accueil, offer-funnels.css fait de cette liste une grille : sans ceci, ses
+     rangées s'étiraient sur toute la hauteur de la carte la plus haute. */
+  align-content: start;
 }
 
 .offer-benefits li {
