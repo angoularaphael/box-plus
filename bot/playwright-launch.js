@@ -49,9 +49,7 @@ function getChromiumLaunchOptions() {
     timeout: Number(process.env.PLAYWRIGHT_LAUNCH_TIMEOUT || 120000),
   };
   const channel = String(process.env.DECIPLUS_BROWSER_CHANNEL || '').trim();
-  if (channel && !headless) {
-    opts.channel = channel;
-  }
+  if (channel) opts.channel = channel;
   return opts;
 }
 

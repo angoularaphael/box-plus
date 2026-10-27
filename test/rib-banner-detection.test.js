@@ -39,6 +39,7 @@ describe('RIB banner detection anti-regression', () => {
     const src = fs.readFileSync(path.join(__dirname, '../bot/wallet.js'), 'utf8');
     assert.match(src, /async function ficheRibCleared/);
     assert.match(src, /alt="Rib-ok"/);
+    assert.match(src, /date de signature/);
     assert.match(src, /#icon-list Rib-ok introuvable/);
   });
 

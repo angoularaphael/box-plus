@@ -3415,10 +3415,15 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
         reason: err.message,
       }));
       result.badge_echeance_ok = enforce.ok;
-      if (!enforce.ok) {
+      if (!enforce.ok && enforce.reason !== 'reporter_not_found') {
         result.manual_review = true;
         result.badge_error = `Échéance badge J+${resolveBadgePrelevementDelayDays(productConfig)} non confirmée (${enforce.reason || 'inconnue'})`;
         result.error = result.badge_error;
+      } else if (!enforce.ok) {
+        logWarn('Badge — report échéance ignoré, carte déjà posée', {
+          member_id: memberId,
+          reason: enforce.reason || 'reporter_not_found',
+        });
       }
     } else {
       // Essai / coaching : prestation carte, pas le contrat Badge
@@ -3620,10 +3625,15 @@ async function recordSale(page, order, productConfig, memberId, gymConfig = {}, 
             (err) => ({ ok: false, reason: err.message })
           );
           result.badge_echeance_ok = enforce.ok;
-          if (!enforce.ok) {
+          if (!enforce.ok && enforce.reason !== 'reporter_not_found') {
             result.manual_review = true;
             result.badge_error = `Échéance badge J+${resolveBadgePrelevementDelayDays(badgeProductConfig)} non confirmée (${enforce.reason || 'inconnue'})`;
             result.error = result.badge_error;
+          } else if (!enforce.ok) {
+            logWarn('Badge — report échéance ignoré, carte déjà posée', {
+              member_id: memberId,
+              reason: enforce.reason || 'reporter_not_found',
+            });
           }
         } catch (err) {
           logWarn('Badge non créé — prélèvement différé requis', {
@@ -3736,25 +3746,49 @@ async function enforceBadgeEcheance(page, memberId, badgeConfig = {}, gymConfig 
     await randomDelay(900, 1400);
   }
 
-  // Bouton « Reporter » sur la première échéance en attente
-  let reporter = page
-    .locator(
-      'button:has-text("Reporter"), a:has-text("Reporter"), input[value*="Reporter"], [title*="Reporter" i], [aria-label*="Reporter" i]'
-    )
-    .first();
-  if ((await reporter.count()) === 0 || !(await reporter.isVisible().catch(() => false))) {
-    logWarn('Badge — bouton Reporter introuvable sur le contrat', {
-      member_id: memberId,
-      idc: badge.idc,
-      expected,
-      current: currentDate,
-      row: dueSection?.[0]?.slice(0, 240) || '',
-      ui: await venteUiSnapshot(page).catch(() => []),
-      screenshot: await captureSaleDebugScreenshot(page, 'badge-contract-reporter-missing'),
-    });
-    return { ok: false, reason: 'reporter_not_found' };
+  // L'UI Deciplus n'a plus le bouton texte Reporter : calendrier dans l'echeancier.
+  const openedEditor = await page
+    .evaluate(() => {
+      const dialogs = [...document.querySelectorAll('[role="dialog"], .p-dialog, .ari-dialog, .modal')];
+      const dialog = dialogs.find((d) => /échéancier|echeancier/i.test(d.innerText || ''));
+      if (!dialog) return false;
+      const rows = [...dialog.querySelectorAll('tr, [class*="table__row"], [class*="schedule"]')];
+      const row =
+        rows.find((el) => /a faire/i.test(el.innerText || '') && /\d{2}\/\d{2}\/\d{4}/.test(el.innerText || '')) ||
+        null;
+      const root = row || dialog;
+      const icons = [...root.querySelectorAll('i, button, [role="button"], a')];
+      const hit = icons.find((el) => {
+        if (el.closest('nav, header, aside')) return false;
+        const hint = `${el.getAttribute('title') || ''} ${el.getAttribute('aria-label') || ''} ${el.className || ''} ${el.textContent || ''}`;
+        if (/suspendre|encaisser|cash-register|pause-circle|voir toutes|planning/i.test(hint)) return false;
+        return /reporter|décaler|decaler/i.test(hint);
+      });
+      if (!hit) return false;
+      (hit.closest('button, a, [role="button"]') || hit).click();
+      return true;
+    })
+    .catch(() => false);
+  if (!openedEditor) {
+    const reporter = page
+      .locator(
+        'button:has-text("Reporter"), a:has-text("Reporter"), input[value*="Reporter"], [title*="Reporter" i], [aria-label*="Reporter" i]'
+      )
+      .first();
+    if ((await reporter.count()) === 0 || !(await reporter.isVisible().catch(() => false))) {
+      logWarn('Badge — editeur de date d echeance introuvable', {
+        member_id: memberId,
+        idc: badge.idc,
+        expected,
+        current: currentDate,
+        row: dueSection?.[0]?.slice(0, 240) || '',
+        ui: await venteUiSnapshot(page).catch(() => []),
+        screenshot: await captureSaleDebugScreenshot(page, 'badge-contract-reporter-missing'),
+      });
+      return { ok: false, reason: 'reporter_not_found' };
+    }
+    await reporter.click({ force: true }).catch(() => {});
   }
-  await reporter.click({ force: true }).catch(() => {});
   await randomDelay(900, 1500);
 
   // Renseigner la nouvelle date dans la popup (input date ISO ou texte JJ/MM/AAAA)

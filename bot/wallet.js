@@ -82,6 +82,7 @@ async function readIbanFromRib(ctx) {
 }
 
 async function hasPostalAddressBlocker(ctx) {
+  if (await ribMandateAddressReady(ctx)) return false;
   const msg = ctx.locator('text=/adresse postale est obligatoire pour éditer le mandat/i').first();
   return (await msg.count()) > 0 && (await msg.isVisible().catch(() => false));
 }
@@ -125,15 +126,19 @@ async function memberAsksToRegisterRib(page) {
         const text = document.body?.innerText || '';
         // Bandeau texte explicite (rare hors survol)
         if (/veuillez\s+enregistrer\s+le\s+rib(\s+du\s+membre)?/i.test(text)) return true;
+        // Mandat déjà signé sur la fiche : l'icone Rib-nok + Alerte Paiement est un impayé.
+        const mandateOnFile =
+          /date de signature\s*:\s*\d{2}\/\d{2}\/\d{4}/i.test(text) &&
+          /[eé]ch[eé]ances pr[eé]vues/i.test(text);
+        if (mandateOnFile) return false;
 
         // Source de vérité : icones du header fiche (#icon-list)
         // Ne PAS utiliser title="Alerte Paiement" : Deciplus l'affiche aussi pour les IMPAYES.
         const header = document.querySelector('#icon-list');
         if (header) {
+          if (header.querySelector('[alt="Rib-ok"], [title="RIB enregistré"]')) return false;
           const nok = header.querySelector('[alt="Rib-nok"], [alt="RIB-nok"], .icon-bank.is-alert');
           if (nok) return true;
-          // Si Rib-ok present dans le header → pas d’alerte RIB
-          if (header.querySelector('[alt="Rib-ok"], [title="RIB enregistré"]')) return false;
         }
 
         // Fallback sans #icon-list : Rib-nok hors zone payments-mode
@@ -194,28 +199,31 @@ async function ficheRibCleared(page, memberId, gymConfig = {}) {
   await waitForMemberCheckReady(page, 15000);
   await randomDelay(500, 900);
 
+  let sawNok = false;
   for (const ctx of [page, ...(page.frames?.() || [])]) {
     try {
       const state = await ctx.evaluate(() => {
-        if (/veuillez\s+enregistrer\s+le\s+rib(\s+du\s+membre)?/i.test(document.body?.innerText || '')) {
+        const text = document.body?.innerText || '';
+        const header = document.querySelector('#icon-list');
+        if (header && header.querySelector('[alt="Rib-ok"], [title="RIB enregistré"]')) return 'ok';
+        if (/veuillez\s+enregistrer\s+le\s+rib(\s+du\s+membre)?/i.test(text)) {
           return 'asks_text';
         }
-        const header = document.querySelector('#icon-list');
+        const mandateOnFile =
+          /date de signature\s*:\s*\d{2}\/\d{2}\/\d{4}/i.test(text) &&
+          /[eé]ch[eé]ances pr[eé]vues/i.test(text);
+        if (mandateOnFile) return 'ok';
         if (!header) return null;
-        if (header.querySelector('[alt="Rib-nok"], [alt="RIB-nok"], .icon-bank.is-alert')) {
-          return 'nok';
-        }
-        if (header.querySelector('[alt="Rib-ok"], [title="RIB enregistré"]')) {
-          return 'ok';
-        }
+        if (header.querySelector('[alt="Rib-nok"], [alt="RIB-nok"], .icon-bank.is-alert')) return 'nok';
         return 'header_no_rib';
       });
       if (state === 'ok') return true;
-      if (state === 'nok' || state === 'asks_text') return false;
+      if (state === 'nok' || state === 'asks_text') sawNok = true;
     } catch {
       /* frame */
     }
   }
+  if (sawNok) return false;
 
   // Fallback : si aucune frame n'a #icon-list Rib-ok, ne pas valider.
   if (await memberAsksToRegisterRib(page)) return false;
@@ -436,51 +444,87 @@ async function openMemberCheck(page, memberId, gymConfig = {}) {
   throw lastErr || new Error(`openMemberCheck failed for ${memberId}`);
 }
 
+async function scoreMemberFormContext(ctx) {
+  try {
+    return await ctx.evaluate(() => {
+      const form = document.querySelector('form[name="db1_form"]');
+      const inputs = [...document.querySelectorAll('input[name="adr1"], input[name="nom"]')];
+      if (!form && !inputs.length) return 0;
+      const visible = (el) => {
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        const style = window.getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+      };
+      let score = 1;
+      if (/joueurs\.php/i.test(location.href || '')) score += 5;
+      if (form) score += 3;
+      if (inputs.some(visible) || visible(form)) score += 4;
+      return score;
+    });
+  } catch {
+    return 0;
+  }
+}
+
 async function getMemberFormContext(page, { waitMs = 0 } = {}) {
   const deadline = Date.now() + Math.max(0, waitMs);
+  let best = page;
+  let bestScore = 0;
   do {
-    try {
-      if ((await page.locator('form[name="db1_form"]').count()) > 0) return page;
-      if ((await page.locator('input[name="adr1"]').count()) > 0) return page;
-      for (const frame of page.frames()) {
-        if (frame === page.mainFrame()) continue;
-        try {
-          if ((await frame.locator('form[name="db1_form"]').count()) > 0) return frame;
-          if ((await frame.locator('input[name="adr1"]').count()) > 0) return frame;
-        } catch {
-          /* frame détachée pendant le chargement nextgen */
-        }
+    const contexts = [page, ...(page.frames?.() || []).filter((frame) => frame !== page.mainFrame())];
+    for (const ctx of contexts) {
+      const score = await scoreMemberFormContext(ctx);
+      if (score > bestScore) {
+        bestScore = score;
+        best = ctx;
       }
-    } catch {
-      /* navigation en cours */
     }
-    if (Date.now() >= deadline) break;
+    // joueurs.php + formulaire visible = 1+5+3+4
+    if (bestScore >= 12 || Date.now() >= deadline) break;
     await page.waitForTimeout(400);
   } while (Date.now() < deadline);
-
-  return page;
+  return best;
 }
 
 async function fillFormField(ctx, selectors, value) {
   if (value == null || value === '' || !selectors) return false;
   const list = String(selectors).split(',').map((s) => s.trim());
-  for (const s of list) {
-    const el = ctx.locator(s).first();
-    if ((await el.count()) === 0) continue;
-    const tag = await el.evaluate((node) => node.tagName.toLowerCase()).catch(() => 'input');
-    if (tag === 'select') {
-      await el.selectOption({ label: String(value) }).catch(async () => {
-        await el.selectOption({ value: String(value) }).catch(() => {});
-      });
-    } else {
-      await el.fill(String(value), { force: true }).catch(async () => {
-        await el.evaluate((node, v) => {
-          node.value = v;
-          node.dispatchEvent(new Event('input', { bubbles: true }));
-          node.dispatchEvent(new Event('change', { bubbles: true }));
-        }, String(value));
-      });
-    }
+  for (const selector of list) {
+    // Ecriture DOM : un input[name=adr1] caché (coquille nextgen) fait timeout
+    // sur locator.fill / locator.evaluate, et la fiche n'est jamais enregistrée.
+    const written = await ctx
+      .evaluate(({ selector, value }) => {
+        const nodes = [...document.querySelectorAll(selector)];
+        if (!nodes.length) return false;
+        const shown = (el) => {
+          const r = el.getBoundingClientRect();
+          const style = window.getComputedStyle(el);
+          return r.width > 0 && r.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
+        };
+        const el = nodes.find(shown) || nodes[nodes.length - 1];
+        el.disabled = false;
+        if ('readOnly' in el) el.readOnly = false;
+        if (el.tagName === 'SELECT') {
+          const want = String(value);
+          const opt = [...el.options].find(
+            (o) => o.label === want || o.value === want || o.text === want
+          );
+          el.value = opt ? opt.value : want;
+        } else {
+          const proto =
+            el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+          const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+          if (setter) setter.call(el, String(value));
+          else el.value = String(value);
+        }
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        el.dispatchEvent(new Event('blur', { bubbles: true }));
+        return true;
+      }, { selector, value: String(value) })
+      .catch(() => false);
+    if (!written) continue;
     await randomDelay(150, 350);
     return true;
   }
@@ -745,9 +789,9 @@ async function getRibFrame(page) {
   for (const root of roots) {
     try {
       const iframe = root.locator('#GB_frame, iframe[src*="rib.php"]').first();
-      if ((await iframe.count()) > 0) {
-        const handle = await iframe.elementHandle();
-        const frame = handle ? await handle.contentFrame() : null;
+  if ((await iframe.count()) > 0) {
+    const handle = await iframe.elementHandle();
+    const frame = handle ? await handle.contentFrame() : null;
         if (frame && (await ribContextHasForm(frame))) return frame;
       }
     } catch {
@@ -779,6 +823,57 @@ async function waitForRibFrame(page, timeoutMs = 15000) {
   return null;
 }
 
+async function joueursFormContext(page, memberId) {
+  const needle = `joueurs.php?idj=${memberId}`;
+  const candidates = [];
+  const consider = (ctx) => {
+    try {
+      if (ctx && String(ctx.url() || '').includes(needle)) candidates.push(ctx);
+    } catch {
+      /* frame fermee */
+    }
+  };
+  consider(page);
+  for (const frame of page.frames?.() || []) consider(frame);
+  for (const ctx of candidates) {
+    const bank = await ctx
+      .evaluate(
+        () =>
+          Boolean(
+            document.querySelector(
+              'form[name="db1_form"] input[onclick*="showBanque"], input[onclick*="showBanque"]'
+            )
+          )
+      )
+      .catch(() => false);
+    if (bank) return ctx;
+  }
+  return null;
+}
+
+async function ensureJoueursParent(page, memberId) {
+  const ready = async () => {
+    const deadline = Date.now() + 12000;
+    while (Date.now() < deadline) {
+      const ctx = await joueursFormContext(page, memberId);
+      if (ctx) return ctx;
+      await page.waitForTimeout(400);
+    }
+    return null;
+  };
+  const found = await joueursFormContext(page, memberId);
+  if (found) return found;
+  const href = String(page.url() || '');
+  if (!href.includes(`joueurs.php?idj=${memberId}`)) {
+    const base = process.env.DECIPLUS_URL || 'https://boxingcenter.deciplus.pro/';
+    await page.goto(new URL(`joueurs.php?idj=${memberId}`, base).href, {
+      waitUntil: 'domcontentloaded',
+      timeout: Math.min(navTimeoutMs(), 45000),
+    });
+  }
+  return ready();
+}
+
 async function openRibForm(page, memberId, { forceFresh = false } = {}) {
   const base = process.env.DECIPLUS_URL || 'https://boxingcenter.deciplus.pro/';
 
@@ -792,9 +887,9 @@ async function openRibForm(page, memberId, { forceFresh = false } = {}) {
     }
   }
 
-  // IMPORTANT : ouvrir rib.php depuis joueurs.php (pas check.php).
-  // Le callback Deciplus ne clique « Mettre à jour » (Rib-nok -> Rib-ok)
-  // que si window.parent est joueurs.php?idj=...
+  // IMPORTANT : ouvrir rib.php depuis joueurs.php (pas check.php ni nextgen encode).
+  // Le script de reponse ne clique « Mettre à jour » que si
+  // window.parent.location.href contient litteralement joueurs.php?idj=
   const ribOpenSelectors = [
     'a:has-text("Saisir le mandat")',
     'a:has-text("Saisir mandat")',
@@ -808,14 +903,56 @@ async function openRibForm(page, memberId, { forceFresh = false } = {}) {
     'span[alt="Rib-nok"]',
   ].join(', ');
 
-  await openMemberDetail(page, memberId).catch(() => {});
-  if (await clickFirst(page, sel('member_detail.saisir_rib_button'))) {
+  const joueurs = await ensureJoueursParent(page, memberId).catch(() => null);
+  const openFrom = joueurs || page;
+  const openedBank = await openFrom
+    .evaluate(() => {
+      const el = document.querySelector(
+        'input[onclick*="showBanque"], input[title="Modifier les coordonnées bancaires"]'
+      );
+      if (!el) return false;
+      el.click();
+      return true;
+    })
+    .catch(() => false);
+  if (openedBank) {
+    const frame = await waitForRibFrame(page, 12000);
+    if (frame) return frame;
+  }
+  if (await clickFirst(openFrom, sel('member_detail.saisir_rib_button'))) {
     const frame = await waitForRibFrame(page, 10000);
     if (frame) return frame;
   }
-  if (await clickFirst(page, ribOpenSelectors)) {
+  if (await clickFirst(openFrom, ribOpenSelectors)) {
     const frame = await waitForRibFrame(page, 10000);
     if (frame) return frame;
+  }
+  const clickedDom = await openFrom
+    .evaluate(() => {
+      const el = [...document.querySelectorAll('a, img, span, button, input')].find((n) => {
+        const href = n.getAttribute?.('href') || '';
+        const blob = `${href} ${n.getAttribute?.('onclick') || ''} ${n.getAttribute?.('alt') || ''} ${n.getAttribute?.('title') || ''} ${n.textContent || ''}`;
+        return /showBanque|rib\.php|saisir le mandat|rib-nok|coordonn[eé]es bancaires/i.test(blob);
+      });
+      if (!el) return false;
+      (el.closest('a') || el).click();
+      return true;
+    })
+    .catch(() => false);
+  if (clickedDom) {
+    const frame = await waitForRibFrame(page, 12000);
+    if (frame) return frame;
+  }
+  if (joueurs) {
+    logWarn('Bouton mandat introuvable sur joueurs.php — repli check.php', {
+      member_id: memberId,
+    });
+  } else {
+    await openMemberDetail(page, memberId).catch(() => {});
+    if (await clickFirst(page, sel('member_detail.saisir_rib_button'))) {
+      const frame = await waitForRibFrame(page, 10000);
+      if (frame) return frame;
+    }
   }
   for (const ctx of page.frames?.() || []) {
     if (!/joueurs\.php/i.test(ctx.url() || '')) continue;
@@ -927,12 +1064,12 @@ async function clickReplaceMandate(ctx) {
         /remplacer le mandat|nouveau mandat|r[eé]g[eé]n[eé]rer le mandat/i,
       ];
       for (const re of prefer) {
-        const el = nodes.find((n) =>
+      const el = nodes.find((n) =>
           re.test(`${n.textContent || ''} ${n.value || ''}`)
-        );
+      );
         if (!el) continue;
-        el.click();
-        return true;
+      el.click();
+      return true;
       }
       return false;
     })
@@ -1113,7 +1250,102 @@ async function submitRibForm(ctx, page) {
   await randomDelay(800, 1500);
 }
 
+async function runRibParentCallback(page) {
+  // Reponse rib.php : le script parent ne s'execute pas apres un fetch().
+  // Il clique Mettre a jour si l'URL contient joueurs.php?idj=, y compris dans une iframe.
+  let mode = 'none';
+  for (const ctx of [page, ...(page.frames?.() || [])]) {
+    const hit = await ctx
+      .evaluate(() => {
+        const href = String(location.href || '');
+        if (href.indexOf('joueurs.php?idj=') > -1) {
+          const btn = document.querySelector('input[value="Mettre à jour"]');
+          if (btn) {
+            btn.click();
+            return 'maj';
+          }
+        }
+        const bridge = window.VueBridge;
+        if (bridge && typeof bridge.navigateToLegacy === 'function') return 'bridge';
+        return '';
+      })
+      .catch(() => '');
+    if (hit === 'maj') {
+      mode = 'maj';
+      break;
+    }
+    if (hit === 'bridge' && mode === 'none') mode = 'bridge';
+  }
+  if (mode === 'bridge') {
+    await page
+      .evaluate(() => {
+        const bridge = window.VueBridge;
+        if (bridge && typeof bridge.navigateToLegacy === 'function') {
+          bridge.navigateToLegacy(location.pathname + location.search);
+        }
+      })
+      .catch(() => {});
+    mode = 'navigate';
+  }
+  await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+  return mode;
+}
+
+async function submitRibFormInPlace(page, ribCtx) {
+  await prepareRibSubmit(ribCtx);
+  let onResp = () => {};
+  const posted = new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      page.off('response', onResp);
+      resolve(null);
+    }, 20000);
+    onResp = async (res) => {
+      try {
+        if (res.request().method() !== 'POST') return;
+        if (!/rib\.php/i.test(res.url())) return;
+        const text = await res.text().catch(() => '');
+        clearTimeout(timer);
+        page.off('response', onResp);
+        resolve({
+          status: res.status(),
+          closeScript: /GB_hide/.test(text) && /Mettre à jour|navigateToLegacy/.test(text),
+          rejected: /adresse postale est obligatoire|iban invalide/i.test(text),
+        });
+      } catch {
+        /* corps deja lu */
+      }
+    };
+    page.on('response', onResp);
+  });
+  await ribCtx
+    .evaluate(() => {
+      const form = document.forms.db1_form || document.querySelector('form');
+      if (!form) return;
+      const submit = form.querySelector('input[name="alde_submit"]');
+      if (submit) submit.value = 'valider';
+      form.submit();
+    })
+    .catch(() => {});
+  const result = await posted;
+  if (result?.closeScript && !result.rejected) {
+    await page
+      .waitForResponse(
+        (res) => /joueurs\.php/i.test(res.url()) && res.request().method() === 'POST',
+        { timeout: 15000 }
+      )
+      .catch(() => null);
+  }
+  await page.waitForTimeout(1200);
+  return result || { status: 0, closeScript: false, rejected: false };
+}
+
 async function submitAndFinalizeRib(page, memberId, ribCtx, iban, customer, gymConfig) {
+  const joueurs = await ensureJoueursParent(page, memberId).catch(() => null);
+  if (joueurs) {
+    const still = await ribContextHasForm(ribCtx).catch(() => false);
+    if (!still) ribCtx = await openRibForm(page, memberId, { forceFresh: true });
+  }
   await fillRibForm(ribCtx, iban, customer, gymConfig);
   const before = await readMandateMeta(ribCtx);
   if (!isLikelyBic(before.bic)) {
@@ -1141,8 +1373,19 @@ async function submitAndFinalizeRib(page, memberId, ribCtx, iban, customer, gymC
     logWarn('Mandat SEPA sans BIC — pas de POST', { member_id: memberId });
     return { ok: false, error: 'bic_missing' };
   }
-  await submitRibForm(ribCtx, page);
+  const real = await submitRibFormInPlace(page, ribCtx);
+  logInfo('Mandat SEPA soumis depuis joueurs.php', {
+    member_id: memberId,
+    status: real.status || 0,
+    close_script: Boolean(real.closeScript),
+    parent_joueurs: Boolean(joueurs),
+  });
+  if (real.closeScript && !real.rejected) {
+    return { ok: true, status: real.status, callback: 'maj' };
+  }
   const posted = await postCurrentRibForm(ribCtx);
+  const callback = await runRibParentCallback(page);
+  posted.callback = callback;
   await finalizeRibParentMemberUpdate(page, memberId);
   return posted;
 }
@@ -1256,13 +1499,13 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
   }
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const ribCtx = await openRibForm(page, memberId, { forceFresh: true });
-    const existingMeta = await readMandateMeta(ribCtx);
-    const existingIban = normalizeIban(existingMeta.iban);
-    const ibanAlready =
+    let ribCtx = await openRibForm(page, memberId, { forceFresh: true });
+    let existingMeta = await readMandateMeta(ribCtx);
+    let existingIban = normalizeIban(existingMeta.iban);
+    let ibanAlready =
       existingIban === value ||
       (existingIban && value && existingIban.startsWith(value.slice(0, 20)));
-    const needsSave = await ribMandateNeedsSave(ribCtx);
+    let needsSave = await ribMandateNeedsSave(ribCtx);
     let ficheAsks = false;
     if (existingMeta.rum && ibanAlready && isLikelyBic(existingMeta.bic) && !needsSave) {
       await closeGreyboxIfOpen(page);
@@ -1319,7 +1562,7 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
             return numero !== want.slice(14, 25);
           }, value)
           .catch(() => false);
-        if (staleRib || attempt >= 2) {
+        if (staleRib) {
           const regenerated = await clickReplaceMandate(formCtx);
           logWarn('Mandat SEPA régénéré (Rib-nok bloqué)', {
             member_id: memberId,
@@ -1403,16 +1646,37 @@ async function setMemberIban(page, memberId, iban, customer = {}, gymConfig = {}
     }
 
     // Ancien mandat (souvent 0 échéance / IBAN différent) : Deciplus refuse l’édition.
+    // Après remplacement, on rouvre le formulaire et on remplit dans la même tentative
+    // (sinon on brûle les 3 essais en cliquant Remplacer sans jamais saisir l’IBAN).
     if (existingMeta.rum && existingIban !== value) {
       const replaced = await clickReplaceMandate(ribCtx);
       if (replaced) {
         logInfo('Mandat SEPA existant — remplacement demandé', {
           member_id: memberId,
           attempt,
+          old_iban: existingIban ? `${existingIban.slice(0, 8)}…` : null,
         });
         await closeGreyboxIfOpen(page);
-        await randomDelay(400, 800);
-        continue;
+        await randomDelay(700, 1200);
+        ribCtx = await openRibForm(page, memberId, { forceFresh: true });
+        existingMeta = await readMandateMeta(ribCtx);
+        existingIban = normalizeIban(existingMeta.iban);
+        ibanAlready =
+          existingIban === value ||
+          (existingIban && value && existingIban.startsWith(value.slice(0, 20)));
+        needsSave = await ribMandateNeedsSave(ribCtx);
+        // Si le vieux mandat est encore là, on force quand même la saisie après fill.
+        if (existingMeta.rum && existingIban && existingIban !== value && attempt >= 2) {
+          const again = await clickReplaceMandate(ribCtx);
+          logWarn('Remplacement mandat encore nécessaire', {
+            member_id: memberId,
+            again: Boolean(again),
+            attempt,
+          });
+          await closeGreyboxIfOpen(page);
+          await randomDelay(700, 1200);
+          ribCtx = await openRibForm(page, memberId, { forceFresh: true });
+        }
       }
     }
 
@@ -1517,6 +1781,8 @@ module.exports = {
   getRibFrame,
   ribAddressFields,
   ensureMemberPostalAddress,
+  readMandateMeta,
+  clickReplaceMandate,
   clickFirst,
   fillFirst,
   sel,

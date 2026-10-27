@@ -232,18 +232,17 @@ async function clickSellOnSite(page) {
     return true;
   }
 
-  const sellBtn = page.getByRole('button', { name: /Vendre sur ce site/i }).first();
-  const sellLink = page.locator('a:has-text("Vendre sur ce site")').first();
-  const clickSell = async (loc) => {
-    await loc.click({ force: true }).catch(async () => {
-      await loc.evaluate((el) => el.click());
-    });
-  };
-  if ((await sellBtn.count()) > 0) {
-    await clickSell(sellBtn);
-  } else if ((await sellLink.count()) > 0) {
-    await clickSell(sellLink);
-  } else {
+  const clicked = await page
+    .evaluate(() => {
+      const el = [...document.querySelectorAll('button, a, input')].find((n) =>
+        /vendre sur ce site/i.test(`${n.textContent || ''} ${n.value || ''}`)
+      );
+      if (!el) return false;
+      el.click();
+      return true;
+    })
+    .catch(() => false);
+  if (!clicked) {
     const origin = deciplusOrigin();
     await page.goto(`${origin}/nextgen/`, { waitUntil: 'domcontentloaded' }).catch(() => {});
   }
