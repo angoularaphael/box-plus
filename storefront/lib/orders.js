@@ -183,11 +183,14 @@ function validateBirthdate(value) {
 }
 
 function validateShortForm(input, { requireBirthdate = false, product = null } = {}) {
+  const { isFrenchMobilePhone } = require('../../lib/normalize');
   const errors = [];
   if (!input.first_name) errors.push('Prénom requis');
   if (!input.last_name) errors.push('Nom requis');
   if (!input.email) errors.push('Email requis');
-  if (!input.phone) errors.push('Téléphone requis');
+  if (!isFrenchMobilePhone(input.phone)) {
+    errors.push('Téléphone mobile français requis (06 ou 07)');
+  }
   if (requireBirthdate || input.birthdate) {
     const birthErr = validateBirthdate(input.birthdate);
     if (birthErr) errors.push(birthErr);

@@ -68,6 +68,10 @@ describe('lifecycle tunnel', () => {
 
     const shortErrors = validateShortForm(order.customer_short);
     assert.equal(shortErrors.length, 0);
+    assert.ok(validateShortForm({ ...order.customer_short, phone: '' }).some((e) => /mobile/i.test(e)));
+    assert.ok(validateShortForm({ ...order.customer_short, phone: '0512345678' }).some((e) => /mobile/i.test(e)));
+    assert.ok(validateShortForm({ ...order.customer_short, phone: '123' }).some((e) => /mobile/i.test(e)));
+    assert.equal(validateShortForm({ ...order.customer_short, phone: '+33612345678' }).length, 0);
 
     await markPaymentPaid(orderId, { method: 'demo', iban: null });
     const paid = loadOrder(orderId);

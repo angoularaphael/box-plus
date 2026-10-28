@@ -1110,11 +1110,14 @@ async function fillMemberForm(page, customer, gymConfig, order) {
   await fillFirst(ctx, sel.date_naissance || 'input[name="date_naissance"]', formatBirthdate(customer.birthdate));
   await fillFirst(ctx, sel.sexe || 'select[name="sexe"]', genderToDeciplus(customer.gender));
   if (phone) {
-    await fillFirst(ctx, sel.tel || 'input[name="tel"]', phone);
+    await fillFirst(ctx, 'form[name="db1_form"] input[name="tel"]:not(#i_tel)', phone);
+    if (/^0[67]\d{8}$/.test(phone)) {
+      await fillFirst(ctx, 'form[name="db1_form"] input[name="telsms"]', phone);
+    }
   } else {
     await clearFirst(ctx, sel.tel || 'input[name="tel"]:not(#i_tel)');
+    await clearFirst(ctx, sel.telsms || 'input[name="telsms"]');
   }
-  await clearFirst(ctx, sel.telsms || 'input[name="telsms"]');
   await fillFirst(ctx, sel.adr1 || 'input[name="adr1"]', customer.address);
   const adr2 = customer.address2 || customer.adr2;
   if (adr2) await fillFirst(ctx, sel.adr2 || 'input[name="adr2"]', adr2);

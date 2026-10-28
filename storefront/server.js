@@ -3906,6 +3906,17 @@ function createApp() {
         full.email = '';
         full.phone = '';
         full.gym = full.gym || 'minimes';
+      } else {
+        const { isFrenchMobilePhone } = require('../lib/normalize');
+        const phone = String(full.phone || order.customer_short?.phone || '').trim();
+        if (!isFrenchMobilePhone(phone)) {
+          return res.status(400).json({
+            ok: false,
+            errors: ['Téléphone mobile français requis (06 ou 07)'],
+            code: 'phone_required',
+          });
+        }
+        full.phone = phone;
       }
       const errors = validateFullForm(full, product);
       if (errors.length) return res.status(400).json({ ok: false, errors });
@@ -4254,8 +4265,16 @@ function createApp() {
       }
 
       const aventureOrder = isBalmaRetourOrder(order) || order.aventure;
+      const { isFrenchMobilePhone } = require('../lib/normalize');
       const payEmail = String(req.body.email || req.body.customer_short?.email || '').trim();
       const payPhone = String(req.body.phone || req.body.customer_short?.phone || '').trim();
+      if (!aventureOrder && payPhone && !isFrenchMobilePhone(payPhone)) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Téléphone mobile français requis (06 ou 07).',
+          code: 'phone_required',
+        });
+      }
       if (aventureOrder) {
         if (payEmail) {
           if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payEmail)) {
@@ -4275,6 +4294,14 @@ function createApp() {
           ...(payPhone ? { phone: payPhone } : {}),
         };
         await saveOrderAsync(order);
+      }
+
+      if (!aventureOrder && !isFrenchMobilePhone(order.customer_short?.phone)) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Téléphone mobile français requis (06 ou 07).',
+          code: 'phone_required',
+        });
       }
 
       if (req.body.gym) {
