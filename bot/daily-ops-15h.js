@@ -12,6 +12,7 @@ const { runUnpaidDailyOps } = require('./unpaid-daily-ops');
 const { maybeRunBalmaEuMigrationDaily } = require('./migrate-balma-eu-daily');
 
 let dailyOpsRunning = false;
+let dailyOpsCooldownUntil = 0;
 
 function stateFile() {
   const dir = process.env.BOT_DATA_DIR || path.join(ROOT, 'data');
@@ -96,7 +97,10 @@ async function runDailyOps15h({ force = false } = {}) {
     report.finished_at = new Date().toISOString();
     return report;
   } catch (err) {
+    state.last_error = String(err.message || err).slice(0, 300);
+    state.last_error_at = new Date().toISOString();
     saveState(state);
+    await closeBrowser().catch(() => {});
     throw err;
   } finally {
     dailyOpsRunning = false;
@@ -106,10 +110,14 @@ async function runDailyOps15h({ force = false } = {}) {
 async function maybeRunDailyOps15h() {
   try {
     if (dailyOpsRunning) return { skipped: true, reason: 'already_running' };
+    if (Date.now() < dailyOpsCooldownUntil) {
+      return { skipped: true, reason: 'cooldown' };
+    }
     const state = loadState();
     if (!shouldRunDailyOps15h(new Date(), state.last_date)) return { skipped: true, reason: 'not_due' };
     return await runDailyOps15h();
   } catch (err) {
+    dailyOpsCooldownUntil = Date.now() + 10 * 60 * 1000;
     logWarn('Ops quotidien 15h', { error: err.message });
     return { ok: false, error: err.message };
   }
