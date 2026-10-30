@@ -76,7 +76,54 @@ async function sendAm04GraceEmail(member = {}, grace = {}) {
   return { sent: true, messageId: out.messageId, to: email };
 }
 
+function buildResiliationEmail({ firstName }) {
+  const who = firstName ? `${firstName},` : 'Bonjour,';
+  const subject = 'Contrat résilié — prélèvement non passé';
+  const text = [
+    who,
+    '',
+    'La nouvelle tentative de prélèvement n’a pas abouti.',
+    'Votre contrat Boxing Center est résilié.',
+    '',
+    'Pour reprendre un abonnement, passez par la boutique ou l’accueil de votre salle.',
+    '',
+    'L’équipe Boxing Center',
+  ].join('\n');
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><title>${subject}</title></head>
+<body style="margin:0;padding:24px;background:#f5f5f5;font-family:Arial,Helvetica,sans-serif;color:#111">
+  <div style="max-width:560px;margin:0 auto;background:#fff;padding:28px 24px;border-radius:8px;line-height:1.55;font-size:15px">
+    <p style="margin:0 0 16px">${who}</p>
+    <p style="margin:0 0 14px">La nouvelle tentative de prélèvement n’a pas abouti.</p>
+    <p style="margin:0 0 14px">Votre contrat <strong>Boxing Center</strong> est <strong>résilié</strong>.</p>
+    <p style="margin:24px 0 0">L’équipe Boxing Center<br/><a href="mailto:boxingcentertls@gmail.com" style="color:#111">boxingcentertls@gmail.com</a></p>
+  </div>
+</body></html>`;
+  return { subject, text, html };
+}
+
+async function sendContractCancelledEmail(member = {}) {
+  if (!brevoConfigured()) return { sent: false, reason: 'brevo_not_configured' };
+  const email = String(member.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { sent: false, reason: 'no_email' };
+  const mail = buildResiliationEmail({ firstName: firstNameOf(member.first_name || member.name) });
+  const out = await sendEmailViaBrevo({
+    to: email,
+    subject: mail.subject,
+    text: mail.text,
+    html: mail.html,
+    fromName: 'Boxing Center',
+    fromEmail: senderEmail(),
+    replyTo: defaultReplyTo(),
+    headers: { 'X-Transactional': 'true' },
+    tags: [{ name: 'category', value: 'unpaid-resiliation' }],
+  });
+  return { sent: true, messageId: out.messageId, to: email };
+}
+
 module.exports = {
   buildAm04GraceEmail,
   sendAm04GraceEmail,
+  buildResiliationEmail,
+  sendContractCancelledEmail,
 };

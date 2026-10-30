@@ -12,7 +12,8 @@ const { isStaleOrInactiveAbo } = require('../lib/replace-existing-abo');
 const { isDeciplusBadgeLabel } = require('../lib/catalog-sale');
 const { matchGymSlug, resolveSaleGymConfig } = require('../lib/gym-slugs');
 const { reportUnpaidEcheance } = require('./echeancier-report');
-const { sendAm04GraceEmail } = require('../storefront/lib/unpaid-am04-email');
+const { sendAm04GraceEmail, sendContractCancelledEmail } = require('../storefront/lib/unpaid-am04-email');
+const { notifyMemberApp } = require('../lib/app-member-notice');
 
 function stateFile() {
   const dir = process.env.BOT_DATA_DIR || path.join(ROOT, 'data');
@@ -166,6 +167,13 @@ async function runUnpaidDailyOps(page) {
         const mail = await sendAm04GraceEmail(memberRow, state.am04_grace[memberId]);
         row.email = mail;
         if (mail.sent) state.am04_grace[memberId].email_sent_at = new Date().toISOString();
+        row.app = await notifyMemberApp({
+          eventId: `unpaid-grace:${memberId}:${decision.failedDue || eid}`,
+          email: memberRow.email,
+          kind: 'prelevement_retry',
+          title: 'Prélèvement non passé',
+          body: `Le prélèvement n’a pas abouti. Une nouvelle tentative est prévue le ${decision.newDue}. Si elle échoue, le contrat sera résilié.`,
+        });
       } else {
         row.email = { sent: false, reason: 'no_email' };
       }
@@ -199,7 +207,19 @@ async function runUnpaidDailyOps(page) {
         at: new Date().toISOString(),
         why: decision.why,
       };
-      if (out.ok) delete state.am04_grace[memberId];
+      if (out.ok) {
+        delete state.am04_grace[memberId];
+        if (isValidEmail(memberRow.email)) {
+          row.email = await sendContractCancelledEmail(memberRow);
+          row.app = await notifyMemberApp({
+            eventId: `unpaid-resilie:${memberId}`,
+            email: memberRow.email,
+            kind: 'prelevement_resilie',
+            title: 'Contrat résilié',
+            body: 'La nouvelle tentative de prélèvement n’a pas abouti. Votre contrat est résilié.',
+          });
+        }
+      }
       saveState(state);
       report.resiliated.push(row);
       logInfo(out.ok ? 'Resiliation impayé' : 'Resiliation impayé partielle', {
