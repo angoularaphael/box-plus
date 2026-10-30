@@ -87,7 +87,7 @@ function productSnapshot(product) {
   };
 }
 
-function createDraft({ product_id, product, customer_short, gym, referral_friend, source, party_size }) {
+function createDraft({ product_id, product, customer_short, gym, referral_friend, source, party_size, app_checkout }) {
   initDirs();
   const order_id = generateOrderId();
   const access_token = generateAccessToken();
@@ -106,6 +106,7 @@ function createDraft({ product_id, product, customer_short, gym, referral_friend
     referral_friend: referral_friend || null,
     source: source || null,
     ...(partySize ? { party_size: partySize, companions: [] } : {}),
+    ...(app_checkout ? { app_checkout } : {}),
     payment: { status: 'pending' },
     signature: null,
     documents: {},
@@ -117,8 +118,8 @@ function createDraft({ product_id, product, customer_short, gym, referral_friend
   return order;
 }
 
-async function createDraftAsync({ product_id, product, customer_short, gym, referral_friend, source, party_size }) {
-  const order = createDraft({ product_id, product, customer_short, gym, referral_friend, source, party_size });
+async function createDraftAsync({ product_id, product, customer_short, gym, referral_friend, source, party_size, app_checkout }) {
+  const order = createDraft({ product_id, product, customer_short, gym, referral_friend, source, party_size, app_checkout });
   await persistence.saveOrderAsync(order);
   return order;
 }
@@ -308,6 +309,13 @@ async function markPaymentPaidAsync(orderId, paymentData) {
     await notifyPassSportIfNeeded(saved);
   } catch {
     /* l'email Pass Sport ne doit pas bloquer le paiement */
+  }
+  try {
+    const { notifyOrderPaid, flushAppBridgeOutbox } = require('../../lib/app-bridge-shop');
+    await notifyOrderPaid(saved);
+    await flushAppBridgeOutbox(saved, saveOrderAsync);
+  } catch {
+    /* notification app ne bloque pas le paiement */
   }
   return saved;
 }
@@ -794,6 +802,25 @@ async function applyBotSaleStatus(orderId, patch = {}) {
   }
   order.bot_processed_at = new Date().toISOString();
   await saveOrderAsync(order);
+  try {
+    const {
+      notifySaleDone,
+      notifySaleFailed,
+      flushAppBridgeOutbox,
+      isAppOrder,
+    } = require('../../lib/app-bridge-shop');
+    if (isAppOrder(order)) {
+      const st = String(patch.status || order.bot_status || '').toLowerCase();
+      if (saleId && ['success', 'manual_ok', 'manual_coach'].includes(st)) {
+        await notifySaleDone(order);
+      } else if (st === 'manual_review' || patch.error) {
+        await notifySaleFailed(order, patch.error || order.bot_error);
+      }
+      await flushAppBridgeOutbox(order, saveOrderAsync);
+    }
+  } catch {
+    /* notification app optionnelle */
+  }
   await closeCompletedSaleJob(order);
   return order;
 }

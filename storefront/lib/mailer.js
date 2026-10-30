@@ -127,6 +127,18 @@ async function buildInscriptionAttachments(order, extra = []) {
     const invoice = await generateInscriptionInvoicePdf(order);
     if (invoice?.filepath) {
       pushFile(invoice.filename, invoice.filepath);
+      try {
+        const { notifyInvoiceIssued, flushAppBridgeOutbox } = require('../../lib/app-bridge-shop');
+        const { saveOrderAsync } = require('./order-lifecycle');
+        await notifyInvoiceIssued(order, {
+          filepath: invoice.filepath,
+          filename: invoice.filename,
+          invoice_number: `FAC-${order.order_id}`,
+        });
+        await flushAppBridgeOutbox(order, saveOrderAsync);
+      } catch {
+        /* notification app optionnelle */
+      }
     }
   } catch (err) {
     logWarn('Facture inscription PDF non générée', {
