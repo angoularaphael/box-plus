@@ -768,7 +768,31 @@ async function applyBotSaleStatus(orderId, patch = {}) {
   const saleId = String(patch.deciplus_sale_id || '').trim();
   if (memberId) order.deciplus_member_id = memberId;
   if (saleId) order.deciplus_sale_id = saleId;
-  if (patch.status) order.bot_status = String(patch.status);
+  let botStatus = patch.status ? String(patch.status) : null;
+  let botErrorPatch = Object.prototype.hasOwnProperty.call(patch, 'error')
+    ? patch.error
+      ? String(patch.error).slice(0, 500)
+      : null
+    : undefined;
+  if (String(botStatus || '').toLowerCase() === 'success' && !saleId) {
+    const snap = order.product_snapshot || {};
+    const saleType = String(snap.sale_type || order.sale_type || '').toLowerCase();
+    const paid = String(order.payment?.status || '').toLowerCase() === 'paid';
+    const id = String(order.order_id || '');
+    const needsSale =
+      paid &&
+      snap.create_sale !== false &&
+      saleType !== 'none' &&
+      id &&
+      !/^(COACH|CHANGE|VERIFY|CANCEL)-/i.test(id);
+    if (needsSale && !order.manual_migration && !order.skip_bot) {
+      botStatus = 'manual_review';
+      if (botErrorPatch === undefined) {
+        botErrorPatch = 'Vente Deciplus absente (sale_id manquant)';
+      }
+    }
+  }
+  if (botStatus) order.bot_status = botStatus;
   if (patch.sales_bot) order.sales_bot = String(patch.sales_bot);
   if (patch.source_bot) order.last_bot_id = String(patch.source_bot);
   if (patch.attempts != null) order.bot_attempts = Math.max(0, Number(patch.attempts || 0));
@@ -786,17 +810,19 @@ async function applyBotSaleStatus(orderId, patch = {}) {
   }
   if (Object.prototype.hasOwnProperty.call(patch, 'error')) {
     order.bot_error = patch.error ? String(patch.error).slice(0, 500) : null;
-  } else if (String(patch.status || '').toLowerCase() === 'success') {
+  } else if (botErrorPatch !== undefined) {
+    order.bot_error = botErrorPatch;
+  } else if (String(botStatus || patch.status || '').toLowerCase() === 'success') {
     order.bot_error = null;
   }
   if (memberId) advanceOrder(order, STATES.MEMBER_CREATED);
   if (patch.mandate_set) advanceOrder(order, STATES.MANDATE_SET);
   if (saleId) advanceOrder(order, STATES.SALE_CREATED);
   if (patch.verified) advanceOrder(order, STATES.VERIFIED);
-  if (patch.status === 'manual_review') {
+  if (patch.status === 'manual_review' || String(botStatus || '').toLowerCase() === 'manual_review') {
     const { transitionOrder } = require('../../lib/job-lifecycle');
     transitionOrder(order, STATES.MANUAL_REVIEW, {
-      reason: patch.error || 'Revue manuelle requise',
+      reason: botErrorPatch || patch.error || 'Revue manuelle requise',
       action_required: patch.action_required || null,
     });
   }

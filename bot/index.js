@@ -913,8 +913,27 @@ async function processSaleJob(page, order, jobMeta = {}) {
     }
   }
 
-  const finalStatus =
+  let finalStatus =
     saleResult.manual_review || ibanError ? STATUS.MANUAL_REVIEW : STATUS.SUCCESS;
+
+  if (
+    finalStatus === STATUS.SUCCESS &&
+    paid &&
+    needsSale &&
+    !saleResult.sale_id &&
+    productConfig.create_sale !== false &&
+    String(productConfig.sale_type || '').toLowerCase() !== 'none'
+  ) {
+    finalStatus = STATUS.MANUAL_REVIEW;
+    if (!saleResult.error && !ibanError) {
+      saleResult.error = 'Vente Deciplus non confirmée (sale_id manquant)';
+    }
+    logWarn('Job classé revue manuelle — succès sans contrat Deciplus', {
+      order_id: order.order_id,
+      member_id: memberId,
+      sale_action: saleResult.action || null,
+    });
+  }
 
   if (
     finalStatus === STATUS.SUCCESS &&
