@@ -149,6 +149,22 @@
     "requires_payment": true
   },
   {
+    "id": "licence-loisirs-trophy",
+    "category": "Licences",
+    "name": "Licence loisirs Trophy 50 €",
+    "tagline": "Cotisation licence loisirs FFBoxe / FFKMDA",
+    "description": "Cotisation de licence loisirs 50 € pour le Boxing Trophy 19. Paiement en une fois. Après paiement, téléchargez le formulaire et le certificat médical sur la page Licence du site Trophy, puis déposez le dossier signé au manager Minimes ou Portet.",
+    "price_cents": 5000,
+    "price_label": "50,00 €",
+    "badge": "Trophy 19",
+    "requires_iban": false,
+    "requires_payment": true,
+    "sale_type": "carte",
+    "auto_badge": false,
+    "manual": true,
+    "installments_note": "Paiement unique 50 € — carte (Payplug) ou PayPal selon la salle"
+  },
+  {
     "id": "offre-ete",
     "category": "Abonnements",
     "name": "OFFRE ETE 2026 - 3 MOIS ILLIMITÉS",

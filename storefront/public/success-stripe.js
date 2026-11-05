@@ -161,9 +161,30 @@ async function confirmPayplugMateriel() {
   }
 }
 
+function showLicenceTrophyDocs() {
+  if (productId !== 'licence-loisirs-trophy') return;
+  const successTextEl = document.getElementById('successText');
+  if (successTextEl) {
+    successTextEl.textContent =
+      'Paiement de la licence loisirs enregistre. Telechargez maintenant vos formulaires sur la page Licence du Trophy, puis deposez le dossier signe au manager Minimes ou Portet.';
+  }
+  const actions = document.getElementById('successActions');
+  if (actions && !actions.querySelector('[data-trophy-licence]')) {
+    const a = document.createElement('a');
+    a.href = 'https://boxing-trophy-18.vercel.app/#licence';
+    a.className = 'btn';
+    a.dataset.trophyLicence = '1';
+    a.rel = 'noopener noreferrer';
+    a.textContent = 'Telecharger les documents licence';
+    actions.insertBefore(a, actions.firstChild);
+  }
+}
+
 const successText = document.getElementById('successText');
 if (!successText) {
   /* legacy page */
+} else if (productId === 'licence-loisirs-trophy') {
+  showLicenceTrophyDocs();
 } else if (orderType === 'materiel') {
   if (demo) {
     successText.textContent =

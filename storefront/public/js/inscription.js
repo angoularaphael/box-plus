@@ -106,7 +106,11 @@
     order: null,
     config: null,
     shortDraft: null,
-    gymDraft: null,
+    gymDraft: (() => {
+      const g = String(params.get('gym') || '').trim().toLowerCase();
+      const allowed = new Set(['minimes', 'ramonville', 'etats-unis', 'st-cyprien', 'portet']);
+      return allowed.has(g) ? g : null;
+    })(),
     photoUploaded: false,
     idDocumentUploaded: false,
     emailWarning: null,
