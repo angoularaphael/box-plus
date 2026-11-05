@@ -371,6 +371,20 @@
     return false;
   }
 
+
+  function isLicenceLoisirsTrophy() {
+    const p = state.product || state.order?.product_snapshot || {};
+    const id = String(
+      state.productId ||
+        state.order?.product_id ||
+        p.id ||
+        p.legacy_id ||
+        params.get('product') ||
+        ''
+    ).toLowerCase();
+    return id === 'licence-loisirs-trophy' || id.includes('licence-loisirs');
+  }
+
   function essaiCompleteStepsNoticeHtml(compact = false) {
     if (!isPaidSeanceEssai()) return '';
     if (compact) {
@@ -2036,6 +2050,10 @@
         goToStep(4);
         return;
       }
+      if (isLicenceLoisirsTrophy() && state.gymDraft) {
+        goToStep(3);
+        return;
+      }
       goToStep(2);
     };
   }
@@ -3154,6 +3172,45 @@
       (window.BCPaths && typeof window.BCPaths.link === 'function'
         ? window.BCPaths.link('/')
         : null) || '/';
+    if (isLicenceLoisirsTrophy()) {
+      stepContent.innerHTML = `
+      <div class="success-page success-page--celebrate" style="margin:20px auto">
+        <div class="success-icon-wrap" aria-hidden="true">
+          <span class="success-ring"></span>
+          <span class="success-burst">${Array.from({ length: 8 }, () => '<i></i>').join('')}</span>
+          <div class="success-icon"></div>
+        </div>
+        <h1>Licence payée et signée</h1>
+        <p class="sub" style="margin-top:-4px">Merci — votre cotisation de 50 € est enregistrée.</p>
+        ${emailNote}
+        <div class="info-box" style="text-align:left">
+          <strong>Référence :</strong> ${state.orderId}<br />
+          <strong>Offre :</strong> Licence loisirs Trophy — 50,00 €
+        </div>
+        <div class="info-box" style="text-align:left;margin-top:16px">
+          <strong>Procédure à suivre</strong>
+          <ol style="margin:10px 0 0 18px;padding:0;line-height:1.55">
+            <li>Télécharger le formulaire de licence et le certificat médical.</li>
+            <li>Faire remplir et tamponner le dossier par votre médecin.</li>
+            <li>Déposer le dossier signé au manager de n'importe quelle salle Boxing Center (Minimes, Portet, Ramonville, Saint-Cyprien ou États-Unis) pour enregistrement fédéral, au plus tard le 11 novembre 2026.</li>
+          </ol>
+        </div>
+        <div class="success-actions" style="display:flex;flex-direction:column;gap:12px;margin-top:24px">
+          <button type="button" class="btn block" id="downloadContractBtn">Télécharger ma facture 50 €</button>
+          <a class="btn secondary block" href="/documents/licence-loisirs/licence-loisirs-ffboxe.pdf" target="_blank" rel="noopener">Formulaire licence loisirs (PDF)</a>
+          <a class="btn secondary block" href="/documents/licence-loisirs/certificat-medical-ffkmda-loisir.pdf" target="_blank" rel="noopener">Certificat médical FFKMDA (PDF)</a>
+          <a class="btn secondary block" href="/documents/licence-loisirs/charte-webmaster-licence-loisirs.pdf" target="_blank" rel="noopener">Charte webmaster licence (PDF)</a>
+          <a href="${homeHref}" class="btn secondary block" id="confirmHomeBtn">Retour à l'accueil</a>
+        </div>
+      </div>`;
+      document.getElementById('confirmHomeBtn')?.addEventListener('click', () => {
+        clearCacheAfterConfirm();
+      });
+      document.getElementById('downloadContractBtn').onclick = () => {
+        window.BCContract.openView(state.orderId, { token: state.token });
+      };
+      return;
+    }
     stepContent.innerHTML = `
       <div class="success-page success-page--celebrate" style="margin:20px auto">
         <div class="success-icon-wrap" aria-hidden="true">

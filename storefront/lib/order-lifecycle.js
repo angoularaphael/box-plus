@@ -78,6 +78,8 @@ function productSnapshot(product) {
     deciplus_total_note: product.deciplus_total_note || null,
     requires_payment: product.requires_payment,
     sale_type: product.sale_type,
+    create_sale: product.create_sale !== false,
+    skip_bot: product.skip_bot === true,
     deciplus_id: product.deciplus_id || null,
     tab: product.tab || null,
     subsection: product.subsection || null,
@@ -114,6 +116,9 @@ function createDraft({ product_id, product, customer_short, gym, referral_friend
     updated_at: new Date().toISOString(),
     ready_for_dispatch: false,
   };
+  if (product?.skip_bot === true || String(product_id || '').toLowerCase() === 'licence-loisirs-trophy') {
+    order.skip_bot = true;
+  }
   saveOrder(order);
   return order;
 }

@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const { logInfo, logWarn } = require('../../lib/logger');
 const { getMailFrom, CGV_URL, REGLEMENT_URL, SITE_URL } = require('./branding');
 const {
@@ -10,10 +11,51 @@ const { sendEmailViaBrevo, isConfigured, defaultReplyTo } = require('./brevo-sen
 const { formatPickupLine } = require('./gym-pickup');
 const { CLUB_PORTET } = require('./pdf-layout');
 
+function isLicenceLoisirsOrder(order = {}) {
+  const id = String(order.product_id || order.product_snapshot?.id || '').toLowerCase();
+  return id === 'licence-loisirs-trophy' || id.includes('licence-loisirs');
+}
+
+function licenceDocsDir() {
+  return path.join(__dirname, '../public/documents/licence-loisirs');
+}
+
+function buildLicenceConfirmationHtml(order, attachmentNames = []) {
+  const short = order.customer_short || {};
+  const pjList =
+    attachmentNames.length > 0
+      ? `<p style="font-size:13px;color:#334155"><strong>Pieces jointes :</strong> ${attachmentNames
+          .map((n) => escapeHtml(n))
+          .join(', ')}</p>`
+      : '';
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Licence loisirs Trophy — Boxing Center</title></head>
+<body style="font-family:Arial,sans-serif;color:#1A1A2E;max-width:600px;margin:0 auto;padding:24px">
+  <h1 style="color:#0B1F3A">Licence loisirs Trophy — paiement confirme</h1>
+  <p>Bonjour ${escapeHtml(short.first_name || '')},</p>
+  <p>Votre cotisation de <strong>50 EUR</strong> pour la licence loisirs du Boxing Trophy 19 est enregistree. Votre facture et les documents a faire remplir sont en pieces jointes.</p>
+  <p><strong>Procedure a suivre :</strong></p>
+  <ol>
+    <li>Telecharger le formulaire de licence et le certificat medical (pieces jointes).</li>
+    <li>Faire remplir et tamponner le dossier par votre medecin.</li>
+    <li>Deposer le dossier signe au manager de <strong>n'importe quelle salle Boxing Center</strong> (Minimes, Portet, Ramonville, Saint-Cyprien ou Etats-Unis) pour enregistrement federal, au plus tard le <strong>11 novembre 2026</strong>.</li>
+  </ol>
+  <p>Sans regularisation dans ce delai, votre inscription et votre combat pourront etre annules.</p>
+  <p><strong>Reference :</strong> ${escapeHtml(order.order_id || '')}</p>
+  ${pjList}
+  <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="${SITE_URL}" style="color:#2EC4C6">${SITE_URL.replace('https://', '')}</a></p>
+</body>
+</html>`;
+}
+
 function buildConfirmationHtml(order, attachmentNames = []) {
   const short = order.customer_short || {};
   const product = order.product_snapshot || {};
   const gym = order.customer_full?.gym || '—';
+  if (isLicenceLoisirsOrder(order)) {
+    return buildLicenceConfirmationHtml(order, attachmentNames);
+  }
   const aventure =
     order.aventure ||
     order.skip_dossier ||
@@ -92,6 +134,7 @@ function escapeHtml(value) {
 async function buildInscriptionAttachments(order, extra = []) {
   const attachments = [];
   const seenNames = new Set();
+  const licenceOrder = isLicenceLoisirsOrder(order);
 
   const pushBuffer = (filename, content, filepath = null) => {
     if (!filename || !content || !Buffer.isBuffer(content) || content.length < 500) return false;
@@ -110,17 +153,19 @@ async function buildInscriptionAttachments(order, extra = []) {
     }
   };
 
-  try {
-    const legal = await generateInscriptionLegalPdfs(order);
-    for (const pdf of legal?.pdfs || []) {
-      if (pdf?.filepath) pushFile(pdf.filename, pdf.filepath);
+  if (!licenceOrder) {
+    try {
+      const legal = await generateInscriptionLegalPdfs(order);
+      for (const pdf of legal?.pdfs || []) {
+        if (pdf?.filepath) pushFile(pdf.filename, pdf.filepath);
+      }
+    } catch (err) {
+      logWarn('PDF légaux inscription non générés', {
+        order_id: order.order_id,
+        error: err.message,
+        stack: err.stack,
+      });
     }
-  } catch (err) {
-    logWarn('PDF légaux inscription non générés', {
-      order_id: order.order_id,
-      error: err.message,
-      stack: err.stack,
-    });
   }
 
   try {
@@ -146,6 +191,19 @@ async function buildInscriptionAttachments(order, extra = []) {
       error: err.message,
       stack: err.stack,
     });
+  }
+
+  if (licenceOrder) {
+    const dir = licenceDocsDir();
+    pushFile('licence-loisirs-ffboxe.pdf', path.join(dir, 'licence-loisirs-ffboxe.pdf'));
+    pushFile(
+      'certificat-medical-ffkmda-loisir.pdf',
+      path.join(dir, 'certificat-medical-ffkmda-loisir.pdf')
+    );
+    pushFile(
+      'charte-webmaster-licence-loisirs.pdf',
+      path.join(dir, 'charte-webmaster-licence-loisirs.pdf')
+    );
   }
 
   for (const att of extra) {
@@ -268,6 +326,10 @@ async function sendConfirmationEmail(order, attachments = []) {
   const mailAttachments = await buildInscriptionAttachments(order, attachments);
   const attachmentNames = mailAttachments.map((a) => a.filename);
   const html = buildConfirmationHtml(order, attachmentNames);
+  const licenceOrder = isLicenceLoisirsOrder(order);
+  const subject = licenceOrder
+    ? `Licence loisirs Trophy 50 EUR — facture et documents — ${order.order_id || ''}`
+    : aventureMailSubject(order);
 
   if (!isConfigured()) {
     logInfo('Email confirmation (mode log)', { to, order_id: order.order_id, attachments: attachmentNames });
@@ -283,12 +345,14 @@ async function sendConfirmationEmail(order, attachments = []) {
   try {
     const result = await sendEmailViaBrevo({
       to,
-      subject: aventureMailSubject(order),
+      subject,
       html,
-      fromName: 'Boxing Center',
-      replyTo: portetReplyTo(order),
+      fromName: licenceOrder ? 'Boxing Center Portet' : 'Boxing Center',
+      replyTo: licenceOrder
+        ? process.env.BREVO_REPLY_TO_PORTET || 'vgsportmanagement@gmail.com'
+        : portetReplyTo(order),
       attachments: mailAttachments,
-      cc: portetDossierCc(order),
+      cc: licenceOrder ? undefined : portetDossierCc(order),
       headers: { 'X-Transactional': 'true' },
       tags: [{ name: 'category', value: 'transactional' }],
     });
