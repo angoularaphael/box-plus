@@ -32,14 +32,15 @@ function buildLicenceConfirmationHtml(order, attachmentNames = []) {
 <html lang="fr">
 <head><meta charset="UTF-8"><title>Licence loisirs Trophy — Boxing Center</title></head>
 <body style="font-family:Arial,sans-serif;color:#1A1A2E;max-width:600px;margin:0 auto;padding:24px">
-  <h1 style="color:#0B1F3A">Licence loisirs Trophy — paiement confirme</h1>
+  <h1 style="color:#0B1F3A">Licence loisirs Trophy — paiement et signature confirmes</h1>
   <p>Bonjour ${escapeHtml(short.first_name || '')},</p>
-  <p>Votre cotisation de <strong>50 EUR</strong> pour la licence loisirs du Boxing Trophy 19 est enregistree. Votre facture et les documents a faire remplir sont en pieces jointes.</p>
+  <p>Votre cotisation de <strong>50 EUR</strong> pour la licence loisirs du Boxing Trophy 19 est enregistree.</p>
+  <p>Vous trouverez en pieces jointes : votre <strong>facture 50 EUR</strong>, le formulaire de licence et le certificat medical.</p>
   <p><strong>Procedure a suivre :</strong></p>
   <ol>
     <li>Telecharger le formulaire de licence et le certificat medical (pieces jointes).</li>
     <li>Faire remplir et tamponner le dossier par votre medecin.</li>
-    <li>Joindre une copie de votre piece d'identite (carte d'identite, passeport ou autre piece officielle).</li>
+    <li>Joindre une copie de votre piece d'identite (carte d'identite, passeport ou autre piece officielle) — deja demandee lors de l'inscription en ligne, a remettre aussi en papier si besoin.</li>
     <li>Deposer le dossier signe + la copie d'identite au manager de <strong>n'importe quelle salle Boxing Center</strong> (Minimes, Portet, Ramonville, Saint-Cyprien ou Etats-Unis) pour enregistrement federal, au plus tard le <strong>11 novembre 2026</strong>.</li>
   </ol>
   <p>Sans regularisation dans ce delai, votre inscription et votre combat pourront etre annules.</p>
