@@ -39,7 +39,8 @@ function buildLicenceConfirmationHtml(order, attachmentNames = []) {
   <ol>
     <li>Telecharger le formulaire de licence et le certificat medical (pieces jointes).</li>
     <li>Faire remplir et tamponner le dossier par votre medecin.</li>
-    <li>Deposer le dossier signe au manager de <strong>n'importe quelle salle Boxing Center</strong> (Minimes, Portet, Ramonville, Saint-Cyprien ou Etats-Unis) pour enregistrement federal, au plus tard le <strong>11 novembre 2026</strong>.</li>
+    <li>Joindre une copie de votre piece d'identite (carte d'identite, passeport ou autre piece officielle).</li>
+    <li>Deposer le dossier signe + la copie d'identite au manager de <strong>n'importe quelle salle Boxing Center</strong> (Minimes, Portet, Ramonville, Saint-Cyprien ou Etats-Unis) pour enregistrement federal, au plus tard le <strong>11 novembre 2026</strong>.</li>
   </ol>
   <p>Sans regularisation dans ce delai, votre inscription et votre combat pourront etre annules.</p>
   <p><strong>Reference :</strong> ${escapeHtml(order.order_id || '')}</p>

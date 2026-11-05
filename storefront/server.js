@@ -3517,11 +3517,17 @@ function createApp() {
       }
       const gym = order.customer_full?.gym;
       const product = findProduct(order.product_id) || order.product_snapshot;
-      if (!isPortetKidsFlow(gym, product)) {
+      const licenceId = String(order.product_id || product?.id || '').toLowerCase();
+      const needsIdDoc =
+        isPortetKidsFlow(gym, product) ||
+        product?.requires_id_document === true ||
+        licenceId === 'licence-loisirs-trophy' ||
+        licenceId.includes('licence-loisirs');
+      if (!needsIdDoc) {
         return res.status(400).json({
           ok: false,
           error: 'id_document_not_required',
-          message: 'La pièce d’identité n’est demandée que pour les inscriptions enfants Portet.',
+          message: 'La pièce d’identité n’est pas demandée pour cette offre.',
         });
       }
       if (!req.file) return res.status(400).json({ ok: false, error: 'id_document_required' });
@@ -3984,15 +3990,21 @@ function createApp() {
         });
       }
 
+      const licenceProfileId = String(order.product_id || product?.id || '').toLowerCase();
+      const needsIdOnProfile =
+        isPortetKidsFlow(full.gym || order.customer_full?.gym, product) ||
+        product?.requires_id_document === true ||
+        licenceProfileId === 'licence-loisirs-trophy' ||
+        licenceProfileId.includes('licence-loisirs');
       if (
-        isPortetKidsFlow(full.gym || order.customer_full?.gym, product) &&
+        needsIdOnProfile &&
         !order.documents?.id_document &&
         !order.documents?.id_document_url
       ) {
         return res.status(400).json({
           ok: false,
           error: 'id_document_required',
-          message: 'Ajoutez une copie de la pièce d’identité.',
+          message: 'Ajoutez une copie de la pièce d’identité (carte d’identité, passeport ou titre officiel).',
         });
       }
 

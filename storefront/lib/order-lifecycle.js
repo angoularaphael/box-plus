@@ -80,6 +80,7 @@ function productSnapshot(product) {
     sale_type: product.sale_type,
     create_sale: product.create_sale !== false,
     skip_bot: product.skip_bot === true,
+    requires_id_document: product.requires_id_document === true,
     deciplus_id: product.deciplus_id || null,
     tab: product.tab || null,
     subsection: product.subsection || null,

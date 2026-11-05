@@ -2014,12 +2014,19 @@
         : p.duration_label || '';
     const benefits = Array.isArray(p.benefits) && p.benefits.length
       ? p.benefits
-      : [
-          'Accès aux 5 salles',
-          'Cours illimités + accès libre',
-          'Encadrement coach professionnel',
-          'Accès libre inclus de 10h à 21h30',
-        ];
+      : isLicenceLoisirsTrophy()
+        ? [
+            'Cotisation licence loisirs FFBoxe / FFKMDA — 50 €',
+            'Facture et formulaires médicaux après signature',
+            'Copie de pièce d’identité requise pour l’enregistrement fédéral',
+            'Dépôt du dossier dans n’importe quelle salle Boxing Center',
+          ]
+        : [
+            'Accès aux 5 salles',
+            'Cours illimités + accès libre',
+            'Encadrement coach professionnel',
+            'Accès libre inclus de 10h à 21h30',
+          ];
     stepContent.innerHTML = `
       <h1>Votre offre</h1>
       <div class="offer-card" style="margin-bottom:24px">
@@ -2569,6 +2576,10 @@
       Boolean(state.order?.documents?.id_document_url) ||
       Boolean(state.order?.documents?.has_id_document);
     const portetKidsDossier = isPortetKidsUi();
+    const needsIdDocumentUi =
+      portetKidsDossier ||
+      isLicenceLoisirsTrophy() ||
+      Boolean((state.product || state.order?.product_snapshot || {}).requires_id_document);
     const size = partySize();
     const extraPeople = isCustomOfferFlow() ? Math.max(0, size - 1) : 0;
     const savedCompanions = Array.isArray(state.order?.companions) ? state.order.companions : [];
@@ -2628,6 +2639,11 @@
             : 'Complétez uniquement les infos encore manquantes. À la confirmation, Boxing Center reçoit le récapitulatif.'
         }</p>
       </div>`
+          : isLicenceLoisirsTrophy()
+            ? `<div class="notice-important" style="margin:0 0 20px">
+        <strong>Licence loisirs Trophy</strong>
+        <p>Complétez ce dossier, ajoutez une copie de votre pièce d’identité, puis signez. Après signature : facture 50 € et formulaires médicaux. Déposez ensuite le dossier + la pièce d’identité en salle pour l’enregistrement fédéral.</p>
+      </div>`
           : isPaidSeanceEssai()
             ? `<div class="notice-important" style="margin:0 0 20px">
         <strong>Séance d’essai — terminez les étapes</strong>
@@ -2678,10 +2694,14 @@
           <button type="button" class="btn secondary" id="webcamStopBtn" hidden style="margin-top:8px">Arrêter la caméra</button>
         </div>
         ${
-          portetKidsDossier
+          needsIdDocumentUi
             ? `<div class="full photo-capture-block" id="idDocumentBlock">
           <label>Pièce d’identité *</label>
-          <p class="field-hint">Ajouter une copie de la pièce d’identité : photo depuis le téléphone ou import d’un fichier (JPEG, PNG, WebP ou PDF).</p>
+          <p class="field-hint">${
+            isLicenceLoisirsTrophy()
+              ? 'Obligatoire pour enregistrer la licence : copie de carte d’identité, passeport ou autre pièce officielle (JPEG, PNG, WebP ou PDF).'
+              : 'Ajouter une copie de la pièce d’identité : photo depuis le téléphone ou import d’un fichier (JPEG, PNG, WebP ou PDF).'
+          }</p>
           ${idOk ? '<p class="photo-already-ok">Pièce d’identité déjà enregistrée — vous pouvez en choisir une autre ci-dessous.</p>' : ''}
           <div class="photo-capture-actions">
             <label class="btn secondary photo-file-label" for="idFile">Ajouter une copie de la pièce d’identité</label>
@@ -2690,14 +2710,17 @@
             <input id="idCapture" type="file" accept="image/*" capture="environment" hidden />
           </div>
           <p class="field-hint" id="idFileName" hidden></p>
-        </div>
-        <div class="full portet-docs-download">
+        </div>${
+          portetKidsDossier
+            ? `<div class="full portet-docs-download">
           <p class="sub" style="margin:0 0 8px">Documents à télécharger</p>
           <a class="btn secondary block" href="${LEGAL.ffboxe}" target="_blank" rel="noopener">Télécharger le certificat FFBoxe</a>
           <p class="field-hint">À compléter et à remettre directement au club.</p>
           <a class="btn secondary block" href="${LEGAL.reglement}" target="_blank" rel="noopener">Télécharger le règlement intérieur</a>
           <p class="field-hint">À signer et à remettre directement au club.</p>
         </div>`
+            : ''
+        }`
             : ''
         }
         ${companionsHtml}
@@ -2864,7 +2887,7 @@
         return;
       }
 
-      if (portetKidsDossier) {
+      if (needsIdDocumentUi) {
         if (idBlob) {
           const fdId = new FormData();
           fdId.append('id_document', idBlob, idBlob.name || 'piece-identite.jpg');
@@ -3192,7 +3215,8 @@
           <ol style="margin:10px 0 0 18px;padding:0;line-height:1.55">
             <li>Télécharger le formulaire de licence et le certificat médical.</li>
             <li>Faire remplir et tamponner le dossier par votre médecin.</li>
-            <li>Déposer le dossier signé au manager de n'importe quelle salle Boxing Center (Minimes, Portet, Ramonville, Saint-Cyprien ou États-Unis) pour enregistrement fédéral, au plus tard le 11 novembre 2026.</li>
+            <li>Joindre une copie de votre pièce d’identité (carte d’identité, passeport ou autre pièce officielle).</li>
+            <li>Déposer le dossier signé + la copie d’identité au manager de n'importe quelle salle Boxing Center (Minimes, Portet, Ramonville, Saint-Cyprien ou États-Unis) pour enregistrement fédéral, au plus tard le 11 novembre 2026.</li>
           </ol>
         </div>
         <div class="success-actions" style="display:flex;flex-direction:column;gap:12px;margin-top:24px">

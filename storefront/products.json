@@ -153,18 +153,25 @@
     "category": "Licences",
     "name": "Licence loisirs Trophy 50 €",
     "tagline": "Cotisation licence loisirs FFBoxe / FFKMDA",
-    "description": "Cotisation de licence loisirs 50 € pour le Boxing Trophy 19. Paiement en une fois, puis signature. Après signature : facture, formulaires médicaux et procédure de dépôt en salle (n’importe quelle salle Boxing Center).",
+    "description": "Cotisation de licence loisirs 50 € pour le Boxing Trophy 19. Paiement en une fois, signature, puis dépôt du dossier médical et d’une copie de pièce d’identité en salle.",
     "price_cents": 5000,
     "price_label": "50,00 €",
     "badge": "Trophy 19",
     "requires_iban": false,
     "requires_payment": true,
+    "requires_id_document": true,
     "sale_type": "none",
     "create_sale": false,
     "auto_badge": false,
     "manual": true,
     "skip_bot": true,
-    "installments_note": "Paiement unique 50 € — CAWL/PayPal (Portet) ou Payplug/PayPal (autres salles)"
+    "installments_note": "Paiement unique 50 €",
+    "benefits": [
+      "Cotisation licence loisirs FFBoxe / FFKMDA — 50 €",
+      "Facture et formulaires médicaux après signature",
+      "Copie de pièce d’identité requise pour l’enregistrement fédéral",
+      "Dépôt du dossier dans n’importe quelle salle Boxing Center"
+    ]
   },
   {
     "id": "offre-ete",
