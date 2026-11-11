@@ -31,7 +31,14 @@ const { runWithSession, closeBrowser } = require('../bot/browser-pool');
 
 const CHECK = process.argv.includes('--check');
 const SINCE = (process.argv.find((arg) => arg.startsWith('--since=')) || '').slice(8) || '2026-08-01';
-const CONCURRENCY = Math.max(1, Number(process.env.MIGRATE_CONTRACT_CONCURRENCY || 8));
+const ONLY = new Set(
+  (process.argv.find((arg) => arg.startsWith('--ids=')) || '')
+    .slice(6)
+    .split(',')
+    .map((id) => id.replace(/\D/g, ''))
+    .filter(Boolean)
+);
+const CONCURRENCY =Math.max(1, Number(process.env.MIGRATE_CONTRACT_CONCURRENCY || 8));
 const SOURCE_ZONES = [
   { id: '1', label: 'Balma' },
   { id: '7', label: 'Etats-Unis' },
@@ -279,10 +286,14 @@ function shouldMigrate(member, active) {
     if (!token) throw new Error('Token Deciplus introuvable');
     const headers = apiHeaders(token);
 
-    const members = [];
+    let members = [];
     for (const zone of SOURCE_ZONES) {
       const listed = await listZoneMembers(page, headers, zone);
       members.push(...listed);
+    }
+    if (ONLY.size) {
+      members = members.filter((member) => ONLY.has(member.id));
+      logLine('cible imposee', [...ONLY].join(','), 'trouvees sur Balma/Etats-Unis', String(members.length));
     }
     report.source_count = members.length;
     logLine('fiches a scanner', String(members.length), `depuis=${SINCE}`, `concurrence=${CONCURRENCY}`);
