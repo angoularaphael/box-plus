@@ -204,7 +204,7 @@ Positionnement :
 
 Horaires généraux indiqués sur la page salle : lundi au samedi, 10h00–21h30.
 
-Le planning Portet 2026–2027 est désormais intégré à la présente base dans la section 8 bis.
+Le planning Portet 2026–2027 (3 salles : Boxe, Fitness, MMA) est intégré à la présente base dans la section 8 bis.
 
 3.3. Ramonville-Saint-Agne
 Adresse : 33 rue des Ormes, 31520 Ramonville-Saint-Agne.
@@ -290,7 +290,7 @@ Le planning Portet transmis ne comporte pas de code couleur nominatif par coach.
 - Kick enfants / ados : Ingrid.
 - Sparring Anglaise et Kick : co-encadrement de référence Valentin Tapia + Samuel Pinto.
 - Baby Boxe dès 3 ans : encadrement collectif par Valentin Tapia, Mourad et Ingrid. Ces coachs interviennent fréquemment à plusieurs sur ce cours afin d’assurer un meilleur encadrement des enfants.
-- Nicolas Tramaçon et Enzo Pioppo sont les référents Grappling / MMA ; aucune séance Grappling ou MMA n’apparaît toutefois sur le planning Portet provisoire transmis ici.
+- Nicolas Tramaçon et Enzo Pioppo sont les référents Grappling / MMA de la salle MMA de Portet (voir section 8 bis.C).
 
 ======================================================================
 5. PLANNING 2026–2027 – TOULOUSE MINIMES / BARRIÈRE DE PARIS
@@ -317,7 +317,7 @@ MARDI
 - 12h40–13h20 | BOXE ANGLAISE LOISIRS | Coach : Mehdi B. | Tous niveaux.
 - 13h20–18h00 | ACCÈS LIBRE.
 - 18h00–19h30 | BOXE COMPÉTITEURS | Coach : Mehdi B. | Réservé confirmé / compétiteur.
-- 18h30–19h30 | BOXING CAMP | Coach : Clément | Tous niveaux.
+- 18h30–19h30 | CROSS-TRAINING | Tous niveaux.
 - 19h40–21h00 | BOXE ANGLAISE LOISIRS | Coach : Mehdi B. | Tous niveaux.
 
 MERCREDI
@@ -335,7 +335,7 @@ JEUDI
 - 12h40–13h20 | BOXE ANGLAISE LOISIRS | Coach : Mehdi B. | Tous niveaux.
 - 13h20–18h00 | ACCÈS LIBRE.
 - 18h00–19h30 | BOXE COMPÉTITEURS | Coach : Mehdi B. | Réservé confirmé / compétiteur.
-- 18h30–19h30 | BOXING CAMP | Coach : David | Tous niveaux.
+- 18h30–19h30 | CROSS-TRAINING | Tous niveaux.
 - 19h40–21h00 | BOXE ANGLAISE LOISIRS | Coach : Mehdi B. | Tous niveaux.
 
 VENDREDI
@@ -467,75 +467,113 @@ SAMEDI
 
 
 ======================================================================
-8 BIS. PLANNING PROVISOIRE 2026–2027 – PORTET-SUR-GARONNE
+8 BIS. PLANNING 2026–2027 – PORTET-SUR-GARONNE
 ======================================================================
 
-Légende du planning :
-- Lady : rose.
-- Compétition : rouge.
-- École / Jeunes : bleu clair.
-- Préparation physique : vert.
-- Sparring Anglaise & Kick : bleu / orange.
-- Pieds-Poings / Kick : orange.
-- Boxe Anglaise : bleu.
-- Accès libre : gris foncé.
+Source : plannings officiels publiés sur boxingcenter.fr (page « Nos Plannings 2026 / 2027 », mise à jour novembre 2026).
+La salle de Portet possède 3 plannings distincts : A. Salle Boxe, B. Salle Fitness, C. Salle MMA.
 Case libre = salle ouverte, accès badge, entraînement libre.
+« NAP » = groupe compétiteurs (Noble Art Portésien) : réservé aux boxeurs confirmés / compétition.
+Les visuels officiels n'indiquent pas de coach par créneau : les coachs indiqués sont les référents par discipline (règle d'attribution de la section 4) (Boxe Anglaise : Valentin Tapia ; Kick / K1, Boxe Française, Lady, préparation physique : Samuel Pinto ; enfants : Mourad et Ingrid ; Grappling / MMA : Nicolas Tramaçon et Enzo Pioppo).
+
+----------------------------------------------------------------------
+8 BIS.A. PORTET – SALLE BOXE
+----------------------------------------------------------------------
 
 LUNDI
-- 10h00–12h00 | ACCÈS LIBRE.
-- 12h30–13h30 | BOXE ANGLAISE | Coach référent : Valentin Tapia | Tous niveaux, débutants acceptés.
-- 14h00–18h00 | ACCÈS LIBRE.
-- 18h00–19h00 | BOXE ÉDUCATIVE CONFIRMÉS | Coach référent : Valentin Tapia | Public confirmé.
-- 19h00–21h30 | BOXE AMATEURS ET PROS | Coach référent : Valentin Tapia | Réservé boxeurs confirmés / compétition.
+- 12h30–13h30 | BOXE ANGLAISE LOISIRS | Coach référent : Valentin Tapia | Tous niveaux, débutants acceptés.
+- 18h00–19h00 | BOXE ÉDUCATIVE CONFIRMÉS | Coach référent : Valentin Tapia | Jeunes confirmés.
+- 19h00–21h30 | BOXE COMPÉTITEURS NAP | Coach référent : Valentin Tapia | Réservé compétiteurs.
 
 MARDI
-- 10h00–12h00 | ACCÈS LIBRE.
-- 12h30–13h30 | PRÉPARATION PHYSIQUE | Coach référent : Samuel Pinto | Tous niveaux avec adaptation de l’intensité.
-- 14h00–18h00 | ACCÈS LIBRE.
-- 18h00–19h00 | LADY KICK | Coach référent : Samuel Pinto | 100 % féminin, tous niveaux.
-- 19h00–20h00 | KICK / K1 | Coach référent : Samuel Pinto | Tous niveaux, débutants acceptés.
-- 20h00–21h30 | BOXE ANGLAISE LOISIRS | Coach référent : Valentin Tapia | Tous niveaux, débutants acceptés.
+- 12h30–13h30 | BOXE ANGLAISE LOISIRS | Coach référent : Valentin Tapia | Tous niveaux.
+- 18h00–20h00 | BOXE COMPÉTITEURS NAP | Coach référent : Valentin Tapia | Réservé compétiteurs.
+- 20h00–21h30 | BOXE ANGLAISE LOISIRS | Coach référent : Valentin Tapia | Tous niveaux.
 
 MERCREDI
-- 10h00–12h00 | ACCÈS LIBRE.
-- 12h30–13h30 | KICK / K1 | Coach référent : Samuel Pinto | Tous niveaux, débutants acceptés.
-- 14h00–15h00 | KICK ENFANTS | Coach référent : Ingrid | Public enfants.
-- 15h00–16h00 | KICK ADOS | Coach référent : Ingrid | Public adolescents.
 - 16h00–17h00 | BOXE ÉDUCATIVE 7–11 ans | Coach référent : Mourad.
 - 17h00–18h00 | BOXE ÉDUCATIVE 12–16 ans | Coach référent : Mourad.
-- 18h00–19h00 | BOXING LADY | Coach référent : Samuel Pinto | 100 % féminin, tous niveaux.
-- 19h00–20h00 | PRÉPARATION PHYSIQUE | Coach référent : Samuel Pinto | Tous niveaux.
-- 20h00–21h30 | KICK / K1 | Coach référent : Samuel Pinto | Tous niveaux, débutants acceptés.
+- 18h00–19h00 | LADY BOXING | Coach référent : Samuel Pinto | 100 % féminin, tous niveaux.
+- 19h00–20h00 | BOXE ANGLAISE LOISIRS | Coach référent : Valentin Tapia | Tous niveaux.
+- 20h00–21h30 | BOXE COMPÉTITEURS NAP | Coach référent : Valentin Tapia | Réservé compétiteurs.
 
 JEUDI
-- 10h00–12h00 | ACCÈS LIBRE.
-- 12h30–13h30 | BOXE ANGLAISE | Coach référent : Valentin Tapia | Tous niveaux.
-- 14h00–18h00 | ACCÈS LIBRE.
-- 18h00–19h00 | LADY KICK | Coach référent : Samuel Pinto | 100 % féminin.
-- 19h00–20h00 | KICK / K1 | Coach référent : Samuel Pinto | Tous niveaux.
+- 12h30–13h30 | BOXE ANGLAISE LOISIRS | Coach référent : Valentin Tapia | Tous niveaux.
+- 18h00–20h00 | BOXE COMPÉTITEURS NAP | Coach référent : Valentin Tapia | Réservé compétiteurs.
 - 20h00–21h30 | BOXE ANGLAISE LOISIRS | Coach référent : Valentin Tapia | Tous niveaux.
 
 VENDREDI
-- 10h00–12h00 | ACCÈS LIBRE.
-- 12h30–13h30 | SPARRING ANGLAISE ET KICK | Référents : Valentin Tapia + Samuel Pinto | Séance d’opposition encadrée, à ne pas recommander comme première séance à un débutant complet.
-- 14h00–18h00 | ACCÈS LIBRE.
-- 18h00–19h00 | BOXE AMATEURS ET PROS | Coach référent : Valentin Tapia | Réservé boxeurs confirmés / compétition.
-- 19h00–21h30 | SPARRING ANGLAISE ET KICK | Référents : Valentin Tapia + Samuel Pinto | Public ayant déjà des bases techniques.
+- 12h30–13h30 | SPARRING ANGLAISE | Référents : Valentin Tapia + Samuel Pinto | Opposition encadrée, pas pour un débutant complet.
+- 18h00–20h00 | BOXE COMPÉTITEURS NAP | Coach référent : Valentin Tapia | Réservé compétiteurs.
+- 20h00–21h30 | SPARRING ANGLAISE | Référents : Valentin Tapia + Samuel Pinto | Public ayant déjà des bases.
 
 SAMEDI
 - 10h00–11h00 | BOXE FRANÇAISE | Coach référent : Samuel Pinto | Tous niveaux.
-- 10h00–11h00 | KICK ENFANTS | Coach référent : Ingrid | Public enfants.
-- 11h00–12h00 | PRÉPARATION PHYSIQUE | Coach référent : Samuel Pinto | Tous niveaux.
-- 11h00–12h00 | KICK ADOS | Coach référent : Ingrid | Public adolescents.
-- 12h30–13h30 | BOXE ANGLAISE | Coach référent : Valentin Tapia | Tous niveaux.
-- 14h00–15h00 | ACCÈS LIBRE.
-- 15h00–16h00 | BABY BOXE DÈS 3 ANS | Coachs : Valentin Tapia, Mourad et Ingrid | Encadrement collectif renforcé ; plusieurs coachs peuvent intervenir simultanément afin d’accompagner au mieux les enfants.
+- 11h00–12h30 | BOXE COMPÉTITEURS NAP | Coach référent : Valentin Tapia | Réservé compétiteurs.
+- 12h30–13h30 | BOXE ANGLAISE LOISIRS | Coach référent : Valentin Tapia | Tous niveaux.
+- 15h15–16h00 | BABY BOXE 4–6 ANS | Coachs : Valentin Tapia, Mourad et Ingrid (encadrement collectif).
 - 16h00–17h00 | BOXE ÉDUCATIVE 7–11 ans | Coach référent : Mourad.
 - 17h00–18h00 | BOXE ÉDUCATIVE 12–16 ans | Coach référent : Mourad.
-- 18h00–21h30 | ACCÈS LIBRE.
 
-IMPORTANT :
-Le planning est explicitement présenté comme « PLANNING PROVISOIRE ». L’agent IA doit pouvoir le signaler si un utilisateur demande si les horaires sont définitifs.
+----------------------------------------------------------------------
+8 BIS.B. PORTET – SALLE FITNESS
+----------------------------------------------------------------------
+
+MARDI
+- 12h30–13h30 | PRÉPARATION PHYSIQUE | Coach référent : Samuel Pinto | Tous niveaux.
+- 19h00–20h00 | PRÉPARATION PHYSIQUE | Coach référent : Samuel Pinto | Tous niveaux.
+
+MERCREDI
+- 12h30–13h30 | PRÉPARATION PHYSIQUE | Coach référent : Samuel Pinto | Tous niveaux.
+- 18h00–20h00 | RÉSERVÉ BOXE COMPÉTITION | Salle non disponible.
+- 20h00–21h00 | PRÉPARATION PHYSIQUE | Coach référent : Samuel Pinto | Tous niveaux.
+
+JEUDI
+- 12h30–13h30 | PRÉPARATION PHYSIQUE | Coach référent : Samuel Pinto | Tous niveaux.
+
+SAMEDI
+- 11h00–12h00 | PRÉPARATION PHYSIQUE | Coach référent : Samuel Pinto | Tous niveaux.
+
+Tous les autres créneaux (lundi au samedi, 10h00–21h00) : accès libre.
+
+----------------------------------------------------------------------
+8 BIS.C. PORTET – SALLE MMA
+----------------------------------------------------------------------
+
+LUNDI
+- 18h00–19h00 | GRAPPLING | Coachs référents : Nicolas Tramaçon et Enzo Pioppo | Tous niveaux.
+- 19h00–20h00 | MMA | Coachs référents : Nicolas Tramaçon et Enzo Pioppo | Tous niveaux, débutants acceptés.
+
+MARDI
+- 12h30–13h30 | GRAPPLING | Coachs référents : Nicolas Tramaçon et Enzo Pioppo | Tous niveaux.
+- 18h00–19h00 | LADY KICK | Coach référent : Samuel Pinto | 100 % féminin.
+- 20h00–21h30 | KICK BOXING / K1 | Coach référent : Samuel Pinto | Tous niveaux.
+
+MERCREDI
+- 12h30–13h30 | KICK / K1 | Coach référent : Samuel Pinto | Tous niveaux.
+- 14h00–15h00 | KICK ENFANTS 7–11 ans | Coach référent : Ingrid.
+- 15h00–16h00 | KICK ADOS 12–16 ans | Coach référent : Ingrid.
+- 18h00–19h00 | GRAPPLING | Coachs référents : Nicolas Tramaçon et Enzo Pioppo | Tous niveaux.
+- 19h00–20h00 | MMA | Coachs référents : Nicolas Tramaçon et Enzo Pioppo | Tous niveaux.
+- 20h00–21h30 | KICK BOXING / K1 | Coach référent : Samuel Pinto | Tous niveaux.
+
+JEUDI
+- 12h30–13h30 | GRAPPLING | Coachs référents : Nicolas Tramaçon et Enzo Pioppo | Tous niveaux.
+- 18h00–19h00 | LADY KICK | Coach référent : Samuel Pinto | 100 % féminin.
+- 19h00–20h00 | BOXE FRANÇAISE | Coach référent : Samuel Pinto | Tous niveaux.
+- 20h00–21h30 | KICK BOXING / K1 | Coach référent : Samuel Pinto | Tous niveaux.
+
+VENDREDI
+- 12h30–13h30 | SPARRING KICK | Coach référent : Samuel Pinto | Opposition encadrée, pas pour un débutant complet.
+- 18h00–19h00 | GRAPPLING | Coachs référents : Nicolas Tramaçon et Enzo Pioppo | Tous niveaux.
+- 19h00–20h00 | MMA | Coachs référents : Nicolas Tramaçon et Enzo Pioppo | Tous niveaux.
+- 20h00–21h30 | SPARRING KICK | Coach référent : Samuel Pinto | Public ayant déjà des bases.
+
+SAMEDI
+- 10h00–11h00 | KICK ENFANTS 7–11 ans | Coach référent : Ingrid.
+- 11h00–12h00 | KICK ADOS 12–16 ans | Coach référent : Ingrid.
+- 14h00–15h00 | GRAPPLING | Coachs référents : Nicolas Tramaçon et Enzo Pioppo | Tous niveaux.
+- 15h00–16h00 | MMA SPARRING | Coachs référents : Nicolas Tramaçon et Enzo Pioppo | Pratiquants ayant déjà des bases.
 
 ======================================================================
 8. PLANNING 2026–2027 – TOULOUSE ÉTATS-UNIS
@@ -574,12 +612,12 @@ MERCREDI
 
 JEUDI
 - 12h40–13h20 | BOXE ANGLAISE | Coach : Valentin Guth | Tous niveaux.
-- 18h30–19h40 | BOXE ANGLAISE | Coach : Renaud | Tous niveaux.
-- 19h50–21h15 | BOXE PIEDS-POINGS | Coach : Renaud | Tous niveaux.
+- 18h30–19h40 | BOXE PIEDS-POINGS | Coach : Renaud | Tous niveaux.
+- 19h50–21h15 | BOXE ANGLAISE | Coach : Renaud | Tous niveaux.
 
 VENDREDI
-- 18h30–19h40 | BOXE PIEDS-POINGS | Coach : David | Tous niveaux.
-- 19h50–21h15 | BOXE ANGLAISE | Coach : David | Tous niveaux.
+- 18h30–19h40 | BOXE ANGLAISE | Coach : David | Tous niveaux.
+- 19h50–21h15 | BOXE PIEDS-POINGS | Coach : David | Tous niveaux.
 
 SAMEDI
 - 11h00–12h00 | BOXE ANGLAISE | Coach : Renaud | Tous niveaux.
@@ -610,7 +648,7 @@ MARDI
 
 MERCREDI
 - 18h00–19h00 | MMA ENFANTS / ADOS 10–16 ans (libellé : ASSO MMA ENFANTS) | Coach : Zouhir.
-- 19h40–21h00 | JIU-JITSU BRÉSILIEN | Coach : Zouhir | Tous niveaux.
+- 19h40–21h00 | GRAPPLING | Coach : Zouhir | Tous niveaux.
 
 JEUDI
 - 18h20–19h00 | GRAPPLING | Coach : Zouhir | Tous niveaux.
@@ -929,10 +967,10 @@ Prospect sensible au prix :
 Le brief fourni pour ce document cite 5 implantations (Minimes, Portet, Ramonville, St-Cyprien, États-Unis), alors que plusieurs pages actuelles du site peuvent mentionner d’autres implantations. Cette base reste centrée sur le périmètre fourni.
 
 2. Planning Portet :
-Le planning Portet transmis est indiqué comme PROVISOIRE. Les horaires sont intégrés, mais l’agent doit pouvoir préciser qu’ils peuvent encore évoluer.
+Le planning Portet n’est plus provisoire : il reprend les 3 plannings officiels publiés sur boxingcenter.fr (novembre 2026).
 
 3. Baby Boxe Portet :
-Le créneau Baby Boxe dès 3 ans est encadré par Valentin Tapia, Mourad et Ingrid. Ils peuvent intervenir à plusieurs simultanément sur ce cours afin d’assurer un encadrement renforcé et adapté aux jeunes enfants.
+Le créneau Baby Boxe 4–6 ans (samedi 15h15–16h00) est encadré par Valentin Tapia, Mourad et Ingrid. Ils peuvent intervenir à plusieurs simultanément sur ce cours afin d’assurer un encadrement renforcé et adapté aux jeunes enfants.
 
 4. États-Unis Fitness / Yannis Chouet :
 Les créneaux de Yannis sont désormais confirmés directement par la direction et ne sont plus à considérer comme ambigus.
@@ -952,7 +990,7 @@ DOCUMENTS INTERNES TRANSMIS
 - Ramonville projet planning Coachs rentrée 2026.pdf / .ods
 - St Cyprien projet planning Coachs rentrée 2026.pdf / .ods
 - ETATS UNIS projet planning Coachs rentrée 2026.pdf / .ods
-- Planning Portet Provisoire.jpeg
+- Plannings officiels boxingcenter.fr (novembre 2026) : Minimes, Ramonville, Saint-Cyprien, États-Unis (Boxe, MMA, Boxing Fitness), Portet (Boxe, Fitness, MMA)
 - Visuels équipe coachs Portet saison 2026/2027 : Samuel Pinto, Nicolas Tramaçon, Mourad, Ingrid, Enzo Pioppo, Valentin Tapia
 - CONDITIONS GÉNÉRALES DE VENTE ET D’ABONNEMENT – version applicable à compter du 01/08/2026
 - RÈGLEMENT INTÉRIEUR 2026

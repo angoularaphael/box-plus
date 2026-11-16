@@ -145,9 +145,8 @@ module.exports = [
         must: [
           fact('salle', /Portet/i),
           fact('jour', /samedi/i),
-          fact('provisoire', /provisoire/i),
           fact('boxe française', /10h00[–-]11h00.*BOXE FRANÇAISE/is),
-          fact('baby', /15h00[–-]16h00.*BABY BOXE/is),
+          fact('baby', /15h15[–-]16h00.*BABY BOXE/is),
         ],
         mustNot: [fact('accès libre', /ACC[ÈE]S LIBRE/i)],
       },
@@ -155,7 +154,7 @@ module.exports = [
         q: 'Le cours pour un enfant de 5 ans ?',
         must: [
           fact('cours', /Baby Boxe/i),
-          fact('début', /15h00/i),
+          fact('début', /15h15/i),
           fact('fin', /16h00/i),
         ],
         mustNot: [fact('autre âge', /7\s*[–-]\s*11|12\s*[–-]\s*16/i)],
@@ -193,10 +192,9 @@ module.exports = [
         must: [
           fact('nouvelle salle', /Portet/i),
           fact('lady', /18h00[–-]19h00.*LADY KICK/is),
-          fact('kick', /19h00[–-]20h00.*KICK \/ K1/is),
-          fact('provisoire', /provisoire/i),
+          fact('kick', /20h00[–-]21h30.*KICK BOXING \/ K1/is),
         ],
-        mustNot: [fact('ancienne salle', /Ramonville/i), fact('mma parasite', /MMA/i)],
+        mustNot: [fact('ancienne salle', /Ramonville/i)],
       },
       {
         q: 'Et le coach ?',
@@ -480,7 +478,6 @@ module.exports = [
         must: [
           fact('salle', /États-Unis|Etats-Unis/i),
           fact('lundi', /18h20[–-]19h00/i),
-          fact('mercredi', /19h40[–-]21h00/i),
         ],
         mustNot: [fact('grappling parasite', /GRAPPLING/i)],
       },
@@ -520,18 +517,18 @@ module.exports = [
     persona: 'nassim',
     steps: [
       {
-        q: 'boxin camp minime mardi',
-        must: [fact('salle', /Minimes/i), fact('cours', /BOXING CAMP/i), fact('horaire', /18h30[–-]19h30/i)],
+        q: 'boxin camp minime lundi',
+        must: [fact('salle', /Minimes/i), fact('cours', /BOXING CAMP/i), fact('horaire', /12h40[–-]13h20/i)],
         mustNot: [fact('autres cours', /BOXE ANGLAISE|BOXE COMPÉTITEURS|COMPETITEURS/i)],
       },
       {
         q: 'c kan ?',
-        must: [fact('horaire', /18h30[–-]19h30/i), fact('cours', /BOXING CAMP/i)],
+        must: [fact('horaire', /12h40[–-]13h20/i), fact('cours', /BOXING CAMP/i)],
       },
       {
         q: 'ki coach ?',
-        must: [fact('coach', /Clément/i)],
-        mustNot: [fact('mauvais coach', /Mehdi/i)],
+        must: [fact('coach', /Mehdi/i)],
+        mustNot: [fact('mauvais coach', /Clément/i)],
       },
       {
         q: 'ou ?',
@@ -561,10 +558,7 @@ module.exports = [
     steps: [
       {
         q: 'Grappling mercredi États-Unis : quelle heure et quel coach ?',
-        must: [fact('absence', /aucun|pas de|rien/i), fact('discipline', /Grappling/i), fact('jour', /mercredi/i)],
-        mustNot: [
-          fact('grappling inventé mercredi aux États-Unis', /\*\*États-Unis\*\* — Mercredi[^\n]*GRAPPLING/i),
-        ],
+        must: [fact('discipline', /Grappling/i), fact('horaire', /19h40[–-]21h00/i), fact('coach', /Zouhir/i)],
       },
     ],
   },
@@ -573,9 +567,9 @@ module.exports = [
     persona: 'fabien',
     steps: [
       {
-        q: 'Boxing Camp mardi Minimes : est-ce tous niveaux ?',
+        q: 'Boxing Camp lundi Minimes : est-ce tous niveaux ?',
         must: [
-          fact('horaire', /18h30[–-]19h30/i),
+          fact('horaire', /12h40[–-]13h20/i),
           fact('niveau', /Tous niveaux/i),
           fact('cours', /BOXING CAMP/i),
         ],

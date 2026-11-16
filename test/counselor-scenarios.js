@@ -325,9 +325,8 @@ module.exports = [
         mustNot: [/boxe anglaise adulte/i],
       }),
       step('À Portet le samedi, vous avez l’horaire et les coachs ?', {
-        must: [/Portet/i, /15h00/, /16h00/, /Valentin/i, /Mourad/i, /Ingrid/i],
+        must: [/Portet/i, /15h15/, /16h00/, /Valentin/i, /Mourad/i, /Ingrid/i],
       }),
-      step('Ces horaires sont définitifs ?', { must: [/provisoire/i] }),
     ],
   },
   {
