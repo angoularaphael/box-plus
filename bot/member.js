@@ -893,25 +893,37 @@ async function resolveCreatedMemberId(page, customer, { excludeIds = [] } = {}) 
     await page.waitForTimeout(700);
   }
 
+  // Repli par recherche : chaque candidat doit etre la meme personne (nom + prenom + naissance).
+  // Sans ce controle, une recherche « nom seul » renvoyait la fiche d'un homonyme
+  // (ex. vente de Taha Bellaghzal posee sur la fiche de Nada Bellaghzal).
+  const rejected = new Set(skip);
+  const acceptVerified = async () => {
+    const ids = await collectMemberIdsFromPage(page, { links: true });
+    for (const raw of ids) {
+      const id = String(raw);
+      if (rejected.has(id)) continue;
+      await openMemberEditForm(page, id).catch(() => false);
+      if (await searchHitMatchesCustomer(page, customer, { strictIdentity: true })) return id;
+      rejected.add(id);
+      logWarn('ID apres creation ignore (identite non concordante)', { member_id: id });
+    }
+    return null;
+  };
+
   for (let attempt = 0; attempt < 4; attempt += 1) {
     if (customer?.email) {
       await searchMember(page, customer.email);
-      const id = accept(await pickCreatedMemberId(page, excludeIds, { links: true }));
+      const id = await acceptVerified();
       if (id) return id;
     }
     if (customer?.phone) {
       await searchMember(page, customer.phone);
-      const id = accept(await pickCreatedMemberId(page, excludeIds, { links: true }));
+      const id = await acceptVerified();
       if (id) return id;
     }
-    if (customer?.last_name || customer?.first_name) {
+    if (customer?.last_name && customer?.first_name) {
       await searchMemberByName(page, customer.last_name, customer.first_name);
-      const id = accept(await pickCreatedMemberId(page, excludeIds, { links: true }));
-      if (id) return id;
-    }
-    if (customer?.last_name) {
-      await searchMemberByName(page, customer.last_name, '');
-      const id = accept(await pickCreatedMemberId(page, excludeIds, { links: true }));
+      const id = await acceptVerified();
       if (id) return id;
     }
     await page.waitForTimeout(1200);
