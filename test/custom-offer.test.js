@@ -191,3 +191,31 @@ test('offre perso 3 personnes + companions', () => {
   assert.match(recap.html, /12 rue Test/);
   assert.match(recap.text, /PayPal 4× sans frais/);
 });
+
+test('prepareCustomOffer stocke les personnes 2..N saisies a la creation (ex. enfants du payeur)', () => {
+  const prepared = prepareCustomOffer({
+    price_euros: '400',
+    mode: 'comptant_scalapay',
+    party_size: 3,
+    allow_minors: true,
+    first_name: 'Maman',
+    last_name: 'Test',
+    email: 'maman@example.com',
+    companions: [
+      { first_name: 'Lina', last_name: 'Test', birthdate: '2015-03-02', gender: 'F' },
+      { first_name: 'Sara', last_name: 'Test', birthdate: '2017-06-10', gender: 'F' },
+      { first_name: 'Trop', last_name: 'DeMonde' },
+    ],
+  });
+  assert.equal(prepared.party_size, 3);
+  assert.equal(prepared.companions.length, 2, 'garde exactement party_size - 1 personnes');
+  assert.equal(prepared.companions[0].first_name, 'Lina');
+  assert.equal(prepared.companions[1].birthdate, '2017-06-10');
+  assert.equal(prepared.companions[1].gender, 'F');
+});
+
+test('prepareCustomOffer sans personnes saisies : liste vide de la bonne taille', () => {
+  const prepared = prepareCustomOffer({ price_euros: '60', mode: 'comptant', party_size: 2 });
+  assert.equal(prepared.companions.length, 1);
+  assert.equal(prepared.companions[0].first_name, '');
+});

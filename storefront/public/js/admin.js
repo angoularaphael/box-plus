@@ -2857,6 +2857,57 @@
   document.getElementById('co_mode')?.addEventListener('change', syncCustomOfferModeHint);
   syncCustomOfferModeHint();
 
+  /** Personnes 2..N de l'offre perso : saisies a la creation, stockees dans order.companions. */
+  function renderCustomOfferCompanions() {
+    const box = document.getElementById('co_companions');
+    if (!box) return;
+    const size = Math.max(1, Math.min(4, Number(document.getElementById('co_people')?.value || 1)));
+    const kept = [];
+    box.querySelectorAll('fieldset[data-co-person]').forEach((fs) => {
+      const i = Number(fs.dataset.coPerson);
+      kept[i] = {};
+      fs.querySelectorAll('input,select').forEach((el) => {
+        kept[i][el.dataset.field] = el.value;
+      });
+    });
+    let html = '';
+    for (let i = 0; i < size - 1; i++) {
+      const p = kept[i] || {};
+      const v = (k) => escapeHtml(p[k] || '');
+      html += `<fieldset data-co-person="${i}" style="border:1px solid #dbe3ea;border-radius:12px;padding:12px;margin:8px 0">
+        <legend style="font-weight:700">Personne ${i + 2}</legend>
+        <div class="form-grid" style="gap:10px">
+          <div><label>Prénom</label><input data-field="first_name" value="${v('first_name')}" /></div>
+          <div><label>Nom</label><input data-field="last_name" value="${v('last_name')}" /></div>
+          <div><label>Date de naissance</label><input data-field="birthdate" type="date" value="${v('birthdate')}" /></div>
+          <div><label>Sexe</label><select data-field="gender">
+            <option value="">—</option>
+            <option value="M"${p.gender === 'M' ? ' selected' : ''}>Homme</option>
+            <option value="F"${p.gender === 'F' ? ' selected' : ''}>Femme</option>
+          </select></div>
+          <div><label>Email</label><input data-field="email" type="email" value="${v('email')}" /></div>
+          <div><label>Téléphone</label><input data-field="phone" type="tel" value="${v('phone')}" /></div>
+        </div>
+      </fieldset>`;
+    }
+    box.innerHTML = html;
+  }
+
+  function collectCustomOfferCompanions() {
+    const out = [];
+    document.querySelectorAll('#co_companions fieldset[data-co-person]').forEach((fs) => {
+      const person = {};
+      fs.querySelectorAll('input,select').forEach((el) => {
+        person[el.dataset.field] = String(el.value || '').trim();
+      });
+      out.push(person);
+    });
+    return out;
+  }
+
+  document.getElementById('co_people')?.addEventListener('change', renderCustomOfferCompanions);
+  renderCustomOfferCompanions();
+
   document.getElementById('customOfferForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -2884,6 +2935,7 @@
       email: fd.get('email'),
       phone: fd.get('phone'),
       birthdate: fd.get('birthdate'),
+      companions: collectCustomOfferCompanions(),
     };
     if (btn) btn.disabled = true;
     try {
@@ -2930,6 +2982,9 @@
       }
       form.reset();
       syncCustomOfferModeHint();
+      const coBox = document.getElementById('co_companions');
+      if (coBox) coBox.innerHTML = '';
+      renderCustomOfferCompanions();
       if (typeof window.panToast === 'function') window.panToast('Lien d’offre personnalisée prêt');
     } catch (err) {
       if (msg) {

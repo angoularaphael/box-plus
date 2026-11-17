@@ -90,7 +90,7 @@ function productSnapshot(product) {
   };
 }
 
-function createDraft({ product_id, product, customer_short, gym, referral_friend, source, party_size, app_checkout }) {
+function createDraft({ product_id, product, customer_short, gym, referral_friend, source, party_size, app_checkout, companions }) {
   initDirs();
   const order_id = generateOrderId();
   const access_token = generateAccessToken();
@@ -108,7 +108,7 @@ function createDraft({ product_id, product, customer_short, gym, referral_friend
     customer_full: gymForced ? { gym: gymForced } : null,
     referral_friend: referral_friend || null,
     source: source || null,
-    ...(partySize ? { party_size: partySize, companions: [] } : {}),
+    ...(partySize ? { party_size: partySize, companions: Array.isArray(companions) ? companions : [] } : {}),
     ...(app_checkout ? { app_checkout } : {}),
     payment: { status: 'pending' },
     signature: null,
@@ -124,8 +124,8 @@ function createDraft({ product_id, product, customer_short, gym, referral_friend
   return order;
 }
 
-async function createDraftAsync({ product_id, product, customer_short, gym, referral_friend, source, party_size, app_checkout }) {
-  const order = createDraft({ product_id, product, customer_short, gym, referral_friend, source, party_size, app_checkout });
+async function createDraftAsync({ product_id, product, customer_short, gym, referral_friend, source, party_size, app_checkout, companions }) {
+  const order = createDraft({ product_id, product, customer_short, gym, referral_friend, source, party_size, app_checkout, companions });
   await persistence.saveOrderAsync(order);
   return order;
 }

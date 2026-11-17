@@ -411,6 +411,18 @@ function buildCustomOfferProduct(input = {}) {
   };
 }
 
+/**
+ * Personnes 2..N saisies par l'admin a la creation de l'offre (ex. les enfants d'un parent payeur).
+ * Stockees dans order.companions : le dossier les pre-remplit et le club les retrouve.
+ */
+function prepareCompanionsFromAdmin(raw, partySize = 1) {
+  const extra = Math.max(0, parsePartySize({ party_size: partySize }) - 1);
+  const list = Array.isArray(raw) ? raw : [];
+  const out = [];
+  for (let i = 0; i < extra; i++) out.push(normalizePerson(list[i] || {}));
+  return out;
+}
+
 function prepareCustomOffer(input = {}) {
   const product = buildCustomOfferProduct(input);
   return {
@@ -420,6 +432,7 @@ function prepareCustomOffer(input = {}) {
     gym: normalizeGym(input.gym),
     source: 'custom_offer',
     party_size: product.party_size,
+    companions: prepareCompanionsFromAdmin(input.companions, product.party_size),
   };
 }
 
@@ -454,5 +467,6 @@ module.exports = {
   paymentPlanLabel,
   buildCustomOfferProduct,
   prepareCustomOffer,
+  prepareCompanionsFromAdmin,
   landingUrl,
 };
