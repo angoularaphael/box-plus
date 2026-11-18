@@ -342,6 +342,9 @@
             <div class="stats-kpi"><span class="stats-kpi-label">Conversion tunnel</span><span class="stats-kpi-value" id="kpiFunnelConv">—</span></div>
           </div>
 
+          <!-- FIGHT & Furious : rempli par /js/admin-fight-furious-stats.js depuis /api/admin/stats (cle fight_furious). -->
+          <div id="ffStatsWrap" hidden style="margin-top:24px"></div>
+
           <div id="gymSalesWrap" hidden style="margin-top:24px">
             <h3 class="admin-catalog-block-title">Chiffre d’affaires par salle</h3>
             <p class="admin-section-desc">Inscriptions et matériel payés sur la période choisie, ventilés par salle.</p>
@@ -879,9 +882,10 @@
   </div>
 
   <script src="../js/contract-open.js?v=9"></script>
+  <script src="/js/admin-fight-furious-stats.js?v=1"></script>
   <script src="/js/admin.js?v=38"></script>
   <!-- La refonte, posee PAR-DESSUS : elle n'ouvre pas admin.js et n'en
        reecrit pas une ligne (un autre developpeur y travaille). -->
-  <script src="/js/admin-shell.js?v=20"></script>
+  <script src="/js/admin-shell.js?v=21"></script>
 </body>
 </html>

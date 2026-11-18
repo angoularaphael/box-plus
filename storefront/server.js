@@ -1676,6 +1676,9 @@ function createApp() {
 
   require('./lib/billetterie-routes').registerBilletterieRoutes(app, { publicDir: PUBLIC_DIR });
 
+  /* Suivi FIGHT & Furious (billetterie + jeu concours Moteka) dans le back-office. */
+  require('./lib/fight-furious-admin').registerFightFuriousAdminRoutes(app, { isAuthorizedAdmin, logInfo });
+
   app.post('/api/admin/ingest-materiel-catalog', (req, res) => {
     if (!isAuthorizedSync(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
@@ -1877,7 +1880,7 @@ function createApp() {
       const { enrichOrdersWithJobErrors } = require('./lib/admin-stats');
       const { getSupabase } = require('./lib/supabase');
 
-      const [inscriptionPaidRaw, funnelOrders, materielOrders, visits, seance, stageVacances, funnelEvents] = await Promise.all([
+      const [inscriptionPaidRaw, funnelOrders, materielOrders, visits, seance, stageVacances, funnelEvents, fightFurious] = await Promise.all([
         listPaidOrdersSinceAsync(paidSince),
         listOrdersCreatedSinceAsync(funnelSince),
         listMaterielOrdersCreatedSinceAsync(paidSince),
@@ -1893,6 +1896,12 @@ function createApp() {
           { clicks: { days: [], total: 0, mail: 0, sms: 0, ig: 0 }, sales: { mail: 0, sms: 0, ig: 0 }, paid_total: 0, revenue_cents: 0, conversion_pct: 0 }
         ),
         withTimeout(summarizeFunnelEvents(30), 3000, null),
+        /* FIGHT & Furious (billetterie + concours Moteka) : ne fait jamais echouer les stats. */
+        withTimeout(
+          require('./lib/fight-furious-admin').resumeStats(),
+          8000,
+          { ok: false, error: 'FIGHT & Furious : delai depasse', page: '/admin/fight-furious' }
+        ),
       ]);
 
       let inscriptionPaid = inscriptionPaidRaw;
@@ -1970,6 +1979,7 @@ function createApp() {
         bot_errors_count: extras.bot_errors_count || 0,
         stock_rows,
         inscription_materiel,
+        fight_furious: fightFurious,
       });
     } catch (err) {
       logError('Admin stats', { error: err.message });
@@ -7353,6 +7363,7 @@ function createApp() {
     '/admin/': 'admin/index.html',
     '/admin/login': 'admin/login.html',
     '/admin/concours': 'admin/concours.html',
+    '/admin/fight-furious': 'admin/fight-furious.html',
     '/admin/contrats': 'admin/index.html',
     '/contrat': 'contrat.html',
   };

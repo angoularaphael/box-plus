@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin FIGHT &amp; Furious - Boxing Center</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <script src="../js/boot.js?v=8"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/boutique.css?v=7" />
+  <link rel="stylesheet" href="../css/components.css?v=9" />
+  <link rel="stylesheet" href="/admin/admin.css?v=17" />
+  <style>
+    .ff { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
+    .ff-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .ff-top h1 { margin: 0 0 4px; color: var(--bc-navy); font-size: clamp(24px, 4vw, 32px); }
+    .ff-top p { margin: 0; color: var(--bc-muted); font-size: 13px; }
+    .ff-liens { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ff-onglets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+    .ff-msg { margin: 0 0 16px; padding: 12px 14px; border-radius: 10px; font-size: 13px; }
+    .ff-msg--warn { border: 1px solid #fbbf24; background: #fffbeb; color: #92400e; }
+    .ff-msg--err { border: 1px solid #fecaca; background: #fef2f2; color: #991b1b; }
+    .ff .pan-table td { vertical-align: top; }
+    .ff-codes { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; white-space: normal; }
+    .ff-wrap { white-space: normal !important; min-width: 160px; }
+    .ff-badge { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: var(--bc-bg); color: var(--bc-muted); }
+    .ff-badge--ok { background: rgba(22, 163, 74, .12); color: #15803d; }
+    .ff-badge--warn { background: rgba(180, 83, 9, .12); color: #b45309; }
+    .ff-badge--ko { background: rgba(220, 38, 38, .12); color: #b91c1c; }
+    .ff-badge--or { background: var(--bc-gold-soft); color: var(--bc-bronze); }
+    .ff-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .ff-vide { padding: 24px 16px; text-align: center; color: var(--bc-muted); }
+    .ff-modal { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(11, 31, 58, .6); }
+    .ff-modal[hidden] { display: none; }
+    .ff-modal__box { background: #fff; border-radius: 14px; padding: 16px; max-width: 720px; width: 100%; max-height: 92vh; overflow: auto; }
+    .ff-modal__box img { display: block; max-width: 100%; height: auto; margin: 12px auto; border-radius: 8px; }
+    @media (max-width: 640px) {
+      .ff-top .ff-liens .btn { flex: 1 1 auto; }
+      .ff .pan-search { min-width: 0; flex: 1 1 100%; }
+    }
+  </style>
+</head>
+<body class="pan">
+  <main class="ff" id="ff" hidden>
+    <div class="ff-top">
+      <div>
+        <h1>FIGHT &amp; Furious</h1>
+        <p>Boxing Center x garage Moteka, gala du 11 au 13 decembre 2026. Billetterie, jeu concours et tirages.</p>
+      </div>
+      <div class="ff-liens">
+        <a class="btn sm secondary" href="/admin/#ventes">Retour aux stats</a>
+        <a class="btn sm secondary" id="lienMoteka" href="https://moteka-three.vercel.app/admin" target="_blank" rel="noopener noreferrer">Back-office Moteka</a>
+        <a class="btn sm secondary" id="lienTirage" href="https://moteka-three.vercel.app/admin/tirage" target="_blank" rel="noopener noreferrer">Page de tirage</a>
+      </div>
+    </div>
+
+    <nav class="ff-onglets" aria-label="Sections">
+      <button type="button" class="pan-filtre is-on" data-onglet="billetterie">Billetterie</button>
+      <button type="button" class="pan-filtre" data-onglet="concours">Jeu concours</button>
+      <button type="button" class="pan-filtre" data-onglet="tirages">Tirages</button>
+    </nav>
+
+    <!-- BILLETTERIE -->
+    <section data-section="billetterie">
+      <div id="bilMsg"></div>
+      <div class="pan-kpis" id="bilKpis"></div>
+      <div class="pan-bloc">
+        <div class="pan-bloc__head">
+          <div>
+            <h2 class="pan-bloc__title">Billets payes par produit</h2>
+          </div>
+        </div>
+        <div class="pan-tablewrap">
+          <table class="pan-table">
+            <thead><tr><th>Billet</th><th style="text-align:right">Billets</th><th style="text-align:right">Commandes</th><th style="text-align:right">CA</th></tr></thead>
+            <tbody id="bilProduits"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pan-bloc">
+        <div class="pan-bloc__head">
+          <div>
+            <h2 class="pan-bloc__title">Commandes payees</h2>
+            <p class="pan-bloc__desc" id="bilCompte">Chargement...</p>
+          </div>
+          <div class="pan-bloc__tools">
+            <label class="pan-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="search" id="bilQ" placeholder="Nom, mail, code billet..." aria-label="Rechercher une commande" />
+            </label>
+            <a class="btn sm secondary" id="bilCsv" href="/api/admin/fight-furious/billetterie/export.csv">Export CSV</a>
+            <button type="button" class="btn sm secondary" data-recharger="billetterie">Actualiser</button>
+          </div>
+        </div>
+        <div class="pan-tablewrap">
+          <table class="pan-table">
+            <thead><tr><th>Date</th><th>Nom</th><th>Mail</th><th>Produit</th><th style="text-align:right">Qte</th><th style="text-align:right">Montant</th><th>Moyen</th><th>Codes billets</th><th>Billet</th></tr></thead>
+            <tbody id="bilBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pan-bloc" id="bilAttenteBloc" hidden>
+        <div class="pan-bloc__head">
+          <div>
+            <h2 class="pan-bloc__title">Commandes en attente de paiement</h2>
+            <p class="pan-bloc__desc">Paiement commence mais non confirme (abandon ou paiement en cours). 50 plus recentes.</p>
+          </div>
+        </div>
+        <div class="pan-tablewrap">
+          <table class="pan-table">
+            <thead><tr><th>Creee le</th><th>Nom</th><th>Mail</th><th>Produit</th><th style="text-align:right">Qte</th><th style="text-align:right">Montant</th><th>Moyen</th></tr></thead>
+            <tbody id="bilAttente"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- JEU CONCOURS -->
+    <section data-section="concours" hidden>
+      <div id="conMsg"></div>
+      <div class="pan-kpis" id="conKpis"></div>
+      <p class="ff-msg ff-msg--warn" style="display:none" id="conAvisInfo"></p>
+      <div class="pan-bloc">
+        <div class="pan-bloc__head">
+          <div>
+            <h2 class="pan-bloc__title">Participants</h2>
+            <p class="pan-bloc__desc" id="conCompte">Chargement...</p>
+          </div>
+          <div class="pan-bloc__tools">
+            <label class="pan-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+              <input type="search" id="conQ" placeholder="Nom, tel, mail, numero..." aria-label="Rechercher un participant" />
+            </label>
+            <a class="btn sm secondary" id="conCsv" href="/api/admin/fight-furious/concours/export.csv">Export CSV</a>
+            <button type="button" class="btn sm secondary" data-recharger="concours">Actualiser</button>
+          </div>
+        </div>
+        <div class="pan-tablewrap">
+          <table class="pan-table">
+            <thead><tr><th>Inscrit le</th><th>Nom</th><th>Telephone</th><th>Mail</th><th>Tickets</th><th>Amis</th><th>Avis</th><th>Gagnant</th></tr></thead>
+            <tbody id="conBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TIRAGES -->
+    <section data-section="tirages" hidden>
+      <div id="tirMsg"></div>
+      <div class="pan-bloc">
+        <div class="pan-bloc__head">
+          <div>
+            <h2 class="pan-bloc__title">Tirages du 23 au 27 novembre 2026</h2>
+            <p class="pan-bloc__desc">Un tirage par jour. Le tirage se fait depuis la page de tirage Moteka.</p>
+          </div>
+          <div class="pan-bloc__tools">
+            <button type="button" class="btn sm secondary" data-recharger="tirages">Actualiser</button>
+          </div>
+        </div>
+        <div class="pan-tablewrap">
+          <table class="pan-table">
+            <thead><tr><th>Date</th><th style="text-align:right">Numero</th><th>Gagnant</th><th>Contact</th><th>Lot</th></tr></thead>
+            <tbody id="tirBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pan-bloc">
+        <div class="pan-bloc__head"><div><h2 class="pan-bloc__title">Les lots</h2></div></div>
+        <div class="pan-tablewrap">
+          <table class="pan-table">
+            <thead><tr><th style="text-align:right">Ordre</th><th>Lot</th><th>Description</th><th>Actif</th></tr></thead>
+            <tbody id="lotsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="ff-modal" id="preuveModal" hidden role="dialog" aria-modal="true" aria-labelledby="preuveTitre">
+    <div class="ff-modal__box">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <h2 id="preuveTitre" class="pan-bloc__title">Preuve de l'avis</h2>
+        <button type="button" class="btn sm secondary" id="preuveFermer">Fermer</button>
+      </div>
+      <div id="preuveCorps"></div>
+    </div>
+  </div>
+
+  <script src="/admin/fight-furious.js?v=1"></script>
+</body>
+</html>
