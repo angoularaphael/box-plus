@@ -24,7 +24,7 @@ const { getBotId, wrongSalesBotReject } = require('../lib/sales-bot');
 const idempotency = require('../lib/persistent-idempotency');
 const packageJson = require('../package.json');
 
-const PORT = Number(process.env.BOT_HTTP_PORT || process.env.PORT || 3050);
+const PORT = Number(process.env.BOT_HTTP_PORT || process.env.PORT || process.env.SERVER_PORT || 3050);
 const SECRET = process.env.SYNC_SECRET || process.env.BRIDGE_SECRET || '';
 
 function isAuthorized(req) {
