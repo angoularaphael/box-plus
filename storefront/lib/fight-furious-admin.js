@@ -21,7 +21,7 @@ const bil = require('./billetterie');
 
 const TABLES_MANQUANTES = 'Tables a creer : executer les SQL';
 const PRODUITS_ORDRE = ['vendredi', 'samedi', 'dimanche', 'weekend'];
-const DATES_TIRAGE = ['2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27'];
+const DATES_TIRAGE = ['2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27', '2026-11-28'];
 const COLONNES_PARTICIPANT =
   'id, prenom, nom, telephone, email, amis, avis, avis_statut, avis_le, tickets, source, created_at';
 
@@ -30,7 +30,7 @@ function baseBillet() {
 }
 
 function motekaAdminUrl() {
-  return String(process.env.MOTEKA_ADMIN_URL || 'https://moteka-three.vercel.app/admin').trim().replace(/\/$/, '');
+  return String(process.env.MOTEKA_ADMIN_URL || 'https://fight-and-furious.boxingcenter.fr/admin').trim().replace(/\/$/, '');
 }
 
 function liensMoteka() {
@@ -202,7 +202,7 @@ function statsConcours(lignes, tickets) {
   };
 }
 
-/** Planning des 5 tirages (23 au 27 novembre 2026), complete par l'historique reel. */
+/** Planning des 6 tirages (23 au 28 novembre 2026), complete par l'historique reel. */
 function planningTirages(tirages, lots, participants) {
   const lotParId = new Map((lots || []).map((l) => [l.id, l]));
   const partParId = new Map((participants || []).map((p) => [p.id, p]));

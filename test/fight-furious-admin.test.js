@@ -110,9 +110,9 @@ test('lignesParticipants et statsConcours : tickets tries, amis, avis, gagnants'
   assert.deepEqual(s.avis, { aucun: 1, a_verifier: 1, valide: 1, refuse: 0 });
 });
 
-test('planningTirages : 5 dates du 23 au 27 novembre, gagnant et lot renseignes', () => {
+test('planningTirages : 6 dates du 23 au 28 novembre, gagnant et lot renseignes', () => {
   const plan = ff.planningTirages(tirages, lots, participants);
-  assert.equal(plan.length, 5);
+  assert.equal(plan.length, 6);
   assert.deepEqual(plan.map((t) => t.date_tirage), ff.DATES_TIRAGE);
   assert.equal(plan[0].gagnant, 'Eva Doe');
   assert.equal(plan[0].lot, 'Casque moto');
@@ -148,8 +148,8 @@ test('liensMoteka : URL configurable par MOTEKA_ADMIN_URL', () => {
   const avant = process.env.MOTEKA_ADMIN_URL;
   delete process.env.MOTEKA_ADMIN_URL;
   assert.deepEqual(ff.liensMoteka(), {
-    admin: 'https://moteka-three.vercel.app/admin',
-    tirage: 'https://moteka-three.vercel.app/admin/tirage',
+    admin: 'https://fight-and-furious.boxingcenter.fr/admin',
+    tirage: 'https://fight-and-furious.boxingcenter.fr/admin/tirage',
   });
   process.env.MOTEKA_ADMIN_URL = 'https://autre.exemple/admin/';
   assert.equal(ff.liensMoteka().tirage, 'https://autre.exemple/admin/tirage');
