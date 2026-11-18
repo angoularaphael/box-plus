@@ -65,8 +65,17 @@
       qr.height = 220;
       qr.alt = 'QR code du billet ' + b.code;
       qr.src = '/api/billetterie/qr/' + encodeURIComponent(c.order_id) + '/' + b.numero + '.png?t=' + encodeURIComponent(t);
+      var cote = document.createElement('div');
+      cote.className = 'bil-billet-cote';
+      cote.innerHTML =
+        '<div class="bil-billet-logos">' +
+        '<img src="/img/billetterie/boxing-center.png" alt="Boxing Center" width="105" height="49">' +
+        '<span aria-hidden="true">x</span>' +
+        '<img src="/img/billetterie/moteka-blanc.svg" alt="Moteka" width="110" height="13">' +
+        '</div>';
+      cote.appendChild(qr);
       corps.appendChild(dl);
-      corps.appendChild(qr);
+      corps.appendChild(cote);
       var pied = document.createElement('p');
       pied.className = 'bil-billet-pied';
       pied.textContent = 'Billet payé (' + euros(c.total_cents) + ' au total). Présentez ce QR code à l\'entrée.';

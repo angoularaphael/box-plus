@@ -56,7 +56,17 @@
 .bil-billet-corps dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: .95rem; }
 .bil-billet-corps dt { color: var(--bc-muted); }
 .bil-billet-corps dd { margin: 0; font-weight: 600; word-break: break-word; }
-.bil-billet-qr { width: 220px; height: 220px; max-width: 100%; justify-self: center; image-rendering: pixelated; }
+.bil-billet-cote { display: flex; flex-direction: column; align-items: center; gap: 10px; justify-self: center; width: 220px; max-width: 100%; }
+.bil-billet-logos {
+  display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%;
+  background: #060910; border-radius: 10px; padding: 8px 12px;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.bil-billet-logos img { display: block; height: auto; min-width: 0; }
+.bil-billet-logos img[alt="Boxing Center"] { width: 84px; }
+.bil-billet-logos img[alt="Moteka"] { width: 82px; }
+.bil-billet-logos span { color: rgba(255, 255, 255, .55); font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: .95rem; }
+.bil-billet-qr { width: 220px; height: 220px; max-width: 100%; image-rendering: pixelated; }
 .bil-billet-pied { margin: 0; padding: 14px 20px; font-size: .85rem; color: var(--bc-muted); }
 .bil-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 28px; }
 
