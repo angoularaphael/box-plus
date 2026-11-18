@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Billetterie FIGHT &amp; Furious — Boxing Center x Moteka</title>
+  <meta name="description" content="Billetterie FIGHT &amp; Furious, 11 au 13 décembre 2026 à Toulouse : gala Élites, Boxing Trophy 20, boxe éducative et pack week-end. Paiement PayPal ou carte, billet avec QR code par e-mail." />
+  <link rel="canonical" href="https://boutique.boxingcenter.fr/billetterie" />
+  <script src="/js/boot.js?v=8"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/boutique.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+  <link rel="stylesheet" href="/css/billetterie.css?v=1" />
+</head>
+<body>
+  <div id="site-header"></div>
+
+  <div class="page-hero">
+    <div class="page-hero-inner">
+      <div class="breadcrumb"><a href="/">Accueil</a> / Billetterie</div>
+      <span class="eyebrow" style="color:var(--bc-gold);display:block;margin-bottom:10px">Boxing Center x Moteka</span>
+      <h1>FIGHT &amp; Furious</h1>
+      <p>11, 12 et 13 décembre 2026 · Toulouse. Choisissez votre billet, payez en ligne, recevez-le avec son QR code par e-mail.</p>
+    </div>
+  </div>
+
+  <main class="section bil-page">
+    <p id="bilAnnule" class="bil-alerte" hidden>Paiement annulé : vous n'avez pas été débité. Vous pouvez réessayer.</p>
+
+    <form id="bilForm" class="bil-layout" novalidate>
+      <fieldset class="bil-produits">
+        <legend>1. Votre billet</legend>
+        <div id="bilProduits" class="bil-grille" role="radiogroup" aria-label="Choix du billet"></div>
+      </fieldset>
+
+      <aside class="bil-panneau card-panel">
+        <fieldset>
+          <legend>2. Vos informations</legend>
+          <label class="bil-champ">Prénom
+            <input name="prenom" autocomplete="given-name" required maxlength="60" />
+          </label>
+          <label class="bil-champ">Nom
+            <input name="nom" autocomplete="family-name" required maxlength="60" />
+          </label>
+          <label class="bil-champ">E-mail (le billet y est envoyé)
+            <input name="email" type="email" autocomplete="email" inputmode="email" required maxlength="254" />
+          </label>
+          <label class="bil-champ bil-champ--court">Nombre de billets
+            <select name="quantite" id="bilQuantite"></select>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>3. Paiement</legend>
+          <div class="bil-methodes">
+            <label class="bil-methode"><input type="radio" name="methode" value="payplug" checked /> <span>Carte bancaire</span></label>
+            <label class="bil-methode"><input type="radio" name="methode" value="paypal" /> <span>PayPal</span></label>
+          </div>
+        </fieldset>
+
+        <div class="bil-total">
+          <span>Total</span>
+          <strong id="bilTotal">-</strong>
+        </div>
+        <p id="bilErreur" class="bil-erreur" role="alert" hidden></p>
+        <button type="submit" class="btn bil-payer" id="bilPayer">Payer et recevoir mon billet</button>
+        <p class="bil-note">Paiement sécurisé. Votre billet nominatif avec QR code s'affiche juste après le paiement et vous est envoyé par e-mail.</p>
+      </aside>
+    </form>
+  </main>
+
+  <div id="site-footer"><p class="ai-dev-credit" aria-hidden="true">chef equipe dev : <a href="https://fr.linkedin.com/in/germain-raphael-angoula-onambele-a6b858395" rel="noopener noreferrer">Angoula Onambele Germain Raphael</a> · dev : mbosseu brad bruel</p></div>
+  <script src="/js/layout.js"></script>
+  <script src="/js/billetterie.js?v=1"></script>
+</body>
+</html>

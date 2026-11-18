@@ -1674,6 +1674,8 @@ function createApp() {
     }
   });
 
+  require('./lib/billetterie-routes').registerBilletterieRoutes(app, { publicDir: PUBLIC_DIR });
+
   app.post('/api/admin/ingest-materiel-catalog', (req, res) => {
     if (!isAuthorizedSync(req)) return res.status(401).json({ ok: false, error: 'unauthorized' });
     try {
@@ -6929,6 +6931,13 @@ function createApp() {
           order_id: result.order_id,
         });
         return res.json({ ok: true, membership_change: true, already_processed: Boolean(result.already_processed) });
+      }
+
+      // Billetterie FIGHT & Furious
+      if (String(meta.order_type || '') === 'billet') {
+        const { traiterWebhookPayplug } = require('./lib/billetterie-routes');
+        const out = await traiterWebhookPayplug(payment, getStoreUrl());
+        return res.json({ billet: true, ...out });
       }
 
       // Matériel

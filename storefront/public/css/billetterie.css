@@ -1,0 +1,66 @@
+/* Billetterie FIGHT & Furious */
+.bil-page { max-width: 1120px; margin: 0 auto; padding: 32px 16px 64px; }
+.bil-page fieldset { border: 0; margin: 0 0 24px; padding: 0; min-width: 0; }
+.bil-page legend {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1.35rem;
+  text-transform: uppercase; letter-spacing: .02em; color: var(--bc-text); margin-bottom: 12px;
+}
+.bil-alerte { background: #fff7e6; border: 1px solid #f2d39b; color: var(--bc-warning); padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; }
+.bil-layout { display: grid; gap: 24px; }
+@media (min-width: 900px) { .bil-layout { grid-template-columns: 1fr 380px; align-items: start; } .bil-panneau { position: sticky; top: 96px; } }
+
+.bil-grille { display: grid; gap: 12px; }
+.bil-carte {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center;
+  background: var(--bc-card); border: 2px solid var(--bc-border); border-radius: 14px;
+  padding: 18px 16px; cursor: pointer; transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+}
+.bil-carte:hover { border-color: var(--bc-navy-light); transform: translateY(-1px); }
+.bil-carte:has(input:checked) { border-color: var(--bc-red); box-shadow: 0 8px 24px rgba(232, 0, 28, .12); }
+.bil-carte input { width: 20px; height: 20px; accent-color: var(--bc-red); }
+.bil-carte-corps { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.bil-carte-corps strong { font-size: 1.02rem; color: var(--bc-text); }
+.bil-carte-detail { font-size: .88rem; color: var(--bc-muted); }
+.bil-carte-prix { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 1.7rem; color: var(--bc-navy); white-space: nowrap; }
+.bil-carte--pack { background: linear-gradient(135deg, #fff, #fff6e8); }
+.bil-carte--pack .bil-carte-prix { color: var(--bc-red); }
+
+.bil-panneau { padding: 22px 18px; }
+.bil-champ { display: flex; flex-direction: column; gap: 6px; font-size: .9rem; font-weight: 600; color: var(--bc-text); margin-bottom: 14px; }
+.bil-champ input, .bil-champ select {
+  font: inherit; font-weight: 500; padding: 12px 14px; border: 1px solid var(--bc-border); border-radius: 10px; background: #fff; min-height: 46px;
+}
+.bil-champ input:focus, .bil-champ select:focus { outline: 2px solid var(--bc-navy-light); outline-offset: 1px; }
+.bil-champ--court select { max-width: 120px; }
+.bil-methodes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.bil-methode { display: flex; align-items: center; gap: 8px; border: 1px solid var(--bc-border); border-radius: 10px; padding: 12px; cursor: pointer; font-weight: 600; }
+.bil-methode:has(input:checked) { border-color: var(--bc-navy); background: var(--bc-gold-soft); }
+.bil-methode--off { opacity: .45; cursor: not-allowed; }
+.bil-total { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--bc-border); padding-top: 16px; margin-bottom: 14px; }
+.bil-total strong { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; color: var(--bc-navy); }
+.bil-erreur { color: var(--bc-error); font-weight: 600; margin: 0 0 12px; }
+.bil-payer { width: 100%; min-height: 52px; }
+.bil-payer:disabled { opacity: .6; cursor: not-allowed; }
+.bil-note { font-size: .8rem; color: var(--bc-muted); margin: 12px 0 0; }
+
+/* Billet */
+.bil-etat { text-align: center; padding: 40px 0; }
+.bil-billets { display: grid; gap: 24px; max-width: 720px; margin: 0 auto; }
+.bil-billet { background: var(--bc-card); border-radius: 18px; overflow: hidden; box-shadow: 0 12px 32px rgba(12, 24, 41, .14); border: 1px solid var(--bc-border); }
+.bil-billet--scan { outline: 4px solid var(--bc-success); }
+.bil-billet-tete { background: linear-gradient(120deg, var(--bc-navy-deep), var(--bc-navy) 60%, var(--bc-red)); color: #fff; padding: 18px 20px; display: flex; flex-direction: column; gap: 2px; }
+.bil-billet-tete span { font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; opacity: .8; }
+.bil-billet-tete strong { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; text-transform: uppercase; }
+.bil-billet-corps { display: grid; gap: 18px; padding: 20px; border-bottom: 2px dashed var(--bc-border); }
+@media (min-width: 640px) { .bil-billet-corps { grid-template-columns: 1fr 220px; align-items: center; } }
+.bil-billet-corps dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: .95rem; }
+.bil-billet-corps dt { color: var(--bc-muted); }
+.bil-billet-corps dd { margin: 0; font-weight: 600; word-break: break-word; }
+.bil-billet-qr { width: 220px; height: 220px; max-width: 100%; justify-self: center; image-rendering: pixelated; }
+.bil-billet-pied { margin: 0; padding: 14px 20px; font-size: .85rem; color: var(--bc-muted); }
+.bil-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 28px; }
+
+@media print {
+  #site-header, #site-footer, .bil-actions { display: none !important; }
+  .bil-billet { box-shadow: none; break-inside: avoid; }
+}
