@@ -386,7 +386,7 @@
     if (/^\/admin(\/|$)/i.test(p) || /\/admin\//i.test(location.pathname)) return;
     if (/billet|checkout|inscription|paiement|contrat|success/i.test(p)) return;
     const s = document.createElement('script');
-    s.src = 'https://fight-and-furious.boxingcenter.fr/ff-promo.js?v=1';
+    s.src = 'https://fight-and-furious.boxingcenter.fr/ff-promo.js?v=2';
     s.defer = true;
     s.dataset.ffPromo = '1';
     s.dataset.src = 'btq';
