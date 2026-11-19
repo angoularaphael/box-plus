@@ -149,6 +149,22 @@
       </header>`;
   }
 
+  function renderFfSection() {
+    return `
+      <section class="ff-section" id="fight-and-furious" aria-label="FIGHT and Furious">
+        <div class="ff-section__in">
+          <p class="ff-section__k">11 au 13 decembre 2026</p>
+          <h2 class="ff-section__t">FIGHT &amp; Furious</h2>
+          <p class="ff-section__p">Gala de boxe Boxing Center x Moteka. Billets en ligne et jeu concours avec tirages jusqu'au 28 novembre.</p>
+          <div class="ff-section__row">
+            <a class="ff-btn ff-btn--on" href="https://fight-and-furious.boxingcenter.fr/?src=btq">Voir l'evenement</a>
+            <a class="ff-btn ff-btn--ghost" href="${L('/billetterie')}?src=btq">Acheter un billet</a>
+            <a class="ff-btn ff-btn--line" href="https://fight-and-furious.boxingcenter.fr/?src=btq#concours">Jeu concours</a>
+          </div>
+        </div>
+      </section>`;
+  }
+
   function renderFooter() {
     return `
       <footer class="site-footer">
@@ -366,7 +382,11 @@
     const headerSlot = document.getElementById('site-header');
     const footerSlot = document.getElementById('site-footer');
     if (headerSlot) headerSlot.innerHTML = renderHeader();
-    if (footerSlot) footerSlot.innerHTML = renderFooter();
+    if (footerSlot) {
+      const p = currentPath();
+      const skipFf = /billet|checkout|inscription|paiement|contrat|success|admin/i.test(p);
+      footerSlot.innerHTML = (skipFf ? '' : renderFfSection()) + renderFooter();
+    }
     initNav();
     renderResumeBar();
     renderBackTop();
@@ -386,7 +406,7 @@
     if (/^\/admin(\/|$)/i.test(p) || /\/admin\//i.test(location.pathname)) return;
     if (/billet|checkout|inscription|paiement|contrat|success/i.test(p)) return;
     const s = document.createElement('script');
-    s.src = 'https://fight-and-furious.boxingcenter.fr/ff-promo.js?v=2';
+    s.src = 'https://fight-and-furious.boxingcenter.fr/ff-promo.js?v=3';
     s.defer = true;
     s.dataset.ffPromo = '1';
     s.dataset.src = 'btq';
