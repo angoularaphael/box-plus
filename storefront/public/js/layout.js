@@ -171,6 +171,8 @@
             <a href="${L('/reglement-interieur')}">Règlement intérieur</a>
             <a href="${L('/politique-confidentialite')}">Confidentialité</a>
             <a href="https://boxingcenter.fr" target="_blank" rel="noopener">boxingcenter.fr</a>
+            <a href="https://fight-and-furious.boxingcenter.fr/?src=btq" target="_blank" rel="noopener">FIGHT &amp; Furious</a>
+            <a href="${L('/billetterie')}?src=btq">Billetterie FIGHT &amp; Furious</a>
           </div>
         </div>
         <div class="footer-bottom">
@@ -372,9 +374,23 @@
     updateCartBadge();
     window.addEventListener('bccart:change', updateCartBadge);
     ensureTracking();
+    ensureFfPromo();
     ensureChloe();
     ensureHalloween();
     ensureFavicon();
+  }
+
+  function ensureFfPromo() {
+    if (document.querySelector('script[data-ff-promo]')) return;
+    const p = currentPath();
+    if (/^\/admin(\/|$)/i.test(p) || /\/admin\//i.test(location.pathname)) return;
+    if (/billet|checkout|inscription|paiement|contrat|success/i.test(p)) return;
+    const s = document.createElement('script');
+    s.src = 'https://fight-and-furious.boxingcenter.fr/ff-promo.js?v=1';
+    s.defer = true;
+    s.dataset.ffPromo = '1';
+    s.dataset.src = 'btq';
+    document.body.appendChild(s);
   }
 
   function ensureFavicon() {

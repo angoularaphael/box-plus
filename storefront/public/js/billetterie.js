@@ -9,6 +9,16 @@
   var bouton = document.getElementById('bilPayer');
   var params = new URLSearchParams(window.location.search);
   var produits = [];
+  var CLE_SRC = 'bc_ff_src';
+
+  function lireSrc() {
+    var brut = String(params.get('src') || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 12);
+    if (brut) {
+      try { localStorage.setItem(CLE_SRC, brut); } catch (e) { /* ignore */ }
+      return brut;
+    }
+    try { return String(localStorage.getItem(CLE_SRC) || '').replace(/[^a-z0-9_-]/g, '').slice(0, 12); } catch (e) { return ''; }
+  }
 
   if (params.get('annule') === '1') document.getElementById('bilAnnule').hidden = false;
 
@@ -100,6 +110,7 @@
       email: String(fd.get('email') || '').trim(),
       quantite: Number(fd.get('quantite') || 1),
       methode: fd.get('methode'),
+      src: lireSrc(),
     };
     if (!corps.produit) return afficherErreur('Choisissez un billet.');
     if (!corps.prenom || !corps.nom) return afficherErreur('Indiquez votre prénom et votre nom.');

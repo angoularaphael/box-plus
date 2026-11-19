@@ -68,7 +68,7 @@
   function filtreBillets() {
     const q = ($('#bilQ').value || '').trim().toLowerCase();
     const liste = q
-      ? commandes.filter((c) => [c.prenom, c.nom, c.email, c.order_id, c.produit_nom, ...(c.codes || [])].some((v) => String(v || '').toLowerCase().includes(q)))
+      ? commandes.filter((c) => [c.prenom, c.nom, c.email, c.order_id, c.produit_nom, c.src, ...(c.codes || [])].some((v) => String(v || '').toLowerCase().includes(q)))
       : commandes;
     $('#bilCsv').href = `/api/admin/fight-furious/billetterie/export.csv${q ? `?q=${encodeURIComponent(q)}` : ''}`;
     $('#bilCompte').textContent = `${liste.length} commande(s) payee(s)${q ? ` sur ${commandes.length}` : ''}`;
@@ -83,6 +83,7 @@
           <td style="text-align:right">${c.quantite}</td>
           <td style="text-align:right">${eur(c.total_cents)}</td>
           <td>${moyen(c.methode)}</td>
+          <td>${esc(c.src || 'direct')}</td>
           <td class="ff-codes">${(c.codes || []).map(esc).join('<br />') || '-'}</td>
           <td><div class="ff-actions">
             ${c.lien ? `<a class="btn sm secondary" href="${esc(c.lien)}" target="_blank" rel="noopener noreferrer">Ouvrir</a><button type="button" class="btn sm secondary" data-copier="${esc(c.lien)}">Copier le lien</button>` : ''}
@@ -91,7 +92,7 @@
         </tr>`
           )
           .join('')
-      : `<tr><td colspan="9" class="ff-vide">${q ? 'Aucune commande ne correspond.' : 'Aucune commande payee pour le moment.'}</td></tr>`;
+      : `<tr><td colspan="10" class="ff-vide">${q ? 'Aucune commande ne correspond.' : 'Aucune commande payee pour le moment.'}</td></tr>`;
   }
 
   async function chargerBilletterie() {
@@ -110,6 +111,11 @@
       $('#bilProduits').innerHTML = (s.par_produit || [])
         .map((p) => `<tr><td style="font-weight:600">${esc(p.nom)}</td><td style="text-align:right">${p.billets}</td><td style="text-align:right">${p.commandes}</td><td style="text-align:right">${eur(p.ca_cents)}</td></tr>`)
         .join('');
+      $('#bilSources').innerHTML = (s.par_source || []).length
+        ? (s.par_source || [])
+            .map((p) => `<tr><td style="font-weight:600">${esc(p.label || p.src)}</td><td>${esc(p.src)}</td><td style="text-align:right">${p.billets}</td><td style="text-align:right">${p.commandes}</td><td style="text-align:right">${eur(p.ca_cents)}</td></tr>`)
+            .join('')
+        : '<tr><td colspan="5" class="ff-vide">Pas encore de source enregistree.</td></tr>';
       commandes = d.commandes || [];
       filtreBillets();
       const att = d.en_attente || [];
@@ -124,7 +130,7 @@
       message('#bilMsg', err.data || { error: err.message });
       $('#bilKpis').innerHTML = '';
       $('#bilProduits').innerHTML = '';
-      $('#bilBody').innerHTML = '<tr><td colspan="9" class="ff-vide">Aucune donnee.</td></tr>';
+      $('#bilBody').innerHTML = '<tr><td colspan="10" class="ff-vide">Aucune donnee.</td></tr>';
       $('#bilCompte').textContent = '';
     }
   }
@@ -160,7 +166,7 @@
     const q = ($('#conQ').value || '').trim().toLowerCase();
     const liste = q
       ? participants.filter((p) =>
-          [p.prenom, p.nom, p.email, p.telephone, ...(p.tickets || []).map((t) => t.numero)].some((v) => String(v || '').toLowerCase().includes(q))
+          [p.prenom, p.nom, p.email, p.telephone, p.source, ...(p.tickets || []).map((t) => t.numero)].some((v) => String(v || '').toLowerCase().includes(q))
         )
       : participants;
     $('#conCsv').href = `/api/admin/fight-furious/concours/export.csv${q ? `?q=${encodeURIComponent(q)}` : ''}`;
@@ -183,10 +189,11 @@
             p.avis_statut !== 'aucun' ? `<br /><button type="button" class="btn sm secondary" style="margin-top:6px" data-preuve="${esc(p.id)}" data-nom="${esc(`${p.prenom} ${p.nom}`)}">Voir la preuve</button>` : ''
           }</td>
           <td>${gains || '<span style="color:var(--bc-muted)">Non</span>'}</td>
+          <td>${esc(p.source || 'direct')}</td>
         </tr>`;
           })
           .join('')
-      : `<tr><td colspan="8" class="ff-vide">${q ? 'Aucun participant ne correspond.' : 'Aucun participant pour le moment.'}</td></tr>`;
+      : `<tr><td colspan="9" class="ff-vide">${q ? 'Aucun participant ne correspond.' : 'Aucun participant pour le moment.'}</td></tr>`;
   }
 
   async function chargerConcours() {
@@ -204,6 +211,11 @@
         kpi('Avis valides', a.valide || 0, '', 'ok') +
         kpi('Avis refuses', a.refuse || 0) +
         kpi('Gagnants', s.gagnants);
+      $('#conSources').innerHTML = (s.par_source || []).length
+        ? (s.par_source || [])
+            .map((p) => `<tr><td style="font-weight:600">${esc(p.label || p.src)}</td><td>${esc(p.src)}</td><td style="text-align:right">${p.inscrits}</td><td style="text-align:right">${p.tickets}</td></tr>`)
+            .join('')
+        : '<tr><td colspan="4" class="ff-vide">Pas encore de source enregistree.</td></tr>';
       const info = $('#conAvisInfo');
       if (a.a_verifier) {
         info.style.display = '';

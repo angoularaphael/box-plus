@@ -22,6 +22,26 @@ const bil = require('./billetterie');
 const TABLES_MANQUANTES = 'Tables a creer : executer les SQL';
 const PRODUITS_ORDRE = ['vendredi', 'samedi', 'dimanche', 'weekend'];
 const DATES_TIRAGE = ['2026-11-23', '2026-11-24', '2026-11-25', '2026-11-26', '2026-11-27', '2026-11-28'];
+const SRC_LABELS = {
+  cbx: 'Combat Boxe',
+  mdb: 'Materiel de boxe',
+  btq: 'Boutique',
+  gal: 'Site gala',
+  stg: 'Stage boxeur',
+  trp: 'Boxing Trophy',
+  tmb: 'TMBC Minimes',
+  bcc: 'Boxing Center',
+  ff: 'Site FIGHT & Furious',
+  site: 'Site FIGHT & Furious',
+  web: 'Autre site',
+  direct: 'Direct',
+};
+
+function libelleSource(src) {
+  const k = String(src || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 12);
+  if (!k) return SRC_LABELS.direct;
+  return SRC_LABELS[k] || k;
+}
 const COLONNES_PARTICIPANT =
   'id, prenom, nom, telephone, email, amis, avis, avis_statut, avis_le, tickets, source, created_at';
 
@@ -82,6 +102,7 @@ function ligneCommande(row, base = baseBillet()) {
     codes: Array.isArray(p.billets) ? p.billets.map((b) => b.code).filter(Boolean) : [],
     emailed_at: p.emailed_at || null,
     renvoye_at: p.renvoye_at || null,
+    src: p.src || row.src || '',
     lien: token && (row.order_id || p.order_id) ? bil.billetUrl(base, { order_id: row.order_id || p.order_id, access_token: token }) : null,
   };
 }
@@ -95,6 +116,7 @@ function statsBillets(commandes) {
     paypal: { commandes: 0, ca_cents: 0 },
     payplug: { commandes: 0, ca_cents: 0 },
   };
+  const parSource = {};
   let commandesPayees = 0;
   let billets = 0;
   let ca = 0;
@@ -107,6 +129,11 @@ function statsBillets(commandes) {
     commandesPayees += 1;
     billets += c.quantite;
     ca += c.total_cents;
+    const sk = String(c.src || 'direct').slice(0, 12) || 'direct';
+    if (!parSource[sk]) parSource[sk] = { src: sk, label: libelleSource(sk), commandes: 0, billets: 0, ca_cents: 0 };
+    parSource[sk].commandes += 1;
+    parSource[sk].billets += c.quantite;
+    parSource[sk].ca_cents += c.total_cents;
     if (!parProduit[c.produit]) {
       parProduit[c.produit] = { id: c.produit, nom: c.produit_nom || c.produit, billets: 0, commandes: 0, ca_cents: 0 };
     }
@@ -123,6 +150,7 @@ function statsBillets(commandes) {
     ca_cents: ca,
     en_attente: enAttente,
     par_produit: Object.values(parProduit),
+    par_source: Object.values(parSource).sort((a, b) => b.billets - a.billets),
     methodes,
   };
 }
@@ -191,6 +219,13 @@ function statsConcours(lignes, tickets) {
     if (p.gains.length) gagnants += 1;
     ticketsParticipants += p.nb_tickets;
   }
+  const parSource = {};
+  for (const p of lignes) {
+    const sk = String(p.source || 'direct').slice(0, 12) || 'direct';
+    if (!parSource[sk]) parSource[sk] = { src: sk, label: libelleSource(sk), inscrits: 0, tickets: 0 };
+    parSource[sk].inscrits += 1;
+    parSource[sk].tickets += p.nb_tickets;
+  }
   const nbTickets = Array.isArray(tickets) && tickets.length ? tickets.length : ticketsParticipants;
   return {
     inscrits: lignes.length,
@@ -199,6 +234,7 @@ function statsConcours(lignes, tickets) {
     amis_invites: lignes.reduce((n, p) => n + p.amis.length, 0),
     gagnants,
     avis,
+    par_source: Object.values(parSource).sort((a, b) => b.inscrits - a.inscrits),
   };
 }
 
@@ -277,6 +313,7 @@ function csvBillets(commandes) {
       { titre: 'Montant (EUR)', valeur: (c) => eurosCsv(c.total_cents) },
       { titre: 'Moyen', valeur: (c) => (c.methode === 'paypal' ? 'PayPal' : c.methode === 'payplug' ? 'PayPlug' : c.methode) },
       { titre: 'Codes billets', valeur: (c) => c.codes.join(' ') },
+      { titre: 'Source', valeur: (c) => c.src || '' },
       { titre: 'Lien billet', valeur: (c) => c.lien || '' },
     ],
     commandes
@@ -566,6 +603,8 @@ module.exports = {
   PRODUITS_ORDRE,
   tableManquante,
   ligneCommande,
+  SRC_LABELS,
+  libelleSource,
   statsBillets,
   lignesParticipants,
   statsConcours,

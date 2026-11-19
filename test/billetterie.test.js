@@ -37,6 +37,20 @@ test('seuls PayPal et PayPlug sont acceptes', () => {
   }
 });
 
+test('commande : conserve le code src court', () => {
+  const { data } = bil.validerCommande({
+    produit: 'samedi',
+    prenom: 'Eddy',
+    nom: 'Test',
+    email: 'e@t.fr',
+    methode: 'payplug',
+    src: 'CBX!!!',
+  });
+  assert.equal(data.src, 'cbx');
+  const c = bil.creerCommande(data);
+  assert.equal(c.src, 'cbx');
+});
+
 test('commande : total, codes uniques, acces par jeton', () => {
   const { data } = bil.validerCommande({ produit: 'vendredi', prenom: 'Eddy', nom: 'Test', email: 'e@t.fr', methode: 'payplug', quantite: 4 });
   const c = bil.creerCommande(data);

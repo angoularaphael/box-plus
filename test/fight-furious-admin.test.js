@@ -15,7 +15,7 @@ const ff = require('../storefront/lib/fight-furious-admin');
 
 const BASE = 'https://boutique.boxingcenter.fr';
 
-function row({ id, produit, status = 'paid', quantite = 1, total, methode = 'paypal', paid_at = '2026-11-10T10:00:00.000Z', codes = ['FF-AAAA-BBBB'] }) {
+function row({ id, produit, status = 'paid', quantite = 1, total, methode = 'paypal', paid_at = '2026-11-10T10:00:00.000Z', codes = ['FF-AAAA-BBBB'], src = '' }) {
   return {
     order_id: id,
     produit,
@@ -34,9 +34,20 @@ function row({ id, produit, status = 'paid', quantite = 1, total, methode = 'pay
       payment: { method: methode, status },
       paid_at: status === 'paid' ? paid_at : undefined,
       status,
+      src,
     },
   };
 }
+
+test('ligneCommande et stats : source src conservee', () => {
+  const c = ff.ligneCommande(row({ id: 'BIL-src', produit: 'samedi', total: 1000, src: 'cbx' }), BASE);
+  assert.equal(c.src, 'cbx');
+  const s = ff.statsBillets([c]);
+  assert.equal(s.par_source.length, 1);
+  assert.equal(s.par_source[0].src, 'cbx');
+  assert.equal(s.par_source[0].label, 'Combat Boxe');
+  assert.equal(s.par_source[0].billets, 1);
+});
 
 test('ligneCommande : champs a plat et lien du billet avec le jeton', () => {
   const c = ff.ligneCommande(row({ id: 'BIL-1763000000000-abcdef', produit: 'weekend', quantite: 2, total: 4000, codes: ['FF-A', 'FF-B'] }), BASE);
@@ -127,7 +138,7 @@ test('CSV : separateur ;, BOM, guillemets, pas de formule', () => {
   const csv = ff.csvBillets([ff.ligneCommande(row({ id: 'BIL-1763000000000-abcdef', produit: 'samedi', total: 1050, codes: ['FF-1', 'FF-2'] }), BASE)]);
   assert.ok(csv.startsWith('﻿Date;Commande;Prenom;Nom;Email;Produit'));
   const ligne = csv.split('\r\n')[1];
-  assert.match(ligne, /;10,50;PayPal;FF-1 FF-2;https:\/\/boutique\.boxingcenter\.fr\/billet\?id=/);
+  assert.match(ligne, /;10,50;PayPal;FF-1 FF-2;;https:\/\/boutique\.boxingcenter\.fr\/billet\?id=/);
   const csvP = ff.csvParticipants(ff.lignesParticipants(participants, tickets, tirages, lots));
   const lignes = csvP.trim().split('\r\n');
   assert.equal(lignes.length, 4);

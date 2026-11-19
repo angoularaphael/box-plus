@@ -250,15 +250,32 @@ async function loadRemoteRows(days, typeFilter) {
   }
 }
 
-function buildPageviewRow({ path: pagePath, referrer, ua, vid } = {}) {
+function srcFromPath(pagePath, props) {
+  const fromProps = props && typeof props === 'object' ? String(props.src || '') : '';
+  let fromQuery = '';
+  try {
+    const q = String(pagePath || '').split('?')[1] || '';
+    fromQuery = new URLSearchParams(q).get('src') || '';
+  } catch {
+    fromQuery = '';
+  }
+  return String(fromProps || fromQuery)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 12);
+}
+
+function buildPageviewRow({ path: pagePath, referrer, ua, vid, props } = {}) {
   const p = normalizePath(pagePath);
   if (isBotUa(ua) || isSkippedPath(p)) return null;
+  const src = srcFromPath(pagePath, props);
   return {
     type: 'pageview',
     path: p,
     referrer: String(referrer || '').slice(0, 300),
     ua: String(ua || '').slice(0, 200),
     vid: normalizeVid(vid),
+    props: src ? { src } : undefined,
     at: new Date().toISOString(),
   };
 }

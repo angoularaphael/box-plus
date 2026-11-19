@@ -5,6 +5,35 @@
   if (window.BCTrack) return;
   if (/^\/admin(\/|$)/i.test(location.pathname)) return;
 
+  var CLE_SRC = 'bc_ff_src';
+
+  function lireSrc() {
+    var brut = '';
+    try {
+      brut = String(new URLSearchParams(location.search).get('src') || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '')
+        .slice(0, 12);
+    } catch {
+      brut = '';
+    }
+    if (brut) {
+      try {
+        localStorage.setItem(CLE_SRC, brut);
+      } catch {
+        /* ignore */
+      }
+      return brut;
+    }
+    try {
+      return String(localStorage.getItem(CLE_SRC) || '')
+        .replace(/[^a-z0-9_-]/g, '')
+        .slice(0, 12);
+    } catch {
+      return '';
+    }
+  }
+
   function visitorId() {
     const key = 'bc_vid';
     const match = document.cookie.match(/(?:^|;\s*)bc_vid=([^;]*)/);
@@ -49,19 +78,22 @@
     if (typeof window.gtag === 'function') {
       window.gtag('event', event, props || {});
     }
+    const src = lireSrc();
     post({
       type: 'event',
       name: event,
-      props: props || {},
+      props: { ...(props || {}), src: src || undefined },
       path: location.pathname + location.search,
     });
   }
 
   function pageview() {
+    const src = lireSrc();
     post({
       type: 'pageview',
       path: location.pathname + location.search,
       referrer: document.referrer || '',
+      props: src ? { src } : {},
     });
   }
 

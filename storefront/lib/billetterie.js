@@ -96,9 +96,13 @@ function validerCommande(body = {}) {
   if (quantite > QUANTITE_MAX) {
     errors.push({ field: 'quantite', message: `${QUANTITE_MAX} billets maximum par commande.` });
   }
+  const src = String(body.src || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 12);
   return {
     errors,
-    data: { produit, prenom, nom, email, methode, quantite: Math.min(quantite, QUANTITE_MAX) },
+    data: { produit, prenom, nom, email, methode, quantite: Math.min(quantite, QUANTITE_MAX), src },
   };
 }
 
@@ -111,8 +115,12 @@ function genererCode() {
   return `FF-${out.slice(0, 4)}-${out.slice(4)}`;
 }
 
-function creerCommande({ produit, prenom, nom, email, methode, quantite }) {
+function creerCommande({ produit, prenom, nom, email, methode, quantite, src }) {
   const now = new Date().toISOString();
+  const source = String(src || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '')
+    .slice(0, 12);
   return {
     order_id: `BIL-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
     access_token: crypto.randomBytes(18).toString('hex'),
@@ -127,6 +135,7 @@ function creerCommande({ produit, prenom, nom, email, methode, quantite }) {
     payment: { method: methode, status: 'pending' },
     billets: Array.from({ length: quantite }, (_, i) => ({ numero: i + 1, code: genererCode() })),
     status: 'pending',
+    src: source,
     created_at: now,
     updated_at: now,
   };

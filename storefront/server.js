@@ -2069,6 +2069,7 @@ function createApp() {
           referrer,
           ua,
           vid,
+          props,
         });
       } else {
         await trackEventAsync({ name: name || 'event', props, path: pagePath, ua, vid });

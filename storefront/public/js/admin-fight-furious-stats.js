@@ -53,6 +53,19 @@
           <tbody>${produits}</tbody>
         </table>
       </div>
+      ${
+        (b.par_source || []).length
+          ? `<p class="admin-section-desc" style="margin:12px 0 4px">Origine des ventes (src)</p>
+      <div style="overflow-x:auto">
+        <table class="admin-table">
+          <thead><tr><th>Source</th><th>Code</th><th style="text-align:right">Billets</th><th style="text-align:right">Commandes</th><th style="text-align:right">CA</th></tr></thead>
+          <tbody>${(b.par_source || [])
+            .map((p) => `<tr><td style="font-weight:600">${esc(p.label || p.src)}</td><td>${esc(p.src)}</td><td style="text-align:right">${p.billets}</td><td style="text-align:right">${p.commandes}</td><td style="text-align:right">${eur(p.ca_cents)}</td></tr>`)
+            .join('')}</tbody>
+        </table>
+      </div>`
+          : ''
+      }
       <p class="admin-section-desc" style="margin:12px 0 4px">Billets vendus par jour (14 derniers jours) : ${jours.length ? `${jours.reduce((n, j) => n + j.billets, 0)} billet(s)` : 'aucune vente'}</p>
       <div style="display:flex;gap:3px;align-items:flex-end" aria-hidden="true">${barres}</div>`;
   }
@@ -73,6 +86,19 @@
         ${kpi('Avis refuses', a.refuse || 0)}
         ${kpi('Gagnants', c.gagnants)}
       </div>
+      ${
+        (c.par_source || []).length
+          ? `<p class="admin-section-desc" style="margin:12px 0 4px">Origine des inscriptions (src)</p>
+      <div style="overflow-x:auto">
+        <table class="admin-table">
+          <thead><tr><th>Source</th><th>Code</th><th style="text-align:right">Inscrits</th><th style="text-align:right">Tickets</th></tr></thead>
+          <tbody>${(c.par_source || [])
+            .map((p) => `<tr><td style="font-weight:600">${esc(p.label || p.src)}</td><td>${esc(p.src)}</td><td style="text-align:right">${p.inscrits}</td><td style="text-align:right">${p.tickets}</td></tr>`)
+            .join('')}</tbody>
+        </table>
+      </div>`
+          : ''
+      }
       ${a.a_verifier ? `<p class="admin-section-desc" style="margin-top:8px">${a.a_verifier} avis a verifier : <a href="${esc(liens?.admin)}" target="_blank" rel="noopener noreferrer" style="color:var(--bc-cta)">ouvrir le back-office Moteka</a></p>` : ''}`;
   }
 
