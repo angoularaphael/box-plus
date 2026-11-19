@@ -1880,7 +1880,7 @@ function createApp() {
       const { enrichOrdersWithJobErrors } = require('./lib/admin-stats');
       const { getSupabase } = require('./lib/supabase');
 
-      const [inscriptionPaidRaw, funnelOrders, materielOrders, visits, seance, stageVacances, funnelEvents, fightFurious] = await Promise.all([
+      const [inscriptionPaidRaw, funnelOrders, materielOrders, visits, seance, funnelEvents, fightFurious] = await Promise.all([
         listPaidOrdersSinceAsync(paidSince),
         listOrdersCreatedSinceAsync(funnelSince),
         listMaterielOrdersCreatedSinceAsync(paidSince),
@@ -1889,11 +1889,6 @@ function createApp() {
           require('./lib/seance-offerte-visits').summarizeSeanceOfferteVisits(14),
           10000,
           { days: [], total: 0, flyer: 0, email: 0, whatsapp: 0, sms: 0, other: 0, inscriptions: { total: 0, flyer: 0, email: 0, whatsapp: 0, sms: 0, other: 0 }, conversion_pct: 0 }
-        ),
-        withTimeout(
-          require('./lib/stage-vacances-visits').summarizeStageVacancesVisits(14),
-          10000,
-          { clicks: { days: [], total: 0, mail: 0, sms: 0, ig: 0 }, sales: { mail: 0, sms: 0, ig: 0 }, paid_total: 0, revenue_cents: 0, conversion_pct: 0 }
         ),
         withTimeout(summarizeFunnelEvents(30), 3000, null),
         /* FIGHT & Furious (billetterie + concours Moteka) : ne fait jamais echouer les stats. */
@@ -1959,7 +1954,6 @@ function createApp() {
         totals,
         visits,
         seance_offerte: seance,
-        stage_vacances: stageVacances,
         funnel: summarizeFunnelFromOrders(funnelOrders),
         funnel_events: funnelEvents,
         unpaid: [],
