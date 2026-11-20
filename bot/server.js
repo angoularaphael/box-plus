@@ -243,7 +243,10 @@ function createBotServer() {
 
 function startBotServer() {
   const app = createBotServer();
-  app.listen(PORT, '0.0.0.0');
+  app.listen(PORT, '0.0.0.0', () => {
+    // Ligne guettee par le panneau Bot-Hosting pour passer le serveur de « starting » a « running ».
+    console.log(`[BOXPLUS] Bot ready - online, listening on port ${PORT}`);
+  });
   return app;
 }
 
