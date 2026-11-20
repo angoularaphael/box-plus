@@ -2016,10 +2016,10 @@
       ? p.benefits
       : isLicenceLoisirsTrophy()
         ? [
-            'Cotisation licence loisirs FFBoxe / FFKMDA — 50 €',
+            'Cotisation licence loisirs FFBoxe — 50 €',
             'Facture et formulaires médicaux après signature',
-            'Copie de pièce d’identité requise pour l’enregistrement fédéral',
-            'Dépôt du dossier dans n’importe quelle salle Boxing Center',
+            'Dépôt du dossier signé sur le site officiel de la FFBoxe',
+            'Inscription combat débloquée dans le même navigateur après paiement',
           ]
         : [
             'Accès aux 5 salles',
@@ -3196,6 +3196,9 @@
         ? window.BCPaths.link('/')
         : null) || '/';
     if (isLicenceLoisirsTrophy()) {
+      const trophyReturn =
+        'https://boxing-trophy-19.vercel.app/?paid=1' +
+        (state.orderId ? '&order=' + encodeURIComponent(state.orderId) : '');
       stepContent.innerHTML = `
       <div class="success-page success-page--celebrate" style="margin:20px auto">
         <div class="success-icon-wrap" aria-hidden="true">
@@ -3208,31 +3211,38 @@
         ${emailNote}
         <div class="info-box" style="text-align:left">
           <strong>Référence :</strong> ${state.orderId}<br />
-          <strong>Offre :</strong> Licence loisirs Trophy — 50,00 €
+          <strong>Offre :</strong> Licence loisirs Trophy 20 — 50,00 €
         </div>
         <div class="info-box" style="text-align:left;margin-top:16px">
           <strong>Procédure à suivre</strong>
           <ol style="margin:10px 0 0 18px;padding:0;line-height:1.55">
             <li>Télécharger le formulaire de licence et le certificat médical.</li>
             <li>Faire remplir et tamponner le dossier par votre médecin.</li>
-            <li>Joindre une copie de votre pièce d’identité (carte d’identité, passeport ou autre pièce officielle).</li>
-            <li>Déposer le dossier signé + la copie d’identité au manager de n'importe quelle salle Boxing Center (Minimes, Portet, Ramonville, Saint-Cyprien ou États-Unis) pour enregistrement fédéral, au plus tard le 11 novembre 2026.</li>
+            <li>Déposer le dossier signé sur le site officiel de la FFBoxe.</li>
+            <li>Terminer l'inscription combat dans ce navigateur. Toute personne non licenciée 48 h avant l'événement (10 décembre 2026) sera éliminée.</li>
           </ol>
         </div>
         <div class="success-actions" style="display:flex;flex-direction:column;gap:12px;margin-top:24px">
-          <button type="button" class="btn block" id="downloadContractBtn">Télécharger ma facture 50 €</button>
+          <a class="btn block" id="trophyContinueBtn" href="${trophyReturn}">Continuer l'inscription Trophy 20</a>
+          <button type="button" class="btn secondary block" id="downloadContractBtn">Télécharger ma facture 50 €</button>
           <a class="btn secondary block" href="/documents/licence-loisirs/licence-loisirs-ffboxe.pdf" target="_blank" rel="noopener">Formulaire licence loisirs (PDF)</a>
-          <a class="btn secondary block" href="/documents/licence-loisirs/certificat-medical-ffkmda-loisir.pdf" target="_blank" rel="noopener">Certificat médical FFKMDA (PDF)</a>
+          <a class="btn secondary block" href="/documents/licence-loisirs/certificat-medical-ffkmda-loisir.pdf" target="_blank" rel="noopener">Certificat médical (PDF)</a>
           <a class="btn secondary block" href="/documents/licence-loisirs/charte-webmaster-licence-loisirs.pdf" target="_blank" rel="noopener">Charte webmaster licence (PDF)</a>
-          <a href="${homeHref}" class="btn secondary block" id="confirmHomeBtn">Retour à l'accueil</a>
+          <a href="${homeHref}" class="btn secondary block" id="confirmHomeBtn">Retour à l'accueil boutique</a>
         </div>
       </div>`;
       document.getElementById('confirmHomeBtn')?.addEventListener('click', () => {
         clearCacheAfterConfirm();
       });
+      document.getElementById('trophyContinueBtn')?.addEventListener('click', () => {
+        clearCacheAfterConfirm();
+      });
       document.getElementById('downloadContractBtn').onclick = () => {
         window.BCContract.openView(state.orderId, { token: state.token });
       };
+      window.setTimeout(() => {
+        window.location.href = trophyReturn;
+      }, 2500);
       return;
     }
     stepContent.innerHTML = `
