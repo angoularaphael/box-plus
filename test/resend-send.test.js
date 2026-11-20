@@ -46,7 +46,7 @@ test('expéditeur par défaut = Brevo (suzinabot)', () => {
   delete process.env.BREVO_SENDER_EMAIL;
   delete process.env.RESEND_SENDER_EMAIL;
   assert.equal(senderEmail(), DEFAULT_SENDER_EMAIL);
-  assert.equal(DEFAULT_SENDER_EMAIL, 'suzinabot@gmail.com');
+  assert.equal(DEFAULT_SENDER_EMAIL, 'contact@boxingcenter.fr');
   if (prev == null) delete process.env.BREVO_SENDER_EMAIL;
   else process.env.BREVO_SENDER_EMAIL = prev;
   if (prevResend == null) delete process.env.RESEND_SENDER_EMAIL;

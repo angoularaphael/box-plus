@@ -4,7 +4,7 @@
 const fs = require('fs');
 const nodemailer = require('nodemailer');
 
-const DEFAULT_SENDER_EMAIL = 'suzinabot@gmail.com';
+const DEFAULT_SENDER_EMAIL = 'contact@boxingcenter.fr';
 const DEFAULT_SENDER_NAME = 'Boxing Center';
 
 function readApiKey() {

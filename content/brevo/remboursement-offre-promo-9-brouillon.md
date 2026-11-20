@@ -2,7 +2,7 @@
 
 Envoi prevu par Raphael via Brevo (compte boutique).
 
-- Expediteur : suzinabot@gmail.com (nom : Boxing Center)
+- Expediteur : contact@boxingcenter.fr (nom : Boxing Center)
 - Reply-to : boxingcenter31@gmail.com
 - Statut : brouillon — validation interne avant envoi
 

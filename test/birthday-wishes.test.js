@@ -47,7 +47,7 @@ test('mail David, texte perso, pas de HTML promo', () => {
   else process.env.BREVO_SENDER_EMAIL = prev;
   assert.equal(mail.fromName, FROM_NAME);
   assert.equal(mail.fromName, 'Boxing Center');
-  assert.equal(mail.fromEmail, 'suzinabot@gmail.com');
+  assert.equal(mail.fromEmail, 'contact@boxingcenter.fr');
   assert.equal(mail.html, undefined);
   assert.equal(mail.headers['X-Transactional'], 'true');
   assert.match(mail.subject, /Guillaume, c’est David/);

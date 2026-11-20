@@ -213,7 +213,7 @@ async function processCancelJob(page, order) {
         body: JSON.stringify({
           sender: {
             name: process.env.BREVO_SENDER_NAME || 'Boxing Center',
-            email: process.env.BREVO_SENDER_EMAIL || 'suzinabot@gmail.com',
+            email: process.env.BREVO_SENDER_EMAIL || 'contact@boxingcenter.fr',
           },
           to: [{ email: identity.email }],
           subject: 'Résiliation — informations à vérifier — Boxing Center',
@@ -249,7 +249,7 @@ async function processCancelJob(page, order) {
         body: JSON.stringify({
           sender: {
             name: process.env.BREVO_SENDER_NAME || 'Boxing Center',
-            email: process.env.BREVO_SENDER_EMAIL || 'suzinabot@gmail.com',
+            email: process.env.BREVO_SENDER_EMAIL || 'contact@boxingcenter.fr',
           },
           to: [{ email }],
           subject: 'Confirmation de résiliation — Boxing Center',
@@ -999,7 +999,7 @@ async function notifyMembershipChangeComplete(order, memberId) {
       body: JSON.stringify({
         sender: {
           name: process.env.BREVO_SENDER_NAME || 'Boxing Center',
-          email: process.env.BREVO_SENDER_EMAIL || 'suzinabot@gmail.com',
+          email: process.env.BREVO_SENDER_EMAIL || 'contact@boxingcenter.fr',
         },
         to: [{ email }],
         subject: 'Votre abonnement comptant est actif — Boxing Center',
@@ -1057,7 +1057,7 @@ async function processInscriptionNudgeJob(order) {
       body: JSON.stringify({
         sender: {
           name: process.env.BREVO_SENDER_NAME || 'Boxing Center',
-          email: process.env.BREVO_SENDER_EMAIL || 'suzinabot@gmail.com',
+          email: process.env.BREVO_SENDER_EMAIL || 'contact@boxingcenter.fr',
         },
         to: [{ email }],
         subject,
