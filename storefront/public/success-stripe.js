@@ -165,19 +165,15 @@ const successText = document.getElementById('successText');
 if (!successText) {
   /* legacy page */
 } else if (productId === 'licence-loisirs-trophy') {
-  // Le tunnel inscription continue vers dossier + signature ; pas de docs avant signature.
   successText.textContent =
-    'Paiement enregistre. Revenez au tunnel d inscription pour terminer le dossier et la signature : facture et documents licence seront alors disponibles.';
+    'Paiement enregistre. Un e-mail avec le formulaire medical arrive. Terminez l inscription combat dans le meme navigateur.';
   const actions = document.getElementById('successActions');
-  if (actions && order) {
+  if (actions) {
     const a = document.createElement('a');
-    const q = new URLSearchParams();
-    q.set('product', 'licence-loisirs-trophy');
-    q.set('order', order);
-    if (token) q.set('token', token);
-    a.href = `/inscription?${q.toString()}`;
+    const trophy = 'https://boxing-trophy-18.vercel.app/?paid=1' + (order ? '&order=' + encodeURIComponent(order) : '');
+    a.href = trophy;
     a.className = 'btn';
-    a.textContent = 'Continuer vers la signature';
+    a.textContent = 'Continuer l inscription Trophy 20';
     actions.insertBefore(a, actions.firstChild);
   }
 } else if (orderType === 'materiel') {

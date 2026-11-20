@@ -3524,12 +3524,9 @@ function createApp() {
       }
       const gym = order.customer_full?.gym;
       const product = findProduct(order.product_id) || order.product_snapshot;
-      const licenceId = String(order.product_id || product?.id || '').toLowerCase();
       const needsIdDoc =
         isPortetKidsFlow(gym, product) ||
-        product?.requires_id_document === true ||
-        licenceId === 'licence-loisirs-trophy' ||
-        licenceId.includes('licence-loisirs');
+        product?.requires_id_document === true;
       if (!needsIdDoc) {
         return res.status(400).json({
           ok: false,
@@ -3997,12 +3994,9 @@ function createApp() {
         });
       }
 
-      const licenceProfileId = String(order.product_id || product?.id || '').toLowerCase();
       const needsIdOnProfile =
         isPortetKidsFlow(full.gym || order.customer_full?.gym, product) ||
-        product?.requires_id_document === true ||
-        licenceProfileId === 'licence-loisirs-trophy' ||
-        licenceProfileId.includes('licence-loisirs');
+        product?.requires_id_document === true;
       if (
         needsIdOnProfile &&
         !order.documents?.id_document &&

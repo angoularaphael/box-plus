@@ -32,18 +32,18 @@ function buildLicenceConfirmationHtml(order, attachmentNames = []) {
 <html lang="fr">
 <head><meta charset="UTF-8"><title>Licence loisirs Trophy — Boxing Center</title></head>
 <body style="font-family:Arial,sans-serif;color:#1A1A2E;max-width:600px;margin:0 auto;padding:24px">
-  <h1 style="color:#0B1F3A">Licence loisirs Trophy — paiement et signature confirmes</h1>
+  <h1 style="color:#0B1F3A">Licence Boxe Loisir Trophy — paiement 50 EUR</h1>
   <p>Bonjour ${escapeHtml(short.first_name || '')},</p>
-  <p>Votre cotisation de <strong>50 EUR</strong> pour la licence loisirs du Boxing Trophy 20 est enregistree.</p>
-  <p>Vous trouverez en pieces jointes : votre <strong>facture 50 EUR</strong>, le formulaire de licence et le certificat medical.</p>
-  <p><strong>Procedure a suivre :</strong></p>
+  <p>Votre paiement de <strong>50 EUR</strong> pour la licence FFB Boxe Loisirs du Boxing Trophy 20 est enregistre.</p>
+  <p>Vous trouverez en pieces jointes : votre <strong>facture 50 EUR</strong> et le <strong>formulaire medical FFB Boxe Loisirs</strong>.</p>
+  <p><strong>Marche a suivre :</strong></p>
   <ol>
-    <li>Telecharger le formulaire de licence et le certificat medical (pieces jointes).</li>
-    <li>Faire remplir et tamponner le dossier par votre medecin.</li>
-    <li>Deposer le dossier signe sur le <strong>site officiel de la FFBoxe</strong>.</li>
-    <li>Terminer l'inscription combat sur la page Trophy, <strong>dans le meme navigateur</strong> que le paiement : <a href="https://boxing-trophy-19.vercel.app/#licence">boxing-trophy-19.vercel.app</a>.</li>
+    <li>Telecharger le formulaire medical FFB Boxe Loisirs (piece jointe).</li>
+    <li>Le faire remplir et tamponner par votre medecin.</li>
+    <li>Deposer le formulaire signe ainsi que votre piece d'identite sur le <strong>site officiel de la FFBoxe</strong> pour obtenir votre licence Boxe Loisirs.</li>
+    <li>Terminer l'inscription combat sur la page Trophy, <strong>dans le meme navigateur</strong> que le paiement : <a href="https://boxing-trophy-18.vercel.app/#licence">boxing-trophy-18.vercel.app</a>.</li>
   </ol>
-  <p>Toute personne non licenciee 48 h avant l'evenement (soit le <strong>10 decembre 2026</strong>) sera eliminee du Trophy 20 (samedi 12 decembre).</p>
+  <p>Toute personne non licenciee 48 h avant l'evenement (soit le <strong>10 decembre 2026</strong>) sera automatiquement exclue du Boxing Trophy 20.</p>
   <p><strong>Reference :</strong> ${escapeHtml(order.order_id || '')}</p>
   ${pjList}
   <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="${SITE_URL}" style="color:#2EC4C6">${SITE_URL.replace('https://', '')}</a></p>

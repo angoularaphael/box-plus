@@ -2016,9 +2016,9 @@
       ? p.benefits
       : isLicenceLoisirsTrophy()
         ? [
-            'Cotisation licence loisirs FFBoxe — 50 €',
-            'Facture et formulaires médicaux après signature',
-            'Dépôt du dossier signé sur le site officiel de la FFBoxe',
+            '50 € : cout de votre licence FFB Boxe Loisirs',
+            'E-mail avec le formulaire médical après paiement',
+            'Dépôt du formulaire signé et de la pièce d’identité sur le site FFBoxe',
             'Inscription combat débloquée dans le même navigateur après paiement',
           ]
         : [
@@ -2578,7 +2578,6 @@
     const portetKidsDossier = isPortetKidsUi();
     const needsIdDocumentUi =
       portetKidsDossier ||
-      isLicenceLoisirsTrophy() ||
       Boolean((state.product || state.order?.product_snapshot || {}).requires_id_document);
     const size = partySize();
     const extraPeople = isCustomOfferFlow() ? Math.max(0, size - 1) : 0;
@@ -2642,7 +2641,7 @@
           : isLicenceLoisirsTrophy()
             ? `<div class="notice-important" style="margin:0 0 20px">
         <strong>Licence loisirs Trophy</strong>
-        <p>Complétez ce dossier, ajoutez une copie de votre pièce d’identité, puis signez. Après signature : facture 50 € et formulaires médicaux. Déposez ensuite le dossier + la pièce d’identité en salle pour l’enregistrement fédéral.</p>
+        <p>Après le paiement, un e-mail envoie le formulaire médical FFB Boxe Loisirs. Pas de pièce d’identité sur la boutique : vous la déposez avec le formulaire signé sur le site de la FFBoxe.</p>
       </div>`
           : isPaidSeanceEssai()
             ? `<div class="notice-important" style="margin:0 0 20px">
@@ -3197,7 +3196,7 @@
         : null) || '/';
     if (isLicenceLoisirsTrophy()) {
       const trophyReturn =
-        'https://boxing-trophy-19.vercel.app/?paid=1' +
+        'https://boxing-trophy-18.vercel.app/?paid=1' +
         (state.orderId ? '&order=' + encodeURIComponent(state.orderId) : '');
       stepContent.innerHTML = `
       <div class="success-page success-page--celebrate" style="margin:20px auto">
@@ -3206,8 +3205,8 @@
           <span class="success-burst">${Array.from({ length: 8 }, () => '<i></i>').join('')}</span>
           <div class="success-icon"></div>
         </div>
-        <h1>Licence payée et signée</h1>
-        <p class="sub" style="margin-top:-4px">Merci — votre cotisation de 50 € est enregistrée.</p>
+        <h1>Licence payée</h1>
+        <p class="sub" style="margin-top:-4px">Merci — 50 €, licence FFB Boxe Loisirs. Le formulaire médical arrive par e-mail.</p>
         ${emailNote}
         <div class="info-box" style="text-align:left">
           <strong>Référence :</strong> ${state.orderId}<br />
@@ -3216,10 +3215,10 @@
         <div class="info-box" style="text-align:left;margin-top:16px">
           <strong>Procédure à suivre</strong>
           <ol style="margin:10px 0 0 18px;padding:0;line-height:1.55">
-            <li>Télécharger le formulaire de licence et le certificat médical.</li>
-            <li>Faire remplir et tamponner le dossier par votre médecin.</li>
-            <li>Déposer le dossier signé sur le site officiel de la FFBoxe.</li>
-            <li>Terminer l'inscription combat dans ce navigateur. Toute personne non licenciée 48 h avant l'événement (10 décembre 2026) sera éliminée.</li>
+            <li>Télécharger le formulaire médical FFB Boxe Loisirs.</li>
+            <li>Le faire remplir et tamponner par votre médecin.</li>
+            <li>Déposer le formulaire signé ainsi que votre pièce d’identité sur le site officiel de la FFBoxe.</li>
+            <li>Terminer l'inscription combat dans ce navigateur. Non licencié 48 h avant l'événement (10 décembre 2026) : exclu du Trophy 20.</li>
           </ol>
         </div>
         <div class="success-actions" style="display:flex;flex-direction:column;gap:12px;margin-top:24px">

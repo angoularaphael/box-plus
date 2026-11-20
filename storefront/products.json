@@ -153,24 +153,24 @@
     "category": "Licences",
     "name": "Licence loisirs Trophy 50 €",
     "tagline": "Cotisation licence loisirs FFBoxe / FFKMDA",
-    "description": "Cotisation de licence loisirs 50 € pour le Boxing Trophy 20. Paiement en une fois, signature, puis dépôt du dossier médical signé sur le site FFBoxe.",
+    "description": "Paiement de la licence Boxe Loisir : 50 €. Après le paiement, un e-mail envoie le formulaire médical et la marche à suivre pour le déposer sur le site de la FFBoxe. La pièce d’identité se dépose sur le site FFBoxe, pas sur la boutique.",
     "price_cents": 5000,
     "price_label": "50,00 €",
     "badge": "Trophy 20",
     "requires_iban": false,
     "requires_payment": true,
-    "requires_id_document": true,
+    "requires_id_document": false,
     "sale_type": "none",
     "create_sale": false,
     "auto_badge": false,
     "manual": true,
     "skip_bot": true,
-    "installments_note": "Paiement unique 50 €",
+    "installments_note": "50 € — licence FFB Boxe Loisirs",
     "benefits": [
-      "Cotisation licence loisirs FFBoxe — 50 €",
-      "Facture et formulaires médicaux après signature",
-      "Dépôt du dossier signé sur le site officiel de la FFBoxe",
-      "Inscription combat débloquée dans le même navigateur après paiement"
+      "50 € : cout de votre licence FFB Boxe Loisirs",
+      "E-mail avec le formulaire médical après paiement",
+      "A faire remplir et tamponner par votre médecin",
+      "Dépôt du formulaire signé et de la pièce d’identité sur le site FFBoxe"
     ]
   },
   {
