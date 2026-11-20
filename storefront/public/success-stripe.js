@@ -170,7 +170,7 @@ if (!successText) {
   const actions = document.getElementById('successActions');
   if (actions) {
     const a = document.createElement('a');
-    const trophy = 'https://boxing-trophy-18.vercel.app/?paid=1' + (order ? '&order=' + encodeURIComponent(order) : '');
+    const trophy = 'https://boxing-trophy-20.vercel.app/?paid=1' + (order ? '&order=' + encodeURIComponent(order) : '');
     a.href = trophy;
     a.className = 'btn';
     a.textContent = 'Continuer l inscription Trophy 20';

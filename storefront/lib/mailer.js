@@ -20,31 +20,52 @@ function licenceDocsDir() {
   return path.join(__dirname, '../public/documents/licence-loisirs');
 }
 
+const TROPHY_URL = 'https://boxing-trophy-20.vercel.app';
+const FFBOXE_ESPACE_URL = 'https://monespace.ffboxe.com/auth/login';
+const FFBOXE_TUTO_URL =
+  'https://www.ffboxe.com/wp-content/uploads/2023/08/TUTORIEL-MON-ESPACE_LICENCE_2023-2024-2.pdf';
+
+/* Mail envoye juste apres le paiement des 50 EUR : facture + certificat medical + demarche FFBoxe */
 function buildLicenceConfirmationHtml(order, attachmentNames = []) {
   const short = order.customer_short || {};
   const pjList =
     attachmentNames.length > 0
-      ? `<p style="font-size:13px;color:#334155"><strong>Pieces jointes :</strong> ${attachmentNames
+      ? `<p style="font-size:13px;color:#334155"><strong>Pièces jointes :</strong> ${attachmentNames
           .map((n) => escapeHtml(n))
           .join(', ')}</p>`
       : '';
+  const btn = (href, label) =>
+    `<a href="${href}" style="display:inline-block;margin:4px 6px 4px 0;padding:12px 18px;border-radius:999px;background:#e8ab36;color:#1a0f08;text-decoration:none;font-weight:bold">${label}</a>`;
   return `<!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"><title>Licence loisirs Trophy — Boxing Center</title></head>
-<body style="font-family:Arial,sans-serif;color:#1A1A2E;max-width:600px;margin:0 auto;padding:24px">
-  <h1 style="color:#0B1F3A">Licence Boxe Loisir Trophy — paiement 50 EUR</h1>
+<head><meta charset="UTF-8"><title>Ta licence Boxe Loisir — Boxing Trophy 20</title></head>
+<body style="font-family:Arial,sans-serif;color:#1A1A2E;max-width:600px;margin:0 auto;padding:24px;line-height:1.55">
+  <h1 style="color:#0B1F3A;font-size:22px">Licence Boxe Loisir — paiement reçu</h1>
   <p>Bonjour ${escapeHtml(short.first_name || '')},</p>
-  <p>Votre paiement de <strong>50 EUR</strong> pour la licence FFB Boxe Loisirs du Boxing Trophy 20 est enregistre.</p>
-  <p>Vous trouverez en pieces jointes : votre <strong>facture 50 EUR</strong> et le <strong>formulaire medical FFB Boxe Loisirs</strong>.</p>
-  <p><strong>Marche a suivre :</strong></p>
-  <ol>
-    <li>Telecharger le formulaire medical FFB Boxe Loisirs (piece jointe).</li>
-    <li>Le faire remplir et tamponner par votre medecin.</li>
-    <li>Deposer le formulaire signe ainsi que votre piece d'identite sur le <strong>site officiel de la FFBoxe</strong> pour obtenir votre licence Boxe Loisirs.</li>
-    <li>Terminer l'inscription combat sur la page Trophy, <strong>dans le meme navigateur</strong> que le paiement : <a href="https://boxing-trophy-18.vercel.app/#licence">boxing-trophy-18.vercel.app</a>.</li>
+  <p>Ton paiement de <strong>50 €</strong> pour la licence FFB Boxe Loisir du Boxing Trophy 20 est bien enregistré. Il te reste à faire ta licence en ligne sur le site de la Fédération.</p>
+  <p>En pièces jointes : ta <strong>facture</strong> et le <strong>certificat médical</strong> (formulaire médical FFB Boxe Loisir) à faire remplir par ton médecin.</p>
+
+  <p style="margin:18px 0 6px"><strong>La marche à suivre :</strong></p>
+  <ol style="padding-left:20px">
+    <li><strong>Termine ton inscription combat</strong> sur la page du Trophy, <strong>dans le même navigateur</strong> que le paiement : <a href="${TROPHY_URL}/?paid=1">${TROPHY_URL.replace('https://', '')}</a>.</li>
+    <li><strong>Fais remplir le certificat médical</strong> (pièce jointe) : signé et tamponné par ton médecin. Note son <strong>numéro RPPS</strong>, la Fédération le demande.</li>
+    <li><strong>Ouvre ton compte « Mon Espace » FFBoxe</strong> sur <a href="${FFBOXE_ESPACE_URL}">monespace.ffboxe.com</a> : « Première visite ou création de compte ». Déjà licencié avant : « Compte existant ». Sinon : « Création de compte » (avec photo).</li>
+    <li><strong>Prends ta licence</strong> : « Prendre une licence », puis au choix du club cherche
+      <span style="display:inline-block;padding:2px 8px;border-radius:6px;background:#e8ab36;color:#1a0f08"><strong>NOBLE ART PORTÉSIEN</strong></span>.
+      Choisis la licence <strong>Loisir</strong>, remplis le questionnaire médical et dépose le certificat signé.</li>
+    <li><strong>Attends la validation du club</strong> et garde ton numéro de licence (visible dans « Mes licences »).</li>
   </ol>
-  <p>Toute personne non licenciee 48 h avant l'evenement (soit le <strong>10 decembre 2026</strong>) sera automatiquement exclue du Boxing Trophy 20.</p>
-  <p><strong>Reference :</strong> ${escapeHtml(order.order_id || '')}</p>
+
+  <p style="padding:12px 14px;border-radius:10px;background:#fff4dc;border:1px solid #e8ab36">
+    Un <strong>tutoriel pas à pas</strong> t'explique chaque écran :
+    <a href="${TROPHY_URL}/licence">${TROPHY_URL.replace('https://', '')}/licence</a>
+    (et le <a href="${FFBOXE_TUTO_URL}">guide officiel de la FFBoxe</a> en PDF).
+  </p>
+  <p>${btn(TROPHY_URL + '/licence', 'Voir le tutoriel')}${btn(FFBOXE_ESPACE_URL, 'Aller sur Mon Espace FFBoxe')}</p>
+
+  <p><strong>Date limite :</strong> ta licence doit être faite en ligne au plus tard le <strong>jeudi 10 décembre 2026</strong> (2 jours avant le gala). Sans licence validée, tu ne pourras pas boxer.</p>
+  <p>Bloqué ? Réponds simplement à ce mail.</p>
+  <p><strong>Référence :</strong> ${escapeHtml(order.order_id || '')}</p>
   ${pjList}
   <p style="color:#5C6370;font-size:13px">Boxing Center — <a href="${SITE_URL}" style="color:#2EC4C6">${SITE_URL.replace('https://', '')}</a></p>
 </body>
@@ -330,7 +351,7 @@ async function sendConfirmationEmail(order, attachments = []) {
   const html = buildConfirmationHtml(order, attachmentNames);
   const licenceOrder = isLicenceLoisirsOrder(order);
   const subject = licenceOrder
-    ? `Licence loisirs Trophy 50 EUR — facture et documents — ${order.order_id || ''}`
+    ? `Ta licence Boxe Loisir Trophy 20 : certificat médical et démarche FFBoxe — ${order.order_id || ''}`
     : aventureMailSubject(order);
 
   if (!isConfigured()) {

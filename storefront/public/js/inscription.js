@@ -3196,7 +3196,7 @@
         : null) || '/';
     if (isLicenceLoisirsTrophy()) {
       const trophyReturn =
-        'https://boxing-trophy-18.vercel.app/?paid=1' +
+        'https://boxing-trophy-20.vercel.app/?paid=1' +
         (state.orderId ? '&order=' + encodeURIComponent(state.orderId) : '');
       stepContent.innerHTML = `
       <div class="success-page success-page--celebrate" style="margin:20px auto">
