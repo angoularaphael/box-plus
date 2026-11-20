@@ -2622,6 +2622,24 @@ async function registerSaleRibIfAsked(page, productConfig = {}) {
     }
   }
   if (!registered) {
+    // Sans « Ignorer et continuer » a l'ecran, Deciplus ne demande pas de RIB : il est deja sur la fiche.
+    let promptVisible = false;
+    for (const ctx of [page, ...(page.frames?.() || [])]) {
+      promptVisible = await ctx
+        .evaluate(() =>
+          [...document.querySelectorAll('button, a, input, span, [role="button"]')].some((n) => {
+            const t = String(n.value || n.innerText || n.textContent || '').replace(/\s+/g, ' ').trim();
+            const r = n.getBoundingClientRect?.();
+            return /ignorer et continuer/i.test(t) && r && r.width > 0 && r.height > 0;
+          })
+        )
+        .catch(() => false);
+      if (promptVisible) break;
+    }
+    if (!promptVisible) {
+      logInfo('Vente Deciplus — RIB déjà sur la fiche, pas de demande');
+      return { ok: true, reason: 'rib_deja_present' };
+    }
     logWarn('Vente Deciplus — RIB à enregistrer, bouton introuvable (Ignorer non cliqué)');
     return { ok: false, reason: 'rib_button_missing' };
   }

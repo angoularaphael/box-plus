@@ -2,7 +2,7 @@
 
 const { randomDelay } = require('../lib/utils');
 const { logInfo, logWarn } = require('../lib/logger');
-const { resolveEcheanceFrame, openEcheancierPage } = require('../lib/echeancier-unpaid');
+const { resolveEcheanceFrame, openEcheancierPage, applyUnpaidDateFilter } = require('../lib/echeancier-unpaid');
 
 function frToIso(fr) {
   const m = String(fr || '').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -82,18 +82,56 @@ async function reportUnpaidEcheance(page, { eid, newDueFr, reportOnclick = '' } 
     frame = await openEcheancierPage(page);
   }
 
-  const payload = await frame.evaluate(
-    ({ targetEid, onclickHint }) => {
-      const sel = document.querySelector(`select[name="etat_${targetEid}"]`);
-      if (!sel) return { ok: false, reason: 'row_not_found' };
-      const row = sel.closest('tr');
-      const btn = row?.querySelector('input[value="Reporter"]');
-      const oc = onclickHint || btn?.getAttribute('onclick') || '';
-      const m = oc.match(/handleReportEcheance\((\[.*\])\)/);
-      return { ok: true, json: m ? m[1] : null, oc: oc.slice(0, 200) };
-    },
-    { targetEid: String(eid), onclickHint: String(reportOnclick || '') }
-  );
+  const lireLigne = (f) =>
+    f.evaluate(
+      ({ targetEid, onclickHint }) => {
+        // Le scan a deja lu l'appel exact du bouton Reporter : pas besoin que la ligne soit a l'ecran.
+        const hint = String(onclickHint || '').match(/handleReportEcheance\((\[.*\])\)/);
+        if (hint && typeof handleReportEcheance === 'function') {
+          return { ok: true, json: hint[1], via: 'scan' };
+        }
+        const sel = document.querySelector(`select[name="etat_${targetEid}"]`);
+        if (!sel) return { ok: false, reason: 'row_not_found' };
+        const row = sel.closest('tr');
+        const btn = row?.querySelector('input[value="Reporter"]');
+        const oc = btn?.getAttribute('onclick') || '';
+        const m = oc.match(/handleReportEcheance\((\[.*\])\)/);
+        return { ok: true, json: m ? m[1] : null, via: 'ligne' };
+      },
+      { targetEid: String(eid), onclickHint: String(reportOnclick || '') }
+    );
+
+  let payload = await lireLigne(frame).catch(() => ({ ok: false, reason: 'frame_error' }));
+
+  // Ligne absente : l'echeancier rouvert n'affiche pas les impayes. On remet le filtre
+  // « impayes sur 6 mois » puis on tourne les pages jusqu'a la trouver.
+  if (!payload.ok) {
+    try {
+      frame = await openEcheancierPage(page);
+      await applyUnpaidDateFilter(frame);
+      frame = (await resolveEcheanceFrame(page, { needRows: true })) || frame;
+      for (let n = 0; n < 40; n += 1) {
+        payload = await lireLigne(frame).catch(() => ({ ok: false, reason: 'frame_error' }));
+        if (payload.ok) break;
+        const suivante = String(n + 2);
+        const tourne = await frame
+          .evaluate((want) => {
+            const a = [...document.querySelectorAll('a')].find(
+              (x) => String(x.textContent || '').replace(/\s+/g, ' ').trim() === want
+            );
+            if (!a) return false;
+            a.click();
+            return true;
+          }, suivante)
+          .catch(() => false);
+        if (!tourne) break;
+        await page.waitForTimeout(2500).catch(() => {});
+        frame = (await resolveEcheanceFrame(page, { needRows: true })) || frame;
+      }
+    } catch (err) {
+      logWarn('Reporter — reouverture echeancier impossible', { eid, error: String(err.message || err).slice(0, 160) });
+    }
+  }
 
   if (!payload.ok) {
     logWarn('Reporter — ligne introuvable', { eid, reason: payload.reason });

@@ -78,6 +78,11 @@ async function resiliateMemberContracts(page, memberId, gymCfg) {
     if (looksLikeComptant(c.label) && !isBadge) return false;
     return true;
   });
+  if (pick.length === 0) {
+    // Plus rien a resilier (deja annule a la main ou expire) : on le note une fois pour toutes
+    // au lieu de retenter chaque jour, et sans envoyer de mail « contrat resilie ».
+    return { cancelled: [], ok: true, rienAResilier: true };
+  }
   const cancelled = [];
   for (const c of pick) {
     const result = await cancelOneContract(page, c, { neverVoid: true });
@@ -206,7 +211,22 @@ async function runUnpaidDailyOps(page) {
         ok: out.ok,
         at: new Date().toISOString(),
         why: decision.why,
+        ...(out.rienAResilier ? { rien_a_resilier: true } : {}),
       };
+      if (out.ok && out.rienAResilier) {
+        delete state.am04_grace[memberId];
+        saveState(state);
+        row.skipped = 'aucun_contrat_actif';
+        report.resiliated.push(row);
+        logInfo('Resiliation impayé : aucun contrat actif', { member_id: memberId, why: decision.why });
+        continue;
+      }
+      if (!out.ok) {
+        logWarn('Resiliation impayé partielle — detail', {
+          member_id: memberId,
+          echecs: out.cancelled.filter((c) => !c.ok).map((c) => ({ idc: c.idc, reason: c.reason })),
+        });
+      }
       if (out.ok) {
         delete state.am04_grace[memberId];
         if (isValidEmail(memberRow.email)) {

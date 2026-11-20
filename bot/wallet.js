@@ -1412,11 +1412,10 @@ async function verifyIbanOnMandate(page, memberId, expectedIban) {
   const ibanMatch =
     saved === expected ||
     (saved && expected && saved.startsWith(expected.slice(0, 20)));
-  if (!isLikelyBic(meta.bic)) {
-    logWarn('Mandat sans BIC — RIB considéré incomplet', {
-      member_id: memberId,
-      rum: meta.rum || null,
-    });
+  // Deciplus ne reaffiche pas toujours le BIC d'un mandat deja cree : avec un RUM, on laisse
+  // le bandeau de la fiche trancher plus bas au lieu de refaire tout le mandat.
+  if (!isLikelyBic(meta.bic) && !meta.rum) {
+    logWarn('Mandat sans BIC ni RUM — RIB considéré incomplet', { member_id: memberId });
     await closeGreyboxIfOpen(page);
     return false;
   }
