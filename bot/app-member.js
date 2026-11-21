@@ -12,7 +12,7 @@ const crypto = require('crypto');
 const { logInfo, logWarn } = require('../lib/logger');
 const { STATUS } = require('../lib/queue');
 const { APP_MATCH_FIELDS, DECISION, decideAppLink, summarizeContracts } = require('../lib/app-member-match');
-const { resolveSearchGymSlug } = require('../lib/gym-slugs');
+const { matchGymSlug, resolveSearchGymSlug } = require('../lib/gym-slugs');
 const { findMemberOnBoxingCenterGyms } = require('./search-bc-gyms');
 const { openMemberCheck } = require('./wallet');
 const { findActiveContracts } = require('./cancel-sale');
@@ -55,6 +55,25 @@ async function postAppStatus(order, payload) {
   return false;
 }
 
+/**
+ * Le club inscrit sur la fiche (« Client BOXING CENTER Etats-Unis »), pas celui ou la recherche
+ * a tourne : la recherche Deciplus couvre tout le reseau, depuis le site par defaut.
+ */
+async function readFicheClub(page) {
+  for (const ctx of [page, ...(page.frames?.() || [])]) {
+    const label = await ctx
+      .evaluate(() => {
+        const t = String(document.body?.innerText || '');
+        const m = t.match(/Client\s*\)?\s*(BOXING CENTER\s+[A-Za-zÀ-ÿ' -]{2,30})/i);
+        return m ? m[1].trim() : '';
+      })
+      .catch(() => '');
+    const slug = label ? matchGymSlug(label) : null;
+    if (slug) return slug;
+  }
+  return null;
+}
+
 async function processAppMemberLookupJob(page, order) {
   const identity = {
     first_name: order.customer?.first_name,
@@ -79,7 +98,8 @@ async function processAppMemberLookupJob(page, order) {
   if (link.decision === DECISION.LINKED) {
     await openMemberCheck(page, link.member_id);
     const contracts = await findActiveContracts(page).catch(() => []);
-    fiche = { ...summarizeContracts(contracts), club: match.gym || null };
+    const clubFiche = await readFicheClub(page).catch(() => null);
+    fiche = { ...summarizeContracts(contracts), club: clubFiche || match.gym || null };
   }
 
   const payload = {
