@@ -107,6 +107,8 @@
     config: null,
     shortDraft: null,
     gymDraft: (() => {
+      const productHint = String(params.get('product') || '').toLowerCase();
+      if (productHint === 'licence-loisirs-trophy' || productHint.includes('licence-loisirs')) return 'portet';
       const g = String(params.get('gym') || '').trim().toLowerCase();
       const allowed = new Set(['minimes', 'ramonville', 'etats-unis', 'st-cyprien', 'portet']);
       return allowed.has(g) ? g : null;
@@ -447,6 +449,7 @@
   }
 
   function currentGym() {
+    if (isLicenceLoisirsTrophy()) return 'portet';
     return String(state.order?.customer_full?.gym || state.gymDraft || '').trim().toLowerCase();
   }
 
@@ -947,6 +950,10 @@
   }
 
   function goToStep(step) {
+    if (isLicenceLoisirsTrophy()) {
+      state.gymDraft = 'portet';
+      if (Number(step) === 2) step = 3;
+    }
     if (isBalmaRetour()) {
       if (Number(step) < 4) step = 4;
     }
@@ -2057,7 +2064,8 @@
         goToStep(4);
         return;
       }
-      if (isLicenceLoisirsTrophy() && state.gymDraft) {
+      if (isLicenceLoisirsTrophy()) {
+        state.gymDraft = 'portet';
         goToStep(3);
         return;
       }
@@ -2351,7 +2359,9 @@
       }
       setMsg('Envoi…');
       body.token = state.token;
-      body.gym = state.order?.customer_full?.gym || state.gymDraft || (isBalmaRetour() ? 'minimes' : undefined);
+      body.gym = isLicenceLoisirsTrophy()
+        ? 'portet'
+        : state.order?.customer_full?.gym || state.gymDraft || (isBalmaRetour() ? 'minimes' : undefined);
       state.shortDraft = body;
       saveProgress();
 

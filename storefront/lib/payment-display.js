@@ -7,6 +7,7 @@ const { logError } = require('../../lib/logger');
 const { getSupabase } = require('./supabase');
 const { getDevSession } = require('./dev-session');
 const { isNoblartPaypalOfferProduct } = require('../../lib/billing-plan');
+const { isLicenceLoisirsProduct } = require('../../lib/offer-document-copy');
 
 const CONFIG_KEY = 'payment_display';
 const DEFAULTS = { payplug: true, paypal: true, cawl: true };
@@ -147,7 +148,8 @@ function isPortetPaymentsPaused() {
 function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady, cawlReady, portetPaused, product }) {
   const flags = normalize(stored);
   const portet = isPortetGym(gym);
-  const paused = portet && Boolean(portetPaused) && !preview;
+  const trophyLicence = isLicenceLoisirsProduct(product, {});
+  const paused = portet && Boolean(portetPaused) && !preview && !trophyLicence;
   if (paused) {
     return {
       preview: false,

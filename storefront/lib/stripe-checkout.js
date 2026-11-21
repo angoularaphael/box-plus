@@ -42,7 +42,12 @@ function createCheckoutSessionParams({
   packOrderMetadata,
   billingPlan,
 }) {
-  const gym = order.customer_full?.gym || payload?.gym || '';
+  const { gymForInscriptionOrder } = require('../../lib/offer-document-copy');
+  const gym =
+    gymForInscriptionOrder(product, order, order.customer_full?.gym || payload?.gym) ||
+    order.customer_full?.gym ||
+    payload?.gym ||
+    '';
   const plan = billingPlan || order.payment?.billing_plan || null;
   const needsIban = requiresIbanForPlan(product, plan);
   const aventure = isBalmaRetourOrder(order) || order.aventure || order.skip_dossier;

@@ -4439,7 +4439,12 @@ function createApp() {
       const billingPlan = normalizeBillingPlan(rawBilling, product);
       const paymentPlan = normalizePaymentPlan(req.body.payment_plan, product);
       const payMethod = String(req.body.pay_method || '').toLowerCase();
-      const gym = order.customer_full?.gym || req.body.gym || 'minimes';
+      const { gymForInscriptionOrder } = require('../lib/offer-document-copy');
+      const gym =
+        gymForInscriptionOrder(product, order, order.customer_full?.gym || req.body.gym) ||
+        order.customer_full?.gym ||
+        req.body.gym ||
+        'minimes';
       const gymNorm = String(gym).trim().toLowerCase();
       const display = await resolvePaymentDisplay(req, gymNorm, {
         payplugReady: isPayplugEnabled(),
@@ -6730,8 +6735,9 @@ function createApp() {
   registerEcheancierPayRoutes(app);
 
   app.get('/api/payments/config', async (req, res) => {
-    const gym = req.query.gym;
     const product = findProduct(req.query.product || req.query.product_id);
+    const { gymForInscriptionOrder } = require('../lib/offer-document-copy');
+    const gym = gymForInscriptionOrder(product, {}, req.query.gym) || req.query.gym;
     const display = await resolvePaymentDisplay(req, gym, {
       payplugReady: isPayplugEnabled(),
       paypalReady: isPaypalEnabled(gym),

@@ -95,7 +95,9 @@ function createDraft({ product_id, product, customer_short, gym, referral_friend
   const order_id = generateOrderId();
   const access_token = generateAccessToken();
   const isBalma = String(source || '').toLowerCase() === 'balma_retour';
-  const gymForced = gym || (isBalma ? 'minimes' : null);
+  const { gymForInscriptionOrder } = require('../../lib/offer-document-copy');
+  const gymForced =
+    gymForInscriptionOrder(product, { product_id }, gym) || gym || (isBalma ? 'minimes' : null);
   const sizeNum = Math.round(Number(party_size || product?.party_size));
   const partySize = Number.isFinite(sizeNum) && sizeNum >= 1 ? Math.min(4, sizeNum) : null;
   const order = {
@@ -208,8 +210,10 @@ async function updateShortProfileAsync(orderId, customer_short) {
 async function updateGymAsync(orderId, gym, coachingBooking = null) {
   const order = await loadOrderAsync(orderId);
   if (!order) return null;
-  order.customer_full = { ...(order.customer_full || {}), gym };
-  order.gym = gym;
+  const { gymForInscriptionOrder } = require('../../lib/offer-document-copy');
+  const forced = gymForInscriptionOrder(order.product_snapshot, order, gym) || gym;
+  order.customer_full = { ...(order.customer_full || {}), gym: forced };
+  order.gym = forced;
   if (coachingBooking) {
     const { applyBookingFieldsToOrder } = require('./coaching-booking');
     applyBookingFieldsToOrder(order, coachingBooking);
@@ -399,11 +403,17 @@ async function updateFullProfileAsync(orderId, customer_full) {
       ? customer_full.iban
       : order.customer_full?.iban || order.payment?.iban;
   const cleanIban = sanitizeFrenchIban(ibanCandidate);
+  const { gymForInscriptionOrder } = require('../../lib/offer-document-copy');
+  const gymLocked =
+    gymForInscriptionOrder(order.product_snapshot, order, customer_full.gym || order.customer_full?.gym) ||
+    customer_full.gym ||
+    order.customer_full?.gym;
   let nextFull = {
     ...(order.customer_full || {}),
     ...customer_full,
-    gym: customer_full.gym || order.customer_full?.gym,
+    gym: gymLocked,
   };
+  if (gymLocked) order.gym = gymLocked;
   const { applyFrenchAddressFallback, hasValidFrenchAddress } = require('../../lib/fr-address');
   const addressGiven = ['address', 'adresse', 'postal_code', 'code_postal', 'city', 'ville', 'country', 'pays'].some(
     (key) => String(nextFull[key] || '').trim()
