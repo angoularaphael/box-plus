@@ -74,6 +74,24 @@ async function readFicheClub(page) {
   return null;
 }
 
+/**
+ * « Derniere entree au club » de la fiche (champ JJ/MM/AAAA a cote de « Cree le »), en AAAA-MM-JJ.
+ * C'est la seule trace d'un vrai passage au lecteur : vide = aucune entree connue.
+ */
+async function readDerniereEntree(page) {
+  for (const ctx of [page, ...(page.frames?.() || [])]) {
+    const value = await ctx
+      .evaluate(() => {
+        const span = [...document.querySelectorAll('span.infojoueur')].find((el) => /Derni.re entr/i.test(el.textContent || ''));
+        return span?.querySelector('input')?.value || '';
+      })
+      .catch(() => '');
+    const m = String(value).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+  return null;
+}
+
 async function processAppMemberLookupJob(page, order) {
   const identity = {
     first_name: order.customer?.first_name,
@@ -99,7 +117,8 @@ async function processAppMemberLookupJob(page, order) {
     await openMemberCheck(page, link.member_id);
     const contracts = await findActiveContracts(page).catch(() => []);
     const clubFiche = await readFicheClub(page).catch(() => null);
-    fiche = { ...summarizeContracts(contracts), club: clubFiche || match.gym || null };
+    const derniereEntree = await readDerniereEntree(page).catch(() => null);
+    fiche = { ...summarizeContracts(contracts), club: clubFiche || match.gym || null, derniere_entree: derniereEntree };
   }
 
   const payload = {
@@ -128,4 +147,4 @@ async function processAppMemberLookupJob(page, order) {
   };
 }
 
-module.exports = { processAppMemberLookupJob, signBody, CALLBACK_PATH };
+module.exports = { processAppMemberLookupJob, signBody, CALLBACK_PATH, readDerniereEntree };
