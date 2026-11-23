@@ -72,6 +72,40 @@ describe('rapprochement app : lecture des contrats', () => {
     assert.equal(s.abonnement_actif, false);
   });
 
+  it('contrat resilie avec acces restant : actif jusqu a la date, resiliation remontee', () => {
+    const s = summarizeContracts(
+      [{ label: '44,99€/4 SEMAINES SANS ENGAGEMENT CONTRAT N°C1 vendu le 05/01/2026 05/01/2026 06/12/2026 Résilié depuis le 20/12/2026', inactive: true }],
+      new Date('2026-11-23T10:00:00Z')
+    );
+    assert.equal(s.abonnement_actif, true);
+    assert.equal(s.resilie_le, '2026-12-20');
+    assert.equal(s.fin_contrat, '2026-12-20');
+    assert.equal(s.offre, '44,99€/4 SEMAINES SANS ENGAGEMENT');
+  });
+
+  it('contrat resilie dont la date est passee : plus d abonnement', () => {
+    const s = summarizeContracts(
+      [{ label: 'OFFRE CONTRAT N°C2 vendu le 05/01/2026 05/01/2026 06/12/2026 Résilié depuis le 07/10/2026', inactive: true }],
+      new Date('2026-11-23T10:00:00Z')
+    );
+    assert.equal(s.abonnement_actif, false);
+    assert.equal(s.resilie_le, '2026-10-07');
+  });
+
+  it('nouvel abonnement apres une resiliation : la resiliation ne compte plus', () => {
+    const s = summarizeContracts(
+      [
+        { label: 'VIEUX CONTRAT N°C2 vendu le 05/01/2026 05/01/2026 06/12/2026 Résilié depuis le 07/10/2026', inactive: true },
+        { label: 'ETUDIANTS CONTRAT N°C3 vendu le 23/11/2026 23/11/2026 24/10/2027 336 jours restants' },
+      ],
+      new Date('2026-11-23T10:00:00Z')
+    );
+    assert.equal(s.abonnement_actif, true);
+    assert.equal(s.resilie_le, null);
+    assert.equal(s.offre, 'ETUDIANTS');
+    assert.equal(s.fin_contrat, '2027-10-24');
+  });
+
   it('contrat en attente : pas encore actif', () => {
     const s = summarizeContracts([{ label: 'Offre promo 12 mois EN ATTENTE', isBadge: false }]);
     assert.equal(s.abonnement_actif, false);
@@ -118,5 +152,20 @@ describe('job app_member_lookup', () => {
     const { signBody } = require('../bot/app-member');
     const expected = crypto.createHmac('sha256', 's3cret').update('1700000000.{"a":1}').digest('hex');
     assert.equal(signBody('s3cret', '1700000000', '{"a":1}'), expected);
+  });
+});
+
+describe('echeancier app', () => {
+  const { summarizeEcheances } = require('../bot/app-member');
+  it('prochain prelevement a faire, montant et impayes', () => {
+    const e = summarizeEcheances(
+      [
+        { date: '01/10/2026', price: '36.99', etat: 'I', mode: 'Prélèvement' },
+        { date: '16/01/2027', price: '36.99', etat: 'T', mode: 'Prélèvement Auto RIB' },
+        { date: '20/12/2026', price: '36,99', etat: 'T', mode: 'Prélèvement Auto RIB' },
+      ],
+      new Date('2026-11-23T10:00:00Z')
+    );
+    assert.deepEqual(e, { prochain_prelevement: '2026-12-20', prochain_montant: 36.99, prelevement_auto: true, impayes: 1 });
   });
 });

@@ -5,6 +5,36 @@
   const amountEl = document.getElementById('payAmount');
   const choices = document.getElementById('payChoices');
   const status = document.getElementById('payStatus');
+  const situation = document.getElementById('paySituation');
+  const productEl = document.getElementById('payProduct');
+  const step3 = document.getElementById('payStep3');
+  // Un lien = une échéance : une fois réglée, on ne repropose pas le paiement (évite de payer deux fois).
+  const paidKey = `bc_regul_paid_${token.slice(-24)}`;
+
+  function wasPaid() {
+    try {
+      return localStorage.getItem(paidKey) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  function rememberPaid() {
+    try {
+      localStorage.setItem(paidKey, '1');
+    } catch {
+      /* navigation privée */
+    }
+  }
+
+  function showPaid() {
+    if (lead) {
+      lead.textContent =
+        'Merci, votre paiement est bien reçu. Le club encaisse l’échéance dans les minutes qui suivent : la banque ne repassera pas le prélèvement.';
+    }
+    if (situation) situation.hidden = true;
+    if (choices) choices.innerHTML = '';
+  }
 
   function setStatus(msg, err) {
     if (!status) return;
@@ -63,8 +93,8 @@
     });
     const data = await res.json().catch(() => ({}));
     if (data.ok && data.paid) {
-      if (lead) lead.textContent = 'Merci. Votre règlement a bien été reçu. Votre échéance va être encaissée au club.';
-      if (choices) choices.innerHTML = '';
+      rememberPaid();
+      showPaid();
       setStatus('Paiement confirmé.');
       return true;
     }
@@ -87,16 +117,23 @@
 
   async function init() {
     if (!token) {
-      if (lead) lead.textContent = 'Lien de paiement invalide ou expiré. Merci de contacter votre salle.';
+      if (lead) lead.textContent = 'Ce lien de paiement est incomplet. Utilisez le bouton reçu par e-mail, ou contactez votre salle.';
       return;
     }
     const done = await confirmReturn().catch(() => false);
-    if (done && lead && /Merci/.test(lead.textContent)) return;
+    if (done) return;
+    if (wasPaid()) {
+      showPaid();
+      return;
+    }
 
     const res = await fetch(`/api/echeancier/pay-info?t=${encodeURIComponent(token)}`);
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
-      if (lead) lead.textContent = 'Ce lien n’est plus valable. Merci de vous rapprocher de l’accueil de votre salle.';
+      if (lead) {
+        lead.textContent =
+          'Ce lien n’est plus valable : soit la banque a déjà représenté le prélèvement, soit le délai pour régler en ligne est passé. Pour savoir où vous en êtes, contactez l’accueil de votre salle.';
+      }
       return;
     }
     if (data.portet_paused) {
@@ -108,14 +145,22 @@
       return;
     }
     const who = data.prenom ? `Bonjour ${data.prenom},` : 'Bonjour,';
+    const du = data.failed_due ? ` du ${data.failed_due}` : '';
     if (lead) {
-      lead.textContent = `${who} merci de régler l’échéance ci-dessous afin de conserver votre accès aux salles Boxing Center.`;
+      lead.textContent =
+        data.kind === 'resilie'
+          ? `${who} votre prélèvement${du} n’est pas passé et votre contrat a été résilié. Ce paiement solde l’échéance restée impayée.`
+          : `${who} votre prélèvement${du} n’est pas passé.${data.new_due ? ` La banque le représentera le ${data.new_due}.` : ''} Si vous réglez maintenant par carte, elle ne repassera pas et votre abonnement continue normalement.`;
     }
-    if (amountEl) {
-      amountEl.textContent = data.offer_label && data.offer_label !== data.amount_label
-        ? `${data.amount_label} — formule ${data.offer_label}`
-        : data.amount_label;
+    if (amountEl) amountEl.textContent = data.amount_label;
+    if (productEl) productEl.textContent = data.product ? `Échéance de votre abonnement : ${data.product}` : '';
+    if (step3) {
+      step3.textContent =
+        data.kind === 'resilie'
+          ? 'Vous recevez la confirmation. Pour reprendre un abonnement, passez par la boutique ou l’accueil.'
+          : 'Votre abonnement continue, sans nouvelle présentation à la banque.';
     }
+    if (situation) situation.hidden = false;
     if (!choices) return;
     choices.innerHTML = '';
     if (data.portet_via_cawl || (data.portet && data.show_cawl)) {

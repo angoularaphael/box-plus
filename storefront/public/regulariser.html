@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Régulariser une échéance | Boxing Center</title>
+  <title>Régulariser votre paiement | Boxing Center</title>
   <meta name="robots" content="noindex,nofollow" />
   <script src="/js/boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -18,12 +18,21 @@
     <section class="manage-card">
       <div class="manage-card-head">
         <span class="manage-card-kicker">Paiement sécurisé</span>
-        <h1>Régulariser votre échéance</h1>
+        <h1>Régulariser votre paiement</h1>
       </div>
       <p class="manage-lead" id="payLead">Chargement de votre dossier…</p>
-      <p id="payAmount" style="font-size:1.4rem;font-weight:700;margin:8px 0 20px"></p>
+      <div id="paySituation" hidden>
+        <p id="payAmount" style="font-size:1.6rem;font-weight:700;margin:12px 0 2px"></p>
+        <p id="payProduct" class="form-hint" style="margin:0 0 18px"></p>
+        <ol id="paySteps" class="form-hint" style="margin:0 0 18px;padding-left:20px;line-height:1.6">
+          <li>Vous réglez ici par carte, en une fois.</li>
+          <li>Le club encaisse l’échéance dans les minutes qui suivent.</li>
+          <li id="payStep3"></li>
+        </ol>
+      </div>
       <div id="payChoices"></div>
       <p id="payStatus" class="form-hint" style="margin-top:16px"></p>
+      <p class="form-hint" style="margin-top:24px">Une question ? Écrivez à <a href="mailto:boxingcentertls@gmail.com">boxingcentertls@gmail.com</a> ou passez à l’accueil de votre salle.</p>
     </section>
   </main>
   <div id="site-footer"><p class="ai-dev-credit" aria-hidden="true">chef equipe dev : <a href="https://fr.linkedin.com/in/germain-raphael-angoula-onambele-a6b858395" rel="noopener noreferrer">Angoula Onambele Germain Raphael</a> · dev : mbosseu brad bruel</p></div>

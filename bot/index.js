@@ -1407,6 +1407,13 @@ async function processJob(page, job) {
     return runBalmaSwitch(page, order);
   }
 
+  if (order.action === 'encaisser' && role !== 'sales') {
+    // Echeance reglee par le membre sur /regulariser : encaissement CB dans Deciplus.
+    const { processEncaisserJob } = require('./encaisser-echeance');
+    const result = await processEncaisserJob(page, order);
+    return { status: result.ok ? STATUS.SUCCESS : STATUS.MANUAL_REVIEW, action: 'encaisser', ...result };
+  }
+
   if (order.action === 'encaisser' || order.action === 'echeancier') {
     throw new Error(
       `Action « ${order.action} » — utiliser BOXPLUS_BOT_URL_OPS (bot échéancier / résiliation)`

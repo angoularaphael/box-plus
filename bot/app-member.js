@@ -16,6 +16,7 @@ const { matchGymSlug, resolveSearchGymSlug } = require('../lib/gym-slugs');
 const { findMemberOnBoxingCenterGyms } = require('./search-bc-gyms');
 const { openMemberCheck } = require('./wallet');
 const { findActiveContracts } = require('./cancel-sale');
+const { isStaleOrInactiveAbo } = require('../lib/replace-existing-abo');
 
 const CALLBACK_PATH = '/internal/app-member-status';
 
@@ -92,6 +93,57 @@ async function readDerniereEntree(page) {
   return null;
 }
 
+/**
+ * Echeancier de la fiche (presta_echeance.php?idj=) : prochain prelevement « A faire » et impayes.
+ * Lecture seule. Etat Deciplus : T = a faire, I = impaye, E = encaisse.
+ */
+async function readEcheances(page, memberId) {
+  const origin = new URL(page.url()).origin;
+  const path = `/presta_echeance.php?idj=${encodeURIComponent(memberId)}`;
+  await page
+    .goto(`${origin}/nextgen/legacy?path=${encodeURIComponent(path)}`, { waitUntil: 'domcontentloaded', timeout: 60000 })
+    .catch(() => {});
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    for (const ctx of [page, ...(page.frames?.() || [])]) {
+      const rows = await ctx
+        .evaluate(() => {
+          if (!document.querySelector('input[name="datec1"], #btFilter')) return null;
+          return [...document.querySelectorAll('tr')]
+            .map((tr) => {
+              const cells = [...tr.children];
+              if (cells.length < 8) return null;
+              const date = (cells[1]?.innerText || '').trim();
+              if (!/^\d{2}\/\d{2}\/\d{4}$/.test(date)) return null;
+              const price = tr.querySelector('input[name^="price_"]')?.value || '';
+              const etat = tr.querySelector('input[name^="etat_"]')?.value || '';
+              return { date, price, etat, mode: (cells[5]?.innerText || '').trim().slice(0, 60) };
+            })
+            .filter(Boolean);
+        })
+        .catch(() => null);
+      if (rows) return summarizeEcheances(rows);
+    }
+    await page.waitForTimeout(500);
+  }
+  return null;
+}
+
+function summarizeEcheances(rows, now = new Date()) {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris' }).format(now);
+  const iso = (fr) => `${fr.slice(6, 10)}-${fr.slice(3, 5)}-${fr.slice(0, 2)}`;
+  const aFaire = rows
+    .filter((r) => r.etat === 'T' && iso(r.date) >= today)
+    .sort((a, b) => iso(a.date).localeCompare(iso(b.date)));
+  const next = aFaire[0] || null;
+  const montant = next ? Number(String(next.price).replace(',', '.')) : NaN;
+  return {
+    prochain_prelevement: next ? iso(next.date) : null,
+    prochain_montant: Number.isFinite(montant) ? montant : null,
+    prelevement_auto: next ? /pr[ée]l[èe]vement/i.test(next.mode) : null,
+    impayes: rows.filter((r) => r.etat === 'I').length,
+  };
+}
+
 async function processAppMemberLookupJob(page, order) {
   const identity = {
     first_name: order.customer?.first_name,
@@ -115,10 +167,20 @@ async function processAppMemberLookupJob(page, order) {
   let fiche = null;
   if (link.decision === DECISION.LINKED) {
     await openMemberCheck(page, link.member_id);
-    const contracts = await findActiveContracts(page).catch(() => []);
+    // Contrats inactifs compris : un contrat « Resilie depuis le X » doit remonter jusqu'a l'app.
+    const contracts = (await findActiveContracts(page, { includeInactive: true }).catch(() => [])).map((c) => ({
+      ...c,
+      inactive: isStaleOrInactiveAbo(c.label),
+    }));
     const clubFiche = await readFicheClub(page).catch(() => null);
     const derniereEntree = await readDerniereEntree(page).catch(() => null);
-    fiche = { ...summarizeContracts(contracts), club: clubFiche || match.gym || null, derniere_entree: derniereEntree };
+    const echeances = await readEcheances(page, link.member_id).catch(() => null);
+    fiche = {
+      ...summarizeContracts(contracts),
+      club: clubFiche || match.gym || null,
+      derniere_entree: derniereEntree,
+      ...(echeances || {}),
+    };
   }
 
   const payload = {
@@ -147,4 +209,4 @@ async function processAppMemberLookupJob(page, order) {
   };
 }
 
-module.exports = { processAppMemberLookupJob, signBody, CALLBACK_PATH, readDerniereEntree };
+module.exports = { processAppMemberLookupJob, signBody, CALLBACK_PATH, readDerniereEntree, summarizeEcheances };

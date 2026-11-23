@@ -14,6 +14,40 @@ const { matchGymSlug, resolveSaleGymConfig } = require('../lib/gym-slugs');
 const { reportUnpaidEcheance } = require('./echeancier-report');
 const { sendAm04GraceEmail, sendContractCancelledEmail } = require('../storefront/lib/unpaid-am04-email');
 const { notifyMemberApp } = require('../lib/app-member-notice');
+const { buildPayUrl } = require('../lib/echeancier-pay-link');
+
+/*
+ * Logique impayés (scan quotidien, une seule source de vérité) :
+ *  1. Prélèvement refusé pour provision insuffisante (AM04), première fois :
+ *     l'échéance est représentée 72 h plus tard. Le membre reçoit un e-mail et un avis dans l'app
+ *     avec le lien /regulariser : s'il paie par carte avant, l'échéance est encaissée et la banque
+ *     ne repasse pas.
+ *  2. Nouvelle présentation refusée, ou tout autre motif (compte clos, IBAN faux, opposition) :
+ *     résiliation. Le membre reçoit le lien /regulariser pour solder l'échéance restée impayée.
+ *  3. Échéance réglée par le lien : job `encaisser` (bot/encaisser-echeance.js), l'impayé sort du
+ *     scan, la grâce en cours est levée et l'app est prévenue.
+ */
+function payLinkFor(t, memberRow, entry, kind, extra = {}) {
+  try {
+    const parts = String(t.name || '').trim().split(/\s+/);
+    return buildPayUrl({
+      member_id: t.member,
+      eid: entry?.eid,
+      amount_cents: entry?.amount_cents,
+      email: memberRow.email,
+      prenom: memberRow.first_name || '',
+      nom: parts[0] || '',
+      gym: matchGymSlug(t.gym) || 'minimes',
+      product: t.product || '',
+      failed_due: entry?.date || '',
+      kind,
+      ...extra,
+    });
+  } catch (err) {
+    logWarn('Lien régulariser non créé', { member_id: t.member, error: err.message });
+    return null;
+  }
+}
 
 function stateFile() {
   const dir = process.env.BOT_DATA_DIR || path.join(ROOT, 'data');
@@ -168,8 +202,11 @@ async function runUnpaidDailyOps(page) {
         new_due_ms: decision.newDueMs,
         reported_at: new Date().toISOString(),
       };
+      const payUrl = payLinkFor(t, memberRow, entry, 'grace', { new_due: decision.newDue });
+      state.am04_grace[memberId].pay_url = payUrl || null;
+      row.pay_url = Boolean(payUrl);
       if (isValidEmail(memberRow.email)) {
-        const mail = await sendAm04GraceEmail(memberRow, state.am04_grace[memberId]);
+        const mail = await sendAm04GraceEmail(memberRow, { ...state.am04_grace[memberId], pay_url: payUrl });
         row.email = mail;
         if (mail.sent) state.am04_grace[memberId].email_sent_at = new Date().toISOString();
         row.app = await notifyMemberApp({
@@ -177,7 +214,9 @@ async function runUnpaidDailyOps(page) {
           email: memberRow.email,
           kind: 'prelevement_retry',
           title: 'Prélèvement non passé',
-          body: `Le prélèvement n’a pas abouti. Une nouvelle tentative est prévue le ${decision.newDue}. Si elle échoue, le contrat sera résilié.`,
+          body: payUrl
+            ? `Ton prélèvement n’est pas passé. La banque réessaie le ${decision.newDue}. Tu peux aussi régler tout de suite par carte avec le lien reçu par e-mail : la banque ne repassera pas.`
+            : `Ton prélèvement n’est pas passé. La banque réessaie le ${decision.newDue}. Si ça ne passe pas, ton contrat sera résilié.`,
         });
       } else {
         row.email = { sent: false, reason: 'no_email' };
@@ -229,14 +268,20 @@ async function runUnpaidDailyOps(page) {
       }
       if (out.ok) {
         delete state.am04_grace[memberId];
+        const unpaidEid = pickPrimaryEid(t);
+        const unpaidEntry = (t.entries || []).find((x) => String(x.eid) === String(unpaidEid)) || null;
+        const payUrl = unpaidEntry ? payLinkFor(t, memberRow, unpaidEntry, 'resilie') : null;
+        row.pay_url = Boolean(payUrl);
         if (isValidEmail(memberRow.email)) {
-          row.email = await sendContractCancelledEmail(memberRow);
+          row.email = await sendContractCancelledEmail(memberRow, { pay_url: payUrl, amount_cents: unpaidEntry?.amount_cents || 0 });
           row.app = await notifyMemberApp({
             eventId: `unpaid-resilie:${memberId}`,
             email: memberRow.email,
             kind: 'prelevement_resilie',
             title: 'Contrat résilié',
-            body: 'La nouvelle tentative de prélèvement n’a pas abouti. Votre contrat est résilié.',
+            body: payUrl
+              ? 'Ton prélèvement n’est pas passé et ton contrat est résilié. Le lien reçu par e-mail te permet de régler l’échéance restée impayée.'
+              : 'Ton prélèvement n’est pas passé et ton contrat est résilié. Passe à l’accueil du club pour en parler.',
           });
         }
       }

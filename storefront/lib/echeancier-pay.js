@@ -72,7 +72,13 @@ function decodePayload(payload) {
   const gym = String(payload.g || 'minimes').toLowerCase() || 'minimes';
   const offer = String(payload.o || 'other');
   const amountCents = Number(payload.a) || 0;
+  const product = String(payload.o || '').trim();
   return {
+    eid: String(payload.i || ''),
+    kind: payload.k === 'resilie' ? 'resilie' : 'grace',
+    failed_due: String(payload.d || ''),
+    new_due: String(payload.r || ''),
+    product: OFFER_LABELS[product] ? '' : product,
     member_id: String(payload.m || ''),
     email: String(payload.e || ''),
     prenom: String(payload.p || ''),
@@ -101,6 +107,7 @@ async function fulfillEcheancierPayment({ provider, paymentId, meta = {}, amount
     gym,
     amount_cents: cents,
     product_name: 'Encaissement échéance impayée',
+    echeance_id: String(meta.eid || '') || null,
     requires_payment: false,
     requires_iban: false,
     sale_type: 'none',
@@ -147,6 +154,7 @@ function metaFromInfo(info) {
     last_name: String(info.nom || '').slice(0, 40),
     email: String(info.email || '').slice(0, 80),
     offer: String(info.offer || '').slice(0, 12),
+    eid: String(info.eid || '').slice(0, 20),
   };
 }
 
@@ -167,6 +175,10 @@ function registerEcheancierPayRoutes(app) {
     res.json({
       ok: true,
       prenom: info.prenom,
+      kind: info.kind,
+      failed_due: info.failed_due || null,
+      new_due: info.new_due || null,
+      product: info.product || null,
       amount_label: formatEuros(info.amount_cents),
       offer_label: info.offer_label,
       gym: info.gym,
