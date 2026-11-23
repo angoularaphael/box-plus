@@ -381,6 +381,33 @@ async function processCancelJob(page, order) {
       }
     }
     try {
+      const cancelReason = String(order.cancel_reason || '').toLowerCase();
+      const email = String(identity.email || '').trim();
+      if (
+        email &&
+        !/@boxplus-test\.local$/i.test(email) &&
+        cancelReason !== 'change_to_comptant' &&
+        !cancelReason.startsWith('change_')
+      ) {
+        const { notifyMemberApp } = require('../lib/app-member-notice');
+        const dateFr = formatCancelDateFr(effectiveCancelDate);
+        await notifyMemberApp({
+          eventId: `cancel-boutique:${order.order_id || memberId}`,
+          email,
+          kind: 'abonnement_resilie',
+          title: 'Abonnement résilié',
+          body: dateFr
+            ? `Ta demande de résiliation est prise en compte. Accès jusqu’au ${dateFr}.`
+            : 'Ta demande de résiliation est prise en compte. Accès jusqu’à la fin de la période déjà payée.',
+        });
+      }
+    } catch (err) {
+      logWarn('Avis app résiliation non envoyé', {
+        order_id: order.order_id,
+        error: err.message,
+      });
+    }
+    try {
       const saleMod = require('./sale');
       const { resolveSaleGymConfig } = require('../lib/gym-slugs');
       const gymConfig = resolveSaleGymConfig(getGymConfig(order.gym || 'minimes'));
