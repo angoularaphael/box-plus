@@ -44,6 +44,7 @@ describe('Portet enfants — isolation salles', () => {
     assert.equal(isPortetKidsFlow('portet', { id: 'offre-saison', name: 'OFFRE PROMO' }), false);
     assert.equal(isPortetNoblartPaypalFlow('portet', EDUC), true);
     assert.equal(isPortetNoblartPaypalFlow('portet', { name: 'Boxe compétition' }), true);
+    assert.equal(isPortetNoblartPaypalFlow('portet', { id: 'licence-loisirs-trophy' }), true);
     assert.equal(isPortetNoblartPaypalFlow('portet', { id: 'offre-saison' }), false);
     assert.equal(isPortetNoblartPaypalFlow('minimes', EDUC), false);
   });

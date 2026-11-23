@@ -6,7 +6,6 @@ const { ROOT } = require('../../lib/utils');
 const { logError } = require('../../lib/logger');
 const { getSupabase } = require('./supabase');
 const { getDevSession } = require('./dev-session');
-const { isNoblartPaypalOfferProduct } = require('../../lib/billing-plan');
 const { isLicenceLoisirsProduct } = require('../../lib/offer-document-copy');
 
 const CONFIG_KEY = 'payment_display';
@@ -138,12 +137,10 @@ function isPortetPaymentsPaused() {
  * Ce que CE visiteur doit voir.
  * Session studio : tout ce qui est branché, même si décoché en prod.
  * Visiteur : cases cochées.
- * Portet + CAWL : CAWL pour la carte (1× / 1ʳᵉ échéance). Le 4× sans frais
- * reste sur PayPal Portet (Pay Later) — Oney CAWL n’est pas activé.
- * Portet éducative / compétition : uniquement PayPal Noble Art Portésien
- * (carte via PayPal ou 4× Pay Later) — jamais CAWL / Végé.
- * Portet sans CAWL : repli PayPal (CB via PayPal).
+ * Portet : uniquement PayPal Noble Art Portésien (carte via PayPal ou 4× Pay Later).
+ * CAWL et PayPlug Végé sont retires a Portet.
  * Portet en pause : aucun moyen affiché (sauf studio).
+ * Licence Trophy 20 : pas de pause Portet (encaissement Noble Art).
  */
 function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady, cawlReady, portetPaused, product }) {
   const flags = normalize(stored);
@@ -164,11 +161,11 @@ function resolveDisplay({ stored, preview, gym, payplugReady, paypalReady, cawlR
       portetPausedMessage: PORTET_PAUSED_MESSAGE,
     };
   }
-  const noblartPaypalOnly = portet && isNoblartPaypalOfferProduct(product);
-  const cawlConfigured = portet && Boolean(cawlReady) && !noblartPaypalOnly;
-  const cawlOn = cawlConfigured && (preview || flags.cawl);
-  const portetPaypal4x = portet && Boolean(paypalReady) && (preview || flags.paypal || noblartPaypalOnly);
-  if (noblartPaypalOnly) {
+  const portetPaypalOnly = portet;
+  const cawlConfigured = false;
+  const cawlOn = false;
+  const portetPaypal4x = portet && Boolean(paypalReady) && (preview || flags.paypal || portetPaypalOnly);
+  if (portetPaypalOnly) {
     const show_paypal = Boolean(paypalReady);
     return {
       preview: Boolean(preview),
