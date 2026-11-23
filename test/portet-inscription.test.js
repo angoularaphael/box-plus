@@ -53,7 +53,7 @@ describe('Portet enfants — isolation salles', () => {
     assert.deepEqual(validateGuardian({}), [
       'Prénom du responsable légal requis',
       'Nom du responsable légal requis',
-      'Téléphone du responsable légal requis',
+      'Téléphone mobile français du responsable légal requis (06 ou 07)',
       'E-mail du responsable légal requis',
     ]);
     assert.equal(
