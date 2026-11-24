@@ -75,7 +75,7 @@ function decodePayload(payload) {
   const product = String(payload.o || '').trim();
   return {
     eid: String(payload.i || ''),
-    kind: payload.k === 'resilie' ? 'resilie' : 'grace',
+    kind: payload.k === 'resilie' || payload.k === 'demande' ? payload.k : 'grace',
     failed_due: String(payload.d || ''),
     new_due: String(payload.r || ''),
     product: OFFER_LABELS[product] ? '' : product,
@@ -158,7 +158,65 @@ function metaFromInfo(info) {
   };
 }
 
+/** Anti-abus simple (par instance) pour les demandes de lien sans jeton. */
+const regulRequestHits = new Map();
+function regulRequestAllowed(key, now = Date.now()) {
+  const windowMs = 15 * 60 * 1000;
+  const list = (regulRequestHits.get(key) || []).filter((t) => now - t < windowMs);
+  if (list.length >= 3) return false;
+  list.push(now);
+  regulRequestHits.set(key, list);
+  return true;
+}
+
+function normalizeRegulRequest(body = {}) {
+  const clean = (v, max) => String(v || '').trim().replace(/\s+/g, ' ').slice(0, max);
+  const birthdate = clean(body.birthdate, 10);
+  return {
+    first_name: clean(body.first_name, 60),
+    last_name: clean(body.last_name, 60),
+    birthdate: /^\d{4}-\d{2}-\d{2}$/.test(birthdate) ? birthdate : '',
+    email: clean(body.email, 120).toLowerCase(),
+    honeypot: clean(body.website, 50),
+  };
+}
+
 function registerEcheancierPayRoutes(app) {
+  // Demande de lien depuis /regulariser ouvert sans lien : le bot retrouve la fiche et l'echeance
+  // impayee, puis envoie le lien a l'e-mail DE LA FICHE. Reponse toujours identique (pas de fuite).
+  app.post('/api/echeancier/request-link', async (req, res) => {
+    const generic = {
+      ok: true,
+      message:
+        'Si une échéance impayée correspond à ces informations, vous recevrez le lien de paiement dans quelques minutes à l’adresse e-mail enregistrée sur votre fiche adhérent.',
+    };
+    const r = normalizeRegulRequest(req.body || {});
+    if (r.honeypot) return res.json(generic);
+    if (!r.first_name || !r.last_name || !r.birthdate) {
+      return res.status(400).json({ ok: false, error: 'Nom, prénom et date de naissance sont requis.' });
+    }
+    const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '').split(',')[0].trim();
+    const idKey = `${r.last_name}|${r.first_name}|${r.birthdate}`.toLowerCase();
+    if (!regulRequestAllowed(`ip:${ip}`) || !regulRequestAllowed(`id:${idKey}`)) {
+      return res.status(429).json({ ok: false, error: 'Trop de demandes. Réessayez dans quelques minutes.' });
+    }
+    try {
+      await forwardJobToBot({
+        order_id: `REGUL-LINK-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+        action: 'regul_link',
+        requires_payment: false,
+        requires_iban: false,
+        sale_type: 'none',
+        customer: { first_name: r.first_name, last_name: r.last_name, birthdate: r.birthdate, email: r.email },
+        payment: { status: 'none' },
+      });
+    } catch (err) {
+      logError('Regulariser — demande de lien non transmise', { error: err.message });
+      return res.status(503).json({ ok: false, error: 'Service momentanément indisponible. Contactez l’accueil de votre salle.' });
+    }
+    return res.json(generic);
+  });
+
   app.get('/api/echeancier/pay-info', async (req, res) => {
     const info = decodePayload(verifyPayToken(readToken(req)));
     if (!info?.member_id || !info.amount_cents) {
@@ -360,6 +418,8 @@ function registerEcheancierPayRoutes(app) {
 }
 
 module.exports = {
+  normalizeRegulRequest,
+  regulRequestAllowed,
   verifyPayToken,
   decodePayload,
   fulfillEcheancierPayment,

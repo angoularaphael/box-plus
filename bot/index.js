@@ -1434,6 +1434,13 @@ async function processJob(page, job) {
     return runBalmaSwitch(page, order);
   }
 
+  if (order.action === 'regul_link' && role !== 'sales') {
+    // Demande de lien /regulariser faite sur la boutique sans lien : envoi au mail de la fiche.
+    const { processRegulLinkRequest } = require('./regul-link-request');
+    const result = await processRegulLinkRequest(page, order);
+    return { status: result.ok ? STATUS.SUCCESS : STATUS.MANUAL_REVIEW, action: 'regul_link', ...result };
+  }
+
   if (order.action === 'encaisser' && role !== 'sales') {
     // Echeance reglee par le membre sur /regulariser : encaissement CB dans Deciplus.
     const { processEncaisserJob } = require('./encaisser-echeance');

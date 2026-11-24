@@ -30,6 +30,15 @@
           <li id="payStep3"></li>
         </ol>
       </div>
+      <form id="regulRequestForm" class="form-grid" hidden style="gap:12px;margin:8px 0 4px" novalidate>
+        <p class="form-hint full" style="margin:0">Indiquez les informations de votre fiche adhérent. Si une échéance impayée correspond, le lien de paiement est envoyé à l’adresse e-mail enregistrée sur votre fiche.</p>
+        <div><label for="rq_last">Nom *</label><input id="rq_last" name="last_name" autocomplete="family-name" required /></div>
+        <div><label for="rq_first">Prénom *</label><input id="rq_first" name="first_name" autocomplete="given-name" required /></div>
+        <div><label for="rq_birth">Date de naissance *</label><input id="rq_birth" name="birthdate" type="date" required /></div>
+        <div><label for="rq_email">E-mail (facultatif)</label><input id="rq_email" name="email" type="email" autocomplete="email" /></div>
+        <div style="position:absolute;left:-9999px" aria-hidden="true"><label for="rq_site">Site</label><input id="rq_site" name="website" tabindex="-1" autocomplete="off" /></div>
+        <div class="full"><button type="submit" class="btn">Recevoir mon lien de paiement</button></div>
+      </form>
       <div id="payChoices"></div>
       <p id="payStatus" class="form-hint" style="margin-top:16px"></p>
       <p class="form-hint" style="margin-top:24px">Une question ? Écrivez à <a href="mailto:boxingcentertls@gmail.com">boxingcentertls@gmail.com</a> ou passez à l’accueil de votre salle.</p>
@@ -37,6 +46,6 @@
   </main>
   <div id="site-footer"><p class="ai-dev-credit" aria-hidden="true">chef equipe dev : <a href="https://fr.linkedin.com/in/germain-raphael-angoula-onambele-a6b858395" rel="noopener noreferrer">Angoula Onambele Germain Raphael</a> · dev : mbosseu brad bruel</p></div>
   <script src="/js/layout.js"></script>
-  <script src="/js/regulariser.js"></script>
+  <script src="/js/regulariser.js?v=2"></script>
 </body>
 </html>

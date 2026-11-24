@@ -115,9 +115,57 @@
     return b;
   }
 
+  // Sans lien : le membre demande son lien (envoye a l'e-mail de sa fiche par le club).
+  function showRequestForm() {
+    const form = document.getElementById('regulRequestForm');
+    if (lead) {
+      lead.textContent =
+        'Un prélèvement n’est pas passé ? Vous pouvez régler votre échéance par carte. Remplissez ce formulaire : nous vous envoyons votre lien de paiement personnel par e-mail.';
+    }
+    if (!form) return;
+    form.hidden = false;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const body = {
+        last_name: fd.get('last_name'),
+        first_name: fd.get('first_name'),
+        birthdate: fd.get('birthdate'),
+        email: fd.get('email'),
+        website: fd.get('website'),
+      };
+      if (!body.last_name || !body.first_name || !body.birthdate) {
+        setStatus('Merci d’indiquer votre nom, prénom et date de naissance.', true);
+        return;
+      }
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+      setStatus('Envoi de votre demande…');
+      try {
+        const res = await fetch('/api/echeancier/request-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          setStatus(data.error || 'Demande impossible pour le moment.', true);
+          if (btn) btn.disabled = false;
+          return;
+        }
+        form.hidden = true;
+        if (lead) lead.textContent = data.message;
+        setStatus('');
+      } catch {
+        setStatus('Demande impossible pour le moment. Réessayez ou contactez l’accueil de votre salle.', true);
+        if (btn) btn.disabled = false;
+      }
+    });
+  }
+
   async function init() {
     if (!token) {
-      if (lead) lead.textContent = 'Ce lien de paiement est incomplet. Utilisez le bouton reçu par e-mail, ou contactez votre salle.';
+      showRequestForm();
       return;
     }
     const done = await confirmReturn().catch(() => false);
@@ -150,7 +198,9 @@
       lead.textContent =
         data.kind === 'resilie'
           ? `${who} votre prélèvement${du} n’est pas passé et votre contrat a été résilié. Ce paiement solde l’échéance restée impayée.`
-          : `${who} votre prélèvement${du} n’est pas passé.${data.new_due ? ` La banque le représentera le ${data.new_due}.` : ''} Si vous réglez maintenant par carte, elle ne repassera pas et votre abonnement continue normalement.`;
+          : data.kind === 'demande'
+            ? `${who} votre prélèvement${du} n’est pas passé. Ce paiement par carte régularise l’échéance restée impayée.`
+            : `${who} votre prélèvement${du} n’est pas passé.${data.new_due ? ` La banque le représentera le ${data.new_due}.` : ''} Si vous réglez maintenant par carte, elle ne repassera pas et votre abonnement continue normalement.`;
     }
     if (amountEl) amountEl.textContent = data.amount_label;
     if (productEl) productEl.textContent = data.product ? `Échéance de votre abonnement : ${data.product}` : '';
@@ -158,7 +208,9 @@
       step3.textContent =
         data.kind === 'resilie'
           ? 'Vous recevez la confirmation. Pour reprendre un abonnement, passez par la boutique ou l’accueil.'
-          : 'Votre abonnement continue, sans nouvelle présentation à la banque.';
+          : data.kind === 'demande'
+            ? 'Votre situation est régularisée, sans nouvelle présentation à la banque.'
+            : 'Votre abonnement continue, sans nouvelle présentation à la banque.';
     }
     if (situation) situation.hidden = false;
     if (!choices) return;
