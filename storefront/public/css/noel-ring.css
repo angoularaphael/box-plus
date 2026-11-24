@@ -195,6 +195,20 @@ html.bc-noel-ring .xm-front {
   text-transform: uppercase;
 }
 .xm-hint.is-on { opacity: 1; transform: none; }
+/* Boutique gelée, petit écran : l'explication tient en une ligne, juste sous le cadeau. */
+@media (max-width: 600px) {
+  html.bc-noel-hiver .xm-hint:not(.is-coach) {
+    max-width: 250px;
+    padding: 6px 11px 5px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  html.bc-noel-hiver .xm-hint:not(.is-coach) .xm-hint__lead { display: none; }
+  html.bc-noel-hiver .xm-hint:not(.is-coach) strong {
+    margin: 0;
+    font-size: 15px;
+  }
+}
 
 .xm-card {
   position: absolute;
@@ -496,6 +510,31 @@ html.bc-noel-ring .xm-front {
 .xm-bag[data-dmg="2"] .xm-tear--1,
 .xm-bag[data-dmg="2"] .xm-tear--2,
 .xm-bag[data-dmg="3"] .xm-tear { opacity: 1; transform: none; }
+/* Boutique gelée : le cadeau est pris dans la glace — givre sur le papier, stalactites dessous,
+   neige posée dessus. Elle cède palier par palier sous les coups ; un cadeau neuf revient gelé. */
+.xm-ice { display: none; }
+html.bc-noel-hiver .xm-ice { display: inline; }
+.xm-ice__sheen,
+.xm-ice__icicles,
+.xm-ice__cap {
+  transform-box: fill-box;
+  transition: opacity 0.35s ease, transform 0.5s cubic-bezier(0.4, 0, 0.6, 1);
+}
+.xm-ice__cap { transform-origin: 50% 100%; }
+.xm-bag[data-dmg="1"] .xm-ice__cap { transform: scale(1, 0.5); opacity: 0.92; }
+.xm-bag[data-dmg="1"] .xm-ice__sheen { opacity: 0.66; }
+.xm-bag[data-dmg="2"] .xm-ice__cap,
+.xm-bag[data-dmg="3"] .xm-ice__cap { transform: scale(1, 0); opacity: 0; }
+.xm-bag[data-dmg="2"] .xm-ice__sheen { opacity: 0.3; }
+.xm-bag[data-dmg="2"] .xm-ice__icicles,
+.xm-bag[data-dmg="3"] .xm-ice__icicles { transform: translateY(24%); opacity: 0; }
+.xm-bag[data-dmg="3"] .xm-ice__sheen { opacity: 0; }
+.xm-bag.is-open .xm-ice { opacity: 0; transition: opacity 0.25s ease; }
+/* Le givre du hero vient alors de noel-hiver.js (il fond, lui) ; la barre montre la glace qui reste. */
+html.bc-noel-hiver .xm-frost { display: none; }
+html.bc-noel-hiver .xm-hp__fill { background: linear-gradient(90deg, #7CC4FF, #E4F3FF); }
+html.bc-noel-hiver .xm-hp__trail { background: #FFFFFF; }
+
 /* Ouvert : le papier et ses déchirures partent, le cuir du vrai sac reste. */
 .xm-paper,
 .xm-tears { transition: opacity 0.25s ease; }

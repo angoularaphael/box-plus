@@ -27,6 +27,9 @@
   const coarse = matchMedia('(pointer: coarse)').matches;
   const lowEnd = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
   const isCinema = hero.classList.contains('hero--cinema');
+  // Avec la boutique gelée (noel-hiver.js) : le cadeau est pris dans la glace, et chaque coup
+  // réchauffe toute la page. Le cadeau le dit, la page écoute.
+  const frozen = root.classList.contains('bc-noel-hiver');
   root.classList.add('bc-noel-ring');
 
   const OFF_KEY = 'bc_noel_off';
@@ -95,6 +98,13 @@
   // Écrire un style seulement s'il change : rien ne touche le DOM quand rien ne bouge.
   const putT = (n, v) => { if (n._t !== v) { n._t = v; n.style.transform = v; } };
   const putO = (n, v) => { if (n._o !== v) { n._o = v; n.style.opacity = v; } };
+  const tell = (name, detail) => doc.dispatchEvent(new CustomEvent(name, { detail }));
+  // Au téléphone, un coup se sent dans la main (Android ; sans effet ailleurs).
+  const BUZZ = { jab: 8, direct: 11, crochet: 14, uppercut: 18, ko: [24, 46, 38] };
+  const buzz = (pattern) => {
+    if (!coarse || reduce || !navigator.vibrate) return;
+    try { navigator.vibrate(pattern); } catch (e) { /* vibreur refusé */ }
+  };
 
   /* ---------- Dessins ---------- */
 
@@ -107,6 +117,8 @@
       '<linearGradient id="xmLeather" x1="0" x2="1"><stop offset="0" stop-color="#0f0809"/><stop offset=".45" stop-color="#2b1517"/><stop offset="1" stop-color="#120909"/></linearGradient>' +
       '<linearGradient id="xmPaper" x1="0" x2="1"><stop offset="0" stop-color="#6E0010"/><stop offset=".3" stop-color="#C4001A"/><stop offset=".5" stop-color="#E8001C"/><stop offset=".74" stop-color="#B00018"/><stop offset="1" stop-color="#62000E"/></linearGradient>' +
       '<linearGradient id="xmRibbon" x1="0" x2="1"><stop offset="0" stop-color="#A86A14"/><stop offset=".42" stop-color="#FFE2A0"/><stop offset=".62" stop-color="#F2B24A"/><stop offset="1" stop-color="#93590F"/></linearGradient>' +
+      '<linearGradient id="xmIce" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E6F3FF" stop-opacity=".55"/><stop offset=".5" stop-color="#BFDDF8" stop-opacity=".3"/><stop offset="1" stop-color="#D8ECFF" stop-opacity=".5"/></linearGradient>' +
+      '<linearGradient id="xmIcicle" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3F9FF"/><stop offset="1" stop-color="#A9CBEE" stop-opacity=".75"/></linearGradient>' +
       '<radialGradient id="xmGlowHole" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#FFF1C4"/><stop offset=".38" stop-color="#FFB347"/><stop offset=".8" stop-color="#7A3A0C"/><stop offset="1" stop-color="#2A1206"/></radialGradient>' +
       '<pattern id="xmStars" width="24" height="24" patternUnits="userSpaceOnUse">' +
       '<path d="M12 4.5l1.3 4 4.2 1.3-4.2 1.3L12 15.2l-1.3-4.1L6.5 9.8l4.2-1.3z" fill="#FFD98A" opacity=".34"/>' +
@@ -133,6 +145,24 @@
       '<path d="M88 127c7 2 12 7 14 12" stroke="#F2B24A" stroke-width="1.4" fill="none"/>' +
       '<g transform="rotate(-12 110 146)"><path d="M100 138h22l6 8-6 8h-22z" fill="#F4EEDC"/><circle cx="104" cy="146" r="1.7" fill="#A86A14"/>' +
       '<path d="M109 142c1.5-2.5 6-2.6 7.3.5 1 2.4-.8 5.5-4 5.5h-2c-1.2 0-2.1-.9-2.1-2z" fill="#E8001C"/></g>' +
+      '</g>' +
+      // La glace (boutique gelée) : du givre sur le papier, des stalactites dessous, la neige
+      // posée dessus. Elle cède palier par palier sous les coups.
+      '<g class="xm-ice">' +
+      '<g class="xm-ice__sheen"><rect x="32" y="38" width="96" height="174" rx="21" fill="url(#xmIce)"/>' +
+      '<g fill="none" stroke="#fff" stroke-width="1.1" stroke-linecap="round" opacity=".85">' +
+      '<path d="M36 198l15-13M43 203l8-18M35 187h16M47 178l4 11M40 191l9-1M45 197l6-5"/>' +
+      '<path d="M124 58l-14 12M117 53l-8 16M125 69l-16-1M113 77l-3-9M119 64l-8 1"/>' +
+      '<path d="M122 200l-13-10M125 190l-15-2M115 204l-6-14M118 196l-8-2"/>' +
+      '<path d="M38 62l12 9M35 72l14-1M44 56l5 13"/></g>' +
+      '<g fill="#fff"><path d="M56 96l1.2 3.4 3.4 1.2-3.4 1.2-1.2 3.4-1.2-3.4-3.4-1.2 3.4-1.2z"/><path d="M108 164l1 2.8 2.8 1-2.8 1-1 2.8-1-2.8-2.8-1 2.8-1z"/><path d="M102 92l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" opacity=".8"/></g></g>' +
+      '<g class="xm-ice__icicles" fill="url(#xmIcicle)">' +
+      '<path d="M43 207c2 6 3.2 13 4.2 21 1-8 2.8-15 5-21z"/><path d="M59 211c1.6 8 2.8 17 3.8 29 1-12 2.6-21 4.6-29z"/>' +
+      '<path d="M81 212c1 5 2 11 2.8 18 .8-7 1.9-13 3.4-18z"/><path d="M97 211c1.4 7 2.5 15 3.5 25 1-10 2.3-18 4.3-25z"/>' +
+      '<path d="M112 207c1 4 1.8 9 2.5 14 .6-5 1.5-10 2.7-14z"/></g>' +
+      '<g class="xm-ice__cap">' +
+      '<path d="M29 51c-2-9 6-15 16-13 5-6 15-8 23-4 5-4 12-5 18-2 7-4 17-2 22 3 10-1 18 5 17 14-1 5-6 7-12 6-6 4-14 2-19 0-6 3-14 3-20 0-7 4-15 3-21 0-8 3-19 2-24-4z" fill="#fff"/>' +
+      '<path d="M30 53c6 5 16 5 23 2 6 3 14 4 21 0 6 3 14 3 20 0 5 2 13 4 19 0 5 1 10 0 12-4-1 5-6 8-12 7-6 4-14 2-19 0-6 3-14 3-20 0-7 4-15 3-21 0-8 3-19 2-23-5z" fill="#C5D8EC"/></g>' +
       '</g>' +
       '</svg>' +
       // Les déchirures : le papier cède par endroits et laisse voir le cuir et une lumière dorée.
@@ -223,7 +253,7 @@
     hud = el(
       'div',
       'xm-hud',
-      '<div class="xm-hp"><span>Cadeau</span><span class="xm-hp__bar"><span class="xm-hp__trail"></span><span class="xm-hp__fill"></span></span><span class="xm-round">R1</span></div>'
+      `<div class="xm-hp"><span>${frozen ? 'Glace' : 'Cadeau'}</span>` + '<span class="xm-hp__bar"><span class="xm-hp__trail"></span><span class="xm-hp__fill"></span></span><span class="xm-round">R1</span></div>'
     );
     hpFill = hud.querySelector('.xm-hp__fill');
     hpTrail = hud.querySelector('.xm-hp__trail');
@@ -233,11 +263,13 @@
     hintEl = el(
       'div',
       'xm-hint',
-      soft
-        ? 'Un cadeau pendu comme un sac…<strong>Frappe-le !</strong>'
-        : coarse
-          ? 'Un cadeau t’attend…<strong>Tape-le, glisse dessus.</strong>'
-          : 'Un cadeau t’attend…<strong>Ouvre-le à la boxe.</strong>'
+      frozen
+        ? `<span class="xm-hint__lead">Tout est gelé ici…</span><strong>${coarse ? 'Tape' : 'Frappe'} le cadeau pour réchauffer.</strong>`
+        : soft
+          ? 'Un cadeau pendu comme un sac…<strong>Frappe-le !</strong>'
+          : coarse
+            ? 'Un cadeau t’attend…<strong>Tape-le, glisse dessus.</strong>'
+            : 'Un cadeau t’attend…<strong>Ouvre-le à la boxe.</strong>'
     );
     hintEl.setAttribute('aria-hidden', 'true');
 
@@ -279,6 +311,7 @@
     window.addEventListener('scroll', () => { S.rect = null; }, pas);
     doc.addEventListener('visibilitychange', syncRunning, on);
     doc.addEventListener('keydown', (e) => { if (e.key === 'Escape' && card.classList.contains('is-on')) closeCard(); }, on);
+    if (frozen) doc.addEventListener('bc:noel-heat', onHeat, on);
 
     // Invisible jusqu'à la première mise en place : pas un cadeau dans le coin.
     back.style.visibility = 'hidden';
@@ -444,14 +477,29 @@
     const hw2 = S.hintSize.w;
     const hh = S.hintSize.h;
     const top = b.py + b.chain;
-    const spot = freeSpot(hw2, hh, [
-      [b.px - hw2 / 2, top + b.bh + 30],
-      [b.px - b.bw * 0.62 - hw2 - 12, top + b.bh * 0.3],
-      [b.px + b.bw * 0.62 + 12, top + b.bh * 0.3],
-      [b.px - hw2 / 2, top - 30 - hh - 10],
-    ], [bagBox()], measured);
+    let spot = null;
+    S.hintBottom = null;
+    if (frozen && S.w < 600) {
+      // Petit écran : l'indice tient en une ligne, sur la chaîne, juste au-dessus de la barre de
+      // glace (elle ne sort qu'au premier coup) et à gauche du bouton « couper ».
+      const bottom = top - 38;
+      spot = freeSpot(hw2, hh, [[clamp(b.px - hw2 / 2, 8, S.w - hw2 - 60), bottom - hh]], [], measured);
+      if (spot) S.hintBottom = bottom;
+    }
+    // Sur la chaîne, l'indice est tenu par son pied : la leçon des coups, plus haute, monte
+    // d'elle-même sans qu'on ait à la mesurer.
+    hintEl.style.top = S.hintBottom != null ? 'auto' : '';
+    hintEl.style.bottom = S.hintBottom != null ? (S.h - S.hintBottom).toFixed(1) + 'px' : '';
+    if (!spot) {
+      spot = freeSpot(hw2, hh, [
+        [b.px - hw2 / 2, top + b.bh + 30],
+        [b.px - b.bw * 0.62 - hw2 - 12, top + b.bh * 0.3],
+        [b.px + b.bw * 0.62 + 12, top + b.bh * 0.3],
+        [b.px - hw2 / 2, top - 30 - hh - 10],
+      ], [bagBox()], measured);
+    }
     S.hint.ok = !!spot;
-    if (spot) hintEl.style.transform = `translate(${spot.x}px, ${spot.y}px)`;
+    if (spot) hintEl.style.transform = S.hintBottom != null ? `translate(${spot.x}px, 0)` : `translate(${spot.x}px, ${spot.y}px)`;
     else hintEl.classList.remove('is-on');
   }
 
@@ -680,6 +728,10 @@
     }
     S.bag.lastUserHit = t;
     renderHud();
+    buzz(ko ? BUZZ.ko : BUZZ[type]);
+    const hr = S.rect || (S.rect = hero.getBoundingClientRect());
+    const bc = bagCenter();
+    tell('bc:noel-hit', { ratio: 1 - b.hp / CFG.maxHp, ko, type, x: hr.left + bc.x, y: hr.top + bc.y });
     if (ko) knockout();
   }
 
@@ -689,6 +741,8 @@
     b.koAt = now();
     const c = bagCenter();
     clearCallout();
+    // La leçon des coups se retire : la place est aux cloches.
+    hintEl.classList.remove('is-on');
     callout('K.O.', clamp(c.x, S.w * 0.18, S.w * 0.82), c.y - b.bh * 0.15, 'xm-callout--ko');
     // Cloche du ring, cloches de Noël.
     const bell = callout('Ding', clamp(b.px, 90, S.w - 90), b.py + b.chain - 52, 'xm-callout--bell');
@@ -698,6 +752,8 @@
     setTimeout(() => openGift(c), 160);
     setTimeout(showCard, 1400);
     track('noel_ko', { round: b.round, punches: b.punches, page: location.pathname });
+    S.heat = 1;
+    tell('bc:noel-ko', { round: b.round });
   }
 
   // Le cadeau s'ouvre : le nœud s'envole, le papier éclate en confettis, la lumière sort du sac.
@@ -721,7 +777,37 @@
     flash.animate([{ transform: 'scale(.2)', opacity: 0.95 }, { transform: 'scale(2.6)', opacity: 0 }], { duration: 760, easing: 'cubic-bezier(.2,.8,.3,1)' }).onfinish = () => flash.remove();
   }
 
-  function rematch() {
+  // La boutique regèle quand on cesse de frapper (noel-hiver.js l'annonce, deux fois par seconde) :
+  // la glace du cadeau revient au même rythme, et sa barre remonte avec elle. Un cadeau déjà
+  // ouvert ne se referme pas ; mais une fois le froid revenu, un cadeau neuf redescend tout seul.
+  function onHeat(e) {
+    if (S.dead || !e.detail || S.mode !== 'full') return;
+    const b = S.bag;
+    const v = clamp(e.detail.v, 0, 1);
+    S.heat = v;
+    if (b.ko) {
+      regift();
+      return;
+    }
+    const hp = Math.min(CFG.maxHp, CFG.maxHp * (1 - v));
+    if (hp > b.hp + 0.005) {
+      b.hp = hp;
+      renderHud();
+    }
+  }
+
+  // Cadeau ouvert, carte fermée, froid revenu : un cadeau neuf, gelé, redescend de lui-même.
+  function regift() {
+    const b = S.bag;
+    if (S.dead || !frozen || !b.ko || b.drop > 0 || S.heat == null || S.heat >= 0.3) return;
+    if (card.classList.contains('is-on') || now() - b.koAt < 4000) return;
+    rematch(true);
+  }
+
+  // Un cadeau neuf : demandé (bouton, coup sur le sac ouvert) ou revenu de lui-même avec le froid
+  // (quiet : ni annonce de round ni prise du focus).
+  function rematch(auto) {
+    const quiet = auto === true;
     const b = S.bag;
     stopPossession();
     card.classList.remove('is-on');
@@ -741,6 +827,8 @@
     for (const a of bowEl.getAnimations()) a.cancel();
     renderHud();
     kick();
+    tell('bc:noel-rematch', { round: b.round });
+    if (quiet) return;
     setTimeout(() => {
       const c = bagCenter();
       callout('Round ' + b.round, c.x, c.y - b.bh * 0.2, 'xm-callout--big');
@@ -983,6 +1071,8 @@
     front.classList.remove('has-overlay');
     bagEl.classList.remove('is-gone');
     hitEl.focus({ preventScroll: true });
+    // Si la boutique a déjà regelé pendant que la carte était ouverte, le cadeau neuf arrive.
+    setTimeout(regift, 1200);
   }
 
   /* ---------- Particules, trace des gestes, annonces ---------- */

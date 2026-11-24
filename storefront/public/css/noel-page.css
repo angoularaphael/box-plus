@@ -188,11 +188,23 @@
    voyait pas, et chacun coûtait une animation de plus à chaque image. */
 html.xmp-touch .is-running .xmp-arm--f,
 html.xmp-touch .is-running .xmp-arm--b { animation: none; }
+/* Et il y marche, il ne court pas : la foulée suit son pas (42 px/s). */
+html.xmp-touch .is-running .xmp-leg--f,
+html.xmp-touch .is-running .xmp-leg--b { animation-duration: 0.56s; }
+html.xmp-touch .is-running .xmp-body { animation-duration: 0.28s; }
 
 /* Shadow boxing : jab, jab, direct, sur ses appuis. */
 .is-boxing .xmp-arm--f { animation: xmp-jab 1.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
 .is-boxing .xmp-arm--b { animation: xmp-cross 1.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
 .is-boxing .xmp-body { animation: xmp-bounce 0.25s ease-in-out infinite alternate; }
+
+/* Il nargue, à l'arrêt : il sautille et fait signe du gant — « Tu ne peux pas me toucher ! ». */
+.is-taunt .xmp-body { animation: xmp-bounce 0.26s ease-in-out infinite alternate; }
+.is-taunt .xmp-arm--f { animation: xmp-beckon 0.42s ease-in-out infinite alternate; }
+@keyframes xmp-beckon {
+  from { transform: rotate(-6deg); }
+  to { transform: rotate(-36deg) translateY(-3%); }
+}
 
 /* Il pare : les deux gants montent devant le visage. */
 .is-block .xmp-arm--f,
@@ -262,6 +274,10 @@ html.xmp-touch .is-running .xmp-arm--b { animation: none; }
   border-top-color: #fff;
 }
 .xmp-santa__say.is-on { opacity: 1; transform: translate(-50%, 0) scale(1); }
+/* « Tu ne peux pas me toucher ! » : plus long, un peu plus petit ; il s'efface quand le Père Noël
+   passe devant un bouton. */
+.xmp-santa__say.is-long { font-size: 13px; top: -30px; padding: 4px 8px 3px; }
+.xmp-santa__run.is-ghost .xmp-santa__say { opacity: 0; }
 
 /* Le cadeau qu'il lance, et ses confettis. */
 .xmp-gift {

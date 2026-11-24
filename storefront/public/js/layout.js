@@ -379,7 +379,8 @@
   }
 
   // Noël : du 10 décembre (le jour où part le bandeau FIGHT & Furious) au 4 janvier, heure de
-  // Paris. Invisible avant ; ?noel=1 force la scène hors fenêtre (aperçu), ?noel=0 la coupe.
+  // Paris. Invisible avant ; ?noel=1 force la scène hors fenêtre (aperçu), ?noel=0 la coupe,
+  // ?noel=v1 montre le premier décor seul (sac-cadeau, Père Noël, sans la boutique gelée).
   // Jamais dans le tunnel de vente ni la billetterie ; douce sur la page enfants.
   function ensureNoel() {
     if (document.querySelector('link[data-noel], script[data-noel]')) return;
@@ -392,7 +393,9 @@
     if (flag === '0') return;
     const day = parisDay();
     const inWindow = day >= '2026-12-10' && day <= '2027-01-04';
-    if (flag !== '1' && !inWindow) return;
+    const forced = flag === '1' || flag === 'v1' || flag === 'v2';
+    if (!forced && !inWindow) return;
+    const legacy = flag === 'v1';
     const p = currentPath();
     if (/inscription|checkout|panier|paiement|contrat|success|regulariser|gerer-abonnement|attestation|certificat|billet|admin|\/404|\/dev/i.test(p)) {
       return;
@@ -411,6 +414,8 @@
       const s = document.createElement('script');
       s.src = A(src);
       s.dataset.noel = '1';
+      // Dans l'ordre où on les pose (un script ajouté à la main s'exécute sinon dès qu'il arrive).
+      s.async = false;
       document.body.appendChild(s);
     };
     const boot = () => {
@@ -418,9 +423,20 @@
       document.documentElement.classList.add('bc-noel');
       if (soft) document.documentElement.classList.add('bc-noel--soft');
       // Les scripts n'arrivent qu'avec leurs styles : rien ne s'affiche brut, rien n'est mesuré de travers.
-      Promise.all([sheet('/css/noel-ring.css?v=1'), sheet('/css/noel-page.css?v=1')]).then(() => {
-        script('/js/noel-ring.js?v=1');
-        script('/js/noel-page.js?v=1');
+      if (legacy) {
+        Promise.all([sheet('/css/noel-ring.css?v=2'), sheet('/css/noel-page.css?v=2')]).then(() => {
+          script('/js/noel-ring.js?v=2');
+          script('/js/noel-page.js?v=2');
+        });
+        return;
+      }
+      // Le cadeau à ouvrir à la boxe (hero), le Père Noël et son traîneau (page), et la boutique
+      // gelée que les coups sur le cadeau réchauffent (givre, neige posée sur le site, guirlande).
+      document.documentElement.classList.add('bc-noel-hiver');
+      Promise.all([sheet('/css/noel-ring.css?v=2'), sheet('/css/noel-page.css?v=2'), sheet('/css/noel-hiver.css?v=1')]).then(() => {
+        script('/js/noel-ring.js?v=2');
+        script('/js/noel-hiver.js?v=1');
+        script('/js/noel-page.js?v=2');
       });
     };
     // Le site d'abord : le décor n'arrive qu'une fois la page affichée et le navigateur au repos.
@@ -465,6 +481,8 @@
     // jour, il n'est plus chargé, et le Père Noël redescend courir en bas de l'écran.
     const day = parisDay();
     if (day && day >= '2026-12-10') return;
+    // L'aperçu de Noël (?noel=1) montre le site tel qu'il sera le 10 décembre : sans le bandeau.
+    if (/[?&]noel=(1|v1|v2)\b/.test(location.search)) return;
     const p = currentPath();
     if (/^\/admin(\/|$)/i.test(p) || /\/admin\//i.test(location.pathname)) return;
     if (/billet|checkout|inscription|paiement|contrat|success/i.test(p)) return;

@@ -25,12 +25,16 @@
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const mouse = matchMedia('(hover: hover) and (pointer: fine)').matches;
   const lowEnd = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+  // Avec la boutique gelée (noel-hiver.js), la neige et la guirlande sont les siennes.
+  const frozen = root.classList.contains('bc-noel-hiver');
   const OFF_KEY = 'bc_noel_off';
   const OFF_VALUE = '2026';
   if (!mouse) root.classList.add('xmp-touch');
 
   const CFG = {
-    runSpeed: mouse ? 84 : 70,
+    // Au téléphone il marche (42 px/s) : sur un petit écran, un footing le faisait filer avant
+    // qu'on ait pu le toucher.
+    runSpeed: mouse ? 84 : 42,
     runFirstMs: 2400,
     // Au téléphone, il passe un peu moins souvent : chaque course occupe tout le bas de l'écran.
     runGapMs: mouse ? [7000, 14000] : [11000, 19000],
@@ -66,56 +70,91 @@
     '<linearGradient id="xmpSweat" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A3A9B6"/><stop offset="1" stop-color="#737A88"/></linearGradient>' +
     '<linearGradient id="xmpGlove" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF3B4E"/><stop offset="1" stop-color="#B80016"/></linearGradient>' +
     '<linearGradient id="xmpHat" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF2238"/><stop offset="1" stop-color="#B00014"/></linearGradient>' +
+    '<linearGradient id="xmpCoat" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9E0014"/><stop offset=".38" stop-color="#E0001C"/><stop offset=".72" stop-color="#F2283A"/><stop offset="1" stop-color="#B80018"/></linearGradient>' +
+    '<linearGradient id="xmpCoatB" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#A80016"/><stop offset="1" stop-color="#7C000F"/></linearGradient>' +
+    '<linearGradient id="xmpFur" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DAD9D2"/></linearGradient>' +
+    '<linearGradient id="xmpGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE9A6"/><stop offset=".5" stop-color="#F2B24A"/><stop offset="1" stop-color="#B9781A"/></linearGradient>' +
+    '<linearGradient id="xmpSack" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B98A4E"/><stop offset="1" stop-color="#6E4A22"/></linearGradient>' +
+    '<radialGradient id="xmpSkin" cx="62%" cy="40%" r="70%"><stop offset="0" stop-color="#FBD9BF"/><stop offset="1" stop-color="#E7B090"/></radialGradient>' +
     '<linearGradient id="xmpPaper" x1="0" x2="1"><stop offset="0" stop-color="#8E0014"/><stop offset=".45" stop-color="#E8001C"/><stop offset="1" stop-color="#9C0016"/></linearGradient>' +
     '<linearGradient id="xmpRibbon" x1="0" x2="1"><stop offset="0" stop-color="#A86A14"/><stop offset=".45" stop-color="#FFE2A0"/><stop offset="1" stop-color="#C98A24"/></linearGradient>' +
     '</defs></svg>';
 
-  // Le Père Noël en survêtement d'entraînement : bonnet rouge et pompon, barbe blanche, ceinture
-  // noire à boucle d'or, gants rouges du club. Pieds sur la ligne y = 146 ; regard vers +x. Chaque
-  // membre est sa propre couche (cadre 120 × 150) : la course se joue en transform, sans repeindre.
+  // Le Père Noël : manteau rouge bordé de fourrure, ceinture noire à boucle d'or, bottes, barbe en
+  // boucles, la hotte sur le dos — et des gants d'or (les Golden Gloves). Pieds sur la ligne
+  // y = 146 ; regard vers +x. Chaque membre est sa propre couche (cadre 120 × 150) : la marche se
+  // joue en transform, sans repeindre.
   const part = (cls, paths, inner) =>
     `<div class="xmp-part ${cls}"><svg viewBox="0 0 120 150" aria-hidden="true" focusable="false">${paths}</svg>${inner || ''}</div>`;
+  // Un gant d'or, sa manchette de fourrure dessous, un reflet dessus.
   const GLOVE = (x, y) =>
-    `<path d="M${x} ${y}c0-6 6-9 12-8 6 1 9 6 8 12-1 5-5 8-10 8h-5c-3 0-5-2-5-5z" fill="url(#xmpGlove)"/>` +
-    `<path d="M${x - 1} ${y + 8}h8v5h-8z" fill="#F2F2F2"/>` +
-    `<path d="M${x + 5} ${y - 3}c3-2 7-1 9 1" stroke="#FF8A95" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+    `<path d="M${x} ${y}c0-6.4 6-9.6 12.4-8.4 6 1.1 9.2 6.2 8.2 12.2-.9 5.2-5 8.4-10.2 8.4h-5.2c-3 0-5.2-2.2-5.2-5.2z" fill="url(#xmpGold)" stroke="#8A5A12" stroke-width=".8"/>` +
+    `<path d="M${x - 1.6} ${y + 7.6}h9.6c1.2 0 2 .9 2 2.2v2.4c0 1.2-.8 2.1-2 2.1h-9.6c-1.2 0-2-.9-2-2.1V${y + 9.8}c0-1.3.8-2.2 2-2.2z" fill="url(#xmpFur)"/>` +
+    `<path d="M${x + 5} ${y - 3.2}c3.2-2.2 7.4-1.2 9.6 1.2" stroke="#FFF6D8" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
+  // Une botte noire à revers de fourrure ; (x, y) = le haut de la tige, côté talon.
+  const BOOT = (x, y, dark) =>
+    `<path d="M${x} ${y}h12.6c.6 4.6 4.6 5.6 8 8.2 1.9 1.5 2 5.8-.4 5.8H${x}z" fill="${dark ? '#121217' : '#1D1D24'}"/>` +
+    `<path d="M${x} ${y + 12.4}h20.6" stroke="#3A3A44" stroke-width="1.3"/>` +
+    `<path d="M${x - 1.6} ${y - 5.4}h15.8c1.4 0 2.4 1.2 2.4 2.9s-1 2.9-2.4 2.9H${x - 1.6}c-1.4 0-2.4-1.2-2.4-2.9s1-2.9 2.4-2.9z" fill="${dark ? '#DEDCD4' : 'url(#xmpFur)'}"/>`;
   const SANTA_HTML =
-    part('xmp-ground', '<ellipse cx="60" cy="146" rx="28" ry="4.5" fill="rgba(0,0,0,.3)"/>') +
+    part('xmp-ground', '<ellipse cx="60" cy="146" rx="30" ry="4.6" fill="rgba(0,0,0,.3)"/>') +
     // Jambe arrière
     part('xmp-leg xmp-leg--b',
-      '<path d="M47 92h12l-1 22-2 18h-9l-1-18z" fill="#676D7A"/>' +
-      '<path d="M42 130h15c3 0 7 3 7 7v6H42z" fill="#1E1E24"/>') +
+      '<path d="M46.4 90h13l-1.2 22-1.4 14.6h-9.6l-.9-14.6z" fill="url(#xmpCoatB)"/>' + BOOT(45.6, 130.6, true)) +
     // Bras arrière (derrière le buste)
     part('xmp-arm xmp-arm--b',
-      '<path d="M47 48c-4 6-4 13 1 18l13-4c-3-4-3-8-1-12z" fill="#6F7584"/>' + GLOVE(58, 42)) +
-    // Buste : sweat gris, ceinture du Père Noël ; la tête est une couche à l'intérieur.
+      '<path d="M46.6 47.4c-4.4 6.2-4.2 13.6 1.2 18.8l13.6-4.2c-3.2-4.2-3.4-8.6-1.2-12.6z" fill="url(#xmpCoatB)"/>' + GLOVE(58, 42)) +
+    // Buste : la hotte derrière, le manteau et son ventre, la fourrure, la ceinture ; la tête est
+    // une couche à l'intérieur.
     part('xmp-body',
-      '<path d="M41 86h38l2 10H39z" fill="#7B8190"/>' +
-      '<path d="M42 52c0-11 8-17 18-17 11 0 18 6 18 17l-1 34H43z" fill="url(#xmpSweat)"/>' +
-      '<path d="M50 40c3 5 7 7 10 7s7-2 10-7" stroke="#6A7080" stroke-width="2" fill="none" stroke-linecap="round"/>' +
-      '<path d="M50 70h20" stroke="#6A7080" stroke-width="1.4" stroke-linecap="round"/>' +
-      '<path d="M42 79h36v8H42z" fill="#1E1E24"/>' +
-      '<rect x="55" y="78.5" width="10" height="9" rx="1.6" fill="none" stroke="#F2B24A" stroke-width="2"/>',
+      // La hotte, deux paquets qui dépassent.
+      '<path d="M22 58c-5.6 9.4-5 24 3 31.6 8 5.6 18.6 3.6 22.6-2.6l1.6-33.6c-8.6-5.4-21-4.4-27.200 4.6z" fill="url(#xmpSack)"/>' +
+      '<path d="M26 62c-3 8-2.6 17 1.6 23" stroke="#5A3A18" stroke-width="1.2" fill="none" stroke-linecap="round" opacity=".6"/>' +
+      '<path d="M33 46.500l9-4.200 3.800 8.200-9 4.200z" fill="#E8001C"/><path d="M36.400 44.900l3.800 8.200" stroke="#FFE2A0" stroke-width="1.6"/>' +
+      '<path d="M25.500 50.500l7.400-1.400 1.400 7.400-7.400 1.400z" fill="#F2B24A"/><path d="M29.200 49.800l1.400 7.400" stroke="#fff" stroke-width="1.3"/>' +
+      '<path d="M40 52c3-2.600 6.600-3.400 10-2.600" stroke="#5A3A18" stroke-width="2.2" fill="none" stroke-linecap="round"/>' +
+      // Le manteau : le ventre part vers l'avant.
+      '<path d="M41.500 54c0-11.800 8.200-19 19.200-19 11.400 0 19.600 7 20 18.600 3.600 6.400 5 14.400 3.800 22.400-.8 5.200-2.400 9.600-4.200 13H40.300c-1.500-6.400-1.700-13-.5-19.400z" fill="url(#xmpCoat)"/>' +
+      '<path d="M78 60c3.400 6.800 4 14.800 1.400 23" stroke="#8C0011" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".55"/>' +
+      '<path d="M47 44c-2.400 6-3.200 13-2.600 21" stroke="#FF6A76" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".5"/>' +
+      // La patte de fourrure du devant, puis l'ourlet.
+      '<path d="M66.500 41c1.400 14.600 1.600 31.800.2 47.400h7.200c1.400-15.600 1.200-32.800-.2-47.400z" fill="url(#xmpFur)"/>' +
+      '<path d="M38.200 85.400h44c2.200 0 3.600 2.200 3.600 5s-1.400 5-3.600 5h-44c-2.200 0-3.600-2.200-3.600-5s1.400-5 3.600-5z" fill="url(#xmpFur)"/>' +
+      '<path d="M40 92.600c3 1.600 6 1.600 9 0s6-1.600 9 0 6 1.600 9 0 6-1.600 9 0 5 1.400 7 .2" stroke="#C9C7BE" stroke-width="1" fill="none" stroke-linecap="round"/>' +
+      // La ceinture et sa boucle d'or.
+      '<path d="M40.400 69.600c14.200 3.200 29 3.200 43.800-.2l.4 8.600c-14.800 3.400-29.800 3.400-44.600.2z" fill="#17171C"/>' +
+      '<path d="M41 71.400c14 2.800 28.600 2.800 43 0" stroke="#3C3C46" stroke-width="1" fill="none"/>' +
+      '<rect x="64.600" y="68.600" width="12.400" height="11.200" rx="2" fill="none" stroke="url(#xmpGold)" stroke-width="2.600"/><path d="M70.800 71v6.400" stroke="#F2B24A" stroke-width="1.600" stroke-linecap="round"/>' +
+      // Le col de fourrure.
+      '<path d="M47.400 40.600c2.200-3.600 7.600-5.400 13.200-5.400 5.800 0 11.400 1.800 13.600 5.400 1 1.800-.2 4-2.400 4.200-7.400.8-15 .8-22.200 0-2.200-.2-3.200-2.400-2.200-4.200z" fill="url(#xmpFur)"/>',
       part('xmp-head',
-        '<path d="M57 32h10v6H57z" fill="#E9BFA0"/>' +
-        '<circle cx="64" cy="22" r="10.5" fill="#F1C7A8"/>' +
-        '<circle cx="70" cy="25" r="2.6" fill="#F2A08C" opacity=".75"/>' +
-        '<path d="M52 23c1 12 7 19 13 19 7 0 12-7 13-19-4 3-8 4-13 4s-9-1-13-4z" fill="#F6F4EE"/>' +
-        '<path d="M57 26c3-2.4 6-2.4 8.2-.2 2.2-2.2 5.6-2.2 8.3.2-2 3-6 3.2-8.3 1.4-2.3 1.8-6.2 1.6-8.2-1.4z" fill="#fff"/>' +
-        '<circle cx="73.5" cy="24" r="2.2" fill="#E89A80"/>' +
-        '<circle cx="69.5" cy="18.5" r="1.5" fill="#2A1B14"/>' +
-        '<path d="M66.5 15.6l5-.8" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>' +
-        '<path d="M51 14c3-10 13-14 22-11 7 2 11 8 11 13l-33 1z" fill="url(#xmpHat)"/>' +
-        '<path d="M57 6c-6-2-12 0-14 7" stroke="#C4001A" stroke-width="6" fill="none" stroke-linecap="round"/>' +
-        '<circle cx="43" cy="14" r="4.6" fill="#fff"/>' +
-        '<path d="M49 13c9-3.4 26-3.4 35 .6v6c-9-3-26-3-35 .4z" fill="#F6F4EE"/>')) +
+        // Les cheveux blancs sur la nuque, le visage, l'oreille.
+        '<path d="M52.600 16c-2.600 5.400-2.400 12.600.6 17.400l6-2.200V15z" fill="#ECEAE3"/>' +
+        '<circle cx="64" cy="22" r="10.600" fill="url(#xmpSkin)"/>' +
+        '<path d="M56.200 20.600c-2.200-.4-3.200 1.800-2.400 3.800.6 1.600 2.200 2.200 3.400 1.600z" fill="#E7B090"/>' +
+        '<circle cx="69.600" cy="25.600" r="3" fill="#F2907C" opacity=".55"/>' +
+        // La barbe : une masse, des boucles au bord, des mèches.
+        '<path d="M52 22.600c-.8 9.600 2 18.800 7.400 23.600 3.600 3.200 8.800 3.200 12.400 0 5.200-4.600 8-12.800 7.400-21.600-3.400 2.400-7.800 3.400-13.400 3.400s-10.200-2-13.800-5.400z" fill="url(#xmpFur)"/>' +
+        '<g fill="#FFFFFF"><circle cx="56.400" cy="41" r="3.400"/><circle cx="61.200" cy="45.600" r="3.800"/><circle cx="67" cy="46.800" r="3.800"/><circle cx="72.600" cy="44.200" r="3.600"/><circle cx="76.400" cy="39" r="3.200"/><circle cx="53.600" cy="34.600" r="3"/></g>' +
+        '<path d="M57 36c1.600 3 4 5 7 5.600M66 38c1 2.600 3 4 5.600 4.200M60.600 31.600c1.400 1.600 3.200 2.400 5.200 2.400" stroke="#CFCDC4" stroke-width="1" fill="none" stroke-linecap="round"/>' +
+        // La moustache, le nez, l'œil rieur et le sourcil blanc.
+        '<path d="M56.600 26.800c3-3.200 6.800-3.200 9.400-.6 2.600-2.600 6.800-2.600 9.800.6-2.400 3.400-7 3.600-9.800 1.600-2.800 2-7.400 1.800-9.400-1.600z" fill="#FFFFFF"/>' +
+        '<path d="M66 26.200v2.200" stroke="#D5D3CA" stroke-width=".9" stroke-linecap="round"/>' +
+        '<circle cx="73.400" cy="23.600" r="2.700" fill="#E88A74"/><circle cx="72.600" cy="22.800" r=".9" fill="#F7B7A4"/>' +
+        '<path d="M67.600 19.400c1.200-1.400 3-1.400 4.200 0" stroke="#2A1B14" stroke-width="1.500" fill="none" stroke-linecap="round"/>' +
+        '<path d="M66 15.800c1.800-1.600 4.400-1.800 6.400-.6" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+        // Le bonnet : la pointe retombe derrière, le pompon, le revers de fourrure.
+        '<path d="M51 14.500c2.200-11 13.400-15.400 23-11.800 7.400 2.800 10.800 8.600 10.800 13.400l-33.800 1z" fill="url(#xmpHat)"/>' +
+        '<path d="M58 6.400c-6.400-2.600-13 .2-15.400 7" stroke="#C4001A" stroke-width="6.600" fill="none" stroke-linecap="round"/>' +
+        '<path d="M60 4.600c3-1.400 6.400-1.600 9.600-.8" stroke="#FF7582" stroke-width="1.300" fill="none" stroke-linecap="round" opacity=".7"/>' +
+        '<circle cx="42.400" cy="14.600" r="5" fill="url(#xmpFur)"/><circle cx="41" cy="13.200" r="1.600" fill="#fff"/>' +
+        '<path d="M48.400 13.200c9.800-3.800 27.200-3.800 36.800.4 1.600.8 2.400 2.600 2 4.400-.4 1.800-2 2.800-3.800 2.200-9.400-3-24.600-3-34 .2-1.800.6-3.400-.6-3.600-2.400-.2-2 .8-4 2.600-4.800z" fill="url(#xmpFur)"/>')) +
     // Jambe avant
     part('xmp-leg xmp-leg--f',
-      '<path d="M62 92h12l-.4 22-1.6 18h-9l-1-18z" fill="#858B99"/>' +
-      '<path d="M58 130h15c3 0 7 3 7 7v6H58z" fill="#24242B"/>') +
+      '<path d="M61.400 90h13l-.6 22-1.600 14.600h-9.600l-1-14.600z" fill="url(#xmpCoat)"/>' + BOOT(60.600, 130.600, false)) +
     // Bras avant
     part('xmp-arm xmp-arm--f',
-      '<path d="M70 46c4 5 5 12 1 18l12-1c2-5 1-10-2-14z" fill="url(#xmpSweat)"/>' + GLOVE(78, 40));
+      '<path d="M70 45.400c4.400 5.400 5.400 12.600 1.200 18.800l12.400-1c2.200-5.200 1-10.600-2.200-14.800z" fill="url(#xmpCoat)"/>' + GLOVE(78, 40));
 
   // Une boîte à surprise : le gant de boxe sort sur son ressort, le couvercle bascule.
   const BOX_BODY =
@@ -199,9 +238,9 @@
     doc.body.appendChild(layer);
     readFloor();
 
-    if (!reduce) buildSnow();
+    if (!reduce && !frozen) buildSnow();
     buildBoxes();
-    buildGarland();
+    if (!frozen) buildGarland();
     if (!reduce) {
       // Le Père Noël et le traîneau n'entrent en scène qu'après quelques secondes : on les
       // construit au prochain moment de repos, pas dans la même tâche que le reste.
@@ -431,10 +470,15 @@
     Z.walker.append(Z.flip, Z.say);
     Z.el.append(Z.walker);
     layer.appendChild(Z.el);
-    if (mouse && !soft) {
-      Z.fig.classList.add('is-hittable');
-      Z.fig.addEventListener('pointerdown', punchSanta);
-    }
+    Z.fig.classList.add('is-hittable');
+    let lastType = 'mouse';
+    Z.fig.addEventListener('pointerdown', (e) => {
+      lastType = e.pointerType || 'mouse';
+      if (lastType === 'mouse') punchSanta(e);
+    });
+    Z.fig.addEventListener('click', (e) => {
+      if (lastType !== 'mouse') punchSanta(e);
+    });
     Z.x = -200;
     Z.walker.style.transform = `translateX(${Z.x}px)`;
     runLoop();
@@ -492,6 +536,10 @@
       }
     }
     Z.fig.classList.toggle('is-ghost', over);
+    // Sa bulle s'efface avec lui : jamais posée sur un bouton. Près d'un bord, elle serait coupée :
+    // elle se retire.
+    Z.walker.classList.toggle('is-ghost', over);
+    if (r.left < 74 || r.right > innerWidth - 74) Z.say.classList.remove('is-on');
   }
 
   function onScroll() {
@@ -564,7 +612,9 @@
     if (Z.fig) Z.fig.classList.remove('is-boxing');
   }
 
-  function say(ms) {
+  function say(ms, text) {
+    Z.say.textContent = text || 'Ho ho ho !';
+    Z.say.classList.toggle('is-long', !!text && text.length > 12);
     Z.say.classList.add('is-on');
     const id = setTimeout(() => Z.say && Z.say.classList.remove('is-on'), ms);
     timers.push(id);
@@ -578,21 +628,28 @@
       if (!alive) return;
       const W = innerWidth;
       const dir = Z.dir === 1 && Z.x > W / 2 ? -1 : 1;
-      const from = dir > 0 ? -150 : W + 150;
-      const to = dir > 0 ? W + 150 : -150;
+      // Il entre et sort juste hors du cadre (moins loin au téléphone : à son pas, 150 px de
+      // coulisse feraient attendre pour rien).
+      const off = W < 600 ? 80 : 150;
+      const from = dir > 0 ? -off : W + off;
+      const to = dir > 0 ? W + off : -off;
       Z.x = from;
-      Z.hits = 0;
       Z.walker.style.transform = tx(from);
       setDir(dir);
       readFloor();
       showSanta(true);
-      // Il s'arrête une fois sur deux pour boxer dans le vide, comme sur les marches de Philadelphie.
-      const stops = Math.random() < 0.55 ? [from + (to - from) * rand(0.32, 0.62)] : [];
+      // En chemin, il s'arrête pour narguer (au milieu de l'écran au téléphone, deux fois à
+      // l'ordinateur) et, une fois sur deux, pour boxer dans le vide.
+      const span = to - from;
+      const stops = (W < 600 ? [rand(0.44, 0.56)] : [rand(0.27, 0.36), rand(0.64, 0.73)]).map((m) => ({ at: from + span * m, taunt: true }));
+      if (Math.random() < 0.5) stops.push({ at: from + span * rand(0.46, 0.54), taunt: false });
+      stops.sort((a, b) => (a.at - b.at) * dir);
       for (const s of stops) {
-        await runTo(s);
+        await runTo(s.at);
         if (!alive) return;
         await whileBusy();
-        await shadowBox();
+        if (s.taunt) await tauntStop();
+        else await shadowBox();
         await whileBusy();
       }
       await runTo(to);
@@ -607,11 +664,72 @@
     while (Z.busy && alive) await wait(120);
   }
 
-  // À la souris : il pare les deux premiers coups, au troisième il éclate de rire et lance un
-  // cadeau. On ne met pas le Père Noël K.O.
+  // Il nargue en marchant : « Tu ne peux pas me toucher ! » — de quoi donner envie d'essayer.
+  const TAUNTS = ['Tu ne peux pas me toucher !', 'Coup de chance !', 'Pas trois fois !', 'D’accord, t’es rapide !'];
+  // Il s'arrête pour narguer — bien en vue, facile à toucher du doigt — puis repart. Sa bulle ne
+  // sort que là où elle ne couvre aucun texte ni bouton : le navigateur donne la place des textes
+  // (IntersectionObserver, sans mise en page forcée) ; s'il y en a un, il passe sans rien dire.
+  const TEXTS = 'p, h1, h2, h3, h4, h5, li, blockquote, figcaption, label, dt, dd, th, td, a, button, .btn';
+  const TAUNT_MS = 2800;
+  function bubbleClear() {
+    return new Promise((resolve) => {
+      const r = santaRect();
+      const cx = r.left + r.width / 2;
+      // La bulle à l'arrêt, puis le chemin qu'elle ferait s'il la disait en marchant.
+      const x0 = cx - 98;
+      const x1 = cx + 98;
+      const w0 = Math.min(x0, x0 + Z.dir * 150);
+      const w1 = Math.max(x1, x1 + Z.dir * 150);
+      const y0 = r.top - 44;
+      const y1 = r.top - 2;
+      if (x0 < 4 || x1 > innerWidth - 4) return resolve(2);
+      const io = new IntersectionObserver((entries) => {
+        io.disconnect();
+        let level = 0;
+        for (const e of entries) {
+          const b = e.boundingClientRect;
+          if (!(b.width > 0 && b.height > 0 && b.bottom > y0 && b.top < y1)) continue;
+          // Un bouton ou un lien sur le chemin (Chloé, un appel à l'action) : il se tait.
+          if (b.right > w0 && b.left < w1 && e.target.matches('a, button, .btn, input, select')) return resolve(2);
+          if (b.right > x0 && b.left < x1) level = 1;
+        }
+        resolve(level);
+      });
+      let n = 0;
+      for (const node of doc.querySelectorAll(TEXTS)) {
+        if (layer.contains(node) || node.closest('.xm-front, #site-header')) continue;
+        io.observe(node);
+        n++;
+      }
+      if (!n) {
+        io.disconnect();
+        resolve(0);
+      }
+    });
+  }
+  async function tauntStop() {
+    if (!alive || Z.busy || !Z.fig) return;
+    const text = TAUNTS[Math.min(Z.hits, TAUNTS.length - 1)];
+    // 0 : place nette, il s'arrête et nargue. 1 : un texte juste là, il ne s'arrête pas dessus
+    // et le lance en passant. 2 : un bouton, un lien ou le bord de l'écran, il se tait.
+    const level = await bubbleClear();
+    if (!alive || Z.busy || !Z.fig || level === 2) return;
+    if (level === 1) {
+      say(1900, text);
+      return;
+    }
+    Z.fig.classList.remove('is-running');
+    Z.fig.classList.add('is-taunt');
+    say(TAUNT_MS, text);
+    await wait(TAUNT_MS);
+    if (Z.fig) Z.fig.classList.remove('is-taunt');
+  }
+
+  // Touché — à la souris ou au doigt —, il éclate de rire et lâche un cadeau de sa hotte. On ne
+  // met pas le Père Noël K.O.
   async function punchSanta(e) {
     if (Z.busy || !alive) return;
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     const fromLeft = e.clientX < Z.walker.getBoundingClientRect().left + Z.walker.offsetWidth / 2;
     const away = fromLeft ? 1 : -1;
     const running = !!Z.anim;
@@ -626,24 +744,12 @@
     Z.hits += 1;
     const fig = Z.fig;
     fig.classList.remove('is-running', 'is-boxing');
-    if (Z.hits < 3) {
-      fig.classList.add('is-block');
-      const back = Z.walker.animate([{ transform: tx(Z.x) }, { transform: tx(Z.x + away * 14) }], { duration: 200, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' });
-      await back.finished.catch(() => {});
-      Z.x += away * 14;
-      Z.walker.style.transform = tx(Z.x);
-      back.cancel();
-      await wait(300);
-      fig.classList.remove('is-block');
-    } else {
-      Z.hits = 0;
-      fig.classList.add('is-laugh');
-      say(1600);
-      throwGift(away);
-      track('noel_santa_gift', { page: location.pathname });
-      await wait(1600);
-      fig.classList.remove('is-laugh');
-    }
+    fig.classList.add('is-laugh');
+    say(1600);
+    throwGift(away);
+    track('noel_santa_gift', { page: location.pathname, hits: Z.hits });
+    await wait(1600);
+    if (Z.fig) Z.fig.classList.remove('is-laugh');
     Z.busy = false;
     if (running && Z.resume && alive) Z.resume();
   }
