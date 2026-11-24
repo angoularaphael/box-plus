@@ -12,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { ROOT } = require('../lib/utils');
 const { getSupabase } = require('../storefront/lib/supabase');
+const { archiveAndSoftDelete } = require('../lib/soft-delete');
 
 const EMAIL = (process.argv[2] || '').trim().toLowerCase();
 const EXECUTE = process.argv.includes('--execute');
@@ -53,8 +54,7 @@ async function purgeRemote(sb) {
   for (const row of clients || []) {
     report.clients.push(row);
     if (EXECUTE) {
-      const { error } = await sb.from('portet_clients').delete().eq('id', row.id);
-      if (error) throw error;
+      await archiveAndSoftDelete(sb, { table: 'portet_clients', idColumn: 'id', id: row.id, deletedBy: 'purge-order-by-email' });
     }
   }
 
@@ -66,8 +66,7 @@ async function purgeRemote(sb) {
     if (orderEmail(row.payload) !== EMAIL) continue;
     report.inscriptions.push(row.order_id);
     if (EXECUTE) {
-      const { error } = await sb.from('boxplus_orders').delete().eq('order_id', row.order_id);
-      if (error) throw error;
+      await archiveAndSoftDelete(sb, { table: 'boxplus_orders', idColumn: 'order_id', id: row.order_id, deletedBy: 'purge-order-by-email' });
     }
   }
 
@@ -79,11 +78,7 @@ async function purgeRemote(sb) {
     if (orderEmail(row.payload) !== EMAIL) continue;
     report.materiel.push(row.order_id);
     if (EXECUTE) {
-      const { error } = await sb
-        .from('boxplus_materiel_orders')
-        .delete()
-        .eq('order_id', row.order_id);
-      if (error) throw error;
+      await archiveAndSoftDelete(sb, { table: 'boxplus_materiel_orders', idColumn: 'order_id', id: row.order_id, deletedBy: 'purge-order-by-email' });
     }
   }
 

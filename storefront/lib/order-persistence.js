@@ -3,6 +3,7 @@ const path = require('path');
 const { logError, logWarn } = require('../../lib/logger');
 const { getSupabase } = require('./supabase');
 const { sanitizeOrderId } = require('./security');
+const { archiveAndSoftDelete, excludeDeleted } = require('../../lib/soft-delete');
 
 const ORDERS_DIR =
   process.env.BOXPLUS_ORDERS_DIR ||
@@ -416,11 +417,9 @@ function saveOrderToFs(order) {
 
 async function loadOrderFromRemote(orderId) {
   const sb = getSupabase();
-  const { data, error } = await sb
-    .from('boxplus_orders')
-    .select('payload')
-    .eq('order_id', orderId)
-    .maybeSingle();
+  const { data, error } = await excludeDeleted(
+    sb.from('boxplus_orders').select('payload').eq('order_id', orderId)
+  ).maybeSingle();
   if (error) throw error;
   return data?.payload || null;
 }
@@ -451,7 +450,7 @@ async function saveOrderToRemote(order) {
 async function listOrdersFromRemoteSlim() {
   const sb = getSupabase();
   const makeSlim = () =>
-    sb.from('boxplus_orders').select(SLIM_SELECT).order('updated_at', { ascending: false });
+    excludeDeleted(sb.from('boxplus_orders').select(SLIM_SELECT).order('updated_at', { ascending: false }));
   try {
     const rows = await fetchAllPages(makeSlim);
     return rows.map(reconstructOrderFromListRow).filter(Boolean);
@@ -462,10 +461,12 @@ async function listOrdersFromRemoteSlim() {
   }
 
   const makeSummary = () =>
-    sb
-      .from('boxplus_orders')
-      .select('order_id, updated_at, access_token, created_at, summary')
-      .order('updated_at', { ascending: false });
+    excludeDeleted(
+      sb
+        .from('boxplus_orders')
+        .select('order_id, updated_at, access_token, created_at, summary')
+        .order('updated_at', { ascending: false })
+    );
   const rows = await fetchAllPages(makeSummary);
   return rows.map(reconstructOrderFromListRow).filter(Boolean);
 }
@@ -488,12 +489,9 @@ async function findRemoteOrderBySubscriptionId(subscriptionId) {
     `payload->payment->>stripe_subscription_id.eq.${id}`,
     `payload->payment->>subscription_id.eq.${id}`,
   ].join(',');
-  const { data, error } = await sb
-    .from('boxplus_orders')
-    .select('payload')
-    .or(filter)
-    .limit(1)
-    .maybeSingle();
+  const { data, error } = await excludeDeleted(
+    sb.from('boxplus_orders').select('payload').or(filter).limit(1)
+  ).maybeSingle();
   if (error) throw error;
   return data?.payload || null;
 }
@@ -573,11 +571,13 @@ async function listAllOrders() {
 async function listOrdersFromRemoteSince(sinceIso, extraQuery) {
   const sb = getSupabase();
   const makeSlim = () => {
-    let q = sb
-      .from('boxplus_orders')
-      .select(SLIM_SELECT)
-      .gte('created_at', sinceIso)
-      .order('created_at', { ascending: false });
+    let q = excludeDeleted(
+      sb
+        .from('boxplus_orders')
+        .select(SLIM_SELECT)
+        .gte('created_at', sinceIso)
+        .order('created_at', { ascending: false })
+    );
     if (typeof extraQuery === 'function') q = extraQuery(q);
     return q;
   };
@@ -717,15 +717,16 @@ async function listFreeTrialCandidatesPage({ page = 1, pageSize = 25 } = {}) {
       .filter(isFreeTrialOrder);
 
     if (!orders.length && Number(count || 0) === 0) {
-      const legacy = await sb
-        .from('boxplus_orders')
-        .select(SLIM_SELECT, { count: 'exact' })
-        .or(FREE_TRIAL_CANDIDATE_FILTER)
-        .or(FREE_TRIAL_ZERO_FILTER)
-        .not('order_id', 'ilike', 'TEST-%')
-        .not('order_id', 'ilike', 'DEMO-%')
-        .order('created_at', { ascending: false })
-        .range(from, from + safePageSize - 1);
+      const legacy = await excludeDeleted(
+        sb
+          .from('boxplus_orders')
+          .select(SLIM_SELECT, { count: 'exact' })
+          .or(FREE_TRIAL_CANDIDATE_FILTER)
+          .or(FREE_TRIAL_ZERO_FILTER)
+          .not('order_id', 'ilike', 'TEST-%')
+          .not('order_id', 'ilike', 'DEMO-%')
+          .order('created_at', { ascending: false })
+      ).range(from, from + safePageSize - 1);
       if (legacy.error) throw legacy.error;
       orders = (legacy.data || []).map(reconstructOrderFromListRow).filter(Boolean);
       orders = await enrichFreeTrialsWithJobs(orders);
@@ -788,8 +789,12 @@ function deleteOrderFromFs(orderId) {
 
 async function deleteOrderFromRemote(orderId) {
   const sb = getSupabase();
-  const { error } = await sb.from('boxplus_orders').delete().eq('order_id', orderId);
-  if (error) throw error;
+  await archiveAndSoftDelete(sb, {
+    table: 'boxplus_orders',
+    idColumn: 'order_id',
+    id: orderId,
+    deletedBy: 'boxplus',
+  });
 }
 
 async function deleteOrder(orderId) {

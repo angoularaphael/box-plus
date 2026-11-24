@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const { ROOT } = require('../lib/utils');
 const { getSupabase } = require('../storefront/lib/supabase');
+const { archiveAndSoftDelete } = require('../lib/soft-delete');
 
 const EXECUTE = process.argv.includes('--execute');
 const TZ = 'Europe/Paris';
@@ -131,16 +132,13 @@ async function listRemote(sb, today) {
 
 async function deleteRemote(sb, report) {
   for (const c of report.clients) {
-    const { error } = await sb.from('portet_clients').delete().eq('id', c.id);
-    if (error) throw error;
+    await archiveAndSoftDelete(sb, { table: 'portet_clients', idColumn: 'id', id: c.id, deletedBy: 'wipe-clients-today' });
   }
   for (const o of report.inscriptions) {
-    const { error } = await sb.from('boxplus_orders').delete().eq('order_id', o.order_id);
-    if (error) throw error;
+    await archiveAndSoftDelete(sb, { table: 'boxplus_orders', idColumn: 'order_id', id: o.order_id, deletedBy: 'wipe-clients-today' });
   }
   for (const o of report.materiel) {
-    const { error } = await sb.from('boxplus_materiel_orders').delete().eq('order_id', o.order_id);
-    if (error) throw error;
+    await archiveAndSoftDelete(sb, { table: 'boxplus_materiel_orders', idColumn: 'order_id', id: o.order_id, deletedBy: 'wipe-clients-today' });
   }
 }
 

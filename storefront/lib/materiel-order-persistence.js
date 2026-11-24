@@ -7,6 +7,7 @@ const { ROOT, ensureDir } = require('../../lib/utils');
 const { logError } = require('../../lib/logger');
 const { getSupabase } = require('./supabase');
 const { sanitizeOrderId } = require('./security');
+const { archiveAndSoftDelete, excludeDeleted } = require('../../lib/soft-delete');
 
 const ORDERS_DIR =
   process.env.BOXPLUS_MATERIEL_ORDERS_DIR ||
@@ -52,11 +53,9 @@ function saveOrderToFs(order) {
 
 async function loadOrderFromRemote(orderId) {
   const sb = getSupabase();
-  const { data, error } = await sb
-    .from('boxplus_materiel_orders')
-    .select('payload')
-    .eq('order_id', orderId)
-    .maybeSingle();
+  const { data, error } = await excludeDeleted(
+    sb.from('boxplus_materiel_orders').select('payload').eq('order_id', orderId)
+  ).maybeSingle();
   if (error) throw error;
   return data?.payload || null;
 }
@@ -95,11 +94,9 @@ async function listOrdersFromRemote() {
   let from = 0;
   const page = 1000;
   while (true) {
-    const { data, error } = await sb
-      .from('boxplus_materiel_orders')
-      .select(MATERIEL_SLIM_SELECT)
-      .order('updated_at', { ascending: false })
-      .range(from, from + page - 1);
+    const { data, error } = await excludeDeleted(
+      sb.from('boxplus_materiel_orders').select(MATERIEL_SLIM_SELECT).order('updated_at', { ascending: false })
+    ).range(from, from + page - 1);
     if (error) throw error;
     const batch = data || [];
     for (const row of batch) {
@@ -208,8 +205,12 @@ function deleteOrderFromFs(orderId) {
 
 async function deleteOrderFromRemote(orderId) {
   const sb = getSupabase();
-  const { error } = await sb.from('boxplus_materiel_orders').delete().eq('order_id', orderId);
-  if (error) throw error;
+  await archiveAndSoftDelete(sb, {
+    table: 'boxplus_materiel_orders',
+    idColumn: 'order_id',
+    id: orderId,
+    deletedBy: 'boxplus',
+  });
 }
 
 async function deleteOrderAsync(orderId) {
@@ -242,12 +243,13 @@ async function listOrdersCreatedSinceAsync(sinceIso) {
       let from = 0;
       const page = 1000;
       while (true) {
-        const { data, error } = await sb
-          .from('boxplus_materiel_orders')
-          .select(MATERIEL_SLIM_SELECT)
-          .gte('created_at', sinceIso)
-          .order('created_at', { ascending: false })
-          .range(from, from + page - 1);
+        const { data, error } = await excludeDeleted(
+          sb
+            .from('boxplus_materiel_orders')
+            .select(MATERIEL_SLIM_SELECT)
+            .gte('created_at', sinceIso)
+            .order('created_at', { ascending: false })
+        ).range(from, from + page - 1);
         if (error) throw error;
         const batch = data || [];
         for (const row of batch) {
