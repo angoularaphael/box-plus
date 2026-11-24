@@ -1430,7 +1430,7 @@ input:focus, select:focus, textarea:focus {
   right: 22px;
   bottom: 22px;
   top: auto;
-  z-index: 70;
+  z-index: 2147483000;
   width: min(400px, calc(100vw - 24px));
   height: min(620px, calc(100dvh - 100px));
   max-height: calc(100dvh - 96px);
@@ -1958,4 +1958,11 @@ input:focus, select:focus, textarea:focus {
   .chat-widget-panel {
     border-radius: 16px 16px 0 0;
   }
+}
+
+/* Discussion David ouverte : masquer les bandeaux flottants (ex. #ff-promo Fight & Furious)
+   qui recouvraient le champ de saisie et le bouton Envoyer sur mobile. */
+html.bc-chat-open #ff-promo,
+body:has(.chat-widget:not([hidden])) #ff-promo {
+  display: none !important;
 }

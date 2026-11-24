@@ -222,6 +222,8 @@
   function openChat() {
     chatWidget.hidden = false;
     chatFab.hidden = true;
+    // Le bandeau Fight & Furious (#ff-promo) recouvrait le champ de saisie sur mobile.
+    document.documentElement.classList.add('bc-chat-open');
     const root = document.getElementById('counselorRoot');
     if (!root.dataset.ready) {
       root.dataset.ready = '1';
@@ -312,6 +314,7 @@
   function closeChat() {
     chatWidget.hidden = true;
     chatFab.hidden = false;
+    document.documentElement.classList.remove('bc-chat-open');
   }
 
   document.getElementById('openCounselor').onclick = openChat;
