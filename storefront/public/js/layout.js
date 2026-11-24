@@ -440,7 +440,9 @@
     if (headerSlot) headerSlot.innerHTML = renderHeader();
     if (footerSlot) {
       const p = currentPath();
-      const skipFf = /billet|checkout|inscription|paiement|contrat|success|admin/i.test(p);
+      // La section FIGHT & Furious s'arrête le 13 décembre 2026 (dernier jour du gala), heure de Paris.
+      const ffOver = parisDay() >= '2026-12-13';
+      const skipFf = ffOver || /billet|checkout|inscription|paiement|contrat|success|admin/i.test(p);
       footerSlot.innerHTML = (skipFf ? '' : renderFfSection()) + renderFooter();
     }
     initNav();
