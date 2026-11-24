@@ -1,0 +1,313 @@
+/* Noël 2026 — la fête sur toute la page : neige, guirlande sous le menu, boîtes à surprise aux
+   bords, Père Noël à l'entraînement, traîneau. Chargé par layout.js avec la scène du hero.
+   Chaque animation qui tourne est recalculée à chaque image du site (la bulle de Chloé en produit
+   60 par seconde) : seul ce qui se voit bouger tourne, et tout bouge en transform / opacity. */
+
+#bcXmPage {
+  position: fixed;
+  inset: 0;
+  /* Sous le header (100), le bouton « Haut » (55), Chloé et le panier (900). */
+  z-index: 40;
+  overflow: hidden;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+#bcXmPage.is-leaving,
+.xmp-garland.is-leaving { opacity: 0; }
+#bcXmPage [hidden] { display: none !important; }
+
+/* ---------- La neige : des tuiles de flocons qui descendent d'une tuile en boucle ---------- */
+
+.xmp-snow {
+  position: absolute;
+  left: -80px;
+  right: -80px;
+  background-repeat: repeat;
+  will-change: transform;
+}
+.xmp-snow--far {
+  top: -260px;
+  bottom: 0;
+  animation: xmp-fall-far 17s linear infinite;
+}
+.xmp-snow--near {
+  top: -420px;
+  bottom: 0;
+  animation: xmp-fall-near 14s linear infinite;
+}
+.xmp-sway {
+  position: absolute;
+  inset: 0;
+  animation: xmp-sway 7s ease-in-out infinite alternate;
+}
+@keyframes xmp-fall-far { to { transform: translate3d(0, 260px, 0); } }
+@keyframes xmp-fall-near { to { transform: translate3d(0, 420px, 0); } }
+@keyframes xmp-sway { from { transform: translate3d(-16px, 0, 0); } to { transform: translate3d(16px, 0, 0); } }
+
+/* ---------- Les boîtes à surprise aux bords ---------- */
+
+.xmp-box {
+  position: absolute;
+  width: var(--size, 64px);
+  height: var(--size, 64px);
+}
+.xmp-box > div {
+  position: absolute;
+  inset: 0;
+}
+.xmp-box svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.xmp-box__body svg { filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35)); }
+.xmp-box--left .xmp-box__lid { transform-origin: 6% 37%; }
+.xmp-box--right .xmp-box__lid { transform-origin: 94% 37%; }
+/* Le gant attend replié au fond de la boîte ; il jaillit en Web Animations. */
+.xmp-box__jack {
+  transform-origin: 50% 96%;
+  transform: translateY(56%) scaleY(0.3);
+  opacity: 0;
+}
+.xmp-box.is-hoverable { pointer-events: auto; cursor: pointer; }
+
+/* ---------- La guirlande sous le menu ---------- */
+
+.xmp-garland {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 30px;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+/* Elle suit le header : repliée avec lui, effacée sous le menu ouvert. */
+.topbar.nav-hidden .xmp-garland,
+.topbar:has(.main-nav.open) .xmp-garland { opacity: 0; }
+.xmp-wire {
+  position: absolute;
+  left: 0;
+  top: -2px;
+  overflow: visible;
+}
+.xmp-bulbs {
+  position: absolute;
+  inset: 0;
+}
+/* Trois groupes, trois rythmes : toute la guirlande scintille avec trois animations. */
+.xmp-bulbs--a { animation: xmp-twinkle 2.4s ease-in-out infinite; }
+.xmp-bulbs--b { animation: xmp-twinkle 3.1s ease-in-out -1.1s infinite; }
+.xmp-bulbs--c { animation: xmp-twinkle 2.7s ease-in-out -2s infinite; }
+@keyframes xmp-twinkle {
+  0%, 100% { opacity: 1; }
+  45% { opacity: 0.5; }
+  60% { opacity: 0.95; }
+}
+.xmp-bulb {
+  position: absolute;
+  width: 8px;
+  height: 12px;
+  margin: 1px 0 0 -4px;
+  border-radius: 50% 50% 48% 48% / 42% 42% 58% 58%;
+  background: radial-gradient(circle at 40% 35%, #fff 0 18%, var(--c) 45%);
+  box-shadow: 0 0 6px 1px var(--c), 0 0 14px 4px color-mix(in srgb, var(--c) 45%, transparent);
+}
+.xmp-bulb::before {
+  content: '';
+  position: absolute;
+  left: 1.5px;
+  top: -3px;
+  width: 5px;
+  height: 4px;
+  border-radius: 1px;
+  background: #2a2f3b;
+}
+
+/* ---------- Le Père Noël à l'entraînement ---------- */
+
+.xmp-santa {
+  --zh: 96px;
+  position: absolute;
+  left: 0;
+  /* Juste au-dessus du bandeau FIGHT & Furious (--xmp-floor), quand il est là. */
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--xmp-floor, 0px));
+  width: 0;
+  height: var(--zh);
+}
+.xmp-santa__run {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(var(--zh) * 0.8);
+  height: var(--zh);
+  will-change: transform;
+}
+.xmp-santa__flip {
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 100%;
+}
+.xmp-santa__fig {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-origin: 34% 96%;
+  transition: opacity 0.2s ease;
+}
+/* Chaque membre est une couche du même cadre 120 × 150 ; les pivots y sont exprimés en %. */
+.xmp-part {
+  position: absolute;
+  inset: 0;
+}
+.xmp-part > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.xmp-santa__fig.is-hittable {
+  pointer-events: auto;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M9 6c3-3 10-3 13 0 3 3 4 7 3 11l-1 5c-1 3-3 5-6 5h-6c-3 0-5-2-5-5V13c0-3 0-5 2-7z' fill='%23E8001C' stroke='%23fff' stroke-width='1.6'/%3E%3Crect x='10' y='24' width='12' height='5' rx='1.5' fill='%23fff'/%3E%3C/svg%3E") 15 14, pointer;
+}
+.xmp-santa__fig.is-ghost { opacity: 0.24; }
+.xmp-santa__fig.is-hittable.is-ghost { pointer-events: none; }
+
+.xmp-leg--b { transform-origin: 44% 63%; }
+.xmp-leg--f { transform-origin: 56.5% 63%; }
+.xmp-arm--b { transform-origin: 39.3% 30%; }
+.xmp-arm--f { transform-origin: 59.5% 29%; }
+.xmp-body { transform-origin: 50% 93.3%; }
+.xmp-head { transform-origin: 53% 25%; }
+
+/* La course : foulée de footing, garde haute, poings qui pompent à contretemps. */
+.is-running .xmp-leg--f { animation: xmp-stride 0.38s ease-in-out infinite alternate; }
+.is-running .xmp-leg--b { animation: xmp-stride 0.38s ease-in-out infinite alternate-reverse; }
+.is-running .xmp-arm--f { animation: xmp-pump 0.38s ease-in-out infinite alternate-reverse; }
+.is-running .xmp-arm--b { animation: xmp-pump 0.38s ease-in-out infinite alternate; }
+.is-running .xmp-body { animation: xmp-bob 0.19s ease-in-out infinite alternate; }
+/* Au téléphone, seuls les jambes et le buste courent : à 70 px de haut, le pompage des bras ne se
+   voyait pas, et chacun coûtait une animation de plus à chaque image. */
+html.xmp-touch .is-running .xmp-arm--f,
+html.xmp-touch .is-running .xmp-arm--b { animation: none; }
+
+/* Shadow boxing : jab, jab, direct, sur ses appuis. */
+.is-boxing .xmp-arm--f { animation: xmp-jab 1.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.is-boxing .xmp-arm--b { animation: xmp-cross 1.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.is-boxing .xmp-body { animation: xmp-bounce 0.25s ease-in-out infinite alternate; }
+
+/* Il pare : les deux gants montent devant le visage. */
+.is-block .xmp-arm--f,
+.is-block .xmp-arm--b { animation: xmp-guard 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.is-block .xmp-body { animation: xmp-recoil 0.5s ease both; }
+/* Il éclate de rire, la tête en arrière. */
+.is-laugh .xmp-head { animation: xmp-laugh 0.32s ease-in-out 5 alternate; }
+.is-laugh .xmp-arm--f { animation: xmp-throw 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+
+/* Déplacements en % du cadre (14 unités sur 120 = 11,67 %) : la même course à toutes les tailles. */
+@keyframes xmp-stride { from { transform: rotate(-26deg); } to { transform: rotate(24deg); } }
+@keyframes xmp-pump { from { transform: rotate(-16deg); } to { transform: rotate(14deg); } }
+@keyframes xmp-bob { from { transform: translateY(0); } to { transform: translateY(-2.2%); } }
+@keyframes xmp-bounce { from { transform: translateY(0); } to { transform: translateY(-2%); } }
+@keyframes xmp-jab {
+  0%, 10% { transform: none; }
+  16% { transform: translateX(11.67%) scaleX(1.18); }
+  24% { transform: none; }
+  34% { transform: translateX(11.67%) scaleX(1.18); }
+  42%, 100% { transform: none; }
+}
+@keyframes xmp-cross {
+  0%, 46% { transform: none; }
+  54% { transform: translateX(15%) scaleX(1.25); }
+  64%, 100% { transform: none; }
+}
+@keyframes xmp-guard {
+  0%, 100% { transform: none; }
+  25%, 70% { transform: translate(-3%, -8%) rotate(-38deg); }
+}
+@keyframes xmp-recoil {
+  0%, 100% { transform: none; }
+  30% { transform: rotate(-6deg) translateX(-3%); }
+}
+@keyframes xmp-laugh { from { transform: rotate(0); } to { transform: rotate(-12deg) translateY(-2%); } }
+@keyframes xmp-throw {
+  0% { transform: none; }
+  35% { transform: rotate(-70deg) translateY(-6%); }
+  100% { transform: rotate(-20deg); }
+}
+
+/* « Ho ho ho ! » */
+.xmp-santa__say {
+  position: absolute;
+  left: 50%;
+  top: -34px;
+  padding: 4px 9px 3px;
+  border-radius: 10px;
+  background: #fff;
+  color: #B00014;
+  font: 400 17px/1 var(--font-display, 'Bebas Neue', 'Barlow Condensed', sans-serif);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  transform: translate(-50%, 6px) scale(0.7);
+  transition: opacity 0.18s ease, transform 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.xmp-santa__say::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  margin-left: -5px;
+  border: 5px solid transparent;
+  border-bottom: 0;
+  border-top-color: #fff;
+}
+.xmp-santa__say.is-on { opacity: 1; transform: translate(-50%, 0) scale(1); }
+
+/* Le cadeau qu'il lance, et ses confettis. */
+.xmp-gift {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+}
+.xmp-gift > svg,
+.xmp-gift__lid,
+.xmp-gift__lid > svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.xmp-confetto {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 9px;
+  margin: -4px 0 0 -3px;
+  border-radius: 1px;
+}
+
+/* ---------- Le traîneau ---------- */
+
+.xmp-sleigh {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 260px;
+  will-change: transform;
+  filter: drop-shadow(0 0 7px rgba(255, 210, 140, 0.7));
+}
+.xmp-sleigh svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+@media (max-width: 600px) {
+  .xmp-santa { --zh: 70px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xmp-bulbs--a,
+  .xmp-bulbs--b,
+  .xmp-bulbs--c { animation: none; }
+}
+
+@media print {
+  #bcXmPage,
+  .xmp-garland { display: none !important; }
+}

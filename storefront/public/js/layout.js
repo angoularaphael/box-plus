@@ -378,6 +378,62 @@
     }
   }
 
+  // Noël : du 10 décembre (le jour où part le bandeau FIGHT & Furious) au 4 janvier, heure de
+  // Paris. Invisible avant ; ?noel=1 force la scène hors fenêtre (aperçu), ?noel=0 la coupe.
+  // Jamais dans le tunnel de vente ni la billetterie ; douce sur la page enfants.
+  function ensureNoel() {
+    if (document.querySelector('link[data-noel], script[data-noel]')) return;
+    let flag = '';
+    try {
+      flag = new URLSearchParams(location.search).get('noel') || '';
+    } catch (e) {
+      flag = '';
+    }
+    if (flag === '0') return;
+    const day = parisDay();
+    const inWindow = day >= '2026-12-10' && day <= '2027-01-04';
+    if (flag !== '1' && !inWindow) return;
+    const p = currentPath();
+    if (/inscription|checkout|panier|paiement|contrat|success|regulariser|gerer-abonnement|attestation|certificat|billet|admin|\/404|\/dev/i.test(p)) {
+      return;
+    }
+    const soft = /boxe-enfant/i.test(p);
+    const sheet = (href) => new Promise((done) => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = A(href);
+      link.dataset.noel = '1';
+      link.onload = link.onerror = done;
+      document.head.appendChild(link);
+      setTimeout(done, 3000);
+    });
+    const script = (src) => {
+      const s = document.createElement('script');
+      s.src = A(src);
+      s.dataset.noel = '1';
+      document.body.appendChild(s);
+    };
+    const boot = () => {
+      if (document.querySelector('link[data-noel], script[data-noel]')) return;
+      document.documentElement.classList.add('bc-noel');
+      if (soft) document.documentElement.classList.add('bc-noel--soft');
+      // Les scripts n'arrivent qu'avec leurs styles : rien ne s'affiche brut, rien n'est mesuré de travers.
+      Promise.all([sheet('/css/noel-ring.css?v=1'), sheet('/css/noel-page.css?v=1')]).then(() => {
+        script('/js/noel-ring.js?v=1');
+        script('/js/noel-page.js?v=1');
+      });
+    };
+    // Le site d'abord : le décor n'arrive qu'une fois la page affichée et le navigateur au repos.
+    // Il ne doit jamais retarder l'ouverture d'une page.
+    const later = () => (window.requestIdleCallback ? window.requestIdleCallback(boot, { timeout: 2500 }) : setTimeout(boot, 700));
+    if (document.readyState === 'complete') later();
+    else {
+      window.addEventListener('load', later, { once: true });
+      // Une vidéo lente peut retarder « load » : le décor arrive quand même.
+      setTimeout(later, 6000);
+    }
+  }
+
   function mountLayout() {
     const headerSlot = document.getElementById('site-header');
     const footerSlot = document.getElementById('site-footer');
@@ -397,11 +453,16 @@
     ensureFfPromo();
     ensureChloe();
     ensureHalloween();
+    ensureNoel();
     ensureFavicon();
   }
 
   function ensureFfPromo() {
     if (document.querySelector('script[data-ff-promo]')) return;
+    // Le bandeau FIGHT & Furious s'arrête le 10 décembre 2026 (heure de Paris) : à partir de ce
+    // jour, il n'est plus chargé, et le Père Noël redescend courir en bas de l'écran.
+    const day = parisDay();
+    if (day && day >= '2026-12-10') return;
     const p = currentPath();
     if (/^\/admin(\/|$)/i.test(p) || /\/admin\//i.test(location.pathname)) return;
     if (/billet|checkout|inscription|paiement|contrat|success/i.test(p)) return;

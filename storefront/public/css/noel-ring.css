@@ -1,0 +1,651 @@
+/* Noël 2026 — « Boxing Day » : le cadeau qui s'ouvre à la boxe.
+   Chargé par layout.js une fois la page affichée ; tout vit dans le hero de la page :
+   rien ne recouvre un texte ou un bouton. Au repos, seul le balancement du cadeau tourne. */
+
+html.bc-noel-ring .xm-back,
+html.bc-noel-ring .xm-front {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* L'attribut hidden doit gagner sur les display posés plus bas (.xm-ctl en grid, etc.). */
+.xm-front [hidden],
+.xm-back [hidden] { display: none !important; }
+
+/* .page-hero est isolé : ses fonds sont en z-index négatif, son contenu suit dans le flux. */
+.xm-back { z-index: 0; }
+.xm-front { z-index: 2; }
+/* Accueil : vidéo et voile en z-index 1, contenu en 2. */
+.hero--cinema > .xm-back { z-index: 1; }
+.hero--cinema > .xm-front { z-index: 3; }
+/* Le sac-cadeau. .xm-bag est posé au point d'attache ; .xm-swing tourne autour. */
+.xm-bag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+}
+.xm-swing {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.xm-chain {
+  position: absolute;
+  top: 0;
+  left: -4.5px;
+  width: 9px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='18'%3E%3Crect x='1.6' y='1' width='5.8' height='11' rx='2.9' fill='none' stroke='%23464c5a' stroke-width='1.8'/%3E%3Crect x='3.7' y='11' width='1.6' height='7.5' rx='.8' fill='%23363b47'/%3E%3C/svg%3E") repeat-y center top / 9px 18px;
+}
+.xm-body {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 50% 0;
+  will-change: transform;
+}
+.xm-glow {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(255, 176, 66, 0.42), rgba(255, 120, 20, 0.13) 58%, transparent 74%);
+  will-change: opacity;
+}
+.xm-hit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 44%;
+  background: none;
+  pointer-events: auto;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M9 6c3-3 10-3 13 0 3 3 4 7 3 11l-1 5c-1 3-3 5-6 5h-6c-3 0-5-2-5-5V13c0-3 0-5 2-7z' fill='%23E8001C' stroke='%23fff' stroke-width='1.6'/%3E%3Cpath d='M7 15c-2 0-3 2-2 4l2 3' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3Crect x='10' y='24' width='12' height='5' rx='1.5' fill='%23fff'/%3E%3C/svg%3E") 15 14, pointer;
+  /* Sur le cadeau, tout geste est un coup (l'uppercut se glisse vers le haut). */
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.xm-hit:focus-visible {
+  outline: 3px solid #FFB347;
+  outline-offset: 6px;
+}
+/* Interface de combat. */
+.xm-hud {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  color: #fff;
+  font-family: var(--font-display, 'Bebas Neue', 'Barlow Condensed', sans-serif);
+  text-transform: uppercase;
+}
+.xm-hp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+.xm-hud.is-on .xm-hp { opacity: 1; transform: none; }
+.xm-hp__bar {
+  position: relative;
+  width: 118px;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+.xm-hp__trail,
+.xm-hp__fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+}
+/* Comme dans un jeu de combat : la vie perdue reste visible un instant avant de fondre. */
+.xm-hp__trail { background: #FFE2B0; transition: transform 0.55s ease 0.28s; }
+.xm-hp__fill { background: linear-gradient(90deg, #E8001C, #FF7A00); transition: transform 0.12s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.xm-round { color: #FFB347; }
+
+.xm-callout {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  font-family: var(--font-display, 'Bebas Neue', 'Barlow Condensed', sans-serif);
+  text-transform: uppercase;
+  font-size: clamp(26px, 3.1vw, 44px);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 0 18px rgba(255, 140, 0, 0.7), 0 3px 0 #E8001C;
+  animation: xm-pop 0.75s cubic-bezier(0.2, 1.3, 0.4, 1) forwards;
+}
+.xm-callout--big { font-size: clamp(30px, 3.8vw, 54px); color: #FFE2B0; }
+.xm-callout--ko {
+  font-size: clamp(66px, 9vw, 132px);
+  color: #E8001C;
+  -webkit-text-stroke: 2px #fff;
+  text-shadow: 0 0 46px rgba(232, 0, 28, 0.7), 0 6px 0 #0a0c18;
+  animation: xm-ko 2.3s cubic-bezier(0.15, 1.4, 0.35, 1) forwards;
+}
+.xm-callout--bell {
+  font-size: clamp(14px, 1.4vw, 18px);
+  letter-spacing: 0.3em;
+  color: #FFB347;
+  text-shadow: 0 0 12px rgba(255, 179, 71, 0.7);
+  animation: xm-fade 1.6s ease forwards;
+}
+@keyframes xm-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.9) rotate(-7deg); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(0.94) rotate(-4deg); }
+  32% { transform: translate(-50%, -50%) scale(1.04) rotate(-4deg); }
+  72% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -120%) scale(1) rotate(-4deg); }
+}
+@keyframes xm-ko {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(2.6) rotate(-9deg); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(0.92) rotate(-5deg); }
+  24% { transform: translate(-50%, -50%) scale(1.03) rotate(-5deg); }
+  82% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-5deg); }
+  100% { opacity: 0; transform: translate(-50%, -56%) scale(1) rotate(-5deg); }
+}
+@keyframes xm-fade {
+  0% { opacity: 0; transform: translate(-50%, -50%); }
+  15%, 70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -80%); }
+}
+
+.xm-hint {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: 190px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(8, 10, 20, 0.86);
+  border: 1px solid rgba(255, 179, 71, 0.32);
+  color: rgba(255, 255, 255, 0.86);
+  font: 500 13px/1.35 var(--font-body, 'Montserrat', sans-serif);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.xm-hint strong {
+  display: block;
+  margin-top: 2px;
+  color: #FFB347;
+  font-family: var(--font-display, 'Bebas Neue', sans-serif);
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.xm-hint.is-on { opacity: 1; transform: none; }
+
+.xm-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 280px;
+  padding: 16px 16px 14px;
+  border-radius: 14px;
+  background: rgba(9, 11, 22, 0.94);
+  border: 1px solid rgba(255, 179, 71, 0.34);
+  box-shadow: 0 22px 44px -16px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(232, 0, 28, 0.18);
+  color: #fff;
+  pointer-events: auto;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(12px) scale(0.97);
+  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1), visibility 0s linear 0.4s;
+}
+.xm-card.is-on {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1), visibility 0s;
+}
+.xm-card.is-overlay { box-shadow: 0 26px 60px -12px rgba(0, 0, 0, 0.85), inset 0 0 0 1px rgba(232, 0, 28, 0.22); }
+.xm-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 5, 12, 0.66);
+  pointer-events: auto;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+.xm-scrim.is-on {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease, visibility 0s;
+}
+.xm-card__close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: rgba(255, 255, 255, 0.6);
+  font: 400 22px/32px var(--font-body, 'Montserrat', sans-serif);
+  cursor: pointer;
+}
+.xm-card__close:hover,
+.xm-card__close:focus-visible { color: #fff; background: rgba(255, 255, 255, 0.08); }
+.xm-bag { transition: opacity 0.3s ease; }
+.xm-bag.is-gone { opacity: 0; }
+/* La barre de vie part avec le sac : sinon « Cadeau … R1 » transparaît sous la carte. */
+.xm-hud { transition: opacity 0.3s ease; }
+.xm-bag.is-gone ~ .xm-hud { opacity: 0; }
+.xm-card__kicker {
+  margin: 0 0 4px;
+  color: #FFB347;
+  font: 400 13px/1 var(--font-display, 'Bebas Neue', sans-serif);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.xm-card__title {
+  margin: 0 0 6px;
+  font: 400 26px/1 var(--font-display, 'Bebas Neue', sans-serif);
+  text-transform: uppercase;
+  color: #fff;
+}
+.xm-card__text {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.78);
+}
+/* Les deux formules empilées dans la même case : la carte garde la hauteur de la plus grande. */
+.xm-offers {
+  position: relative;
+  display: grid;
+  margin: 2px -4px 10px;
+  padding: 10px 4px 2px;
+  overflow: hidden;
+  border-radius: 10px;
+}
+.xm-offer {
+  grid-area: 1 / 1;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0s linear 0.25s;
+}
+.xm-offer.is-on {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.25s ease, visibility 0s;
+}
+.xm-offer__eyebrow {
+  margin: 0 0 2px;
+  color: #FFB347;
+  font: 600 11px/1.2 var(--font-body, 'Montserrat', sans-serif);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.xm-offer__name {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.92);
+  font: 400 18px/1.1 var(--font-display, 'Bebas Neue', sans-serif);
+  text-transform: uppercase;
+}
+.xm-offer__price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+.xm-offer__num {
+  color: #fff;
+  font: 400 44px/1 var(--font-display, 'Bebas Neue', sans-serif);
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 22px rgba(255, 140, 0, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+.xm-offer__per {
+  color: rgba(255, 255, 255, 0.7);
+  font: 500 13px/1 var(--font-body, 'Montserrat', sans-serif);
+}
+.xm-offer__note {
+  margin: 0 0 12px;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+.xm-offer .xm-card__cta { display: block; width: 100%; }
+.xm-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.xm-dots { display: flex; gap: 8px; }
+.xm-dot {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  position: relative;
+}
+.xm-dot::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.xm-dot[aria-pressed="true"]::after { background: #E8001C; transform: scale(1.25); }
+.xm-dot:focus-visible { outline: 2px solid #FFB347; outline-offset: 1px; }
+.xm-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.xm-card__cta {
+  flex: 1 1 auto;
+  text-align: center;
+  white-space: nowrap;
+  padding-left: 14px;
+  padding-right: 14px;
+}
+.xm-card__again {
+  padding: 8px 4px;
+  border: 0;
+  background: none;
+  color: rgba(255, 255, 255, 0.72);
+  font: 600 13px/1 var(--font-body, 'Montserrat', sans-serif);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.xm-card__again:hover,
+.xm-card__again:focus-visible { color: #FFB347; }
+
+.xm-controls {
+  position: absolute;
+  top: var(--xm-top, 12px);
+  right: 12px;
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+.xm-controls--left {
+  right: auto;
+  left: 12px;
+}
+.xm-controls { transition: opacity 0.25s ease, visibility 0s; }
+.xm-front.has-overlay .xm-controls {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0s linear 0.2s;
+}
+.xm-ctl {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  background: rgba(8, 10, 20, 0.7);
+  color: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+.xm-ctl:hover { border-color: #FFB347; background: rgba(20, 16, 10, 0.7); }
+.xm-ctl:active { transform: scale(0.94); }
+.xm-ctl:focus-visible { outline: 2px solid #FFB347; outline-offset: 2px; }
+.xm-ctl svg { width: 17px; height: 17px; display: block; }
+.xm-ctl[aria-pressed="true"] { border-color: #FFB347; color: #FFB347; }
+
+/* La trace d'un geste (crochet, uppercut) : un arc chaud, joué en Web Animations. */
+.xm-swoosh {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 120px;
+  height: 60px;
+  pointer-events: none;
+  opacity: 0;
+  transform-origin: 0 0;
+}
+.xm-swoosh svg { display: block; width: 100%; height: 100%; overflow: visible; }
+
+.xm-particle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 9px;
+  border-radius: 50%;
+  background: #FFEBC8;
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* Le défilement vertical reste au navigateur ; les gestes de côté reviennent au jeu (crochets). */
+.xm-gestures { touch-action: pan-y pinch-zoom; }
+
+/* Le givre aux coins et des lumières floues derrière le contenu : une image fixe, jamais redessinée. */
+.xm-frost {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(110% 70% at 0% 0%, rgba(214, 232, 255, 0.2), transparent 42%),
+    radial-gradient(110% 70% at 100% 0%, rgba(214, 232, 255, 0.16), transparent 40%),
+    radial-gradient(140% 55% at 50% 112%, rgba(214, 232, 255, 0.14), transparent 50%);
+}
+.xm-bokeh {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 30%, rgba(255, 179, 71, 0.26) 0 9px, transparent 24px),
+    radial-gradient(circle at 22% 74%, rgba(232, 0, 28, 0.2) 0 13px, transparent 32px),
+    radial-gradient(circle at 63% 16%, rgba(255, 233, 176, 0.22) 0 7px, transparent 20px),
+    radial-gradient(circle at 78% 64%, rgba(124, 196, 255, 0.16) 0 11px, transparent 28px),
+    radial-gradient(circle at 93% 26%, rgba(255, 179, 71, 0.2) 0 8px, transparent 22px),
+    radial-gradient(circle at 46% 88%, rgba(255, 233, 176, 0.14) 0 15px, transparent 38px);
+}
+
+/* Le cadeau : le cuir et son emballage, les déchirures, le nœud — trois couches au même cadre. */
+.xm-gift { display: block; width: 100%; height: auto; overflow: visible; }
+.xm-tears,
+.xm-bow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  pointer-events: none;
+}
+.xm-tears svg,
+.xm-bow svg { display: block; width: 100%; height: auto; overflow: visible; }
+.xm-bow { transform-origin: 50% 17.3%; }
+/* Le papier cède par endroits : chaque palier de dégâts ouvre une déchirure de plus. */
+.xm-tear {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transform: scale(0.3);
+  transition: opacity 0.18s ease, transform 0.28s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.xm-bag[data-dmg="1"] .xm-tear--1,
+.xm-bag[data-dmg="2"] .xm-tear--1,
+.xm-bag[data-dmg="2"] .xm-tear--2,
+.xm-bag[data-dmg="3"] .xm-tear { opacity: 1; transform: none; }
+/* Ouvert : le papier et ses déchirures partent, le cuir du vrai sac reste. */
+.xm-paper,
+.xm-tears { transition: opacity 0.25s ease; }
+.xm-bag.is-open .xm-paper,
+.xm-bag.is-open .xm-tears { opacity: 0; }
+.xm-bag.is-open .xm-hit { cursor: default; }
+/* La lumière qui sort du cadeau à l'ouverture. */
+.xm-burst {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 160%;
+  aspect-ratio: 1;
+  margin: -80% 0 0 -80%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 244, 214, 0.95), rgba(255, 179, 71, 0.5) 42%, rgba(255, 120, 20, 0) 72%);
+  pointer-events: none;
+}
+
+/* La carte de Noël : un liseré de ruban or en haut. */
+.xm-card::before {
+  content: '';
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: -1px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #F2B24A 18%, #FFE2A0 50%, #F2B24A 82%, transparent);
+}
+
+/* L'emballage qui passe sur la carte : deux pans de papier aux bords déchirés et un ruban. Le
+   papier se referme, le ruban le noue, puis tout se déchire et l'autre formule est dessous. */
+.xm-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  pointer-events: none;
+}
+.xm-card.is-back .xm-wrap { transform: scaleX(-1); }
+.xm-wrap__half {
+  position: absolute;
+  top: -4%;
+  bottom: -4%;
+  width: 56%;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 217, 138, 0.16) 0 2px, transparent 2px 12px),
+    linear-gradient(180deg, #D0001B, #8E0014);
+}
+.xm-wrap__half--l {
+  left: 0;
+  transform: translateX(-104%);
+  clip-path: polygon(0 0, 100% 0, 92% 8%, 100% 16%, 91% 25%, 100% 33%, 92% 42%, 100% 50%, 91% 58%, 100% 67%, 92% 75%, 100% 83%, 91% 92%, 100% 100%, 0 100%);
+}
+.xm-wrap__half--r {
+  right: 0;
+  transform: translateX(104%);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 9% 92%, 0 83%, 8% 75%, 0 67%, 9% 58%, 0 50%, 8% 42%, 0 33%, 9% 25%, 0 16%, 8% 8%);
+}
+.xm-wrap__ribbon {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  margin-left: -8px;
+  background: linear-gradient(90deg, #A86A14, #FFE2A0 45%, #F2B24A 60%, #93590F);
+  transform: scaleY(0);
+  transform-origin: 50% 0;
+}
+.xm-wrap__knot {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 38px;
+  height: 24px;
+  margin: -12px 0 0 -19px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, #FFE2A0 0 26%, #E0A030 27% 58%, transparent 60%);
+  transform: scale(0);
+}
+.xm-card.is-wrapping { animation: xm-thump 0.5s ease 0.38s both; }
+.xm-card.is-wrapping .xm-wrap__half--l { animation: xm-wrap-l 1.32s cubic-bezier(0.5, 0, 0.3, 1) both; }
+.xm-card.is-wrapping .xm-wrap__half--r { animation: xm-wrap-r 1.32s cubic-bezier(0.5, 0, 0.3, 1) both; }
+.xm-card.is-wrapping .xm-wrap__ribbon { animation: xm-ribbon 1.32s ease both; }
+.xm-card.is-wrapping .xm-wrap__knot { animation: xm-knot 1.32s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+/* Opaque tant qu'il couvre : le papier ne s'efface qu'en s'arrachant (sinon on lirait le prix au travers). */
+@keyframes xm-wrap-l {
+  0% { transform: translateX(-104%); opacity: 1; }
+  30%, 52% { transform: translateX(0); opacity: 1; }
+  100% { transform: translate(-72%, 26%) rotate(-16deg); opacity: 0; }
+}
+@keyframes xm-wrap-r {
+  0%, 6% { transform: translateX(104%); opacity: 1; }
+  34%, 52% { transform: translateX(0); opacity: 1; }
+  100% { transform: translate(74%, -18%) rotate(14deg); opacity: 0; }
+}
+@keyframes xm-ribbon {
+  0%, 26% { transform: scaleY(0); opacity: 1; }
+  40%, 52% { transform: scaleY(1); opacity: 1; }
+  62% { transform: scale(0.2, 1); opacity: 0; }
+  100% { transform: scale(0, 1); opacity: 0; }
+}
+@keyframes xm-knot {
+  0%, 34% { transform: scale(0); opacity: 1; }
+  44%, 52% { transform: scale(1); opacity: 1; }
+  62%, 100% { transform: scale(1.7); opacity: 0; }
+}
+/* Le papier se referme d'un coup sec : la carte encaisse. */
+@keyframes xm-thump {
+  0%, 100% { translate: 0 0; }
+  30% { translate: 0 3px; }
+  60% { translate: 0 -1px; }
+}
+
+/* Les éclats : neige du cadeau, lambeaux de papier, ruban or, paillettes. */
+.xm-particle--snow {
+  width: 7px;
+  height: 7px;
+  background: radial-gradient(circle, #fff 0 42%, rgba(255, 255, 255, 0) 70%);
+}
+.xm-particle--paper {
+  width: 8px;
+  height: 11px;
+  border-radius: 1px;
+  background: linear-gradient(135deg, #E8001C, #8E0014);
+}
+.xm-particle--gold {
+  width: 5px;
+  height: 13px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #FFE2A0, #C98A24);
+}
+.xm-particle--spark {
+  width: 9px;
+  height: 9px;
+  border-radius: 0;
+  background: #FFE9B0;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xm-callout,
+  .xm-callout--big,
+  .xm-callout--ko { animation: xm-fade 1.4s ease forwards; }
+  .xm-tear { transition: none; }
+}
+
+@media print {
+  .xm-back,
+  .xm-front { display: none !important; }
+}
