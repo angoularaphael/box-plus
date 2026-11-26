@@ -47,6 +47,12 @@
           <label class="bil-champ">E-mail (le billet y est envoyé)
             <input name="email" type="email" autocomplete="email" inputmode="email" required maxlength="254" />
           </label>
+          <div id="bilAge" hidden>
+            <label class="bil-champ">Date de naissance (Boxing Trophy : 18 ans minimum)
+              <input name="date_naissance" id="bilNaissance" type="date" autocomplete="bday" min="1900-01-01" max="2008-12-12" />
+            </label>
+            <p class="bil-note">Le Boxing Trophy du samedi est réservé aux 18 ans et plus. Une pièce d'identité peut être demandée à l'entrée.</p>
+          </div>
           <label class="bil-champ bil-champ--court">Nombre de billets
             <select name="quantite" id="bilQuantite"></select>
           </label>

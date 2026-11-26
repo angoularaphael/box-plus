@@ -23,10 +23,28 @@ test('validation : nom, prenom, mail et moyen de paiement obligatoires', () => {
   const ko = bil.validerCommande({ produit: 'stripe', prenom: '', nom: 'x', email: 'pas-un-mail', methode: 'stripe' });
   const champs = ko.errors.map((e) => e.field).sort();
   assert.deepStrictEqual(champs, ['email', 'methode', 'nom', 'prenom', 'produit']);
-  const ok = bil.validerCommande({ produit: 'weekend', prenom: 'Brad', nom: 'Bruel', email: 'Brad@Exemple.fr', methode: 'paypal', quantite: '3' });
+  const ok = bil.validerCommande({ produit: 'weekend', prenom: 'Brad', nom: 'Bruel', email: 'Brad@Exemple.fr', date_naissance: '1990-05-04', methode: 'paypal', quantite: '3' });
   assert.strictEqual(ok.errors.length, 0);
   assert.strictEqual(ok.data.email, 'brad@exemple.fr');
   assert.strictEqual(ok.data.quantite, 3);
+});
+
+test('Boxing Trophy (samedi, pack) : 18 ans minimum le 12 decembre 2026', () => {
+  const base = { prenom: 'Al', nom: 'Bo', email: 'a@b.fr', methode: 'paypal' };
+  for (const produit of ['samedi', 'weekend']) {
+    const champ = (d) => bil.validerCommande({ ...base, produit, date_naissance: d }).errors.filter((e) => e.field === 'date_naissance');
+    assert.strictEqual(champ('').length, 1, `${produit} sans date`);
+    assert.strictEqual(champ('2008-12-13').length, 1, `${produit} 17 ans`);
+    assert.match(champ('2010-06-01')[0].message, /18 ans/);
+    assert.strictEqual(champ('2008-12-12').length, 0, `${produit} 18 ans pile`);
+  }
+  for (const produit of ['vendredi', 'dimanche']) {
+    const { errors, data } = bil.validerCommande({ ...base, produit, date_naissance: '2015-01-01' });
+    assert.strictEqual(errors.length, 0, produit);
+    assert.strictEqual(data.date_naissance, '');
+  }
+  const { data } = bil.validerCommande({ ...base, produit: 'samedi', date_naissance: '1990-05-04' });
+  assert.strictEqual(bil.creerCommande(data).client.date_naissance, '1990-05-04');
 });
 
 test('seuls PayPal et PayPlug sont acceptes', () => {
@@ -40,6 +58,7 @@ test('seuls PayPal et PayPlug sont acceptes', () => {
 test('commande : conserve le code src court', () => {
   const { data } = bil.validerCommande({
     produit: 'samedi',
+    date_naissance: '1995-01-01',
     prenom: 'Eddy',
     nom: 'Test',
     email: 'e@t.fr',

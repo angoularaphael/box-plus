@@ -30,9 +30,10 @@ const PRODUITS = {
   samedi: {
     id: 'samedi',
     nom: 'Samedi 12 décembre',
-    detail: 'Boxing Trophy 20 - dès 19h00',
+    detail: 'Boxing Trophy 20 - dès 19h00 - 18 ans minimum',
     jours: ['Samedi 12 décembre'],
     prix_cents: 1000,
+    age_min: 18,
   },
   dimanche: {
     id: 'dimanche',
@@ -44,9 +45,10 @@ const PRODUITS = {
   weekend: {
     id: 'weekend',
     nom: 'Pack week-end complet',
-    detail: 'Accès aux 3 jours : vendredi, samedi et dimanche',
+    detail: 'Accès aux 3 jours : vendredi, samedi et dimanche - 18 ans minimum (Trophy le samedi)',
     jours: ['Vendredi 11 décembre', 'Samedi 12 décembre', 'Dimanche 13 décembre'],
     prix_cents: 2000,
+    age_min: 18,
   },
 };
 
@@ -72,6 +74,23 @@ function nettoyerTexte(value, max = 60) {
     .slice(0, max);
 }
 
+// L'age se calcule au jour du Boxing Trophy (samedi 12 decembre 2026).
+const DATE_TROPHY = '2026-12-12';
+
+/** Age en annees revolues a la date `ref` (AAAA-MM-JJ). null si la date de naissance est invalide. */
+function ageAu(dateNaissance, ref = DATE_TROPHY) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateNaissance || '').trim());
+  if (!m) return null;
+  const [a, mo, j] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const d = new Date(Date.UTC(a, mo - 1, j));
+  if (d.getUTCFullYear() !== a || d.getUTCMonth() !== mo - 1 || d.getUTCDate() !== j) return null;
+  const [ra, rm, rj] = ref.split('-').map(Number);
+  if (a < 1900 || a > ra) return null;
+  let age = ra - a;
+  if (rm < mo || (rm === mo && rj < j)) age -= 1;
+  return age < 0 ? null : age;
+}
+
 function emailValide(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value || '').trim());
 }
@@ -87,6 +106,19 @@ function validerCommande(body = {}) {
   if (prenom.length < 2) errors.push({ field: 'prenom', message: 'Indiquez votre prénom.' });
   if (nom.length < 2) errors.push({ field: 'nom', message: 'Indiquez votre nom.' });
   if (!emailValide(email)) errors.push({ field: 'email', message: 'Adresse e-mail invalide.' });
+  let dateNaissance = '';
+  if (produit?.age_min) {
+    dateNaissance = String(body.date_naissance || '').trim().slice(0, 10);
+    const age = ageAu(dateNaissance);
+    if (age == null) {
+      errors.push({ field: 'date_naissance', message: 'Indiquez votre date de naissance.' });
+    } else if (age < produit.age_min) {
+      errors.push({
+        field: 'date_naissance',
+        message: `Le Boxing Trophy est réservé aux ${produit.age_min} ans et plus.`,
+      });
+    }
+  }
   const methode = String(body.methode || body.payment_method || '').trim().toLowerCase();
   if (!METHODES.includes(methode)) {
     errors.push({ field: 'methode', message: 'Choisissez PayPal ou carte bancaire.' });
@@ -102,7 +134,7 @@ function validerCommande(body = {}) {
     .slice(0, 12);
   return {
     errors,
-    data: { produit, prenom, nom, email, methode, quantite: Math.min(quantite, QUANTITE_MAX), src },
+    data: { produit, prenom, nom, email, date_naissance: dateNaissance, methode, quantite: Math.min(quantite, QUANTITE_MAX), src },
   };
 }
 
@@ -115,7 +147,7 @@ function genererCode() {
   return `FF-${out.slice(0, 4)}-${out.slice(4)}`;
 }
 
-function creerCommande({ produit, prenom, nom, email, methode, quantite, src }) {
+function creerCommande({ produit, prenom, nom, email, date_naissance, methode, quantite, src }) {
   const now = new Date().toISOString();
   const source = String(src || '')
     .toLowerCase()
@@ -131,7 +163,7 @@ function creerCommande({ produit, prenom, nom, email, methode, quantite, src }) 
     prix_unitaire_cents: produit.prix_cents,
     quantite,
     total_cents: produit.prix_cents * quantite,
-    client: { prenom, nom, email },
+    client: { prenom, nom, email, ...(date_naissance ? { date_naissance } : {}) },
     payment: { method: methode, status: 'pending' },
     billets: Array.from({ length: quantite }, (_, i) => ({ numero: i + 1, code: genererCode() })),
     status: 'pending',
@@ -336,6 +368,7 @@ async function envoyerMails(commande, baseUrl, { send } = {}) {
 }
 
 module.exports = {
+  ageAu,
   EVENEMENT,
   PRODUITS,
   METHODES,

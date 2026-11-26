@@ -34,8 +34,24 @@
     return null;
   }
 
+  var blocAge = document.getElementById('bilAge');
+  var champNaissance = document.getElementById('bilNaissance');
+  var DATE_TROPHY = [2026, 12, 12];
+
+  function ageAuTrophy(valeur) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(valeur || ''));
+    if (!m) return null;
+    var a = Number(m[1]), mo = Number(m[2]), j = Number(m[3]);
+    var age = DATE_TROPHY[0] - a;
+    if (DATE_TROPHY[1] < mo || (DATE_TROPHY[1] === mo && DATE_TROPHY[2] < j)) age -= 1;
+    return a < 1900 || age < 0 ? null : age;
+  }
+
   function majTotal() {
     var p = produitChoisi();
+    var ageRequis = !!(p && p.age_min);
+    blocAge.hidden = !ageRequis;
+    champNaissance.required = ageRequis;
     var q = Number(selectQte.value || 1);
     totalEl.textContent = p ? euros(p.prix_cents * q) : '-';
     bouton.disabled = !p;
@@ -108,12 +124,21 @@
       prenom: String(fd.get('prenom') || '').trim(),
       nom: String(fd.get('nom') || '').trim(),
       email: String(fd.get('email') || '').trim(),
+      date_naissance: String(fd.get('date_naissance') || '').trim(),
       quantite: Number(fd.get('quantite') || 1),
       methode: fd.get('methode'),
       src: lireSrc(),
     };
     if (!corps.produit) return afficherErreur('Choisissez un billet.');
     if (!corps.prenom || !corps.nom) return afficherErreur('Indiquez votre prénom et votre nom.');
+    var choisi = produitChoisi();
+    if (choisi && choisi.age_min) {
+      var age = ageAuTrophy(corps.date_naissance);
+      if (age == null) return afficherErreur('Indiquez votre date de naissance.');
+      if (age < choisi.age_min) return afficherErreur('Le Boxing Trophy est réservé aux ' + choisi.age_min + ' ans et plus.');
+    } else {
+      corps.date_naissance = '';
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(corps.email)) return afficherErreur('Adresse e-mail invalide.');
     bouton.disabled = true;
     bouton.textContent = 'Redirection vers le paiement...';
