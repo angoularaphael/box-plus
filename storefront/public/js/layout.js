@@ -235,9 +235,13 @@
     document.body.appendChild(btn);
 
     let ticking = false;
+    let shown = null;
     const sync = () => {
       ticking = false;
       const show = window.scrollY > 380;
+      // Le bouton n'est touché que quand il change d'état, plus à chaque image du défilement.
+      if (show === shown) return;
+      shown = show;
       btn.hidden = !show;
       btn.classList.toggle('is-visible', show);
     };

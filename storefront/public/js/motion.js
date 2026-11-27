@@ -51,20 +51,54 @@
     var last = 0, dir = 0, turn = 0;
     var SHOW_AFTER = 6;
     var HIDE_AFTER = 14;
+    // Cette fonction tourne à chaque événement de défilement. Elle ne recherche plus le header, le
+    // menu et le hero dans la page à chaque fois, et ne remesure plus le hero : on les garde, et on
+    // ne les relit que s'ils ont été remplacés (le header est rendu par layout.js) ou
+    // redimensionnés. Les règles, elles, n'ont pas bougé.
+    var topbar = null;
+    var nav = null;
+    var hero = null;
+    var heroH = -1;
+    var heroRO = null;
+    function getTopbar() {
+      if (!topbar || !topbar.isConnected) {
+        topbar = document.querySelector('.topbar');
+        nav = null;
+      }
+      return topbar;
+    }
+    function navOpen() {
+      if (!nav || !nav.isConnected) nav = document.querySelector('.main-nav');
+      return !!(nav && nav.classList.contains('open'));
+    }
+    function heroHeight() {
+      if (!hero || !hero.isConnected) {
+        hero = document.querySelector('.hero--cinema');
+        heroH = -1;
+        if (heroRO) heroRO.disconnect();
+        if (hero && 'ResizeObserver' in window) {
+          // Le navigateur prévient quand le hero change de hauteur : la mesure est déjà faite.
+          if (!heroRO) heroRO = new ResizeObserver(function () { if (hero) heroH = hero.offsetHeight; });
+          heroRO.observe(hero);
+        }
+      }
+      if (!hero) return -1;
+      if (heroH < 0 || !heroRO) heroH = hero.offsetHeight;
+      return heroH;
+    }
     function scrollThreshold() {
       if (!document.body.classList.contains('home-cinema')) return 48;
-      var hero = document.querySelector('.hero--cinema');
-      if (!hero) return 80;
+      var h = heroHeight();
+      if (h < 0) return 80;
       // Passe en header clair seulement après ~55% du hero (évite flash blanc au load)
-      return Math.max(120, Math.round(hero.offsetHeight * 0.55));
+      return Math.max(120, Math.round(h * 0.55));
     }
     function apply() {
-      // Relu à chaque fois : le header est rendu par layout.js et peut être remplacé.
-      var topbar = document.querySelector('.topbar');
-      if (!topbar) return;
+      var bar = getTopbar();
+      if (!bar) return;
       var y = window.scrollY || window.pageYOffset || 0;
       var scrolled = y > scrollThreshold();
-      topbar.classList.toggle('scrolled', scrolled);
+      bar.classList.toggle('scrolled', scrolled);
       var d = y - last;
       if (d !== 0) {
         var nd = d > 0 ? 1 : -1;
@@ -73,19 +107,24 @@
           turn = last;
         }
       }
-      if (document.querySelector('.main-nav.open') || y <= 200) {
-        topbar.classList.remove('nav-hidden');
+      if (y <= 200 || navOpen()) {
+        bar.classList.remove('nav-hidden');
       } else if (dir > 0 && y - turn > HIDE_AFTER) {
-        topbar.classList.add('nav-hidden');
+        bar.classList.add('nav-hidden');
       } else if (dir < 0 && turn - y > SHOW_AFTER) {
-        topbar.classList.remove('nav-hidden');
+        bar.classList.remove('nav-hidden');
       }
       last = y;
     }
+    function remeasure() {
+      // La fenêtre a changé : la hauteur du hero se relit tout de suite, comme avant.
+      heroH = -1;
+      apply();
+    }
     apply();
     window.addEventListener('scroll', apply, { passive: true });
-    window.addEventListener('pageshow', apply);
-    window.addEventListener('resize', apply);
+    window.addEventListener('pageshow', remeasure);
+    window.addEventListener('resize', remeasure);
   }
 
   function initReveals() {
@@ -234,18 +273,45 @@
     var nodes = Array.prototype.slice.call(document.querySelectorAll('[data-parallax]'));
     if (!nodes.length) return;
     var ticking = false;
+    // Le calcul n'a pas changé : à chaque image du défilement on mesure et on calcule comme avant.
+    // Ce qui change : tant que le bloc est à plus de 600 px de l'écran, on ne le déplace plus (on
+    // ne le voit pas, et chaque déplacement fait retravailler toute la page) ; on retient où il en
+    // serait, et il reprend cette place exacte dès qu'il approche. Et un déplacement identique au
+    // précédent n'est pas réécrit.
+    var FAR = 600;
+    // off : le décalage que le calcul vient de donner ; drawn : celui qui est réellement appliqué.
+    var items = nodes.map(function (el) { return { el: el, off: 0, drawn: 0, text: null }; });
 
     function update() {
       ticking = false;
       var vh = window.innerHeight || 800;
-      nodes.forEach(function (el) {
+      // D'abord toutes les mesures, ensuite tous les déplacements : jamais l'un entre deux autres.
+      var todo = [];
+      items.forEach(function (it) {
+        var el = it.el;
         // Never parallax a reveal node — fight between transforms.
         if (el.hasAttribute('data-reveal') || el.hasAttribute('data-reveal-auto')) return;
         var speed = parseFloat(el.getAttribute('data-parallax')) || 0.15;
         var rect = el.getBoundingClientRect();
-        var mid = rect.top + rect.height / 2;
+        var real = rect.top + rect.height / 2;
+        // Là où serait le bloc s'il avait été déplacé à chaque image : le calcul repart de là.
+        var mid = it.drawn === it.off ? real : real - it.drawn + it.off;
         var offset = (mid - vh / 2) * speed * -1;
-        el.style.transform = 'translate3d(0,' + offset.toFixed(1) + 'px,0)';
+        // Loin : ni le bloc tel qu'il est posé, ni le bloc tel qu'on le poserait, n'approche à
+        // moins de 600 px de l'écran.
+        var reach = vh / 2 + FAR + rect.height / 2;
+        var far = Math.abs(real - vh / 2) > reach && Math.abs(mid - it.off + offset - vh / 2) > reach;
+        todo.push([it, offset, far]);
+      });
+      todo.forEach(function (t) {
+        var it = t[0];
+        var text = t[1].toFixed(1);
+        it.off = parseFloat(text);
+        // Loin de l'écran (et déjà posé une première fois), ou déjà à cette place : rien à écrire.
+        if ((t[2] && it.text !== null) || text === it.text) return;
+        it.el.style.transform = 'translate3d(0,' + text + 'px,0)';
+        it.text = text;
+        it.drawn = it.off;
       });
     }
 
@@ -270,6 +336,7 @@
     if (window.matchMedia('(max-width: 760px)').matches || reduce) return;
 
     var ticking = false;
+    var shown = null;
     function update() {
       ticking = false;
       var rect = reel.getBoundingClientRect();
@@ -278,7 +345,11 @@
       var scrolled = Math.min(Math.max(-rect.top, 0), total);
       var progress = scrolled / total;
       var maxX = Math.max(0, track.scrollWidth - window.innerWidth + 40);
-      track.style.transform = 'translate3d(' + (-maxX * progress).toFixed(1) + 'px,0,0)';
+      // Avant et après le ruban, la position ne change plus : on ne la réécrit pas à chaque image.
+      var v = 'translate3d(' + (-maxX * progress).toFixed(1) + 'px,0,0)';
+      if (v === shown) return;
+      shown = v;
+      track.style.transform = v;
     }
 
     function onScroll() {
@@ -305,6 +376,7 @@
 
     var ready = false;
     var ticking = false;
+    var sought = -1;
 
     function seek() {
       ticking = false;
@@ -317,8 +389,13 @@
       if (span <= 0) return;
       var p = (start - rect.top) / span;
       p = Math.min(1, Math.max(0, p));
+      // Hors du bandeau, l'image voulue ne change pas (la première ou la dernière) : on ne
+      // redemande pas à la vidéo de s'y rendre à chaque image du défilement.
+      var t = video.duration * p;
+      if (t === sought) return;
       try {
-        video.currentTime = video.duration * p;
+        video.currentTime = t;
+        sought = t;
       } catch (_) { /* ignore seek race */ }
     }
 
