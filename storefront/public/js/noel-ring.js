@@ -361,6 +361,8 @@
   }
 
   const hits = (a, b, m) => !(a.x + a.w + m < b.x || b.x + b.w + m < a.x || a.y + a.h + m < b.y || b.y + b.h + m < a.y);
+  // L'indice posé à côté du cadeau (petits écrans) : taille fixée en CSS, pour ne rien mesurer.
+  const SIDE_HINT = { w: 150, h: 52 };
 
   // Première position de la liste qui ne touche ni un texte, ni un bouton, ni le bord du hero.
   function freeSpot(w, h, candidates, extra, measured) {
@@ -478,6 +480,7 @@
     const hh = S.hintSize.h;
     const top = b.py + b.chain;
     let spot = null;
+    let side = 0;
     S.hintBottom = null;
     if (frozen && S.w < 600) {
       // Petit écran : l'indice tient en une ligne, sur la chaîne, juste au-dessus de la barre de
@@ -485,12 +488,38 @@
       const bottom = top - 38;
       spot = freeSpot(hw2, hh, [[clamp(b.px - hw2 / 2, 8, S.w - hw2 - 60), bottom - hh]], [], measured);
       if (spot) S.hintBottom = bottom;
+      else {
+        // Hero court (un iPhone dans Safari, barres comprises : 664 px) : la chaîne est trop courte
+        // pour porter l'indice. Il passe sur deux lignes à côté du cadeau, une pointe tournée vers
+        // lui — sous la guirlande, loin du bouton « couper » et de tout texte.
+        const sw = SIDE_HINT.w;
+        const sh = SIDE_HINT.h;
+        const half = b.bw * 0.62 + 6;
+        const idle = { x: b.px - half, y: top - 8, w: half * 2, h: b.bh + 20 };
+        const ctl = { x: controls.classList.contains('xm-controls--left') ? 12 : S.w - 48, y: S.topOffset + 12, w: 36, h: 36 };
+        const minY = S.topOffset + 32;
+        // À hauteur du nœud de préférence ; sinon plus haut, le long de la chaîne (le logo du
+        // hero est juste dessous sur les écrans courts) ; sinon plus bas.
+        const ys = [top + b.bh * 0.34 - sh / 2, top - 4, top - 14, top - sh * 0.5, minY, top + 14, top + b.bh * 0.6 - sh / 2, top + b.bh - sh].map((y) => Math.max(y, minY));
+        for (const s of b.px > S.w / 2 ? [-1, 1] : [1, -1]) {
+          const x = s < 0 ? idle.x - 12 - sw : idle.x + idle.w + 12;
+          spot = freeSpot(sw, sh, ys.map((y) => [x, y]), [idle, ctl], measured);
+          if (spot) {
+            side = s;
+            break;
+          }
+        }
+      }
     }
+    // À côté du cadeau, la leçon des coups n'a pas la place : le cadeau se balancerait dessus.
+    S.hint.side = !!side;
+    hintEl.classList.toggle('is-side', !!side);
+    hintEl.classList.toggle('is-side--right', side > 0);
     // Sur la chaîne, l'indice est tenu par son pied : la leçon des coups, plus haute, monte
     // d'elle-même sans qu'on ait à la mesurer.
     hintEl.style.top = S.hintBottom != null ? 'auto' : '';
     hintEl.style.bottom = S.hintBottom != null ? (S.h - S.hintBottom).toFixed(1) + 'px' : '';
-    if (!spot) {
+    if (!spot && !side) {
       spot = freeSpot(hw2, hh, [
         [b.px - hw2 / 2, top + b.bh + 30],
         [b.px - b.bw * 0.62 - hw2 - 12, top + b.bh * 0.3],
@@ -1194,7 +1223,7 @@
 
   // Après le premier coup, l'indice apprend les deux autres coups, une seule fois, à la même place.
   function coach() {
-    if (S.hint.coached || S.mode !== 'full' || S.bag.ko || photoHero || S.hint.ok === false || S.dead) return;
+    if (S.hint.coached || S.mode !== 'full' || S.bag.ko || photoHero || S.hint.ok === false || S.hint.side || S.dead) return;
     S.hint.coached = true;
     hintEl.innerHTML = coarse
       ? 'Glisse ← → : crochet.<strong>Glisse ↑ : uppercut.</strong>'

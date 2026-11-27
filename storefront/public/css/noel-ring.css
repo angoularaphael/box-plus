@@ -208,6 +208,39 @@ html.bc-noel-ring .xm-front {
     margin: 0;
     font-size: 15px;
   }
+  /* Hero court (un iPhone dans Safari) : la chaîne est trop courte pour porter l'explication. Elle
+     passe sur deux lignes à côté du cadeau, une pointe tournée vers lui. Taille fixe : le script
+     la place sans rien mesurer. */
+  html.bc-noel-hiver .xm-hint.is-side:not(.is-coach) {
+    box-sizing: border-box;
+    width: 150px;
+    max-width: 150px;
+    min-height: 50px;
+    padding: 8px 10px 7px;
+    border-radius: 14px;
+    background: #0a0c16;
+    white-space: normal;
+    text-align: center;
+  }
+  html.bc-noel-hiver .xm-hint.is-side:not(.is-coach) strong { line-height: 17px; }
+  html.bc-noel-hiver .xm-hint.is-side:not(.is-coach)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -5px;
+    width: 9px;
+    height: 9px;
+    margin-top: -5px;
+    background: #0a0c16;
+    border: solid rgba(255, 179, 71, 0.32);
+    border-width: 1px 1px 0 0;
+    transform: rotate(45deg);
+  }
+  html.bc-noel-hiver .xm-hint.is-side.is-side--right:not(.is-coach)::after {
+    right: auto;
+    left: -5px;
+    border-width: 0 0 1px 1px;
+  }
 }
 
 .xm-card {
