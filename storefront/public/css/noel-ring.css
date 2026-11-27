@@ -10,6 +10,13 @@ html.bc-noel-ring .xm-front {
   pointer-events: none;
 }
 
+/* Hero hors de l'écran : rien de la scène n'est rendu (ni peint, ni gardé en calque). La mise en
+   page ne bouge pas : au retour, tout est à sa place. */
+.xm-back.is-away,
+.xm-back.is-away *,
+.xm-front.is-away,
+.xm-front.is-away * { visibility: hidden !important; }
+
 /* L'attribut hidden doit gagner sur les display posés plus bas (.xm-ctl en grid, etc.). */
 .xm-front [hidden],
 .xm-back [hidden] { display: none !important; }

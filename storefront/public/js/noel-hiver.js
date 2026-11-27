@@ -1,6 +1,6 @@
 /*
  * Noël 2026 — la boutique gelée. Chargé par layout.js (ensureNoel) avec le cadeau du hero
- * (noel-ring.js) et le Père Noël (noel-page.js), du 10 décembre au 4 janvier.
+ * (noel-ring.js) et le Père Noël (noel-page.js), du 26 novembre au 4 janvier.
  *
  * L'hiver a gelé la boutique. La neige tient sur le vrai site — les mots des grands titres, les
  * boutons, les cartes, les bandeaux — et s'épaissit pendant qu'on lit ; le givre prend les bords de
@@ -19,6 +19,16 @@
  * les 1,6 s, seulement celles qu'on voit) et sous la main. Le givre = un canvas redessiné aux
  * effacements. Les particules ne vivent qu'après un coup. Aucune mise en page forcée : les mesures
  * viennent des observateurs du navigateur.
+ *
+ * Et on ne paie pas pour ce qu'on ne voit pas (mesuré le 27/11/2026 sur un vrai défilement) : chaque
+ * calque du compositeur et chaque élément en cours d'animation se recalcule à chaque image d'un
+ * défilement, même invisible. Donc : les braises n'existent que du K.-O. au retour du froid ; la
+ * guirlande gelée n'a aucune animation (même en pause) ; les couches de neige sont des canvas
+ * « logiciels », peints dans un seul calque ; hors de l'écran, le givre du hero n'est plus rendu ;
+ * et quand la page se met à défiler, vapeur, gouttes et fondus en cours s'arrêtent net.
+ *
+ * La fête : quand un dossier est complet ou un paiement confirmé, layout.js le signale
+ * (html.bc-noel-party) et la page dégèle d'elle-même — voir « La fête » plus bas.
  */
 (function () {
   'use strict';
@@ -148,12 +158,14 @@
     H.climaxed = false;
     if (fx) fx.classList.remove('is-hot');
     if (garland) garland.classList.remove('is-hot');
+    hideEmbers();
     render();
     saveSoon();
   }
 
   function decayTick() {
-    if (doc.hidden || !alive) return;
+    // Une page de confirmation reste chaude tant qu'on y est : la fête ne regèle pas.
+    if (doc.hidden || !alive || H.party) return;
     const t = now();
     if (H.climaxed && t - H.peakAt < CFG.holdMs) return;
     if (t - H.lastAct < CFG.decayAfterMs) return;
@@ -181,7 +193,10 @@
       if (fx) fx.dataset.stage = String(s);
     }
     if (F.cv) F.cv.style.opacity = Math.pow(1 - v, 0.85).toFixed(3);
-    if (warmEl) warmEl.style.opacity = (Math.pow(v, 1.6) * 0.9).toFixed(3);
+    if (warmEl) {
+      warmEl.style.opacity = (Math.pow(v, 1.6) * 0.9).toFixed(3);
+      warmEl.classList.toggle('is-on', v > 0.004);
+    }
     if (snowEl) snowEl.style.opacity = (1 - sstep(0.5, 0.95, v)).toFixed(3);
     lightBulbs(v);
   }
@@ -190,7 +205,7 @@
 
   // mode : 'fixed' (les bords de la fenêtre) ou 'hero' (le fond du hero, derrière les textes).
   // W × H : la taille du givre en pixels CSS ; w × h : celle du canvas.
-  const F = { cv: null, ctx: null, full: null, fctx: null, haze: null, mask: null, mctx: null, w: 0, h: 0, W: 0, H: 0, s: 1, ms: 0.125, band: 0, vw: 0, regrowT: 0, idle: 0, raf: 0, masked: false, mode: 'fixed', host: null, box: null, ro: null, rect: null };
+  const F = { cv: null, ctx: null, full: null, fctx: null, haze: null, mask: null, mctx: null, w: 0, h: 0, W: 0, H: 0, s: 1, ms: 0.125, band: 0, vw: 0, regrowT: 0, idle: 0, raf: 0, masked: false, mode: 'fixed', host: null, box: null, ro: null, io: null, rect: null };
 
   // Où vit le givre. À l'ordinateur, sur grand écran : aux bords de la fenêtre, dans les marges
   // (jamais plus large que la marge du contenu). Au téléphone et sur petit écran, les textes vont
@@ -233,6 +248,13 @@
       if (!F.cv || Math.abs(w - F.W) > 1 || Math.abs(h - F.H) > 60) paintFrost(w, h, false);
     });
     F.ro.observe(F.host);
+    // Hero sorti de l'écran : son givre n'est plus rendu (le canvas garde son dessin). Deux calques
+    // plein écran de moins pendant tout le reste de la page. « visibility » et pas « display » :
+    // au retour, le fondu d'apparition du givre ne rejoue pas.
+    F.io = new IntersectionObserver((ents) => {
+      if (alive && F.box) F.box.style.visibility = ents[ents.length - 1].isIntersecting ? '' : 'hidden';
+    }, { rootMargin: '200px 0px' });
+    F.io.observe(F.host);
     const pas = { passive: true, signal: ac.signal };
     F.host.addEventListener('pointerdown', onHeroPointer, pas);
     F.host.addEventListener('pointermove', onHeroPointer, pas);
@@ -548,6 +570,8 @@
     F.regrowT = 0;
     if (F.ro) F.ro.disconnect();
     F.ro = null;
+    if (F.io) F.io.disconnect();
+    F.io = null;
     if (!keepNodes) {
       if (F.cv) F.cv.remove();
       if (F.box) F.box.remove();
@@ -700,7 +724,7 @@
       amp: rand(0.78, 1.08), // pas deux couches de la même épaisseur
       x: 0, base: 0, w: 0, n: 0, step: 3, maxH: 0, ow: 0, droop: 0, left: 0, cw: 0, ch: 0,
       h: null, tg: null, sp: null,
-      vis: false, on: false, pending: false, melt: 0, shaped: false,
+      vis: false, on: false, pending: false, melt: 0, shaped: false, fadeUntil: 0,
     };
   }
   function dropCap(c) {
@@ -711,7 +735,10 @@
     if (c.cv) return;
     c.cv = el('canvas', 'xh-cap');
     capsLayer.appendChild(c.cv);
-    c.ctx = c.cv.getContext('2d');
+    // Un canvas « logiciel » : le navigateur le peint dans le calque des couches de neige au lieu
+    // d'en faire un calque du compositeur à lui seul. Dix-huit petits calques en moins : chaque
+    // calque se paie à chaque image d'un défilement, même hors de l'écran.
+    c.ctx = c.cv.getContext('2d', { willReadFrequently: true });
     c.rad = c.kind === 'word' ? 0 : parseFloat(getComputedStyle(c.node).borderTopLeftRadius) || 0;
   }
   function layerOrigin() {
@@ -1006,6 +1033,33 @@
   // Pendant un défilement, la neige attend : le fil principal reste au défilement.
   let lastScrollAt = -1e9;
   const scrolling = () => now() - lastScrollAt < 180;
+  // Et ce qui bougeait encore s'arrête net quand la page repart : une bouffée de vapeur ou une
+  // couche en fondu, lancées à l'arrêt précédent, coûtaient un recalcul par image pendant tout le
+  // geste suivant (c'était le plus gros poste du décor pendant un défilement). La page bouge :
+  // personne ne voit la fin d'une bouffée.
+  const live = new Set();
+  const play = (node, frames, opts) => {
+    const a = node.animate(frames, opts);
+    live.add(a);
+    a.onfinish = a.oncancel = () => live.delete(a);
+    return a;
+  };
+  let moving = false;
+  function moveStart() {
+    moving = true;
+    for (const a of [...live]) a.cancel();
+    live.clear();
+    // Les couches en train d'apparaître sont là d'un coup (plus de fondu pendant que ça défile).
+    // On ne touche que celles-là : une classe sur tout le calque ferait recalculer toutes les autres.
+    const t = now();
+    for (const c of C.list) {
+      if (c.fadeUntil > t && c.cv) c.cv.style.transition = 'none';
+      c.fadeUntil = 0;
+    }
+  }
+  function settle() {
+    moving = false;
+  }
   function flushReveal() {
     revealT = 0;
     if (!alive) return revealQ.clear();
@@ -1013,6 +1067,7 @@
       revealT = later(flushReveal, 240);
       return;
     }
+    settle();
     const all = [...revealQ].filter((c) => c.vis && !c.on && !c.dead);
     revealQ.clear();
     if (!all.length) return;
@@ -1040,6 +1095,7 @@
       shape(c, r);
       draw(c);
       c.on = true;
+      c.fadeUntil = now() + 950;
       c.cv.classList.add('is-on');
       shown.push(c);
     });
@@ -1103,6 +1159,7 @@
     wind.t = t;
     lastScrollAt = t;
     F.rect = null;
+    if (!moving) moveStart();
     if (!wind.timer) wind.timer = later(gust, 260);
   }
   function gust() {
@@ -1112,6 +1169,7 @@
       wind.timer = later(gust, 200);
       return;
     }
+    settle();
     const sp = wind.peak;
     wind.peak = 0;
     if (sp < CFG.flickSpeed || reduce) return;
@@ -1371,7 +1429,7 @@
   /* ---------- Particules (seulement après un coup) ---------- */
 
   const P = { cv: null, ctx: null, list: [], raf: 0, last: 0, dpr: mouse ? Math.min(DPR, 1.5) : 1, w: 0, h: 0 };
-  function spawn(x, y, vx, vy, r, kind) {
+  function spawn(x, y, vx, vy, r, kind, extra) {
     if (!alive || reduce || P.list.length > (mouse && !lowEnd ? 140 : 70)) return;
     if (!P.cv) {
       P.cv = el('canvas', 'xh-parts');
@@ -1384,7 +1442,9 @@
       P.cv.width = Math.ceil(P.w * P.dpr);
       P.cv.height = Math.ceil(P.h * P.dpr);
     }
-    P.list.push({ x, y, vx, vy, r, kind, life: 0, max: kind === 'powder' ? rand(0.5, 0.9) : rand(0.85, 1.3), rot: rand(0, 6.28), vr: rand(-7, 7) });
+    const part = { x, y, vx, vy, r, kind, life: 0, max: kind === 'powder' ? rand(0.5, 0.9) : rand(0.85, 1.3), rot: rand(0, 6.28), vr: rand(-7, 7) };
+    if (extra) Object.assign(part, extra);
+    P.list.push(part);
     if (!P.raf) {
       P.last = 0;
       P.raf = requestAnimationFrame(simParts);
@@ -1401,13 +1461,14 @@
     for (let i = P.list.length - 1; i >= 0; i--) {
       const p = P.list[i];
       p.life += dt;
-      if (p.life >= p.max || p.y > P.h + 20) {
+      // Un papier de fête s'arrête à son plancher (le haut du premier texte sous lui).
+      if (p.life >= p.max || p.y > P.h + 20 || (p.floor != null && p.y > p.floor)) {
         P.list.splice(i, 1);
         continue;
       }
-      const g = p.kind === 'powder' ? 380 : p.kind === 'ember' ? -120 : 1500;
+      const g = p.kind === 'powder' ? 380 : p.kind === 'ember' ? -120 : p.kind === 'paper' ? 620 : 1500;
       p.vy += g * dt;
-      const drag = p.kind === 'powder' ? 0.93 : 0.995;
+      const drag = p.kind === 'powder' ? 0.93 : p.kind === 'paper' ? 0.965 : 0.995;
       p.vx *= drag;
       if (p.kind === 'powder') p.vy *= 0.97;
       p.x += p.vx * dt;
@@ -1417,7 +1478,21 @@
       const a = q > 0.55 ? 1 - (q - 0.55) / 0.45 : 1;
       if (p.kind === 'chunk') drawChunk(c, p, a);
       else if (p.kind === 'shard') drawShard(c, p, a);
-      else {
+      else if (p.kind === 'paper') {
+        // Un bout de papier cadeau qui tournoie : on le voit de face, puis par la tranche.
+        if (p.ceil == null || p.y > p.ceil) {
+          c.save();
+          c.translate(p.x, p.y);
+          c.rotate(p.rot);
+          // Il s'efface en approchant de son plancher : jamais coupé net au-dessus du titre.
+          c.globalAlpha = a * (p.floor != null ? clamp((p.floor - p.y) / 24, 0, 1) : 1);
+          c.fillStyle = p.color;
+          const w = p.r * 1.7;
+          const h = p.r * Math.max(0.25, Math.abs(Math.cos(p.rot * 1.7)));
+          c.fillRect(-w / 2, -h / 2, w, h);
+          c.restore();
+        }
+      } else {
         c.globalAlpha = a * 0.85;
         c.fillStyle = '#fff';
         c.fillRect(p.x, p.y, p.r, p.r);
@@ -1526,14 +1601,16 @@
   }
   // Une goutte se détache du bord de la neige et coule.
   function drip(c, i) {
-    if (reduce) return;
+    // Ni goutte ni vapeur neuves tant que la page défile.
+    if (reduce || moving) return;
     const d = dripOf();
     const x = c.x + i * c.step - C.ox;
     const y = c.base - C.oy;
     d.style.left = x.toFixed(1) + 'px';
     d.style.top = y.toFixed(1) + 'px';
     const fall = c.kind === 'word' ? rand(14, 26) : rand(18, 40);
-    d.animate(
+    play(
+      d,
       [
         { transform: 'translateY(-2px) scale(.4,.6)', opacity: 0 },
         { transform: 'translateY(0) scale(1,1)', opacity: 0.95, offset: 0.25 },
@@ -1544,12 +1621,13 @@
     );
   }
   function steam(px, py) {
-    if (reduce) return;
+    if (reduce || moving) return;
     const s = steamOf();
     s.style.left = (px - C.ox).toFixed(1) + 'px';
     s.style.top = (py - C.oy).toFixed(1) + 'px';
     const dx = rand(-10, 10);
-    s.animate(
+    play(
+      s,
       [
         { transform: 'translate(0,0) scale(.5)', opacity: 0 },
         { transform: `translate(${dx * 0.3}px,-10px) scale(.9)`, opacity: 0.7, offset: 0.25 },
@@ -1580,7 +1658,10 @@
   }
   function layoutGarland() {
     if (!garland) return;
-    const W = innerWidth;
+    // La largeur de la page, pas celle de la fenêtre : à l'ordinateur, innerWidth compte la barre
+    // de défilement (15 px sous Windows). Une guirlande plus large que la page ajoutait une barre
+    // de défilement horizontale à tout le site.
+    const W = Math.min(innerWidth, root.clientWidth || innerWidth);
     const span = W < 600 ? 120 : 160;
     const sag = W < 600 ? 9 : 12;
     const n = Math.max(2, Math.round(W / span));
@@ -1646,7 +1727,7 @@
   // Des paquets de neige de toutes les tailles, posés sur le fil (plus serrés au creux des festons).
   function lumps(yAt, W) {
     let s = '';
-    for (let x = rand(2, 9); x < W; x += rand(6, 17)) {
+    for (let x = rand(2, 9); x < W - 7; x += rand(6, 17)) {
       const rx = rand(2, 5.4);
       const ry = rand(1.3, 2.5);
       s += `<ellipse cx="${x.toFixed(1)}" cy="${(yAt(x) - 1.3 - ry * 0.4).toFixed(1)}" rx="${rx.toFixed(1)}" ry="${ry.toFixed(1)}"/>`;
@@ -1744,15 +1825,38 @@
       snowEl.appendChild(sway);
     }
     fx.appendChild(snowEl);
-    // Les braises montent du bas de l'écran, comme d'un feu, et s'éteignent en route (un masque
-    // fixe sur un calque qui, lui, défile).
-    const emberWrap = el('div', 'xh-emberwrap');
-    emberEl = el('div', 'xh-embers');
-    emberEl.style.backgroundImage = snowTile(300, mouse ? 16 : 11, 1.8, 3.8, 0.65, 1, true);
-    emberWrap.appendChild(emberEl);
-    fx.appendChild(emberWrap);
-    handEl = el('div', 'xh-hand');
-    fx.appendChild(handEl);
+    // La main chaude suit la souris : au doigt, elle n'existe pas.
+    if (mouse) {
+      handEl = el('div', 'xh-hand');
+      fx.appendChild(handEl);
+    }
+  }
+  // Les braises montent du bas de l'écran, comme d'un feu, et s'éteignent en route (un masque fixe
+  // sur un calque qui, lui, défile). Elles n'existent que du K.-O. au retour du froid : un calque
+  // plein écran masqué, même invisible, se paie à chaque image.
+  let emberWrap = null;
+  let emberT = 0;
+  function showEmbers() {
+    if (reduce || !fx) return;
+    clearTimeout(emberT);
+    if (!emberWrap) {
+      emberWrap = el('div', 'xh-emberwrap');
+      emberEl = el('div', 'xh-embers');
+      emberEl.style.backgroundImage = snowTile(300, mouse ? 16 : 11, 1.8, 3.8, 0.65, 1, true);
+      emberWrap.appendChild(emberEl);
+      fx.insertBefore(emberWrap, snowEl ? snowEl.nextSibling : null);
+    }
+    emberWrap.classList.remove('is-out');
+  }
+  function hideEmbers() {
+    const w = emberWrap;
+    if (!w || w.classList.contains('is-out')) return;
+    w.classList.add('is-out');
+    emberT = later(() => {
+      if (!w.classList.contains('is-out')) return;
+      w.remove();
+      if (emberWrap === w) emberWrap = emberEl = null;
+    }, 1500);
   }
 
   /* ---------- Le cadeau réchauffe la boutique ---------- */
@@ -1789,9 +1893,11 @@
     if (!H.decayT) H.decayT = every(decayTick, 500);
     if (fx) fx.classList.add('is-hot');
     if (garland) garland.classList.add('is-hot');
+    showEmbers();
     later(() => {
       if (fx) fx.classList.remove('is-hot');
       if (garland) garland.classList.remove('is-hot');
+      hideEmbers();
     }, 9000);
     meltAll();
   }
@@ -1824,6 +1930,215 @@
       if (k < 1) requestAnimationFrame(step);
     };
     requestAnimationFrame(step);
+  }
+
+  /* ---------- La fête : un dossier complet, un paiement confirmé ---------- */
+
+  // layout.js pose html.bc-noel-party (et envoie « bc:noel-party ») quand la page affiche une
+  // confirmation : l'étape « Confirmé » de l'inscription, la page de confirmation d'une commande.
+  // Dans la langue du décor : un cadeau tombe de la guirlande sur la coche verte et s'ouvre (son
+  // nœud d'or reste dessus) ; sa chaleur dégèle toute la page — trois ondes partent de la coche, la
+  // guirlande se rallume ampoule par ampoule, la neige des boutons fond en fumant, les braises
+  // montent, et des éclats de papier rouge, vert et or tombent quelques secondes. La page reste
+  // chaude tant qu'on y est. Rien de plus gros qu'un flocon ne passe sur un texte : les papiers du
+  // cadeau restent entre le haut de la carte et le titre.
+  const PRIZE_BODY =
+    '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false"><defs>' +
+    '<linearGradient id="xhPzR" x1="0" x2="1"><stop offset="0" stop-color="#8E0014"/><stop offset=".45" stop-color="#E8001C"/><stop offset="1" stop-color="#9C0016"/></linearGradient>' +
+    '<linearGradient id="xhPzG" x1="0" x2="1"><stop offset="0" stop-color="#A86A14"/><stop offset=".45" stop-color="#FFE2A0"/><stop offset="1" stop-color="#C98A24"/></linearGradient></defs>' +
+    '<rect x="8" y="25" width="48" height="35" rx="3" fill="url(#xhPzR)"/><rect x="27" y="25" width="10" height="35" fill="url(#xhPzG)"/>' +
+    '<rect x="8" y="38" width="48" height="7" fill="url(#xhPzG)"/><rect x="8" y="25" width="48" height="4" fill="#000" opacity=".18"/></svg>';
+  const PRIZE_LID =
+    '<svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">' +
+    '<rect x="5" y="15" width="54" height="11" rx="3" fill="url(#xhPzR)"/><rect x="27" y="15" width="10" height="11" fill="url(#xhPzG)"/>' +
+    '<path d="M32 16c-4-8-14-10-15.500-5-1 4.500 6.500 6.500 15.500 5zM32 16c4-8 14-10 15.500-5 1 4.500-6.500 6.500-15.500 5z" fill="url(#xhPzG)"/>' +
+    '<circle cx="32" cy="16" r="3" fill="#FFE2A0"/></svg>';
+  // Le nœud d'or qui reste sur la coche : deux coques, deux pans, le nœud.
+  const BOW =
+    '<svg viewBox="0 0 46 30" aria-hidden="true" focusable="false"><defs>' +
+    '<linearGradient id="xhBowG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFE9A6"/><stop offset=".5" stop-color="#F2B24A"/><stop offset="1" stop-color="#B9781A"/></linearGradient></defs>' +
+    '<path d="M20 15.500L13 28.500l5-1.600 2.400 3L24 17z" fill="#D9982E" stroke="#8A5A12" stroke-width=".8" stroke-linejoin="round"/>' +
+    '<path d="M26 15.500L33 28.500l-5-1.600-2.400 3L22 17z" fill="#E7A93A" stroke="#8A5A12" stroke-width=".8" stroke-linejoin="round"/>' +
+    '<path d="M23 15C17 4 5 1 2.500 6.500.500 12 8 19 23 15z" fill="url(#xhBowG)" stroke="#8A5A12" stroke-width=".9"/>' +
+    '<path d="M23 15C29 4 41 1 43.500 6.500 45.500 12 38 19 23 15z" fill="url(#xhBowG)" stroke="#8A5A12" stroke-width=".9"/>' +
+    '<path d="M7.500 8.500c3-.800 6.500.400 9 2.600M38.500 8.500c-3-.800-6.500.400-9 2.600" stroke="#FFF6D8" stroke-width="1.300" fill="none" stroke-linecap="round" opacity=".85"/>' +
+    '<rect x="19.400" y="10.400" width="7.200" height="8.200" rx="2.400" fill="url(#xhBowG)" stroke="#8A5A12" stroke-width=".9"/></svg>';
+
+  let partied = false;
+  let fleckEl = null;
+  function party() {
+    if (partied || !alive || !fx) return;
+    partied = true;
+    H.party = true;
+    const wrap = doc.querySelector('.success-page--celebrate .success-icon-wrap');
+    const wr = wrap ? wrap.getBoundingClientRect() : null;
+    const seen = !!wr && wr.width > 0 && wr.top > 70 && wr.bottom < innerHeight - 20;
+    // Mouvement réduit : la page est chaude d'emblée, la guirlande allumée, le nœud posé. Rien ne bouge.
+    if (reduce) {
+      H.v = 1;
+      H.climaxed = true;
+      H.peakAt = now();
+      render();
+      if (wrap) tieBow(wrap, true);
+      return;
+    }
+    // La coche n'est pas à l'écran (page déjà défilée) : pas de cadeau, la chaleur part du milieu.
+    if (!seen || !capsLayer) {
+      if (wrap) tieBow(wrap, false);
+      thaw(innerWidth / 2, innerHeight * 0.42, wrap);
+      return;
+    }
+    if (!C.oSet) layerOrigin();
+    const g = el('div', 'xh-prize', `<div class="xh-prize__body">${PRIZE_BODY}</div><div class="xh-prize__lid">${PRIZE_LID}</div>`);
+    g.style.left = (wr.left + wr.width / 2 + scrollX - C.ox).toFixed(1) + 'px';
+    g.style.top = (wr.top + wr.height / 2 + scrollY - C.oy).toFixed(1) + 'px';
+    capsLayer.appendChild(g);
+    // Il tombe de la guirlande, s'écrase un peu sur la coche, tremble d'impatience…
+    const fall = Math.min(230, Math.max(120, wr.top - 40));
+    g.animate(
+      [
+        { transform: `translateY(${-fall}px) rotate(-12deg)`, opacity: 0, offset: 0 },
+        { transform: `translateY(${-fall + 26}px) rotate(-10deg)`, opacity: 1, offset: 0.1, easing: 'cubic-bezier(.55,0,1,.5)' },
+        { transform: 'translateY(0) rotate(0deg)', opacity: 1, offset: 0.5 },
+        { transform: 'translateY(5px) scale(1.15,.8)', offset: 0.57 },
+        { transform: 'translateY(-11px) scale(.94,1.07)', offset: 0.68 },
+        { transform: 'translateY(0) scale(1)', offset: 0.78 },
+        { transform: 'translateY(0) rotate(-6deg)', offset: 0.84 },
+        { transform: 'translateY(0) rotate(6deg)', offset: 0.9 },
+        { transform: 'translateY(0) rotate(-3deg)', offset: 0.95 },
+        { transform: 'translateY(0) rotate(0deg)', opacity: 1, offset: 1 },
+      ],
+      { duration: 1200, easing: 'linear', fill: 'forwards' }
+    ).onfinish = () => {
+      if (!alive) return g.remove();
+      // … et s'ouvre : le couvercle saute, le papier vole, le nœud reste sur la coche.
+      const r = wrap.isConnected ? wrap.getBoundingClientRect() : wr;
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      g.querySelector('.xh-prize__lid').animate(
+        [
+          { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+          { transform: 'translate(-30px,-92px) rotate(-70deg)', opacity: 1, offset: 0.6 },
+          { transform: 'translate(-46px,-72px) rotate(-120deg)', opacity: 0 },
+        ],
+        { duration: 640, easing: 'cubic-bezier(.2,.8,.4,1)', fill: 'forwards' }
+      );
+      g.querySelector('.xh-prize__body').animate([{ transform: 'scale(1)', opacity: 1 }, { transform: 'scale(1.55)', opacity: 0 }], { duration: 300, easing: 'ease-out', fill: 'forwards' });
+      later(() => g.remove(), 720);
+      papers(cx, cy, r);
+      tieBow(wrap, false);
+      try {
+        if (!mouse && navigator.vibrate) navigator.vibrate([16, 50, 16, 50, 34]);
+      } catch (e) {
+        /* pas de vibreur */
+      }
+      thaw(cx, cy, wrap);
+    };
+  }
+  // Le papier du cadeau : il jaillit vers le haut et sur les côtés, retombe, et s'efface avant le
+  // titre. Son élan est réglé pour ne jamais monter jusqu'aux étapes du dossier ni au menu.
+  function papers(cx, cy, r) {
+    const cols = ['#E8001C', '#F2B24A', '#16A34A', '#FFD27A', '#C8001A', '#F2B24A'];
+    // Le plancher : juste sous la coche, et toujours au-dessus du titre.
+    const title = doc.querySelector('.success-page--celebrate h1');
+    const floor = Math.min(r.bottom + 12, title ? title.getBoundingClientRect().top - 6 : 1e9);
+    const header = doc.querySelector('#site-header');
+    const stepper = doc.getElementById('stepper');
+    let ceil = header ? header.getBoundingClientRect().bottom + 34 : 40;
+    if (stepper) {
+      const sr = stepper.getBoundingClientRect();
+      if (sr.bottom < r.top && sr.bottom > ceil) ceil = sr.bottom + 6;
+    }
+    const rise = Math.max(30, cy - ceil - 8);
+    const vmax = Math.min(400, Math.sqrt(2 * 620 * rise));
+    const n = mouse && !lowEnd ? 30 : 20;
+    for (let i = 0; i < n; i++) {
+      const a = rand(-Math.PI * 0.95, -Math.PI * 0.05);
+      const v = rand(0.5, 1) * vmax;
+      // Sur les côtés, ils partent plus vite : la place est là.
+      spawn(cx + rand(-12, 12), cy - 10, Math.cos(a) * v * 1.5, Math.sin(a) * v, rand(3, 5.2), 'paper', { color: cols[i % cols.length], floor, ceil, max: rand(1, 1.6), vr: rand(-9, 9) });
+    }
+  }
+  function tieBow(wrap, still) {
+    if (!wrap || wrap.querySelector('.xh-bow')) return;
+    const b = el('span', still ? 'xh-bow is-still' : 'xh-bow', BOW);
+    b.setAttribute('aria-hidden', 'true');
+    wrap.appendChild(b);
+  }
+  // La chaleur du cadeau : trois ondes, la boutique dégèle en trois temps, puis tout s'embrase.
+  function thaw(cx, cy, wrap) {
+    heatWave(cx, cy, 1);
+    warmTo(0.4);
+    later(() => {
+      heatWave(cx, cy, 0.75);
+      warmTo(0.72);
+    }, 380);
+    later(() => {
+      if (!alive) return;
+      heatWave(cx, cy, 1);
+      H.v = 1;
+      H.lastAct = now();
+      H.climaxed = false;
+      render();
+      climax();
+      flecks(wrap);
+    }, 780);
+  }
+  // Des éclats de papier — rouge, vert, or — tombent neuf secondes dans les marges de la page, de
+  // part et d'autre du contenu : jamais sur un texte. Il faut de vraies marges (un ordinateur, une
+  // tablette couchée) ; au téléphone il n'y en a pas, la fête s'en passe. Une tuile répétée animée
+  // par la carte graphique, comme la neige, derrière un masque qui cache la colonne du contenu.
+  function fleckTile(size, n) {
+    const cols = ['#E8001C', '#F2B24A', '#16A34A', '#FFD27A', '#C8001A'];
+    let s = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">`;
+    for (let i = 0; i < n; i++) {
+      const x = rand(10, size - 10).toFixed(1);
+      const y = rand(10, size - 10).toFixed(1);
+      const c = cols[i % cols.length];
+      const o = rand(0.7, 1).toFixed(2);
+      if (i % 3 === 0) s += `<circle cx="${x}" cy="${y}" r="${rand(1.6, 2.6).toFixed(1)}" fill="${c}" opacity="${o}"/>`;
+      else s += `<rect x="${x}" y="${y}" width="${rand(4.5, 7).toFixed(1)}" height="${rand(2.2, 3.2).toFixed(1)}" rx=".7" fill="${c}" opacity="${o}" transform="rotate(${rand(0, 180).toFixed(0)} ${x} ${y})"/>`;
+    }
+    return `url("data:image/svg+xml,${encodeURIComponent(s + '</svg>')}")`;
+  }
+  function flecks(wrap) {
+    if (reduce || !capsLayer || fleckEl || !wrap) return;
+    const box = wrap.closest('.form-panel, .success-page');
+    if (!box) return;
+    const br = box.getBoundingClientRect();
+    const L = br.left - 14;
+    const R = br.right + 14;
+    if (L < 110 || root.clientWidth - R < 110) return;
+    // Le cadre vit dans la page (il défile avec elle) : du haut du contenu au pied de page, pour
+    // que rien ne tombe non plus sur les textes du pied de page.
+    const main = wrap.closest('main') || box;
+    const top = main.getBoundingClientRect().top + scrollY;
+    const footer = doc.getElementById('site-footer');
+    const bottom = footer ? footer.getBoundingClientRect().top + scrollY : top + main.getBoundingClientRect().height;
+    if (bottom - top < 160) return;
+    if (!C.oSet) layerOrigin();
+    const w = el('div', 'xh-fleckwrap');
+    w.style.left = (-C.ox).toFixed(1) + 'px';
+    w.style.top = (top - C.oy).toFixed(1) + 'px';
+    w.style.width = root.clientWidth + 'px';
+    w.style.height = Math.round(bottom - top) + 'px';
+    const m = `linear-gradient(to right, #000 0, #000 ${(L - 26).toFixed(0)}px, transparent ${L.toFixed(0)}px, transparent ${R.toFixed(0)}px, #000 ${(R + 26).toFixed(0)}px, #000 100%)`;
+    w.style.webkitMaskImage = m;
+    w.style.maskImage = m;
+    // Deux tuiles de tailles et de vitesses différentes, l'une sur l'autre : l'œil ne retrouve
+    // jamais le même motif.
+    const a = el('div', 'xh-flecks xh-flecks--a');
+    a.style.backgroundImage = fleckTile(310, 13);
+    const b = el('div', 'xh-flecks xh-flecks--b');
+    b.style.backgroundImage = fleckTile(430, 16);
+    w.append(a, b);
+    fleckEl = w;
+    capsLayer.appendChild(w);
+    later(() => w.classList.add('is-out'), 9000);
+    later(() => {
+      w.remove();
+      if (fleckEl === w) fleckEl = null;
+    }, 10600);
   }
 
   /* ---------- Départ / arrêt ---------- */
@@ -1859,7 +2174,8 @@
     const cap = { passive: true, capture: true, signal: ac.signal };
     // Une page avec le cadeau commence comme lui : gelée, glace entière (la barre du cadeau et le
     // décor disent toujours la même chose). Sans cadeau, la chaleur de la visite se prolonge.
-    if (root.classList.contains('bc-noel-ring')) {
+    // Une page de confirmation aussi : la fête part d'une page gelée, pour qu'on la voie dégeler.
+    if (root.classList.contains('bc-noel-ring') || root.classList.contains('bc-noel-party')) {
       H.v = 0;
       H.climaxed = false;
     } else {
@@ -1914,6 +2230,8 @@
     if (!reduce) C.tick = every(accumTick, CFG.accumMs);
     if (H.v > 0) H.decayT = every(decayTick, 500);
     render();
+    // Une confirmation est déjà affichée : on laisse la page gelée s'installer, puis la fête.
+    if (root.classList.contains('bc-noel-party')) later(party, 1700);
   }
 
   function observeCaps() {
@@ -1963,13 +2281,19 @@
     P.list.length = 0;
     P.cv = P.ctx = null;
     P.w = P.h = 0;
+    live.clear();
+    moving = false;
+    partied = false;
+    H.party = false;
+    fleckEl = null;
+    doc.querySelectorAll('.xh-bow').forEach((n) => n.remove());
     const nodes = [fx, capsLayer, garland, F.box];
     dropFrost(true);
     C.list = [];
     C.byNode.clear();
     C.oSet = false;
     fx = capsLayer = garland = null;
-    snowEl = emberEl = warmEl = handEl = null;
+    snowEl = emberEl = emberWrap = warmEl = handEl = null;
     bulbs = [];
     glows = [];
     icicles = [];
@@ -1988,6 +2312,10 @@
     if (e.detail.on) start(false);
     else stop(true);
   });
+  // Le paiement vient d'être confirmé alors que le décor était déjà là : la fête, tout de suite.
+  doc.addEventListener('bc:noel-party', () => {
+    if (alive && !partied) later(party, 500);
+  });
 
   // ?noeldebug expose l'état pour les tests ; sans effet pour les visiteurs.
   if (debug) {
@@ -2000,6 +2328,7 @@
       },
       cool: coolDown,
       gust,
+      party,
       sync: syncCaps,
       stop,
       start,

@@ -382,7 +382,16 @@
   // ?noel=0 la coupe, ?noel=v1 montre le premier décor seul (sac-cadeau, Père Noël, sans la
   // boutique gelée). Jusqu'au 10 décembre le bandeau FIGHT & Furious est encore en bas de
   // l'écran : le Père Noël marche juste au-dessus, puis redescend quand le bandeau s'en va.
-  // Jamais dans le tunnel de vente ni la billetterie ; douce sur la page enfants.
+  //
+  // Le décor est partout où le site a son en-tête (accueil, offres, panier, gérer mon abonnement,
+  // régulariser, billetterie, pages légales, 404…), sauf :
+  //  - le tunnel d'inscription, dès l'étape 1 (on lit l'offre, on remplit ses informations, on
+  //    paie, on signe) : rien ne doit distraire ;
+  //  - le billet du gala (son QR code doit rester net) et l'administration.
+  // Quand un dossier est complet ou un paiement confirmé — étape « Confirmé » de l'inscription,
+  // page de confirmation d'une commande —, le décor arrive et fait la fête : layout.js pose
+  // html.bc-noel-party et envoie « bc:noel-party », chaque script du décor y répond à sa façon.
+  // Jamais sur un paiement refusé ni encore en cours de validation.
   function ensureNoel() {
     if (document.querySelector('link[data-noel], script[data-noel]')) return;
     let flag = '';
@@ -398,11 +407,23 @@
     if (!forced && !inWindow) return;
     const legacy = flag === 'v1';
     const p = currentPath();
-    if (/inscription|checkout|panier|paiement|contrat|success|regulariser|gerer-abonnement|attestation|certificat|billet|admin|\/404|\/dev/i.test(p)) {
-      return;
-    }
-    // Une adresse introuvable garde son adresse : la page 404 se reconnaît à son corps.
-    if (document.body && document.body.classList.contains('page-404')) return;
+    if (/(^|\/)admin(\/|$)|(^|\/)dev(\/|$)|(^|\/)(billet|checkout|contrat|paiement-redirect)(\.html)?$/i.test(p)) return;
+    const funnel = /(^|\/)inscription(\.html)?$/i.test(p);
+    // Une confirmation est-elle affichée ? Le bloc de fête du site est là, le paiement n'est ni
+    // refusé ni encore en cours de validation.
+    const confirmed = () => {
+      const s = document.querySelector('.success-page--celebrate');
+      if (!s || s.classList.contains('payment-failed')) return false;
+      return !/validation du paiement|en cours de validation/i.test(s.textContent || '');
+    };
+    let partyOn = false;
+    const party = () => {
+      if (partyOn || !confirmed()) return false;
+      partyOn = true;
+      document.documentElement.classList.add('bc-noel-party');
+      document.dispatchEvent(new CustomEvent('bc:noel-party'));
+      return true;
+    };
     const soft = /boxe-enfant/i.test(p);
     const sheet = (href) => new Promise((done) => {
       const link = document.createElement('link');
@@ -425,26 +446,50 @@
       if (document.querySelector('link[data-noel], script[data-noel]')) return;
       document.documentElement.classList.add('bc-noel');
       if (soft) document.documentElement.classList.add('bc-noel--soft');
+      // Une page de confirmation : la fête part quand le paiement est confirmé (tout de suite, ou
+      // quand le texte « Validation du paiement… » laisse la place à la confirmation).
+      const done = document.querySelector('.success-page');
+      if (done && !party()) {
+        const mo = new MutationObserver(() => {
+          if (party() || done.classList.contains('payment-failed')) mo.disconnect();
+        });
+        mo.observe(done, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class'] });
+        setTimeout(() => mo.disconnect(), 120000);
+      }
       // Les scripts n'arrivent qu'avec leurs styles : rien ne s'affiche brut, rien n'est mesuré de travers.
       if (legacy) {
-        Promise.all([sheet('/css/noel-ring.css?v=3'), sheet('/css/noel-page.css?v=2')]).then(() => {
-          script('/js/noel-ring.js?v=3');
-          script('/js/noel-page.js?v=2');
+        Promise.all([sheet('/css/noel-ring.css?v=4'), sheet('/css/noel-page.css?v=3')]).then(() => {
+          script('/js/noel-ring.js?v=4');
+          script('/js/noel-page.js?v=3');
         });
         return;
       }
       // Le cadeau à ouvrir à la boxe (hero), le Père Noël et son traîneau (page), et la boutique
       // gelée que les coups sur le cadeau réchauffent (givre, neige posée sur le site, guirlande).
       document.documentElement.classList.add('bc-noel-hiver');
-      Promise.all([sheet('/css/noel-ring.css?v=3'), sheet('/css/noel-page.css?v=2'), sheet('/css/noel-hiver.css?v=1')]).then(() => {
-        script('/js/noel-ring.js?v=3');
-        script('/js/noel-hiver.js?v=1');
-        script('/js/noel-page.js?v=2');
+      Promise.all([sheet('/css/noel-ring.css?v=4'), sheet('/css/noel-page.css?v=3'), sheet('/css/noel-hiver.css?v=2')]).then(() => {
+        script('/js/noel-ring.js?v=4');
+        script('/js/noel-hiver.js?v=2');
+        script('/js/noel-page.js?v=3');
       });
     };
     // Le site d'abord : le décor n'arrive qu'une fois la page affichée et le navigateur au repos.
     // Il ne doit jamais retarder l'ouverture d'une page.
     const later = () => (window.requestIdleCallback ? window.requestIdleCallback(boot, { timeout: 2500 }) : setTimeout(boot, 700));
+    if (funnel) {
+      // Le tunnel reste nu. Le jour où l'étape « Confirmé » s'affiche, le décor arrive pour la fête.
+      const host = document.getElementById('stepContent') || document.body;
+      let mo = null;
+      const seen = () => {
+        if (!confirmed()) return;
+        if (mo) mo.disconnect();
+        later();
+      };
+      mo = new MutationObserver(seen);
+      mo.observe(host, { childList: true, subtree: true });
+      seen();
+      return;
+    }
     if (document.readyState === 'complete') later();
     else {
       window.addEventListener('load', later, { once: true });

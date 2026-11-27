@@ -8,10 +8,14 @@
  *
  * Tout ce qui bouge est confié à la carte graphique (transform / opacity, animations CSS ou Web
  * Animations) : aucune boucle JavaScript par image, aucune repeinture. Seul ce qui se voit bouger
- * tourne : un téléphone moyen fait défiler la page aussi vite qu'en temps normal.
+ * tourne, et pendant qu'on fait défiler la page presque plus rien ne tourne : le Père Noël
+ * s'arrête, aucune boîte ne s'ouvre, le traîneau ne décolle pas (chaque élément animé se recalcule
+ * à chaque image d'un défilement).
  *
- * Au doigt, rien n'est cliquable : un tap destiné au site n'est jamais volé. À la souris, le Père
- * Noël pare les coups, et au troisième il rit et lance un cadeau ; les boîtes s'ouvrent au survol.
+ * Le Père Noël se touche du doigt comme de la souris — mais il esquive deux fois avant de se
+ * laisser avoir : au troisième coup il rit et lance un cadeau. Devant un bouton ou un lien il est
+ * transparent et intouchable (il ne vole jamais un clic) ; pendant qu'on fait défiler la page il
+ * s'arrête ; pendant qu'on écrit dans un champ il n'est pas là. Les boîtes s'ouvrent au survol.
  * Allumé et éteint avec la scène du hero (événement « bc:noel »).
  */
 (function () {
@@ -224,7 +228,7 @@
     if (layer) layer.style.setProperty('--xmp-floor', floorPx + 'px');
     return floorPx;
   }
-  const Z = { el: null, walker: null, flip: null, fig: null, say: null, x: -200, dir: 1, anim: null, seg: null, resume: null, hits: 0, busy: false, check: 0 };
+  const Z = { el: null, walker: null, flip: null, fig: null, say: null, x: -200, dir: 1, anim: null, seg: null, resume: null, hits: 0, tries: 0, busy: false, check: 0, welcomed: false };
 
   /* ---------- Démarrage / arrêt ---------- */
 
@@ -258,6 +262,10 @@
       window.addEventListener('scroll', onScroll, { passive: true });
     }
     window.addEventListener('resize', onResize, { passive: true });
+    doc.addEventListener('focusin', onFocusIn, true);
+    doc.addEventListener('focusout', onFocusOut, true);
+    if (inField(doc.activeElement)) setTyping(true);
+    if (partyPage()) party(4300);
   }
 
   function stop(animated) {
@@ -267,8 +275,18 @@
     timers = [];
     clearInterval(Z.check);
     Z.check = 0;
+    clearTimeout(scrollT);
+    scrolling = false;
+    bandRun++;
+    if (Z.el) Z.el.classList.remove('is-held');
     window.removeEventListener('scroll', onScroll);
     window.removeEventListener('resize', onResize);
+    doc.removeEventListener('focusin', onFocusIn, true);
+    doc.removeEventListener('focusout', onFocusOut, true);
+    clearTimeout(typeT);
+    typing = false;
+    partied = false;
+    Z.welcomed = false;
     const l = layer;
     const g = garland;
     layer = null;
@@ -290,6 +308,55 @@
     else stop(true);
   });
 
+  // La fête (layout.js : html.bc-noel-party, « bc:noel-party ») — un dossier complet, un paiement
+  // confirmé. Ici : les deux boîtes s'ouvrent ensemble quand la page a dégelé, le traîneau passe
+  // sans attendre, et le Père Noël arrive plus tôt, souhaite la bienvenue et lance un cadeau.
+  const partyPage = () => root.classList.contains('bc-noel-party');
+  let partied = false;
+  function party(delay) {
+    if (partied || !alive || reduce) return;
+    partied = true;
+    const id = setTimeout(() => {
+      if (!alive) return;
+      for (const b of boxes) {
+        pop(b);
+        cracker(b);
+      }
+    }, delay);
+    timers.push(id);
+  }
+  // Le pétard d'une boîte : des papiers jaillissent tout droit le long du bord de l'écran et
+  // retombent, sans quitter la marge (au téléphone : une bande de 30 px) — jamais sur un texte.
+  function cracker(box) {
+    const r = box.node.getBoundingClientRect();
+    const W = innerWidth;
+    const left = box.side === 'left';
+    const gutter = Math.max(26, Math.min(150, (W - Math.min(W - 40, CFG.contentMax)) / 2 + 10));
+    const x0 = left ? Math.max(8, Math.min(r.right - 10, gutter * 0.5)) : Math.min(W - 8, Math.max(r.left + 10, W - gutter * 0.5));
+    const y0 = r.top + r.height * 0.35;
+    const colors = ['#E8001C', '#FFB347', '#FFE9B0', '#16A34A', '#F2B24A'];
+    const n = lowEnd ? 9 : 14;
+    for (let i = 0; i < n; i++) {
+      const c = el('span', 'xmp-confetto xmp-confetto--edge');
+      c.style.background = colors[i % colors.length];
+      layer.appendChild(c);
+      const up = rand(90, Math.min(300, Math.max(120, y0 - 110)));
+      const half = gutter * 0.5 - 5;
+      const dx = rand(-half, half);
+      const xa = Math.max(3, Math.min(W - 9, x0 + dx * 0.6));
+      const xb = Math.max(3, Math.min(W - 9, x0 + dx));
+      c.animate(
+        [
+          { transform: `translate(${x0.toFixed(1)}px,${y0.toFixed(1)}px) rotate(0deg)`, opacity: 1 },
+          { transform: `translate(${xa.toFixed(1)}px,${(y0 - up).toFixed(1)}px) rotate(${rand(-260, 260).toFixed(0)}deg)`, opacity: 1, offset: 0.45, easing: 'ease-in' },
+          { transform: `translate(${xb.toFixed(1)}px,${(y0 - up * rand(0.25, 0.6)).toFixed(1)}px) rotate(${rand(-520, 520).toFixed(0)}deg)`, opacity: 0 },
+        ],
+        { duration: rand(1000, 1500), delay: rand(0, 220), easing: 'cubic-bezier(.15,.75,.35,1)', fill: 'backwards' }
+      ).onfinish = () => c.remove();
+    }
+  }
+  doc.addEventListener('bc:noel-party', () => party(3100));
+
   let resizeT = 0;
   function onResize() {
     clearTimeout(resizeT);
@@ -298,6 +365,7 @@
       readFloor();
       placeBoxes();
       if (garland) layoutGarland();
+      band = null;
       bandAt = -1e9;
     }, 160);
   }
@@ -411,7 +479,8 @@
     let k = Math.random() < 0.5 ? 0 : 1;
     while (alive) {
       await wait(rand(CFG.popGapMs[0], CFG.popGapMs[1]));
-      if (!alive || doc.hidden) continue;
+      // Pas pendant un défilement : une animation qui démarre là se paie à chaque image du geste.
+      if (!alive || doc.hidden || scrolling || typing) continue;
       const box = boxes[k++ % boxes.length];
       if (box) pop(box);
     }
@@ -433,7 +502,8 @@
   // le header fait toute la largeur de la fenêtre.
   const BULBS = ['#FFE9B0', '#FF3346', '#FFB347', '#8FD3FF'];
   function layoutGarland() {
-    const W = innerWidth;
+    // La largeur de la page, pas celle de la fenêtre (innerWidth compte la barre de défilement).
+    const W = Math.min(innerWidth, root.clientWidth || innerWidth);
     const span = W < 600 ? 120 : 160;
     const sag = W < 600 ? 9 : 12;
     const n = Math.max(2, Math.round(W / span));
@@ -502,25 +572,61 @@
   // IntersectionObserver (à l'arrêt du défilement, puis toutes les 4 s au plus) : le navigateur
   // donne leurs positions sans qu'on force une mise en page ; chaque test ne compare que des nombres.
   const TARGETS = 'a, button, input, select, textarea, label, [role="button"]';
+  // null : pas encore relevée (après un défilement) — dans le doute, il reste transparent.
   let band = [];
   let bandAt = -1e9;
+  let bandRun = 0;
   let scrolling = false;
   let scrollT = 0;
+  let lastScroll = 0;
+  // Pendant qu'on écrit dans un champ, il n'est pas là : ni lui, ni une boîte qui s'ouvre, ni le
+  // traîneau. Au téléphone, le clavier remonte le bas de l'écran juste sous le champ : il aurait
+  // marché dessus.
+  const FIELDS = 'input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="range"]):not([type="file"]):not([type="hidden"]), textarea, select, [contenteditable=""], [contenteditable="true"]';
+  let typing = false;
+  let typeT = 0;
+  const inField = (n) => !!(n && n.matches && n.matches(FIELDS));
+  function setTyping(on) {
+    if (typing === on) return;
+    typing = on;
+    if (layer) layer.classList.toggle('is-typing', on);
+    hold(on || scrolling);
+  }
+  function onFocusIn(e) {
+    if (!inField(e.target)) return;
+    clearTimeout(typeT);
+    setTyping(true);
+  }
+  function onFocusOut() {
+    clearTimeout(typeT);
+    // On passe souvent d'un champ au suivant : il ne revient que si plus aucun champ n'a la main.
+    typeT = setTimeout(() => setTyping(inField(doc.activeElement)), 260);
+  }
+  // Le relevé passe tous les boutons et liens de la page : il attend un moment de repos du
+  // navigateur, jamais dans l'image qui suit l'arrêt d'un défilement.
   function readBand() {
     bandAt = performance.now();
-    const zh = innerWidth < 600 ? 70 : 96;
-    const bottom = innerHeight - floorPx;
-    const top = bottom - zh;
-    const io = new IntersectionObserver((entries) => {
-      io.disconnect();
-      const out = [];
-      for (const e of entries) {
-        const b = e.boundingClientRect;
-        if (b.width > 0 && b.bottom > top && b.top < bottom) out.push(b.left, b.right);
-      }
-      band = out;
-    });
-    for (const n of doc.querySelectorAll(TARGETS)) if (!layer.contains(n)) io.observe(n);
+    const run = ++bandRun;
+    const go = () => {
+      if (!alive || !layer || run !== bandRun || scrolling) return;
+      const zh = innerWidth < 600 ? 70 : 96;
+      const bottom = innerHeight - floorPx;
+      const top = bottom - zh;
+      const io = new IntersectionObserver((entries) => {
+        io.disconnect();
+        if (run !== bandRun || scrolling) return;
+        const out = [];
+        for (const e of entries) {
+          const b = e.boundingClientRect;
+          if (b.width > 0 && b.bottom > top && b.top < bottom) out.push(b.left, b.right);
+        }
+        band = out;
+        if (Z.el && !Z.el.hidden) ghostCheck();
+      });
+      for (const n of doc.querySelectorAll(TARGETS)) if (!layer.contains(n)) io.observe(n);
+    };
+    if (window.requestIdleCallback) window.requestIdleCallback(go, { timeout: 600 });
+    else setTimeout(go, 60);
   }
 
   function ghostCheck() {
@@ -532,7 +638,8 @@
       if (scrolling) over = true;
       else {
         if (performance.now() - bandAt > 4000) readBand();
-        for (let i = 0; i < band.length && !over; i += 2) over = band[i + 1] > r.left && band[i] < r.right;
+        if (!band) over = true;
+        else for (let i = 0; i < band.length && !over; i += 2) over = band[i + 1] > r.left && band[i] < r.right;
       }
     }
     Z.fig.classList.toggle('is-ghost', over);
@@ -542,14 +649,41 @@
     if (r.left < 74 || r.right > innerWidth - 74) Z.say.classList.remove('is-on');
   }
 
+  // Un seul minuteur par défilement (pas un par événement) : il se rallonge tant que la page bouge.
   function onScroll() {
+    lastScroll = performance.now();
+    if (scrolling) return;
     scrolling = true;
-    clearTimeout(scrollT);
-    scrollT = setTimeout(() => {
-      scrolling = false;
-      bandAt = -1e9;
-      if (Z.el && !Z.el.hidden) requestAnimationFrame(ghostCheck);
-    }, 180);
+    // Les boutons ont bougé : l'ancien relevé ne vaut plus rien.
+    band = null;
+    bandRun++;
+    hold(true);
+    scrollT = setTimeout(scrollEnd, 180);
+  }
+  // Pendant que la page défile, il s'arrête (il est déjà transparent) : ses jambes, ses bras et sa
+  // marche ne se recalculent plus à chaque image du geste. Il repart dès que la page se pose.
+  function hold(on) {
+    if (!Z.el) return;
+    Z.el.classList.toggle('is-held', on);
+    const a = Z.anim;
+    if (!a) return;
+    try {
+      if (on && a.playState === 'running') a.pause();
+      else if (!on && a.playState === 'paused') a.play();
+    } catch (e) {
+      /* animation déjà terminée */
+    }
+  }
+  function scrollEnd() {
+    const left = 180 - (performance.now() - lastScroll);
+    if (left > 4) {
+      scrollT = setTimeout(scrollEnd, left);
+      return;
+    }
+    scrolling = false;
+    bandAt = -1e9;
+    hold(typing);
+    if (alive && Z.el && !Z.el.hidden) requestAnimationFrame(ghostCheck);
   }
 
   // Il n'existe que pendant ses courses : entre deux, il n'est ni dessiné ni testé.
@@ -558,6 +692,7 @@
     clearInterval(Z.check);
     Z.check = on ? setInterval(() => requestAnimationFrame(ghostCheck), CFG.ghostCheckMs) : 0;
     if (on) {
+      band = null;
       bandAt = -1e9;
       requestAnimationFrame(ghostCheck);
     }
@@ -588,6 +723,7 @@
         });
         Z.anim = anim;
         Z.seg = { from, to: target };
+        if (scrolling || typing) anim.pause();
         anim.onfinish = () => {
           Z.x = target;
           Z.walker.style.transform = tx(target);
@@ -623,7 +759,9 @@
   async function runLoop() {
     let first = true;
     while (alive) {
-      await wait(first ? CFG.runFirstMs : rand(CFG.runGapMs[0], CFG.runGapMs[1]));
+      // Un jour de fête, il arrive après le dégel, les boîtes et le traîneau (chacun son moment),
+      // et repasse plus souvent.
+      await wait(first ? (partyPage() ? 8000 : CFG.runFirstMs) : partyPage() ? rand(6000, 10000) : rand(CFG.runGapMs[0], CFG.runGapMs[1]));
       first = false;
       if (!alive) return;
       const W = innerWidth;
@@ -713,7 +851,22 @@
     // 0 : place nette, il s'arrête et nargue. 1 : un texte juste là, il ne s'arrête pas dessus
     // et le lance en passant. 2 : un bouton, un lien ou le bord de l'écran, il se tait.
     const level = await bubbleClear();
-    if (!alive || Z.busy || !Z.fig || level === 2) return;
+    if (!alive || Z.busy || !Z.fig) return;
+    // Un jour de fête, sa première halte est pour la bienvenue : il s'arrête, rit et lance un
+    // cadeau devant lui. Sa bulle « Bienvenue au club ! » ne sort que si elle ne couvre ni texte ni
+    // bouton — sinon le geste suffit.
+    if (partyPage() && !Z.welcomed) {
+      Z.welcomed = true;
+      Z.fig.classList.remove('is-running');
+      Z.fig.classList.add('is-laugh');
+      if (level === 0) say(2300, 'Bienvenue au club !');
+      throwGift(-Z.dir);
+      track('noel_party_welcome', { page: location.pathname });
+      await wait(2300);
+      if (Z.fig) Z.fig.classList.remove('is-laugh');
+      return;
+    }
+    if (level === 2) return;
     if (level === 1) {
       say(1900, text);
       return;
@@ -725,8 +878,11 @@
     if (Z.fig) Z.fig.classList.remove('is-taunt');
   }
 
-  // Touché — à la souris ou au doigt —, il éclate de rire et lâche un cadeau de sa hotte. On ne
-  // met pas le Père Noël K.O.
+  // Il ne se laisse pas toucher à tous les coups : deux fois il esquive — un pas de côté, la garde
+  // haute, loin du doigt —, la troisième le coup porte : il éclate de rire et lâche un cadeau de
+  // sa hotte. (À Halloween, le zombie reculait deux fois avant de tomber.) On ne met pas le Père
+  // Noël K.O.
+  const DODGES = ['Raté !', 'Trop lent !'];
   async function punchSanta(e) {
     if (Z.busy || !alive) return;
     if (e.cancelable) e.preventDefault();
@@ -741,15 +897,36 @@
       Z.walker.style.transform = tx(Z.x);
     }
     Z.busy = true;
-    Z.hits += 1;
     const fig = Z.fig;
-    fig.classList.remove('is-running', 'is-boxing');
-    fig.classList.add('is-laugh');
-    say(1600);
-    throwGift(away);
-    track('noel_santa_gift', { page: location.pathname, hits: Z.hits });
-    await wait(1600);
-    if (Z.fig) Z.fig.classList.remove('is-laugh');
+    fig.classList.remove('is-running', 'is-boxing', 'is-taunt');
+    Z.tries += 1;
+    if (Z.tries < 3 && !reduce) {
+      // Esquive : il saute de côté, à l'opposé du coup, et se moque.
+      fig.style.setProperty('--away', String(away * Z.dir));
+      fig.classList.add('is-dodge');
+      say(950, DODGES[Z.tries - 1]);
+      const step = innerWidth < 600 ? 30 : 40;
+      const hop = Z.walker.animate(
+        [{ transform: tx(Z.x) }, { transform: `${tx(Z.x + away * step * 0.6)} translateY(-11px)`, offset: 0.45 }, { transform: tx(Z.x + away * step) }],
+        { duration: 240, easing: 'cubic-bezier(.2,.9,.3,1)', fill: 'forwards' }
+      );
+      await hop.finished.catch(() => {});
+      Z.x += away * step;
+      Z.walker.style.transform = tx(Z.x);
+      hop.cancel();
+      track('noel_santa_dodge', { page: location.pathname, tries: Z.tries });
+      await wait(330);
+      if (Z.fig) Z.fig.classList.remove('is-dodge');
+    } else {
+      Z.tries = 0;
+      Z.hits += 1;
+      fig.classList.add('is-laugh');
+      say(1600);
+      throwGift(away);
+      track('noel_santa_gift', { page: location.pathname, hits: Z.hits });
+      await wait(1600);
+      if (Z.fig) Z.fig.classList.remove('is-laugh');
+    }
     Z.busy = false;
     if (running && Z.resume && alive) Z.resume();
   }
@@ -806,8 +983,11 @@
     const s = el('div', 'xmp-sleigh', SLEIGH_SVG);
     s.hidden = true;
     layer.appendChild(s);
-    await wait(rand(CFG.sleighFirstMs[0], CFG.sleighFirstMs[1]));
+    await wait(partyPage() ? 5600 : rand(CFG.sleighFirstMs[0], CFG.sleighFirstMs[1]));
     while (alive) {
+      // Il ne décolle pas pendant un défilement : il attend que la page se pose.
+      while (alive && (scrolling || typing)) await wait(400);
+      if (!alive) return;
       if (!doc.hidden) await fly(s);
       await wait(rand(CFG.sleighGapMs[0], CFG.sleighGapMs[1]));
     }
@@ -820,8 +1000,18 @@
     const x0 = dir > 0 ? -w - 20 : W + 20;
     const x1 = dir > 0 ? W + 20 : -w - 20;
     // En plein ciel, sous la guirlande : jamais emmêlé dans les lumières du menu.
-    const y0 = innerHeight * rand(0.24, 0.34);
-    const lift = rand(18, 40);
+    let y0 = innerHeight * rand(0.24, 0.34);
+    let lift = rand(18, 40);
+    // Un jour de fête, il passe au-dessus de la coche verte, pas dessus.
+    const mark = partyPage() ? doc.querySelector('.success-page--celebrate .success-icon-wrap') : null;
+    if (mark) {
+      const mr = mark.getBoundingClientRect();
+      const h = (w * 70) / 220;
+      if (mr.top > 150 && mr.top < innerHeight) {
+        lift = rand(6, 14);
+        y0 = Math.max(104 + lift, mr.top - h - 8);
+      }
+    }
     const kf = [];
     const N = 16;
     for (let i = 0; i <= N; i++) {

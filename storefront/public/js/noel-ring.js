@@ -322,10 +322,11 @@
       front.style.visibility = '';
     });
     ro.observe(hero);
+    // « Visible » = à moins de 160 px de l'écran : le cadeau est déjà là quand le hero revient.
     io = new IntersectionObserver((entries) => {
-      S.visible = entries[0].isIntersecting;
+      S.visible = entries[entries.length - 1].isIntersecting;
       syncRunning();
-    });
+    }, { rootMargin: '160px 0px' });
     io.observe(hero);
   }
 
@@ -1237,6 +1238,11 @@
   function syncRunning() {
     const should = S.visible !== false && !doc.hidden && !S.dead;
     S.running = should;
+    // Hero sorti de l'écran : le cadeau et son décor ne sont plus rendus. Leurs calques (une dizaine)
+    // ne pèsent plus sur le reste de la page pendant qu'on la fait défiler.
+    const away = S.visible === false;
+    if (back) back.classList.toggle('is-away', away);
+    if (front) front.classList.toggle('is-away', away);
     if (idleAnim) {
       if (should) idleAnim.play();
       else idleAnim.pause();
